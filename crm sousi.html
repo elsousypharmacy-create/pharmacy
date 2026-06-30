@@ -14,45 +14,52 @@
   .title-row { display: flex; align-items: center; gap: 8px; }
   .header-top h1 { font-size: 16px; font-weight: 800; color: #f1f5f9; }
   .header-top p { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 2px; }
-  .info-btn { width: 22px; height: 22px; border-radius: 50%; background: rgba(0,180,216,0.2); border: 1px solid #00B4D8; color: #00B4D8; font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: serif; }
+  .info-btn { width: 22px; height: 22px; border-radius: 50%; background: rgba(0,180,216,0.2); border: 1px solid #38BDF8; color: #38BDF8; font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: serif; }
 
   .header-actions { display: flex; gap: 6px; align-items: center; }
-  .icon-btn { width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  .icon-btn.active { background: #00B4D8; }
-  .icon-btn.sync { background: #00B4D8; }
+  .view-toggle { display: flex; background: rgba(255,255,255,0.06); border-radius: 9px; padding: 3px; gap: 2px; }
+  .icon-btn { width: 34px; height: 32px; border-radius: 7px; background: transparent; border: none; color: rgba(255,255,255,0.55); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .icon-btn.active { background: #38BDF8; color: #fff; }
+  .icon-btn.sync { width: 38px; height: 38px; border-radius: 9px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.4); color: #38BDF8; font-size: 16px; }
+  .icon-btn.sync:active { background: rgba(56,189,248,0.35); }
 
   .stats-bar { display: grid; grid-template-columns: repeat(5,1fr); gap: 6px; margin-bottom: 12px; }
   .stat-pill { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 4px; text-align: center; cursor: pointer; border: 2px solid transparent; }
-  .stat-pill.active { border-color: #00B4D8; background: rgba(0,180,216,0.15); }
+  .stat-pill.active { border-color: #38BDF8; background: rgba(0,180,216,0.15); }
   .stat-pill .lbl { font-size: 15px; font-weight: 900; }
   .stat-pill .cnt { font-size: 10px; color: rgba(255,255,255,0.6); margin-top: 2px; }
 
   .controls { display: flex; gap: 8px; }
+  .status-filters { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; scrollbar-width: none; }
+  .status-filters::-webkit-scrollbar { display: none; }
+  .status-filters .filter-btn { flex-shrink: 0; }
+  .info-i { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: rgba(56,189,248,0.18); color: #38BDF8; font-size: 10px; font-weight: 800; font-style: italic; cursor: pointer; margin-right: 4px; vertical-align: middle; font-family: Georgia, serif; }
+  .info-i:active { background: rgba(56,189,248,0.4); }
   .search-input { flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 8px; padding: 9px 12px; font-size: 13px; font-family: inherit; }
   .search-input::placeholder { color: rgba(255,255,255,0.4); }
   .filter-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.7); border-radius: 8px; padding: 9px 12px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
-  .filter-btn.active { background: #00B4D8; border-color: #00B4D8; color: #fff; }
+  .filter-btn.active { background: #38BDF8; border-color: #38BDF8; color: #fff; }
 
   .list-wrap { padding: 12px; }
 
   .cust-card { background: #1A2F4A; border-radius: 12px; margin-bottom: 8px; border: 1px solid #1e3a4a; overflow: hidden; cursor: pointer; }
-  .cust-card.alert { border-right: 3px solid #E74C3C; background: #2A1A1F; }
-  .cust-card.ok { border-right: 3px solid #27AE60; }
+  .cust-card.alert { border-right: 3px solid #F87171; background: #2A1A1F; }
+  .cust-card.ok { border-right: 3px solid #34D399; }
 
   .card-head { padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; }
   .card-left { display: flex; align-items: center; gap: 10px; }
   .cls-badge { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 900; flex-shrink: 0; }
   .cls-S { background: #FFD700; color: #7B6000; }
-  .cls-A { background: #00B4D8; color: #06363f; }
-  .cls-B { background: #27AE60; color: #07371b; }
-  .cls-C { background: #F39C12; color: #4a2e02; }
-  .cls-X { background: #E74C3C; color: #4a0f0a; }
+  .cls-A { background: #38BDF8; color: #06363f; }
+  .cls-B { background: #34D399; color: #07371b; }
+  .cls-C { background: #FBBF24; color: #4a2e02; }
+  .cls-X { background: #F87171; color: #4a0f0a; }
 
   .cust-name { font-size: 14px; font-weight: 700; color: #f1f5f9; }
   .cust-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
   .status-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-  .dot-alert { background: #E74C3C; animation: pulse 1.5s infinite; }
-  .dot-ok { background: #27AE60; }
+  .dot-alert { background: #F87171; animation: pulse 1.5s infinite; }
+  .dot-ok { background: #34D399; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
   .action-line { background: #0F1E2E; border-top: 1px solid #1e3a4a; padding: 8px 14px; font-size: 12px; font-weight: 600; }
@@ -67,8 +74,8 @@
   .stat-l { font-size: 9px; color: #64748b; margin-top: 2px; }
 
   .action-box { border-radius: 10px; padding: 12px; margin-bottom: 10px; border: 1px solid; }
-  .act-urgent { background: #2D0A0A; border-color: #E74C3C44; }
-  .act-normal { background: #051a20; border-color: #00B4D844; }
+  .act-urgent { background: #2D0A0A; border-color: #F8717144; }
+  .act-normal { background: #051a20; border-color: #38BDF844; }
   .act-passive { background: #1A2F4A; border-color: #1e3a4a; }
   .act-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
   .act-desc { font-size: 11px; color: #94a3b8; line-height: 1.5; }
@@ -91,9 +98,9 @@
   .hist-icon { width: 24px; height: 24px; border-radius: 50%; background: #0F1E2E; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
   .hist-time { font-size: 10px; color: #64748b; }
   .hist-text { font-size: 11px; color: #94a3b8; }
-  .r-ok { font-size: 11px; font-weight: 700; color: #27AE60; }
-  .r-no { font-size: 11px; font-weight: 700; color: #E74C3C; }
-  .r-mid { font-size: 11px; font-weight: 700; color: #F39C12; }
+  .r-ok { font-size: 11px; font-weight: 700; color: #34D399; }
+  .r-no { font-size: 11px; font-weight: 700; color: #F87171; }
+  .r-mid { font-size: 11px; font-weight: 700; color: #FBBF24; }
 
   /* MODAL */
   .modal-overlay { display: none; position: fixed; top:0;left:0;right:0;bottom:0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; padding: 16px; }
@@ -103,7 +110,7 @@
   .modal select, .modal textarea { width: 100%; background: #0F1E2E; border: 1px solid #1e3a4a; color: #e2e8f0; border-radius: 8px; padding: 10px; font-size: 13px; font-family: inherit; margin-bottom: 10px; direction: rtl; }
   .modal textarea { height: 70px; resize: none; }
   .modal-btns { display: flex; gap: 8px; }
-  .btn-save { background: #00B4D8; color: #fff; border: none; border-radius: 8px; padding: 11px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; flex: 1; }
+  .btn-save { background: #38BDF8; color: #fff; border: none; border-radius: 8px; padding: 11px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; flex: 1; }
   .btn-cancel { background: #334155; color: #94a3b8; border: none; border-radius: 8px; padding: 11px 16px; font-size: 13px; cursor: pointer; font-family: inherit; }
 
   /* INFO MODAL */
@@ -114,9 +121,45 @@
   .info-text b { color: #f1f5f9; }
 
   .loading { text-align: center; padding: 40px; color: #64748b; }
-  .spinner { width: 30px; height: 30px; border: 3px solid #1e3a4a; border-top-color: #00B4D8; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+  .spinner { width: 30px; height: 30px; border: 3px solid #1e3a4a; border-top-color: #38BDF8; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #00B4D8; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; z-index: 200; display: none; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #38BDF8; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; z-index: 200; display: none; }
+
+  /* TABS */
+  .tab-row { display: flex; gap: 6px; margin-bottom: 12px; }
+  .tab-btn { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.6); border-radius: 8px; padding: 9px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .tab-btn.active { background: #38BDF8; border-color: #38BDF8; color: #fff; }
+
+  /* FOLLOW-UP STATUS COLORS */
+  .cust-card.pending { border-right: 3px solid #38BDF8; }
+  .cust-card.failed { border-right: 3px solid #64748b; background: #1a1f2a; }
+  .dot-pending { background: #38BDF8; }
+  .dot-failed { background: #64748b; }
+  .act-pending { background: #051a2a; border-color: #38BDF844; }
+  .act-failed { background: #1a1f2a; border-color: #33415588; }
+
+  .follow-box { background: #0F1E2E; border: 1px solid #1e3a4a; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; font-size: 12px; color: #94a3b8; line-height: 1.7; }
+  .follow-box b { color: #f1f5f9; }
+
+  .btn-block { width: 100%; background: transparent; border: 1px solid #F8717144; color: #F87171; border-radius: 8px; padding: 9px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 4px; }
+  .btn-unblock { width: 100%; background: #34D399; border: none; color: #fff; border-radius: 8px; padding: 9px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+  /* DASHBOARD */
+  .dash-wrap { padding: 12px; }
+  .dash-range { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .dash-range input[type="date"] { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 8px; padding: 8px 10px; font-size: 12px; font-family: inherit; flex: 1; min-width: 120px; }
+  .dash-range button { background: #38BDF8; color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .dash-section-title { font-size: 11px; color: #64748b; font-weight: 700; margin: 16px 0 8px; letter-spacing: 1px; }
+  .dash-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
+  .dash-card { background: #1A2F4A; border: 1px solid #1e3a4a; border-radius: 12px; padding: 14px; }
+  .dash-card .dv { font-size: 22px; font-weight: 900; }
+  .dash-card .dl { font-size: 11px; color: #64748b; margin-top: 4px; }
+  .dash-card .ds2 { font-size: 10px; color: #475569; margin-top: 2px; }
+  .dash-comm-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1e3a4a; font-size: 12px; }
+  .dash-comm-row:last-child { border-bottom: none; }
+  .dash-comm-row span:first-child { color: #94a3b8; }
+  .dash-comm-row span:last-child { font-weight: 700; }
+  .dash-link { color: #38BDF8; font-size: 12px; text-decoration: underline; cursor: pointer; display: inline-block; margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -131,29 +174,57 @@
       <button class="info-btn" onclick="showInfo()">i</button>
     </div>
     <div class="header-actions">
-      <button class="icon-btn active" id="ic-mob" onclick="setView('mob')" title="موبايل">📱</button>
-      <button class="icon-btn" id="ic-desk" onclick="setView('desk')" title="كمبيوتر">🖥️</button>
-      <button class="icon-btn sync" onclick="loadData()" title="تحديث">🔄</button>
+      <div class="view-toggle">
+        <button class="icon-btn active" id="ic-mob" onclick="setView('mob')" title="موبايل">📱</button>
+        <button class="icon-btn" id="ic-desk" onclick="setView('desk')" title="كمبيوتر">🖥️</button>
+      </div>
+      <button class="icon-btn sync" onclick="refreshCurrentTab()" title="تحديث">🔄</button>
     </div>
   </div>
 
+  <div class="tab-row">
+    <button class="tab-btn active" id="tab-customers" onclick="setTab('customers')">👥 العملاء</button>
+    <button class="tab-btn" id="tab-dashboard" onclick="setTab('dashboard')">📊 Dashboard</button>
+  </div>
+
+  <div id="customers-controls">
   <div class="stats-bar">
     <div class="stat-pill" id="pill-S" onclick="filterCls('S')"><div class="lbl" style="color:#FFD700">S</div><div class="cnt" id="cnt-S">0</div></div>
-    <div class="stat-pill" id="pill-A" onclick="filterCls('A')"><div class="lbl" style="color:#00B4D8">A</div><div class="cnt" id="cnt-A">0</div></div>
-    <div class="stat-pill" id="pill-B" onclick="filterCls('B')"><div class="lbl" style="color:#27AE60">B</div><div class="cnt" id="cnt-B">0</div></div>
-    <div class="stat-pill" id="pill-C" onclick="filterCls('C')"><div class="lbl" style="color:#F39C12">C</div><div class="cnt" id="cnt-C">0</div></div>
-    <div class="stat-pill" id="pill-X" onclick="filterCls('X')"><div class="lbl" style="color:#E74C3C">X</div><div class="cnt" id="cnt-X">0</div></div>
+    <div class="stat-pill" id="pill-A" onclick="filterCls('A')"><div class="lbl" style="color:#38BDF8">A</div><div class="cnt" id="cnt-A">0</div></div>
+    <div class="stat-pill" id="pill-B" onclick="filterCls('B')"><div class="lbl" style="color:#34D399">B</div><div class="cnt" id="cnt-B">0</div></div>
+    <div class="stat-pill" id="pill-C" onclick="filterCls('C')"><div class="lbl" style="color:#FBBF24">C</div><div class="cnt" id="cnt-C">0</div></div>
+    <div class="stat-pill" id="pill-X" onclick="filterCls('X')"><div class="lbl" style="color:#F87171">X</div><div class="cnt" id="cnt-X">0</div></div>
   </div>
 
   <div class="controls">
     <input class="search-input" type="text" placeholder="🔍 ابحث باسم أو رقم..." oninput="search(this.value)">
-    <button class="filter-btn" id="f-all" onclick="filterStatus('all')">الكل</button>
+  </div>
+  <div class="status-filters">
     <button class="filter-btn active" id="f-alert" onclick="filterStatus('alert')">🔴 تنبيه</button>
+    <button class="filter-btn" id="f-pending" onclick="filterStatus('pending')">⏳ قيد المتابعة</button>
+    <button class="filter-btn" id="f-failed" onclick="filterStatus('failed')">⚠️ فشلت</button>
+    <button class="filter-btn" id="f-active" onclick="filterStatus('active')">✅ نشط</button>
+    <button class="filter-btn" id="f-all" onclick="filterStatus('all')">الكل</button>
+  </div>
   </div>
 </div>
 
+<div id="customers-section">
 <div class="list-wrap" id="list">
   <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
+</div>
+</div>
+
+<div id="dashboard-section" class="dash-wrap" style="display:none">
+  <div class="dash-range">
+    <input type="date" id="dash-from">
+    <span style="color:#64748b;font-size:11px">إلى</span>
+    <input type="date" id="dash-to">
+    <button onclick="loadDashboard()">تحديث</button>
+  </div>
+  <div id="dash-content">
+    <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
+  </div>
 </div>
 
 <!-- LOG MODAL -->
@@ -208,7 +279,7 @@
         <div class="info-text"><b>أقل من زيارة/شهر</b><br>غايب — محتاج ترجعه</div>
       </div>
       <div style="margin-top:12px;padding:10px;background:#0F1E2E;border-radius:8px;font-size:12px;color:#94a3b8">
-        🔴 <b style="color:#E74C3C">التنبيه</b> = العميل عدى وقت زيارته المعتاد ومجاش — محتاج تتواصل معاه
+        🔴 <b style="color:#F87171">التنبيه</b> = العميل عدى وقت زيارته المعتاد ومجاش — محتاج تتواصل معاه
       </div>
     </div>
     <div class="modal-btns" style="margin-top:14px">
@@ -217,13 +288,37 @@
   </div>
 </div>
 
+<!-- BLOCKED MODAL -->
+<div class="modal-overlay" id="blocked-modal">
+  <div class="modal">
+    <h3>🚫 العملاء المحظورين</h3>
+    <div id="blocked-list" style="max-height:50vh;overflow-y:auto">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+    <div class="modal-btns" style="margin-top:14px">
+      <button class="btn-save" onclick="closeBlockedModal()">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="dash-info-modal">
+  <div class="modal">
+    <h3 style="margin-bottom:10px">ℹ️ شرح</h3>
+    <p id="info-modal-text" style="font-size:14px;line-height:1.8;color:#cbd5e1"></p>
+    <div class="modal-btns" style="margin-top:14px">
+      <button class="btn-save" onclick="closeDashInfo()">تمام</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
-var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzPrGl1REbHdvbF4oBspeuh24FZ3nX117iyhr2WJs9IQfsdKckj51DEQUqoR3tR2AUAQA/exec';
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7ctTVJjckmbTxegDq7E3R3p6aEBzqt275HNL8SBfWg/exec';
 var allCustomers = [], histories = {}, openPhone = '';
 var filterCls_ = 'S', filterStatus_ = 'alert', searchStr_ = '';
 var logPhone = '', logName = '', currentView = 'mob';
+var currentTab = 'customers', dashLoaded = false;
 
 var TYPE_INFO = {
   'مزمن': {icon:'💊', label:'مريض مزمن'},
@@ -232,7 +327,13 @@ var TYPE_INFO = {
   'عرضي': {icon:'🔄', label:'عميل عرضي'}
 };
 
-function getAction(cls, alert, type) {
+function getAction(cls, alert, type, status) {
+  if (status === 'تمت المتابعة - في الانتظار') {
+    return {cls:'act-pending', title:'⏳ في انتظار رد العميل', desc:'اتعمله تواصل بالفعل — النظام بيراقب لو هيشتري قبل ما المهلة تخلص'};
+  }
+  if (status === 'محاولات استرجاع فشلت') {
+    return {cls:'act-failed', title:'⚠️ محاولات الاسترجاع فشلت', desc:'اتحاول معاه أكتر من مرة من غير استجابة — فكر تحظره لو مكرر معاك'};
+  }
   if (type === 'مزمن' && alert)
     return {cls:'act-urgent', title:'💊 اتصل — دواءه قارب ينتهي', desc:'مريض مزمن — اتصل واعرض توصيل الدواء لحد البيت'};
   if (!alert) {
@@ -252,7 +353,7 @@ function loadData() {
     .then(function(r){ return r.json(); })
     .then(function(data){
       allCustomers = data.map(function(c){
-        return Object.assign({}, c, {isAlert: parseInt(c.days_since) > parseInt(c.alert_days)});
+        return Object.assign({}, c, {isAlert: c.status === 'تنبيه'});
       });
       updateCounts();
       renderList();
@@ -260,7 +361,7 @@ function loadData() {
       showToast('تم تحميل ' + allCustomers.length + ' عميل');
     })
     .catch(function(){
-      document.getElementById('list').innerHTML = '<div class="loading"><p style="color:#E74C3C">خطأ — اضغط 🔄</p></div>';
+      document.getElementById('list').innerHTML = '<div class="loading"><p style="color:#F87171">خطأ — اضغط 🔄</p></div>';
     });
 }
 
@@ -274,6 +375,9 @@ function getFiltered() {
   return allCustomers.filter(function(c){
     if (filterCls_ && c.cls !== filterCls_) return false;
     if (filterStatus_ === 'alert' && !c.isAlert) return false;
+    if (filterStatus_ === 'pending' && c.status !== 'تمت المتابعة - في الانتظار') return false;
+    if (filterStatus_ === 'failed' && c.status !== 'محاولات استرجاع فشلت') return false;
+    if (filterStatus_ === 'active' && c.status !== 'نشط') return false;
     if (searchStr_ && c.name.indexOf(searchStr_) < 0 && String(c.phone).indexOf(searchStr_) < 0) return false;
     return true;
   }).sort(function(a,b){ return (b.isAlert?1:0)-(a.isAlert?1:0); });
@@ -286,21 +390,36 @@ function renderList() {
   el.innerHTML = list.map(function(c){ return cardHTML(c); }).join('');
 }
 
+function cleanName(name, phone) {
+  var n = (name == null) ? '' : String(name).trim();
+  // لو فاضي، أو شكله تاريخ ISO، أو هو نفس الرقم، أو كله أرقام/رموز — اعرض بديل مفهوم
+  var looksLikeDate = /^\d{4}-\d{2}-\d{2}T/.test(n);
+  var looksLikeNumber = /^[\d\s\-+().]+$/.test(n);
+  if (!n || looksLikeDate || looksLikeNumber || n === String(phone)) {
+    return 'عميل ' + (phone || '');
+  }
+  return n;
+}
+
 function cardHTML(c) {
   var t = TYPE_INFO[c.customer_type] || TYPE_INFO['عرضي'];
-  var act = getAction(c.cls, c.isAlert, c.customer_type);
-  return '<div class="cust-card ' + (c.isAlert?'alert':'ok') + '" data-phone="' + c.phone + '">' +
+  var act = getAction(c.cls, c.isAlert, c.customer_type, c.status);
+  var nm = cleanName(c.name, c.phone);
+  var cardClass = c.isAlert ? 'alert' : (c.status === 'تمت المتابعة - في الانتظار' ? 'pending' : (c.status === 'محاولات استرجاع فشلت' ? 'failed' : 'ok'));
+  var dotClass = c.isAlert ? 'dot-alert' : (c.status === 'تمت المتابعة - في الانتظار' ? 'dot-pending' : (c.status === 'محاولات استرجاع فشلت' ? 'dot-failed' : 'dot-ok'));
+  var actColor = c.isAlert ? '#F87171' : (c.status === 'تمت المتابعة - في الانتظار' ? '#38BDF8' : (c.status === 'محاولات استرجاع فشلت' ? '#64748b' : '#34D399'));
+  return '<div class="cust-card ' + cardClass + '" data-phone="' + c.phone + '">' +
     '<div class="card-head" onclick="toggleCard(\'' + c.phone + '\')">' +
       '<div class="card-left">' +
         '<div class="cls-badge cls-' + c.cls + '">' + c.cls + '</div>' +
         '<div>' +
-          '<div class="cust-name">' + c.name + '</div>' +
+          '<div class="cust-name">' + nm + '</div>' +
           '<div class="cust-sub">' + t.icon + ' ' + t.label + ' · ' + c.phone + '</div>' +
         '</div>' +
       '</div>' +
-      '<div class="status-dot ' + (c.isAlert?'dot-alert':'dot-ok') + '"></div>' +
+      '<div class="status-dot ' + dotClass + '"></div>' +
     '</div>' +
-    '<div class="action-line" style="color:' + (c.isAlert?'#E74C3C':'#27AE60') + '" onclick="toggleCard(\'' + c.phone + '\')">' + act.title + '</div>' +
+    '<div class="action-line" style="color:' + actColor + '" onclick="toggleCard(\'' + c.phone + '\')">' + act.title + '</div>' +
     '<div class="detail" id="det-' + c.phone + '"></div>' +
   '</div>';
 }
@@ -327,16 +446,26 @@ function toggleCard(phone) {
 }
 
 function detailHTML(c) {
-  var act = getAction(c.cls, c.isAlert, c.customer_type);
-  return '<div class="action-box ' + act.cls + '">' +
-      '<div class="act-title" style="color:' + (act.cls==='act-urgent'?'#E74C3C':act.cls==='act-normal'?'#00B4D8':'#64748b') + '">' + act.title + '</div>' +
+  var act = getAction(c.cls, c.isAlert, c.customer_type, c.status);
+  var followBox = '';
+  if (c.status === 'تمت المتابعة - في الانتظار') {
+    var daysLeft = c.follow_deadline ? Math.max(0, Math.ceil((new Date(c.follow_deadline) - new Date()) / (1000*60*60*24))) : '—';
+    followBox = '<div class="follow-box">⏳ <b>محاولة رقم ' + (c.follow_attempts||1) + ' من 3</b> — متبقي <b>' + daysLeft + '</b> يوم على نهاية المهلة. لو اشترى هيرجع نشط تلقائياً، ولو المهلة خلصت من غير شراء هيرجع لقائمة التنبيهات.</div>';
+  } else if (c.status === 'محاولات استرجاع فشلت') {
+    followBox = '<div class="follow-box">⚠️ اتعمل معاه <b>' + (c.follow_attempts||3) + '</b> محاولات تواصل من غير استجابة. لو اشترى هيرجع نشط تلقائياً.</div>';
+  }
+  var blockBtn = c.blocked
+    ? '<button class="btn-unblock" onclick="doUnblock(\'' + c.phone + '\',\'' + c.name + '\')">✅ إلغاء حظر العميل</button>'
+    : '<button class="btn-block" onclick="doBlockConfirm(\'' + c.phone + '\',\'' + c.name + '\')">🚫 حظر العميل (إيقاف كل التنبيهات)</button>';
+  return followBox + '<div class="action-box ' + act.cls + '">' +
+      '<div class="act-title" style="color:' + (act.cls==='act-urgent'?'#F87171':act.cls==='act-normal'||act.cls==='act-pending'?'#38BDF8':'#64748b') + '">' + act.title + '</div>' +
       '<div class="act-desc">' + act.desc + '</div>' +
     '</div>' +
     '<div class="stats-row">' +
-      '<div class="stat-cell"><div class="stat-v" style="color:#00B4D8">' + c.monthly_visits + '</div><div class="stat-l">زيارات/شهر</div></div>' +
-      '<div class="stat-cell"><div class="stat-v" style="color:#F39C12">' + Number(c.monthly_spend||0).toLocaleString() + '</div><div class="stat-l">إنفاق/شهر</div></div>' +
-      '<div class="stat-cell"><div class="stat-v" style="color:' + (c.isAlert?'#E74C3C':'#27AE60') + '">' + c.days_since + ' يوم</div><div class="stat-l">آخر زيارة</div></div>' +
-      '<div class="stat-cell"><div class="stat-v" style="color:#27AE60">' + c.incentive + ' ج</div><div class="stat-l">الحافز</div></div>' +
+      '<div class="stat-cell"><div class="stat-v" style="color:#38BDF8">' + c.monthly_visits + '</div><div class="stat-l">زيارات/شهر</div></div>' +
+      '<div class="stat-cell"><div class="stat-v" style="color:#FBBF24">' + Number(c.monthly_spend||0).toLocaleString() + '</div><div class="stat-l">إنفاق/شهر</div></div>' +
+      '<div class="stat-cell"><div class="stat-v" style="color:' + (c.isAlert?'#F87171':'#34D399') + '">' + c.days_since + ' يوم</div><div class="stat-l">آخر زيارة</div></div>' +
+      '<div class="stat-cell"><div class="stat-v" style="color:#34D399">' + c.incentive + ' ج</div><div class="stat-l">الحافز</div></div>' +
     '</div>' +
     '<div class="coupon-row">' +
       '<div><div class="coupon-lbl">🎁 الكوبون المقترح</div></div>' +
@@ -348,7 +477,8 @@ function detailHTML(c) {
       '<button class="btn-call" onclick="doCall(\'' + c.phone + '\',\'' + c.name + '\')">📞 اتصال</button>' +
       '<button class="btn-log" onclick="openLog(\'' + c.phone + '\',\'' + c.name + '\')">📝</button>' +
     '</div>' +
-    '<div class="hist-wrap">' +
+    blockBtn +
+    '<div class="hist-wrap" style="margin-top:10px">' +
       '<div class="hist-title">سجل التواصل</div>' +
       '<div id="hist-' + c.phone + '" class="hist-empty">لا يوجد تواصل سابق</div>' +
     '</div>';
@@ -408,6 +538,32 @@ function addHistory(phone, name, type, text, result) {
     container.insertBefore(item, container.firstChild);
   }
   saveToSheet(phone, name, type, text, result, '');
+  markFollowUpLocally(phone);
+}
+
+// تحديث محلي فوري: لو العميل كان في حالة "تنبيه" والتواصل ده هيبدأ دورة متابعة في السيرفر،
+// نعكس نفس التأثير هنا في الواجهة على طول من غير ما ننتظر تحديث الصفحة بالكامل
+function markFollowUpLocally(phone) {
+  var c = allCustomers.filter(function(x){ return String(x.phone) === String(phone); })[0];
+  if (!c || c.blocked) return;
+  if (c.status !== 'تنبيه') return;
+
+  var followDays = {S:3, A:5, B:7, C:14, X:14}[c.cls] || 14;
+  var deadline = new Date();
+  deadline.setDate(deadline.getDate() + followDays);
+
+  c.status = 'تمت المتابعة - في الانتظار';
+  c.isAlert = false;
+  c.follow_attempts = (c.follow_attempts || 0) + 1;
+  c.follow_deadline = deadline.toISOString();
+
+  updateCounts();
+  renderList();
+  // إعادة فتح كارت التفاصيل بعد إعادة الرسم لو كان مفتوح
+  if (openPhone === phone) {
+    var det = document.getElementById('det-' + phone);
+    if (det) { det.innerHTML = detailHTML(c); det.classList.add('open'); loadHistory(phone); }
+  }
 }
 
 function loadHistory(phone) {
@@ -449,8 +605,10 @@ function filterCls(cls) {
 }
 function filterStatus(s) {
   filterStatus_ = s;
-  document.getElementById('f-all').classList.toggle('active', s==='all');
-  document.getElementById('f-alert').classList.toggle('active', s==='alert');
+  ['all','alert','pending','failed','active'].forEach(function(x){
+    var el = document.getElementById('f-' + x);
+    if (el) el.classList.toggle('active', s === x);
+  });
   renderList();
 }
 function search(v) { searchStr_ = v; renderList(); }
@@ -470,6 +628,160 @@ function showToast(msg) {
   var t = document.getElementById('toast');
   t.textContent = msg; t.style.display = 'block';
   setTimeout(function(){ t.style.display = 'none'; }, 2500);
+}
+
+// ===== TABS =====
+function setTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-customers').classList.toggle('active', tab === 'customers');
+  document.getElementById('tab-dashboard').classList.toggle('active', tab === 'dashboard');
+  document.getElementById('customers-controls').style.display = tab === 'customers' ? 'block' : 'none';
+  document.getElementById('customers-section').style.display = tab === 'customers' ? 'block' : 'none';
+  document.getElementById('dashboard-section').style.display = tab === 'dashboard' ? 'block' : 'none';
+  if (tab === 'dashboard' && !dashLoaded) {
+    initDashboardDates();
+    loadDashboard();
+  }
+}
+
+function refreshCurrentTab() {
+  if (currentTab === 'dashboard') { loadDashboard(); } else { loadData(); }
+}
+
+// ===== DASHBOARD =====
+function toLocalDateStr(d) {
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
+function initDashboardDates() {
+  var to = new Date();
+  var from = new Date(to.getFullYear(), to.getMonth(), 1); // أول يوم في الشهر الحالي
+  document.getElementById('dash-to').value = toLocalDateStr(to);
+  document.getElementById('dash-from').value = toLocalDateStr(from);
+}
+
+function loadDashboard() {
+  var from = document.getElementById('dash-from').value;
+  var to = document.getElementById('dash-to').value;
+  document.getElementById('dash-content').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+  fetch(SCRIPT_URL + '?action=getDashboard&from=' + from + '&to=' + to)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d && d.error) {
+        document.getElementById('dash-content').innerHTML = '<div class="loading"><p style="color:#F87171">خطأ من السيرفر: ' + d.msg + '</p></div>';
+        return;
+      }
+      dashLoaded = true;
+      renderDashboard(d);
+    })
+    .catch(function(){
+      document.getElementById('dash-content').innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اضغط تحديث</p></div>';
+    });
+}
+
+function infoIcon(key) {
+  return '<span class="info-i" onclick="event.stopPropagation();showDashInfo(\'' + key + '\')">i</span>';
+}
+
+var DASH_INFO = {
+  new_customers: 'New Customers — العملاء اللي عملوا أول فاتورة ليهم خلال المدة المختارة. يعني عملاء جداد تماماً على الصيدلية.',
+  return_rate: 'Return Rate — نسبة العملاء القدامى اللي رجعوا اشتروا خلال المدة بعد غياب أطول من الحد الطبيعي لكلاسهم. كل ما زادت كل ما كان أحسن.',
+  loss_rate: 'Loss Rate — نسبة العملاء اللي كانوا نشطين قبل المدة وما رجعوش يشتروا لحد نهايتها. كل ما قلّت كل ما كان أحسن.',
+  purchasing: 'Purchasing — إجمالي عدد العملاء اللي عملوا فاتورة واحدة على الأقل خلال المدة المختارة.',
+  open_alerts: 'Open Alerts — عملاء متأخرين عن موعد شرائهم المعتاد ومحدش كلّمهم لسه. دي قايمة شغل الفريق اليومية.',
+  pending: 'Pending Follow-up — عملاء اتعمل معاهم تواصل بالفعل وإحنا مستنيين ردهم خلال مهلة كلاسهم. بيطلعوا من التنبيهات مؤقتاً.',
+  failed: 'Failed Attempts — عملاء اتحاول معاهم 3 مرات من غير استجابة. اتشالوا من التنبيهات النشطة.',
+  blocked: 'Blocked — عملاء محظورين يدوياً (مماطلين أو طلبوا عدم التواصل). مش بيظهروا في أي قايمة أو تنبيه.',
+  comm_total: 'Total Contacts — إجمالي محاولات التواصل (واتساب + اتصال + SMS + ملاحظات) خلال المدة.',
+  bought: 'Bought After Contact — عدد العملاء اللي اشتروا بعد ما الفريق تواصل معاهم. ده مقياس نجاح التواصل.',
+  response_rate: 'Response Rate — نسبة محاولات التواصل اللي العميل فيها رد أو اشترى، من إجمالي المحاولات.'
+};
+
+function showDashInfo(key) {
+  var txt = DASH_INFO[key] || '';
+  document.getElementById('info-modal-text').textContent = txt;
+  document.getElementById('dash-info-modal').classList.add('show');
+}
+function closeDashInfo() { document.getElementById('dash-info-modal').classList.remove('show'); }
+
+function renderDashboard(d) {
+  var html = '';
+  html += '<div class="dash-section-title">Activity in range (' + d.range.from + ' → ' + d.range.to + ')</div>';
+  html += '<div class="dash-grid">';
+  html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + d.new_customers + '</div><div class="dl">New Customers ' + infoIcon('new_customers') + '</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + d.return_rate + '%</div><div class="dl">Return Rate ' + infoIcon('return_rate') + '</div><div class="ds2">' + d.returning_customers + ' / ' + d.purchasing_customers_in_range + ' buyers</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + d.loss_rate + '%</div><div class="dl">Loss Rate ' + infoIcon('loss_rate') + '</div><div class="ds2">' + d.lost_customers + ' stopped buying</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#FBBF24">' + d.purchasing_customers_in_range + '</div><div class="dl">Purchasing ' + infoIcon('purchasing') + '</div></div>';
+  html += '</div>';
+
+  html += '<div class="dash-section-title">Current status (live)</div>';
+  html += '<div class="dash-grid">';
+  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + d.open_alerts + '</div><div class="dl">Open Alerts ' + infoIcon('open_alerts') + '</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + d.pending_followups + '</div><div class="dl">Pending ' + infoIcon('pending') + '</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#94A3B8">' + d.failed_followups + '</div><div class="dl">Failed ' + infoIcon('failed') + '</div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="openBlockedModal()"><div class="dv" style="color:#94A3B8">' + d.blocked_count + '</div><div class="dl">Blocked ' + infoIcon('blocked') + '</div><div class="dash-link">View list ←</div></div>';
+  html += '</div>';
+
+  html += '<div class="dash-section-title">Contact performance in range</div>';
+  html += '<div class="dash-card">';
+  html += '<div class="dash-comm-row"><span>Total contacts ' + infoIcon('comm_total') + '</span><span>' + d.comm.total + '</span></div>';
+  html += '<div class="dash-comm-row"><span>WhatsApp</span><span>' + d.comm.by_type.wa + '</span></div>';
+  html += '<div class="dash-comm-row"><span>Calls</span><span>' + d.comm.by_type.call + '</span></div>';
+  html += '<div class="dash-comm-row"><span>SMS</span><span>' + d.comm.by_type.sms + '</span></div>';
+  html += '<div class="dash-comm-row"><span style="color:#34D399;font-weight:700">Bought after contact ' + infoIcon('bought') + '</span><span style="color:#34D399">' + d.comm.bought + '</span></div>';
+  html += '<div class="dash-comm-row"><span>Response rate ' + infoIcon('response_rate') + '</span><span>' + d.comm.response_rate + '%</span></div>';
+  html += '</div>';
+
+  document.getElementById('dash-content').innerHTML = html;
+}
+
+// ===== BLOCKED =====
+function openBlockedModal() {
+  document.getElementById('blocked-modal').classList.add('show');
+  document.getElementById('blocked-list').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  fetch(SCRIPT_URL + '?action=getBlocked')
+    .then(function(r){ return r.json(); })
+    .then(function(list){
+      if (!list.length) { document.getElementById('blocked-list').innerHTML = '<p style="color:#64748b;text-align:center;padding:14px">مفيش عملاء محظورين</p>'; return; }
+      document.getElementById('blocked-list').innerHTML = list.map(function(c){
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1e3a4a">' +
+          '<div><div style="font-size:13px;font-weight:700">' + c.name + '</div>' +
+          '<div style="font-size:11px;color:#64748b">' + c.phone + (c.blocked_reason ? ' — ' + c.blocked_reason : '') + '</div></div>' +
+          '<button class="btn-unblock" style="width:auto;padding:7px 12px" onclick="doUnblock(\'' + c.phone + '\',\'' + c.name + '\')">إلغاء الحظر</button>' +
+        '</div>';
+      }).join('');
+    })
+    .catch(function(){ document.getElementById('blocked-list').innerHTML = '<p style="color:#F87171;text-align:center">خطأ في التحميل</p>'; });
+}
+function closeBlockedModal() { document.getElementById('blocked-modal').classList.remove('show'); }
+
+function doBlockConfirm(phone, name) {
+  if (!confirm('هتحظر ' + name + '؟ هيختفي من كل القوائم والتنبيهات لحد ما تلغي الحظر.')) return;
+  doBlock(phone, name);
+}
+
+function doBlock(phone, name) {
+  fetch(SCRIPT_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action:'block', phone:phone, name:name, reason:''})
+  }).catch(function(){});
+  allCustomers = allCustomers.filter(function(x){ return String(x.phone) !== String(phone); });
+  var det = document.getElementById('det-' + phone);
+  if (det) { det.classList.remove('open'); det.innerHTML = ''; }
+  openPhone = '';
+  updateCounts();
+  renderList();
+  showToast('تم حظر ' + name);
+}
+
+function doUnblock(phone, name) {
+  fetch(SCRIPT_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action:'unblock', phone:phone, name:name})
+  }).catch(function(){});
+  showToast('تم إلغاء حظر ' + name + ' — اضغط تحديث في تاب العملاء عشان يظهر');
+  closeBlockedModal();
 }
 
 loadData();

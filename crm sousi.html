@@ -32,7 +32,11 @@
   .controls { display: flex; gap: 8px; }
   .status-filters { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; scrollbar-width: none; }
   .status-filters::-webkit-scrollbar { display: none; }
-  .status-filters .filter-btn { flex-shrink: 0; }
+  .status-pill { flex-shrink: 0; background: rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 12px; text-align: center; cursor: pointer; border: 2px solid transparent; display: flex; align-items: center; gap: 6px; }
+  .status-pill.active { border-color: #38BDF8; background: rgba(56,189,248,0.15); }
+  .status-pill .sdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .status-pill .slbl { font-size: 12px; font-weight: 700; color: #e2e8f0; white-space: nowrap; }
+  .status-pill .scnt { font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.08); border-radius: 10px; padding: 1px 6px; }
   .info-i { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: rgba(56,189,248,0.18); color: #38BDF8; font-size: 10px; font-weight: 800; font-style: italic; cursor: pointer; margin-right: 4px; vertical-align: middle; font-family: Georgia, serif; }
   .info-i:active { background: rgba(56,189,248,0.4); }
   .search-input { flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 8px; padding: 9px 12px; font-size: 13px; font-family: inherit; }
@@ -82,6 +86,7 @@
 
   .coupon-row { background: linear-gradient(135deg, #1A2E6E, #0D7A8A); border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .coupon-lbl { font-size: 11px; color: rgba(255,255,255,0.7); }
+  .coupon-expiry { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 2px; }
   .coupon-val { font-size: 20px; font-weight: 900; color: #fff; }
 
   .btns { display: flex; gap: 8px; margin-bottom: 10px; }
@@ -200,11 +205,11 @@
     <input class="search-input" type="text" placeholder="🔍 ابحث باسم أو رقم..." oninput="search(this.value)">
   </div>
   <div class="status-filters">
-    <button class="filter-btn active" id="f-alert" onclick="filterStatus('alert')">🔴 تنبيه</button>
-    <button class="filter-btn" id="f-pending" onclick="filterStatus('pending')">⏳ قيد المتابعة</button>
-    <button class="filter-btn" id="f-failed" onclick="filterStatus('failed')">⚠️ فشلت</button>
-    <button class="filter-btn" id="f-active" onclick="filterStatus('active')">✅ نشط</button>
-    <button class="filter-btn" id="f-all" onclick="filterStatus('all')">الكل</button>
+    <div class="status-pill active" id="f-alert" onclick="filterStatus('alert')"><div class="sdot" style="background:#F87171"></div><div class="slbl">تنبيه</div><div class="scnt" id="scnt-alert">0</div></div>
+    <div class="status-pill" id="f-pending" onclick="filterStatus('pending')"><div class="sdot" style="background:#38BDF8"></div><div class="slbl">قيد المتابعة</div><div class="scnt" id="scnt-pending">0</div></div>
+    <div class="status-pill" id="f-failed" onclick="filterStatus('failed')"><div class="sdot" style="background:#94A3B8"></div><div class="slbl">فشلت</div><div class="scnt" id="scnt-failed">0</div></div>
+    <div class="status-pill" id="f-active" onclick="filterStatus('active')"><div class="sdot" style="background:#34D399"></div><div class="slbl">نشط</div><div class="scnt" id="scnt-active">0</div></div>
+    <div class="status-pill" id="f-all" onclick="filterStatus('all')"><div class="sdot" style="background:#94A3B8"></div><div class="slbl">الكل</div><div class="scnt" id="scnt-all">0</div></div>
   </div>
   </div>
 </div>
@@ -369,6 +374,11 @@ function updateCounts() {
   ['S','A','B','C','X'].forEach(function(c){
     document.getElementById('cnt-'+c).textContent = allCustomers.filter(function(x){return x.cls===c;}).length;
   });
+  document.getElementById('scnt-alert').textContent = allCustomers.filter(function(x){return x.isAlert;}).length;
+  document.getElementById('scnt-pending').textContent = allCustomers.filter(function(x){return x.status === 'تمت المتابعة - في الانتظار';}).length;
+  document.getElementById('scnt-failed').textContent = allCustomers.filter(function(x){return x.status === 'محاولات استرجاع فشلت';}).length;
+  document.getElementById('scnt-active').textContent = allCustomers.filter(function(x){return x.status === 'نشط';}).length;
+  document.getElementById('scnt-all').textContent = allCustomers.length;
 }
 
 function getFiltered() {
@@ -465,10 +475,10 @@ function detailHTML(c) {
       '<div class="stat-cell"><div class="stat-v" style="color:#38BDF8">' + c.monthly_visits + '</div><div class="stat-l">زيارات/شهر</div></div>' +
       '<div class="stat-cell"><div class="stat-v" style="color:#FBBF24">' + Number(c.monthly_spend||0).toLocaleString() + '</div><div class="stat-l">إنفاق/شهر</div></div>' +
       '<div class="stat-cell"><div class="stat-v" style="color:' + (c.isAlert?'#F87171':'#34D399') + '">' + c.days_since + ' يوم</div><div class="stat-l">آخر زيارة</div></div>' +
-      '<div class="stat-cell"><div class="stat-v" style="color:#34D399">' + c.incentive + ' ج</div><div class="stat-l">الحافز</div></div>' +
+      '<div class="stat-cell"><div class="stat-v" style="color:#34D399">' + c.incentive + ' ج</div><div class="stat-l">قيمة الهدية</div></div>' +
     '</div>' +
     '<div class="coupon-row">' +
-      '<div><div class="coupon-lbl">🎁 الكوبون المقترح</div></div>' +
+      '<div><div class="coupon-lbl">🎁 هدية للعميل</div><div class="coupon-expiry">تنتهي ' + giftExpiry() + '</div></div>' +
       '<div class="coupon-val">' + c.incentive + ' ج</div>' +
     '</div>' +
     '<div class="btns">' +
@@ -484,13 +494,23 @@ function detailHTML(c) {
     '</div>';
 }
 
+function giftExpiry() {
+  var d = new Date();
+  d.setDate(d.getDate() + 3);
+  var days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  var dayName = days[d.getDay()];
+  var hh = String(d.getHours()).padStart(2, '0');
+  var mm = String(d.getMinutes()).padStart(2, '0');
+  return dayName + ' ' + d.getDate() + '/' + (d.getMonth()+1) + ' الساعة ' + hh + ':' + mm;
+}
+
 function doWA(phone, name, coupon) {
-  var msg = encodeURIComponent('السلام عليكم يا ' + name + '\nصيدلية د. احمد السوسي بتبعتلك هدية خاصة\nكوبون خصم ' + coupon + ' جنيه على اول طلب توصيل\nصالح 3 ايام بس\n01143404023');
+  var msg = encodeURIComponent('السلام عليكم يا ' + name + '\nصيدلية د. احمد السوسي بتبعتلك هدية خاصة\nهدية بقيمة ' + coupon + ' جنيه على اول طلب توصيل\nصالحة لحد ' + giftExpiry() + '\n01143404023');
   window.open('https://wa.me/20' + phone + '?text=' + msg, '_blank');
   addHistory(phone, name, 'wa', 'تم إرسال واتساب', '');
 }
 function doSMS(phone, name, coupon) {
-  var msg = encodeURIComponent('صيدلية السوسي: هدية لحضرتك يا ' + name + ' - كوبون خصم ' + coupon + 'ج على التوصيل - 01143404023');
+  var msg = encodeURIComponent('صيدلية السوسي: هدية لحضرتك يا ' + name + ' - ' + coupon + 'ج على التوصيل - صالحة لحد ' + giftExpiry() + ' - 01143404023');
   window.open('sms:0' + phone + '?&body=' + msg, '_blank');
   addHistory(phone, name, 'sms', 'تم إرسال SMS', '');
 }

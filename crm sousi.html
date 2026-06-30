@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CRM صيدلية السوسي</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&family=Cairo:wght@800;900&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Tajawal', sans-serif; background: #0F1E2E; color: #e2e8f0; min-height: 100vh; direction: rtl; }
 
   .header { background: linear-gradient(135deg, #1A2E6E, #0D3D50); padding: 14px 16px; }
   .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); }
   .title-row { display: flex; align-items: center; gap: 8px; }
-  .header-top h1 { font-size: 16px; font-weight: 800; color: #f1f5f9; }
+  .header-top h1 { font-size: 17px; font-weight: 900; color: #f1f5f9; font-family: 'Cairo', sans-serif; letter-spacing: 0.3px; }
   .header-top p { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 2px; }
   .info-btn { width: 22px; height: 22px; border-radius: 50%; background: rgba(0,180,216,0.2); border: 1px solid #38BDF8; color: #38BDF8; font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: serif; }
 
@@ -499,9 +499,12 @@ function giftExpiry() {
   d.setDate(d.getDate() + 3);
   var days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
   var dayName = days[d.getDay()];
-  var hh = String(d.getHours()).padStart(2, '0');
+  var h24 = d.getHours();
+  var period = h24 < 12 ? 'ص' : 'م';
+  var h12 = h24 % 12;
+  if (h12 === 0) h12 = 12;
   var mm = String(d.getMinutes()).padStart(2, '0');
-  return dayName + ' ' + d.getDate() + '/' + (d.getMonth()+1) + ' الساعة ' + hh + ':' + mm;
+  return dayName + ' ' + d.getDate() + '/' + (d.getMonth()+1) + ' الساعة ' + h12 + ':' + mm + ' ' + period;
 }
 
 function doWA(phone, name, coupon) {

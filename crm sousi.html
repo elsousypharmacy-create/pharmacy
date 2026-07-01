@@ -127,6 +127,13 @@
 
   .loading { text-align: center; padding: 40px; color: #64748b; }
   .spinner { width: 30px; height: 30px; border: 3px solid #1e3a4a; border-top-color: #38BDF8; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+
+  /* PULL TO REFRESH */
+  .pull-indicator { position: fixed; top: 0; left: 50%; width: 34px; height: 34px; border-radius: 50%; background: #1A2F4A; border: 1px solid #1e3a4a; display: flex; align-items: center; justify-content: center; z-index: 250; transform: translateX(-50%) translateY(-46px); transition: transform 0.15s; }
+  .pull-indicator.snap { transition: transform 0.25s; }
+  .pull-spinner { width: 18px; height: 18px; border: 3px solid #1e3a4a; border-top-color: #38BDF8; border-radius: 50%; }
+  .pull-indicator.spinning .pull-spinner { animation: spin 0.7s linear infinite; }
+  .pull-indicator.ready .pull-spinner { border-top-color: #34D399; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #38BDF8; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; z-index: 200; display: none; }
 
@@ -160,6 +167,8 @@
   .dash-card .dv { font-size: 22px; font-weight: 900; }
   .dash-card .dl { font-size: 11px; color: #64748b; margin-top: 4px; }
   .dash-card .ds2 { font-size: 10px; color: #475569; margin-top: 2px; }
+  .dash-panel { background: rgba(255,255,255,0.02); border: 1px solid #1e3a4a; border-radius: 14px; padding: 14px; margin-bottom: 14px; }
+  .dash-panel-title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: #f1f5f9; margin-bottom: 12px; }
   .dash-comm-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1e3a4a; font-size: 12px; }
   .dash-comm-row:last-child { border-bottom: none; }
   .dash-comm-row span:first-child { color: #94a3b8; }
@@ -198,8 +207,11 @@
 
   .short-comp-title { font-size: 11px; font-weight: 700; color: #38BDF8; margin: 10px 0 6px; }
   .short-item { background: #0F1E2E; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; }
+  .short-item-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .short-item-name { font-size: 12px; font-weight: 700; color: #e2e8f0; }
   .short-item-sub { font-size: 11px; color: #64748b; margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-order { background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.35); color: #34D399; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
+  .btn-order:active { background: rgba(52,211,153,0.3); }
 
   .kpi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
   .kpi-card { background: #1A2F4A; border-radius: 10px; padding: 12px 6px; text-align: center; }
@@ -238,6 +250,8 @@
 </head>
 <body>
 
+<div class="pull-indicator" id="pull-indicator"><div class="pull-spinner"></div></div>
+
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 <div class="sidebar" id="sidebar">
   <div class="sidebar-head">
@@ -264,12 +278,11 @@
       <button class="info-btn" onclick="showInfo()">i</button>
     </div>
     <div class="header-actions">
-      <button class="icon-btn menu-btn" onclick="openSidebar()" title="القائمة">☰</button>
       <div class="view-toggle">
         <button class="icon-btn active" id="ic-mob" onclick="setView('mob')" title="موبايل">📱</button>
         <button class="icon-btn" id="ic-desk" onclick="setView('desk')" title="كمبيوتر">🖥️</button>
       </div>
-      <button class="icon-btn sync" onclick="refreshCurrentTab()" title="تحديث">🔄</button>
+      <button class="icon-btn menu-btn" onclick="openSidebar()" title="القائمة">☰</button>
     </div>
   </div>
 
@@ -901,7 +914,10 @@ function renderShortList() {
       html += '<div class="short-comp-title">🚚 ' + comp + '</div>';
       companies[comp].forEach(function(item){
         html += '<div class="short-item">' +
-          '<div class="short-item-name">' + item.name + '</div>' +
+          '<div class="short-item-top">' +
+            '<div class="short-item-name">' + item.name + '</div>' +
+            '<button class="btn-order" data-code="' + escAttr(item.code) + '" data-name="' + escAttr(item.name) + '" onclick="markOrderedBtn(this)">✅ تم الطلب</button>' +
+          '</div>' +
           '<div class="short-item-sub">' +
             '<span>' + item.stock + ' ← ' + item.shortage + '</span>' +
             '<span>' + item.price + 'ج' + (item.discount > 0 ? ' (خصم ' + item.discount + '%)' : '') + '</span>' +
@@ -920,6 +936,56 @@ function renderShortList() {
 function toggleShortCat(catId) {
   document.getElementById('head-' + catId).classList.toggle('open');
   document.getElementById('body-' + catId).classList.toggle('open');
+}
+
+function escAttr(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+function markOrderedBtn(btn) {
+  markOrdered(btn.dataset.code, btn.dataset.name);
+}
+
+function markOrdered(code, name) {
+  fetch(SHORTAGE_SCRIPT_URL, {
+    method: 'post', mode: 'no-cors', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'markOrdered', code: code, name: name})
+  }).catch(function(){});
+
+  removeItemFromShortData(code, name);
+  document.getElementById('stg-zero-cnt').textContent = shortListData.zero.summary.total;
+  document.getElementById('stg-low-cnt').textContent = shortListData.low.summary.total;
+  renderShortList();
+  showToast('✅ اتحفظ إن "' + name + '" اتطلب — هيختفي من القايمة');
+}
+
+function removeItemFromShortData(code, name) {
+  var key = code || name;
+  ['zero', 'low'].forEach(function(section){
+    var cats = shortListData[section].categories;
+    Object.keys(cats).forEach(function(cat){
+      Object.keys(cats[cat]).forEach(function(comp){
+        cats[cat][comp] = cats[cat][comp].filter(function(it){
+          return (it.code || it.name) !== key;
+        });
+        if (cats[cat][comp].length === 0) delete cats[cat][comp];
+      });
+      if (Object.keys(cats[cat]).length === 0) delete cats[cat];
+    });
+
+    var total = 0, totalBefore = 0, totalAfter = 0;
+    Object.keys(cats).forEach(function(cat){
+      Object.keys(cats[cat]).forEach(function(comp){
+        cats[cat][comp].forEach(function(it){
+          total++;
+          var t = it.price * it.shortage;
+          totalBefore += t;
+          totalAfter += t * (1 - it.discount / 100);
+        });
+      });
+    });
+    shortListData[section].summary = { total: total, totalBefore: Math.round(totalBefore), totalAfter: Math.round(totalAfter) };
+  });
 }
 
 function loadShortKPI() {
@@ -944,27 +1010,33 @@ function loadShortKPI() {
 }
 
 function renderShortKPI(d) {
-  var html = '<div class="dash-section-title">كفاءة الطلبات - ' + d.date + '</div>';
+  var html = '';
 
+  html += '<div class="dash-panel">';
+  html += '<div class="dash-panel-title">📈 نظرة عامة - ' + d.date + '</div>';
+  html += '<div class="kpi-big">';
+  html += '<div class="kpi-big-card"><div class="dv" style="color:#38BDF8">' + d.efficiency + '%</div><div class="dl">كفاءة الموظف</div></div>';
+  html += '<div class="kpi-big-card"><div class="dv" style="color:#F87171">' + d.totalLost + 'ج</div><div class="dl">قيمة الفاقد</div></div>';
+  html += '</div></div>';
+
+  html += '<div class="dash-panel">';
+  html += '<div class="dash-panel-title">📊 توزيع الأصناف الناقصة</div>';
   html += '<div class="kpi-grid">';
   html += '<div class="kpi-card"><div class="kv" style="color:#34D399">' + d.counts.normal + '</div><div class="kl">✅ طبيعي (1-3 أيام)</div></div>';
   html += '<div class="kpi-card"><div class="kv" style="color:#FBBF24">' + d.counts.warning + '</div><div class="kl">🟡 تنبيه (3-7 أيام)</div></div>';
   html += '<div class="kpi-card"><div class="kv" style="color:#F87171">' + d.counts.urgent + '</div><div class="kl">🔴 عاجل (7-21 يوم)</div></div>';
-  html += '</div>';
-
-  html += '<div class="kpi-big">';
-  html += '<div class="kpi-big-card"><div class="dv" style="color:#38BDF8">' + d.efficiency + '%</div><div class="dl">📈 كفاءة الموظف</div></div>';
-  html += '<div class="kpi-big-card"><div class="dv" style="color:#F87171">' + d.totalLost + 'ج</div><div class="dl">💰 قيمة الفاقد</div></div>';
-  html += '</div>';
+  html += '</div></div>';
 
   if (d.urgent.length > 0) {
-    html += '<div class="dash-section-title">🔴 الأصناف العاجلة</div>';
+    html += '<div class="dash-panel">';
+    html += '<div class="dash-panel-title">🔴 الأصناف العاجلة (' + d.urgent.length + ')</div>';
     d.urgent.forEach(function(item){
       html += '<div class="urgent-item">' +
         '<div class="un">' + item.name + '</div>' +
         '<div class="us">' + item.days + ' يوم غايب | ' + item.lost + 'ج فاقد | ' + item.company + '</div>' +
       '</div>';
     });
+    html += '</div>';
   }
 
   document.getElementById('short-kpi-content').innerHTML = html;
@@ -1031,31 +1103,35 @@ function closeDashInfo() { document.getElementById('dash-info-modal').classList.
 
 function renderDashboard(d) {
   var html = '';
-  html += '<div class="dash-section-title">Activity in range (' + d.range.from + ' → ' + d.range.to + ')</div>';
-  html += '<div class="dash-grid">';
-  html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + d.new_customers + '</div><div class="dl">New Customers ' + infoIcon('new_customers') + '</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + d.return_rate + '%</div><div class="dl">Return Rate ' + infoIcon('return_rate') + '</div><div class="ds2">' + d.returning_customers + ' / ' + d.purchasing_customers_in_range + ' buyers</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + d.loss_rate + '%</div><div class="dl">Loss Rate ' + infoIcon('loss_rate') + '</div><div class="ds2">' + d.lost_customers + ' stopped buying</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#FBBF24">' + d.purchasing_customers_in_range + '</div><div class="dl">Purchasing ' + infoIcon('purchasing') + '</div></div>';
-  html += '</div>';
 
-  html += '<div class="dash-section-title">Current status (live)</div>';
+  html += '<div class="dash-panel">';
+  html += '<div class="dash-panel-title">🔴 الحالة دلوقتي (لحظي)</div>';
   html += '<div class="dash-grid">';
-  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + d.open_alerts + '</div><div class="dl">Open Alerts ' + infoIcon('open_alerts') + '</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + d.pending_followups + '</div><div class="dl">Pending ' + infoIcon('pending') + '</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#94A3B8">' + d.failed_followups + '</div><div class="dl">Failed ' + infoIcon('failed') + '</div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="openBlockedModal()"><div class="dv" style="color:#94A3B8">' + d.blocked_count + '</div><div class="dl">Blocked ' + infoIcon('blocked') + '</div><div class="dash-link">View list ←</div></div>';
-  html += '</div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + d.open_alerts + '</div><div class="dl">تنبيهات مفتوحة ' + infoIcon('open_alerts') + '</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + d.pending_followups + '</div><div class="dl">قيد المتابعة ' + infoIcon('pending') + '</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#94A3B8">' + d.failed_followups + '</div><div class="dl">فشلت المحاولات ' + infoIcon('failed') + '</div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="openBlockedModal()"><div class="dv" style="color:#94A3B8">' + d.blocked_count + '</div><div class="dl">محظورين ' + infoIcon('blocked') + '</div><div class="dash-link">عرض القائمة ←</div></div>';
+  html += '</div></div>';
 
-  html += '<div class="dash-section-title">Contact performance in range</div>';
+  html += '<div class="dash-panel">';
+  html += '<div class="dash-panel-title">📈 النشاط خلال الفترة (' + d.range.from + ' → ' + d.range.to + ')</div>';
+  html += '<div class="dash-grid">';
+  html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + d.new_customers + '</div><div class="dl">عملاء جدد ' + infoIcon('new_customers') + '</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + d.return_rate + '%</div><div class="dl">نسبة الرجوع ' + infoIcon('return_rate') + '</div><div class="ds2">' + d.returning_customers + ' / ' + d.purchasing_customers_in_range + ' مشتري</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + d.loss_rate + '%</div><div class="dl">نسبة الفقد ' + infoIcon('loss_rate') + '</div><div class="ds2">' + d.lost_customers + ' توقفوا عن الشراء</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#FBBF24">' + d.purchasing_customers_in_range + '</div><div class="dl">اشتروا فعلاً ' + infoIcon('purchasing') + '</div></div>';
+  html += '</div></div>';
+
+  html += '<div class="dash-panel">';
+  html += '<div class="dash-panel-title">💬 أداء التواصل خلال الفترة</div>';
   html += '<div class="dash-card">';
-  html += '<div class="dash-comm-row"><span>Total contacts ' + infoIcon('comm_total') + '</span><span>' + d.comm.total + '</span></div>';
-  html += '<div class="dash-comm-row"><span>WhatsApp</span><span>' + d.comm.by_type.wa + '</span></div>';
-  html += '<div class="dash-comm-row"><span>Calls</span><span>' + d.comm.by_type.call + '</span></div>';
+  html += '<div class="dash-comm-row"><span>إجمالي محاولات التواصل ' + infoIcon('comm_total') + '</span><span>' + d.comm.total + '</span></div>';
+  html += '<div class="dash-comm-row"><span>واتساب</span><span>' + d.comm.by_type.wa + '</span></div>';
+  html += '<div class="dash-comm-row"><span>مكالمات</span><span>' + d.comm.by_type.call + '</span></div>';
   html += '<div class="dash-comm-row"><span>SMS</span><span>' + d.comm.by_type.sms + '</span></div>';
-  html += '<div class="dash-comm-row"><span style="color:#34D399;font-weight:700">Bought after contact ' + infoIcon('bought') + '</span><span style="color:#34D399">' + d.comm.bought + '</span></div>';
-  html += '<div class="dash-comm-row"><span>Response rate ' + infoIcon('response_rate') + '</span><span>' + d.comm.response_rate + '%</span></div>';
-  html += '</div>';
+  html += '<div class="dash-comm-row"><span style="color:#34D399;font-weight:700">اشتروا بعد التواصل ' + infoIcon('bought') + '</span><span style="color:#34D399">' + d.comm.bought + '</span></div>';
+  html += '<div class="dash-comm-row"><span>نسبة الاستجابة ' + infoIcon('response_rate') + '</span><span>' + d.comm.response_rate + '%</span></div>';
+  html += '</div></div>';
 
   document.getElementById('dash-content').innerHTML = html;
 }
@@ -1104,6 +1180,57 @@ function doUnblock(phone, name) {
   }).catch(function(){});
   showToast('تم إلغاء حظر ' + name + ' — اضغط تحديث في تاب العملاء عشان يظهر');
   closeBlockedModal();
+}
+
+// ===== PULL TO REFRESH =====
+var pullStartY = 0, isPulling = false, pullDist = 0, isRefreshing = false;
+var PULL_THRESHOLD = 70, PULL_MAX = 110;
+
+document.addEventListener('touchstart', function(e){
+  if (window.scrollY > 0 || isRefreshing) return;
+  pullStartY = e.touches[0].clientY;
+  isPulling = true;
+}, {passive: true});
+
+document.addEventListener('touchmove', function(e){
+  if (!isPulling || isRefreshing) return;
+  var dy = e.touches[0].clientY - pullStartY;
+  if (dy <= 0) { setPullIndicator(0, false); pullDist = 0; return; }
+  pullDist = Math.min(dy, PULL_MAX);
+  setPullIndicator(pullDist, pullDist > PULL_THRESHOLD);
+}, {passive: true});
+
+document.addEventListener('touchend', function(){
+  if (!isPulling) return;
+  isPulling = false;
+  var shouldRefresh = pullDist > PULL_THRESHOLD;
+  pullDist = 0;
+  if (shouldRefresh && !isRefreshing) {
+    triggerPullRefresh();
+  } else {
+    setPullIndicator(0, false, true);
+  }
+});
+
+function setPullIndicator(dist, ready, snap) {
+  var el = document.getElementById('pull-indicator');
+  el.classList.toggle('snap', !!snap);
+  el.classList.toggle('ready', ready);
+  var y = -46 + dist;
+  el.style.transform = 'translateX(-50%) translateY(' + y + 'px)';
+}
+
+function triggerPullRefresh() {
+  isRefreshing = true;
+  var el = document.getElementById('pull-indicator');
+  el.classList.add('snap', 'spinning');
+  el.style.transform = 'translateX(-50%) translateY(54px)';
+  refreshCurrentTab();
+  setTimeout(function(){
+    isRefreshing = false;
+    el.classList.remove('spinning');
+    el.style.transform = 'translateX(-50%) translateY(-46px)';
+  }, 900);
 }
 
 loadData();

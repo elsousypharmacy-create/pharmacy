@@ -218,7 +218,7 @@
   .short-item-sub { font-size: 11px; color: #64748b; margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; }
   .btn-order { width: 28px; height: 28px; flex-shrink: 0; background: rgba(52,211,153,0.1); border: 1.5px solid rgba(52,211,153,0.4); color: #34D399; border-radius: 50%; font-size: 14px; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
   .btn-order:active { background: #34D399; color: #08201a; transform: scale(0.92); }
-  .btn-receive { background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.4); color: #38BDF8; border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
+  .badge-waiting { background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.35); color: #FBBF24; border-radius: 8px; padding: 5px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
   .btn-order:active { background: rgba(52,211,153,0.3); }
 
   .kpi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
@@ -228,7 +228,7 @@
 
   .kpi-big { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 14px; }
   .kpi-big-card { background: #1A2F4A; border: 1px solid #1e3a4a; border-radius: 12px; padding: 14px; text-align: center; }
-  .kpi-big-card .dv { font-size: 24px; font-weight: 900; }
+  .kpi-big-card .dv { font-size: 21px; font-weight: 900; white-space: nowrap; }
   .kpi-big-card .dl { font-size: 11px; color: #64748b; margin-top: 4px; }
 
   .urgent-item { background: #2D0A0A; border: 1px solid #F8717144; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
@@ -1106,7 +1106,7 @@ function renderShortOrders(list) {
     html += '<div class="short-item" id="order-item-' + idx + '">' +
       '<div class="short-item-top">' +
         '<div class="short-item-name">' + item.name + '</div>' +
-        '<button class="btn-receive" data-code="' + escAttr(item.code) + '" onclick="receiveOrderedItemBtn(this)">استلمت ✅</button>' +
+        '<span class="badge-waiting">⏳ مستني</span>' +
       '</div>' +
       '<div class="short-item-sub">' +
         '<span>اتطلب من ' + item.daysAgo + ' يوم</span>' +
@@ -1115,24 +1115,6 @@ function renderShortOrders(list) {
     '</div>';
   });
   el.innerHTML = html;
-}
-
-function receiveOrderedItemBtn(btn) {
-  var code = btn.dataset.code;
-  fetch(SHORTAGE_SCRIPT_URL, {
-    method: 'post', mode: 'no-cors', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({action: 'unmarkOrdered', code: code})
-  }).catch(function(){});
-
-  var itemEl = btn.closest('.short-item');
-  if (itemEl) itemEl.remove();
-
-  var remaining = document.querySelectorAll('#short-orders-content .short-item').length;
-  if (remaining === 0) {
-    document.getElementById('short-orders-content').innerHTML = '<div class="loading"><p style="color:#64748b">مفيش طلبيات معلقة دلوقتي</p></div>';
-  }
-
-  showToast('✅ اتحفظ إن الصنف وصل');
 }
 
 function loadShortKPI() {
@@ -1164,7 +1146,7 @@ function renderShortKPI(d) {
   html += '<div class="dash-panel-title">📈 نظرة عامة - ' + d.date + '</div>';
   html += '<div class="kpi-big">';
   html += '<div class="kpi-big-card"><div class="dv" style="color:#38BDF8">' + d.efficiency + '%</div><div class="dl">كفاءة الموظف</div></div>';
-  html += '<div class="kpi-big-card"><div class="dv" style="color:#F87171">' + d.totalLost + 'ج</div><div class="dl">قيمة الفاقد</div></div>';
+  html += '<div class="kpi-big-card"><div class="dv" style="color:#F87171">' + d.totalLost.toLocaleString('en-US') + ' ج</div><div class="dl">قيمة الفاقد</div></div>';
   html += '</div></div>';
 
   html += '<div class="dash-panel">';
@@ -1240,8 +1222,8 @@ var DASH_INFO = {
   comm_total: 'Total Contacts — إجمالي محاولات التواصل (واتساب + اتصال + SMS + ملاحظات) خلال المدة.',
   bought: 'Bought After Contact — عدد العملاء اللي اشتروا بعد ما الفريق تواصل معاهم. ده مقياس نجاح التواصل.',
   response_rate: 'Response Rate — نسبة محاولات التواصل اللي العميل فيها رد أو اشترى، من إجمالي المحاولات.',
-  short_list: '📦 المطلوب = الكمية اللي المفروض تتطلب من المورد للصنف ده.\n📉 المخزون الحالي = اللي متبقي عندك دلوقتي في الصيدلية.\n🔴 مخزون صفر = خلص تمامًا.\n🟡 مخزون منخفض = لسه فيه شوية بس تحت الحد الأدنى.\n✓ لما تدوس على الدائرة الخضرا جنب الصنف، بيتسجل إنه "اتطلب" ويتحط في قسم 📦 الطلبيات المعلقة، ويختفي من هنا لحد ما يوصل أو يعدي 3 أيام.',
-  short_orders: 'هنا الأصناف اللي دُست عليها "تم الطلب" وبانتظار وصولها من المورد.\nلو الصنف وصل فعلاً، دوس "استلمت ✅" عشان يتشال من القايمة نهائيًا.\nلو محدش دوس عليه، الصنف هيرجع يظهر تلقائي في قائمة النواقص بعد 3 أيام لو لسه ناقص (يعني معناها إنه اتأخر).'
+  short_list: '📦 المطلوب = الكمية اللي المفروض تتطلب من المورد للصنف ده.\n📉 المخزون الحالي = اللي متبقي عندك دلوقتي في الصيدلية.\n🔴 مخزون صفر = خلص تمامًا.\n🟡 مخزون منخفض = لسه فيه شوية بس تحت الحد الأدنى.\n✓ لما تدوس على الدائرة الخضرا جنب الصنف، بيتحط في قسم 📦 الطلبيات المعلقة ويختفي من هنا. النظام بيراقب المخزون أوتوماتيك، وأول ما الصنف يوصل هيتشال لوحده من قايمة الطلبيات.',
+  short_orders: 'هنا الأصناف اللي دُست عليها "تم الطلب" وبانتظار وصولها من المورد.\n✅ النظام بيتابعها أوتوماتيك: أول ما الصنف يرجع يظهر بمخزون كفاية في ملف النواقص، بيتشال من هنا لوحده من غير ما تعمل حاجة.\n⏳ لو فضل ناقص فترة طويلة، معناه الطلبية اتأخرت.'
 };
 
 function showDashInfo(key) {

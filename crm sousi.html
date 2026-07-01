@@ -389,6 +389,17 @@
 </div>
 
 <div id="short-kpi-section" class="short-wrap" style="display:none">
+  <div class="days-row">
+    <div class="day-pill" id="kday-7" onclick="setKPIDays(7)">آخر 7 أيام</div>
+    <div class="day-pill" id="kday-14" onclick="setKPIDays(14)">آخر 14 يوم</div>
+    <div class="day-pill" id="kday-30" onclick="setKPIDays(30)">آخر 30 يوم</div>
+    <div class="day-pill active" id="kday-0" onclick="setKPIDays(0)">كل الوقت</div>
+    <div class="day-pill" id="kday-custom" onclick="toggleKPICustomDays()">⚙️ مدة أخرى</div>
+  </div>
+  <div class="custom-days-box" id="kpi-custom-days-box" style="display:none">
+    <input type="number" id="kpi-custom-days-input" min="1" placeholder="عدد الأيام">
+    <button onclick="applyKPICustomDays()">تطبيق</button>
+  </div>
   <div id="short-kpi-content">
     <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
   </div>
@@ -489,6 +500,7 @@ var logPhone = '', logName = '', currentView = 'mob';
 var currentMode = 'crm', crmTab = 'customers', shortTab = 'list', dashLoaded = false;
 var shortDays_ = 7, shortStock_ = 'zero';
 var lastKPIData = null;
+var kpiDays_ = 0;
 var shortListData = null, shortKPILoaded = false;
 
 var TYPE_INFO = {
@@ -927,6 +939,40 @@ function applyCustomDays() {
   loadShortages();
 }
 
+// ===== KPI DAYS FILTER =====
+function setKPIDays(days) {
+  kpiDays_ = days;
+  ['7','14','30','0'].forEach(function(d) {
+    document.getElementById('kday-' + d).classList.toggle('active', parseInt(d) === days);
+  });
+  var customPill = document.getElementById('kday-custom');
+  customPill.classList.remove('active');
+  customPill.textContent = '⚙️ مدة أخرى';
+  document.getElementById('kpi-custom-days-box').style.display = 'none';
+  loadShortKPI();
+}
+
+function toggleKPICustomDays() {
+  var box = document.getElementById('kpi-custom-days-box');
+  box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+  if (box.style.display === 'flex') document.getElementById('kpi-custom-days-input').focus();
+}
+
+function applyKPICustomDays() {
+  var val = parseInt(document.getElementById('kpi-custom-days-input').value);
+  if (!val || val < 1) { showToast('اكتب عدد أيام صحيح'); return; }
+
+  kpiDays_ = val;
+  ['7','14','30','0'].forEach(function(d) {
+    document.getElementById('kday-' + d).classList.remove('active');
+  });
+  var customPill = document.getElementById('kday-custom');
+  customPill.classList.add('active');
+  customPill.textContent = '⚙️ آخر ' + val + ' يوم';
+  document.getElementById('kpi-custom-days-box').style.display = 'none';
+  loadShortKPI();
+}
+
 function setShortStock(kind) {
   shortStock_ = kind;
   document.getElementById('stg-zero').classList.toggle('active', kind === 'zero');
@@ -1223,7 +1269,7 @@ function loadShortKPI() {
     return;
   }
   document.getElementById('short-kpi-content').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
-  fetch(SHORTAGE_SCRIPT_URL + '?action=getKPI')
+  fetch(SHORTAGE_SCRIPT_URL + '?action=getKPI&days=' + kpiDays_)
     .then(function(r){ return r.json(); })
     .then(function(d){
       if (d && d.error) {
@@ -1243,7 +1289,8 @@ function renderShortKPI(d) {
   var html = '';
 
   html += '<div class="dash-panel">';
-  html += '<div class="dash-panel-title">📈 نظرة عامة - ' + d.date + '</div>';
+  var periodLabel = d.days > 0 ? ('آخر ' + d.days + ' يوم') : 'كل الوقت';
+  html += '<div class="dash-panel-title">📈 نظرة عامة - ' + d.date + ' <span style="font-size:10px;color:#64748b;font-weight:400">(' + periodLabel + ')</span></div>';
   html += '<div class="kpi-big">';
   html += '<div class="kpi-big-card"><div class="dv" style="color:#38BDF8">' + d.efficiency + '%</div><div class="dl">كفاءة الموظف</div></div>';
   html += '<div class="kpi-big-card"><div class="dv" style="color:#F87171">' + d.totalLost.toLocaleString('en-US') + ' ج</div><div class="dl">قيمة الفاقد</div></div>';

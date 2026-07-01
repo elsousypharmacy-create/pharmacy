@@ -17,7 +17,7 @@
   .info-btn { width: 22px; height: 22px; border-radius: 50%; background: rgba(0,180,216,0.2); border: 1px solid #38BDF8; color: #38BDF8; font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: serif; }
 
   .header-actions { display: flex; gap: 6px; align-items: center; }
-  .view-toggle { display: flex; background: rgba(255,255,255,0.06); border-radius: 9px; padding: 3px; gap: 2px; }
+  .action-group { display: flex; background: rgba(255,255,255,0.06); border-radius: 9px; padding: 3px; gap: 2px; }
   .icon-btn { width: 34px; height: 32px; border-radius: 7px; background: transparent; border: none; color: rgba(255,255,255,0.55); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
   .icon-btn.active { background: #38BDF8; color: #fff; }
   .icon-btn.sync { width: 38px; height: 38px; border-radius: 9px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.4); color: #38BDF8; font-size: 16px; }
@@ -186,6 +186,10 @@
   .day-pill { flex-shrink: 0; background: rgba(255,255,255,0.08); border: 2px solid transparent; color: #e2e8f0; border-radius: 8px; padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
   .day-pill.active { background: rgba(56,189,248,0.15); border-color: #38BDF8; color: #38BDF8; }
 
+  .custom-days-box { display: flex; gap: 8px; margin-bottom: 12px; }
+  .custom-days-box input { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 9px 12px; color: #f1f5f9; font-size: 13px; font-family: inherit; }
+  .custom-days-box button { background: #38BDF8; border: none; color: #08202e; border-radius: 8px; padding: 0 16px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: inherit; }
+
   .short-toggle-row { display: flex; gap: 8px; margin-bottom: 12px; }
   .short-toggle { flex: 1; text-align: center; border-radius: 10px; padding: 10px; cursor: pointer; border: 2px solid transparent; }
   .short-toggle .stv { font-size: 18px; font-weight: 900; }
@@ -206,11 +210,15 @@
   .short-cat-body.open { display: block; }
 
   .short-comp-title { font-size: 11px; font-weight: 700; color: #38BDF8; margin: 10px 0 6px; }
+  .short-comp-block:first-of-type .short-comp-title { margin-top: 0; }
+  .qty-badge { color: #FBBF24 !important; font-weight: 700; }
   .short-item { background: #0F1E2E; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; }
   .short-item-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .short-item-name { font-size: 12px; font-weight: 700; color: #e2e8f0; }
   .short-item-sub { font-size: 11px; color: #64748b; margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; }
-  .btn-order { background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.35); color: #34D399; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
+  .btn-order { width: 28px; height: 28px; flex-shrink: 0; background: rgba(52,211,153,0.1); border: 1.5px solid rgba(52,211,153,0.4); color: #34D399; border-radius: 50%; font-size: 14px; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .btn-order:active { background: #34D399; color: #08201a; transform: scale(0.92); }
+  .btn-receive { background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.4); color: #38BDF8; border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
   .btn-order:active { background: rgba(52,211,153,0.3); }
 
   .kpi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
@@ -265,6 +273,7 @@
 
   <div class="sidebar-group-title">النواقص</div>
   <button class="sidebar-item" id="side-short-list" onclick="navigateTo('shortages','list')">📋 قائمة النواقص</button>
+  <button class="sidebar-item" id="side-short-orders" onclick="navigateTo('shortages','orders')">📦 الطلبيات المعلقة</button>
   <button class="sidebar-item" id="side-short-kpi" onclick="navigateTo('shortages','kpi')">📈 كفاءة الطلبات</button>
 </div>
 
@@ -278,11 +287,11 @@
       <button class="info-btn" onclick="showInfo()">i</button>
     </div>
     <div class="header-actions">
-      <div class="view-toggle">
+      <div class="action-group">
+        <button class="icon-btn" onclick="openSidebar()" title="القائمة">☰</button>
         <button class="icon-btn active" id="ic-mob" onclick="setView('mob')" title="موبايل">📱</button>
         <button class="icon-btn" id="ic-desk" onclick="setView('desk')" title="كمبيوتر">🖥️</button>
       </div>
-      <button class="icon-btn menu-btn" onclick="openSidebar()" title="القائمة">☰</button>
     </div>
   </div>
 
@@ -332,11 +341,17 @@
 </div>
 
 <div id="short-list-section" class="short-wrap" style="display:none">
+  <div class="dash-panel-title">📋 قائمة النواقص <span class="info-i" onclick="showDashInfo('short_list')">i</span></div>
   <div class="days-row">
     <div class="day-pill active" id="day-7" onclick="setShortDays(7)">آخر 7 أيام</div>
     <div class="day-pill" id="day-14" onclick="setShortDays(14)">آخر 14 يوم</div>
     <div class="day-pill" id="day-21" onclick="setShortDays(21)">آخر 21 يوم</div>
     <div class="day-pill" id="day-30" onclick="setShortDays(30)">آخر 30 يوم</div>
+    <div class="day-pill" id="day-custom" onclick="toggleCustomDays()">⚙️ مدة أخرى</div>
+  </div>
+  <div class="custom-days-box" id="custom-days-box" style="display:none">
+    <input type="number" id="custom-days-input" min="1" placeholder="عدد الأيام">
+    <button onclick="applyCustomDays()">تطبيق</button>
   </div>
   <div class="short-toggle-row">
     <div class="short-toggle zero active" id="stg-zero" onclick="setShortStock('zero')">
@@ -349,6 +364,13 @@
     </div>
   </div>
   <div id="short-list-content">
+    <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
+  </div>
+</div>
+
+<div id="short-orders-section" class="short-wrap" style="display:none">
+  <div class="dash-panel-title">📦 الطلبيات المعلقة <span class="info-i" onclick="showDashInfo('short_orders')">i</span></div>
+  <div id="short-orders-content">
     <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
   </div>
 </div>
@@ -436,7 +458,7 @@
 <div class="modal-overlay" id="dash-info-modal">
   <div class="modal">
     <h3 style="margin-bottom:10px">ℹ️ شرح</h3>
-    <p id="info-modal-text" style="font-size:14px;line-height:1.8;color:#cbd5e1"></p>
+    <p id="info-modal-text" style="font-size:14px;line-height:1.8;color:#cbd5e1;white-space:pre-line"></p>
     <div class="modal-btns" style="margin-top:14px">
       <button class="btn-save" onclick="closeDashInfo()">تمام</button>
     </div>
@@ -788,6 +810,7 @@ var VIEW_LABELS = {
   'crm:customers': '👥 العملاء',
   'crm:dashboard': '📊 Dashboard',
   'shortages:list': '📦 قائمة النواقص',
+  'shortages:orders': '📦 الطلبيات المعلقة',
   'shortages:kpi': '📈 كفاءة الطلبات'
 };
 
@@ -807,16 +830,19 @@ function navigateTo(mode, tab) {
 
   document.getElementById('current-view-label').textContent = VIEW_LABELS[mode + ':' + tab];
 
-  ['side-customers','side-dashboard','side-short-list','side-short-kpi'].forEach(function(id){
+  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-kpi'].forEach(function(id){
     document.getElementById(id).classList.remove('active');
   });
-  var activeId = mode === 'crm' ? (tab === 'customers' ? 'side-customers' : 'side-dashboard') : (tab === 'list' ? 'side-short-list' : 'side-short-kpi');
+  var activeId = mode === 'crm'
+    ? (tab === 'customers' ? 'side-customers' : 'side-dashboard')
+    : (tab === 'list' ? 'side-short-list' : (tab === 'orders' ? 'side-short-orders' : 'side-short-kpi'));
   document.getElementById(activeId).classList.add('active');
 
   document.getElementById('customers-controls').style.display = (mode === 'crm' && tab === 'customers') ? 'block' : 'none';
   document.getElementById('customers-section').style.display = (mode === 'crm' && tab === 'customers') ? 'block' : 'none';
   document.getElementById('dashboard-section').style.display = (mode === 'crm' && tab === 'dashboard') ? 'block' : 'none';
   document.getElementById('short-list-section').style.display = (mode === 'shortages' && tab === 'list') ? 'block' : 'none';
+  document.getElementById('short-orders-section').style.display = (mode === 'shortages' && tab === 'orders') ? 'block' : 'none';
   document.getElementById('short-kpi-section').style.display = (mode === 'shortages' && tab === 'kpi') ? 'block' : 'none';
 
   if (mode === 'crm' && tab === 'dashboard' && !dashLoaded) {
@@ -825,6 +851,9 @@ function navigateTo(mode, tab) {
   }
   if (mode === 'shortages' && tab === 'list' && !shortListData) {
     loadShortages();
+  }
+  if (mode === 'shortages' && tab === 'orders') {
+    loadShortOrders();
   }
   if (mode === 'shortages' && tab === 'kpi' && !shortKPILoaded) {
     loadShortKPI();
@@ -837,7 +866,9 @@ function refreshCurrentTab() {
   if (currentMode === 'crm') {
     if (crmTab === 'dashboard') { loadDashboard(); } else { loadData(); }
   } else {
-    if (shortTab === 'kpi') { loadShortKPI(); } else { loadShortages(); }
+    if (shortTab === 'kpi') { loadShortKPI(); }
+    else if (shortTab === 'orders') { loadShortOrders(); }
+    else { loadShortages(); }
   }
 }
 
@@ -847,6 +878,31 @@ function setShortDays(days) {
   ['7','14','21','30'].forEach(function(d) {
     document.getElementById('day-' + d).classList.toggle('active', parseInt(d) === days);
   });
+  var customPill = document.getElementById('day-custom');
+  customPill.classList.remove('active');
+  customPill.textContent = '⚙️ مدة أخرى';
+  document.getElementById('custom-days-box').style.display = 'none';
+  loadShortages();
+}
+
+function toggleCustomDays() {
+  var box = document.getElementById('custom-days-box');
+  box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+  if (box.style.display === 'flex') document.getElementById('custom-days-input').focus();
+}
+
+function applyCustomDays() {
+  var val = parseInt(document.getElementById('custom-days-input').value);
+  if (!val || val < 1) { showToast('اكتب عدد أيام صحيح'); return; }
+
+  shortDays_ = val;
+  ['7','14','21','30'].forEach(function(d) {
+    document.getElementById('day-' + d).classList.remove('active');
+  });
+  var customPill = document.getElementById('day-custom');
+  customPill.classList.add('active');
+  customPill.textContent = '⚙️ آخر ' + val + ' يوم';
+  document.getElementById('custom-days-box').style.display = 'none';
   loadShortages();
 }
 
@@ -894,9 +950,9 @@ function renderShortList() {
   }
 
   var html = '<div class="short-summary">' +
-    '<span>💵 قبل الخصم: <b>' + section.summary.totalBefore + 'ج</b></span>' +
-    '<span>💰 بعد الخصم: <b>' + section.summary.totalAfter + 'ج</b></span>' +
-    '<span>📊 <b>' + section.summary.total + '</b> صنف</span>' +
+    '<span>💵 قبل الخصم: <b id="ss-before">' + section.summary.totalBefore + 'ج</b></span>' +
+    '<span>💰 بعد الخصم: <b id="ss-after">' + section.summary.totalAfter + 'ج</b></span>' +
+    '<span>📊 <b id="ss-count">' + section.summary.total + '</b> صنف</span>' +
   '</div>';
 
   categories.forEach(function(cat, ci){
@@ -905,26 +961,29 @@ function renderShortList() {
     var catCount = compNames.reduce(function(s,c){ return s + companies[c].length; }, 0);
     var catId = 'cat-' + ci;
 
-    html += '<div class="short-cat">';
+    html += '<div class="short-cat" id="wrap-' + catId + '">';
     html += '<div class="short-cat-head" id="head-' + catId + '" onclick="toggleShortCat(\'' + catId + '\')">' +
-      '<span>' + cat + ' (' + catCount + ' صنف)</span><span class="arrow">◀</span></div>';
+      '<span>' + cat + ' (<b class="cat-count">' + catCount + '</b> صنف)</span><span class="arrow">◀</span></div>';
     html += '<div class="short-cat-body" id="body-' + catId + '">';
 
     compNames.forEach(function(comp){
+      html += '<div class="short-comp-block">';
       html += '<div class="short-comp-title">🚚 ' + comp + '</div>';
       companies[comp].forEach(function(item){
         html += '<div class="short-item">' +
           '<div class="short-item-top">' +
             '<div class="short-item-name">' + item.name + '</div>' +
-            '<button class="btn-order" data-code="' + escAttr(item.code) + '" data-name="' + escAttr(item.name) + '" onclick="markOrderedBtn(this)">✅ تم الطلب</button>' +
+            '<button class="btn-order" data-code="' + escAttr(item.code) + '" data-name="' + escAttr(item.name) + '" onclick="markOrderedBtn(this)" title="تم الطلب">✓</button>' +
           '</div>' +
           '<div class="short-item-sub">' +
-            '<span>' + item.stock + ' ← ' + item.shortage + '</span>' +
+            '<span class="qty-badge">📦 المطلوب: <b>' + item.shortage + '</b></span>' +
+            '<span>المخزون الحالي: ' + item.stock + '</span>' +
             '<span>' + item.price + 'ج' + (item.discount > 0 ? ' (خصم ' + item.discount + '%)' : '') + '</span>' +
             '<span>آخر بيع: ' + item.lastSale + '</span>' +
           '</div>' +
         '</div>';
       });
+      html += '</div>';
     });
 
     html += '</div></div>';
@@ -943,10 +1002,10 @@ function escAttr(s) {
 }
 
 function markOrderedBtn(btn) {
-  markOrdered(btn.dataset.code, btn.dataset.name);
+  markOrdered(btn.dataset.code, btn.dataset.name, btn);
 }
 
-function markOrdered(code, name) {
+function markOrdered(code, name, btn) {
   fetch(SHORTAGE_SCRIPT_URL, {
     method: 'post', mode: 'no-cors', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({action: 'markOrdered', code: code, name: name})
@@ -955,8 +1014,39 @@ function markOrdered(code, name) {
   removeItemFromShortData(code, name);
   document.getElementById('stg-zero-cnt').textContent = shortListData.zero.summary.total;
   document.getElementById('stg-low-cnt').textContent = shortListData.low.summary.total;
-  renderShortList();
-  showToast('✅ اتحفظ إن "' + name + '" اتطلب — هيختفي من القايمة');
+
+  // إزالة الصنف من الشاشة مباشرة من غير ما نعيد رسم القائمة كلها (عشان الأقسام المفتوحة تفضل مفتوحة)
+  if (btn) {
+    var itemEl = btn.closest('.short-item');
+    var compBlock = itemEl ? itemEl.closest('.short-comp-block') : null;
+    var catWrap = itemEl ? itemEl.closest('.short-cat') : null;
+
+    if (itemEl) itemEl.remove();
+
+    if (compBlock && compBlock.querySelectorAll('.short-item').length === 0) {
+      compBlock.remove();
+    }
+    if (catWrap) {
+      var remaining = catWrap.querySelectorAll('.short-item').length;
+      if (remaining === 0) {
+        catWrap.remove();
+      } else {
+        var countEl = catWrap.querySelector('.cat-count');
+        if (countEl) countEl.textContent = remaining;
+      }
+    }
+  }
+
+  var sec = shortListData[shortStock_];
+  var ssBefore = document.getElementById('ss-before');
+  var ssAfter = document.getElementById('ss-after');
+  var ssCount = document.getElementById('ss-count');
+  if (ssBefore) ssBefore.textContent = sec.summary.totalBefore + 'ج';
+  if (ssAfter) ssAfter.textContent = sec.summary.totalAfter + 'ج';
+  if (ssCount) ssCount.textContent = sec.summary.total;
+  if (sec.summary.total === 0) renderShortList();
+
+  showToast('✅ "' + name + '" اتحطت في الطلبيات المعلقة');
 }
 
 function removeItemFromShortData(code, name) {
@@ -988,9 +1078,67 @@ function removeItemFromShortData(code, name) {
   });
 }
 
+function loadShortOrders() {
+  if (!SHORTAGE_SCRIPT_URL || SHORTAGE_SCRIPT_URL.indexOf('http') !== 0) {
+    document.getElementById('short-orders-content').innerHTML = '<div class="loading"><p style="color:#F87171">لازم تحط رابط ويب أب سكريبت النواقص في المتغير SHORTAGE_SCRIPT_URL</p></div>';
+    return;
+  }
+  document.getElementById('short-orders-content').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+  fetch(SHORTAGE_SCRIPT_URL + '?action=getOrderedItems')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      renderShortOrders(d || []);
+    })
+    .catch(function(){
+      document.getElementById('short-orders-content').innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اسحب لتحت عشان تحدث</p></div>';
+    });
+}
+
+function renderShortOrders(list) {
+  var el = document.getElementById('short-orders-content');
+  if (!list.length) {
+    el.innerHTML = '<div class="loading"><p style="color:#64748b">مفيش طلبيات معلقة دلوقتي</p></div>';
+    return;
+  }
+
+  var html = '';
+  list.forEach(function(item, idx){
+    html += '<div class="short-item" id="order-item-' + idx + '">' +
+      '<div class="short-item-top">' +
+        '<div class="short-item-name">' + item.name + '</div>' +
+        '<button class="btn-receive" data-code="' + escAttr(item.code) + '" onclick="receiveOrderedItemBtn(this)">استلمت ✅</button>' +
+      '</div>' +
+      '<div class="short-item-sub">' +
+        '<span>اتطلب من ' + item.daysAgo + ' يوم</span>' +
+        '<span>بتاريخ: ' + item.markedAt + '</span>' +
+      '</div>' +
+    '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function receiveOrderedItemBtn(btn) {
+  var code = btn.dataset.code;
+  fetch(SHORTAGE_SCRIPT_URL, {
+    method: 'post', mode: 'no-cors', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'unmarkOrdered', code: code})
+  }).catch(function(){});
+
+  var itemEl = btn.closest('.short-item');
+  if (itemEl) itemEl.remove();
+
+  var remaining = document.querySelectorAll('#short-orders-content .short-item').length;
+  if (remaining === 0) {
+    document.getElementById('short-orders-content').innerHTML = '<div class="loading"><p style="color:#64748b">مفيش طلبيات معلقة دلوقتي</p></div>';
+  }
+
+  showToast('✅ اتحفظ إن الصنف وصل');
+}
+
 function loadShortKPI() {
   if (!SHORTAGE_SCRIPT_URL || SHORTAGE_SCRIPT_URL.indexOf('http') !== 0) {
     document.getElementById('short-kpi-content').innerHTML = '<div class="loading"><p style="color:#F87171">لازم تحط رابط ويب أب سكريبت النواقص في المتغير SHORTAGE_SCRIPT_URL</p></div>';
+
     return;
   }
   document.getElementById('short-kpi-content').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
@@ -1091,7 +1239,9 @@ var DASH_INFO = {
   blocked: 'Blocked — عملاء محظورين يدوياً (مماطلين أو طلبوا عدم التواصل). مش بيظهروا في أي قايمة أو تنبيه.',
   comm_total: 'Total Contacts — إجمالي محاولات التواصل (واتساب + اتصال + SMS + ملاحظات) خلال المدة.',
   bought: 'Bought After Contact — عدد العملاء اللي اشتروا بعد ما الفريق تواصل معاهم. ده مقياس نجاح التواصل.',
-  response_rate: 'Response Rate — نسبة محاولات التواصل اللي العميل فيها رد أو اشترى، من إجمالي المحاولات.'
+  response_rate: 'Response Rate — نسبة محاولات التواصل اللي العميل فيها رد أو اشترى، من إجمالي المحاولات.',
+  short_list: '📦 المطلوب = الكمية اللي المفروض تتطلب من المورد للصنف ده.\n📉 المخزون الحالي = اللي متبقي عندك دلوقتي في الصيدلية.\n🔴 مخزون صفر = خلص تمامًا.\n🟡 مخزون منخفض = لسه فيه شوية بس تحت الحد الأدنى.\n✓ لما تدوس على الدائرة الخضرا جنب الصنف، بيتسجل إنه "اتطلب" ويتحط في قسم 📦 الطلبيات المعلقة، ويختفي من هنا لحد ما يوصل أو يعدي 3 أيام.',
+  short_orders: 'هنا الأصناف اللي دُست عليها "تم الطلب" وبانتظار وصولها من المورد.\nلو الصنف وصل فعلاً، دوس "استلمت ✅" عشان يتشال من القايمة نهائيًا.\nلو محدش دوس عليه، الصنف هيرجع يظهر تلقائي في قائمة النواقص بعد 3 أيام لو لسه ناقص (يعني معناها إنه اتأخر).'
 };
 
 function showDashInfo(key) {

@@ -218,11 +218,16 @@
   .short-item-sub { font-size: 11px; color: #64748b; margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; }
   .btn-order { width: 28px; height: 28px; flex-shrink: 0; background: rgba(52,211,153,0.1); border: 1.5px solid rgba(52,211,153,0.4); color: #34D399; border-radius: 50%; font-size: 14px; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
   .btn-order:active { background: #34D399; color: #08201a; transform: scale(0.92); }
+  .btn-discontinue { width: 28px; height: 28px; flex-shrink: 0; background: rgba(248,113,113,0.1); border: 1.5px solid rgba(248,113,113,0.35); color: #F87171; border-radius: 50%; font-size: 12px; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .btn-discontinue:active { background: #F87171; color: #2a0808; transform: scale(0.92); }
+  .item-actions { display: flex; gap: 6px; flex-shrink: 0; }
   .badge-waiting { background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.35); color: #FBBF24; border-radius: 8px; padding: 5px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
-  .btn-order:active { background: rgba(52,211,153,0.3); }
+  .btn-restore { background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.4); color: #38BDF8; border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
 
   .kpi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
-  .kpi-card { background: #1A2F4A; border-radius: 10px; padding: 12px 6px; text-align: center; }
+  .kpi-card { background: #1A2F4A; border-radius: 10px; padding: 12px 6px; text-align: center; cursor: pointer; transition: background 0.15s; }
+  .kpi-card:active { background: #24405f; }
+  .kpi-detail-box { max-height: 320px; overflow-y: auto; margin-top: 12px; padding-top: 12px; border-top: 1px solid #1e3a4a; }
   .kpi-card .kv { font-size: 20px; font-weight: 900; }
   .kpi-card .kl { font-size: 10px; color: #64748b; margin-top: 4px; }
 
@@ -274,6 +279,7 @@
   <div class="sidebar-group-title">النواقص</div>
   <button class="sidebar-item" id="side-short-list" onclick="navigateTo('shortages','list')">📋 قائمة النواقص</button>
   <button class="sidebar-item" id="side-short-orders" onclick="navigateTo('shortages','orders')">📦 الطلبيات المعلقة</button>
+  <button class="sidebar-item" id="side-short-discontinued" onclick="navigateTo('shortages','discontinued')">🚫 أصناف مقطوعة</button>
   <button class="sidebar-item" id="side-short-kpi" onclick="navigateTo('shortages','kpi')">📈 كفاءة الطلبات</button>
 </div>
 
@@ -371,6 +377,13 @@
 <div id="short-orders-section" class="short-wrap" style="display:none">
   <div class="dash-panel-title">📦 الطلبيات المعلقة <span class="info-i" onclick="showDashInfo('short_orders')">i</span></div>
   <div id="short-orders-content">
+    <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
+  </div>
+</div>
+
+<div id="short-discontinued-section" class="short-wrap" style="display:none">
+  <div class="dash-panel-title">🚫 أصناف مقطوعة من السوق <span class="info-i" onclick="showDashInfo('short_discontinued')">i</span></div>
+  <div id="short-discontinued-content">
     <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
   </div>
 </div>
@@ -475,6 +488,7 @@ var filterCls_ = 'S', filterStatus_ = 'alert', searchStr_ = '';
 var logPhone = '', logName = '', currentView = 'mob';
 var currentMode = 'crm', crmTab = 'customers', shortTab = 'list', dashLoaded = false;
 var shortDays_ = 7, shortStock_ = 'zero';
+var lastKPIData = null;
 var shortListData = null, shortKPILoaded = false;
 
 var TYPE_INFO = {
@@ -811,6 +825,7 @@ var VIEW_LABELS = {
   'crm:dashboard': '📊 Dashboard',
   'shortages:list': '📦 قائمة النواقص',
   'shortages:orders': '📦 الطلبيات المعلقة',
+  'shortages:discontinued': '🚫 أصناف مقطوعة',
   'shortages:kpi': '📈 كفاءة الطلبات'
 };
 
@@ -830,12 +845,13 @@ function navigateTo(mode, tab) {
 
   document.getElementById('current-view-label').textContent = VIEW_LABELS[mode + ':' + tab];
 
-  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-kpi'].forEach(function(id){
+  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi'].forEach(function(id){
     document.getElementById(id).classList.remove('active');
   });
+  var shortActiveMap = { list: 'side-short-list', orders: 'side-short-orders', discontinued: 'side-short-discontinued', kpi: 'side-short-kpi' };
   var activeId = mode === 'crm'
     ? (tab === 'customers' ? 'side-customers' : 'side-dashboard')
-    : (tab === 'list' ? 'side-short-list' : (tab === 'orders' ? 'side-short-orders' : 'side-short-kpi'));
+    : shortActiveMap[tab];
   document.getElementById(activeId).classList.add('active');
 
   document.getElementById('customers-controls').style.display = (mode === 'crm' && tab === 'customers') ? 'block' : 'none';
@@ -843,6 +859,7 @@ function navigateTo(mode, tab) {
   document.getElementById('dashboard-section').style.display = (mode === 'crm' && tab === 'dashboard') ? 'block' : 'none';
   document.getElementById('short-list-section').style.display = (mode === 'shortages' && tab === 'list') ? 'block' : 'none';
   document.getElementById('short-orders-section').style.display = (mode === 'shortages' && tab === 'orders') ? 'block' : 'none';
+  document.getElementById('short-discontinued-section').style.display = (mode === 'shortages' && tab === 'discontinued') ? 'block' : 'none';
   document.getElementById('short-kpi-section').style.display = (mode === 'shortages' && tab === 'kpi') ? 'block' : 'none';
 
   if (mode === 'crm' && tab === 'dashboard' && !dashLoaded) {
@@ -854,6 +871,9 @@ function navigateTo(mode, tab) {
   }
   if (mode === 'shortages' && tab === 'orders') {
     loadShortOrders();
+  }
+  if (mode === 'shortages' && tab === 'discontinued') {
+    loadDiscontinued();
   }
   if (mode === 'shortages' && tab === 'kpi' && !shortKPILoaded) {
     loadShortKPI();
@@ -868,6 +888,7 @@ function refreshCurrentTab() {
   } else {
     if (shortTab === 'kpi') { loadShortKPI(); }
     else if (shortTab === 'orders') { loadShortOrders(); }
+    else if (shortTab === 'discontinued') { loadDiscontinued(); }
     else { loadShortages(); }
   }
 }
@@ -973,7 +994,10 @@ function renderShortList() {
         html += '<div class="short-item">' +
           '<div class="short-item-top">' +
             '<div class="short-item-name">' + item.name + '</div>' +
-            '<button class="btn-order" data-code="' + escAttr(item.code) + '" data-name="' + escAttr(item.name) + '" onclick="markOrderedBtn(this)" title="تم الطلب">✓</button>' +
+            '<div class="item-actions">' +
+              '<button class="btn-discontinue" data-code="' + escAttr(item.code) + '" data-name="' + escAttr(item.name) + '" onclick="markDiscontinuedBtn(this)" title="مقطوع من السوق">🚫</button>' +
+              '<button class="btn-order" data-code="' + escAttr(item.code) + '" data-name="' + escAttr(item.name) + '" onclick="markOrderedBtn(this)" title="تم الطلب">✓</button>' +
+            '</div>' +
           '</div>' +
           '<div class="short-item-sub">' +
             '<span class="qty-badge">📦 المطلوب: <b>' + item.shortage + '</b></span>' +
@@ -1011,6 +1035,27 @@ function markOrdered(code, name, btn) {
     body: JSON.stringify({action: 'markOrdered', code: code, name: name})
   }).catch(function(){});
 
+  removeShortItemFromView(code, name, btn);
+  showToast('✅ "' + name + '" اتحطت في الطلبيات المعلقة');
+}
+
+function markDiscontinuedBtn(btn) {
+  var name = btn.dataset.name;
+  if (!confirm('متأكد إن "' + name + '" مقطوع من السوق؟\nهيختفي نهائيًا من قائمة النواقص.')) return;
+  markDiscontinued(btn.dataset.code, name, btn);
+}
+
+function markDiscontinued(code, name, btn) {
+  fetch(SHORTAGE_SCRIPT_URL, {
+    method: 'post', mode: 'no-cors', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'markDiscontinued', code: code, name: name})
+  }).catch(function(){});
+
+  removeShortItemFromView(code, name, btn);
+  showToast('🚫 "' + name + '" اتعلّم مقطوع من السوق');
+}
+
+function removeShortItemFromView(code, name, btn) {
   removeItemFromShortData(code, name);
   document.getElementById('stg-zero-cnt').textContent = shortListData.zero.summary.total;
   document.getElementById('stg-low-cnt').textContent = shortListData.low.summary.total;
@@ -1045,8 +1090,6 @@ function markOrdered(code, name, btn) {
   if (ssAfter) ssAfter.textContent = sec.summary.totalAfter + 'ج';
   if (ssCount) ssCount.textContent = sec.summary.total;
   if (sec.summary.total === 0) renderShortList();
-
-  showToast('✅ "' + name + '" اتحطت في الطلبيات المعلقة');
 }
 
 function removeItemFromShortData(code, name) {
@@ -1117,6 +1160,62 @@ function renderShortOrders(list) {
   el.innerHTML = html;
 }
 
+function loadDiscontinued() {
+  if (!SHORTAGE_SCRIPT_URL || SHORTAGE_SCRIPT_URL.indexOf('http') !== 0) {
+    document.getElementById('short-discontinued-content').innerHTML = '<div class="loading"><p style="color:#F87171">لازم تحط رابط ويب أب سكريبت النواقص في المتغير SHORTAGE_SCRIPT_URL</p></div>';
+    return;
+  }
+  document.getElementById('short-discontinued-content').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+  fetch(SHORTAGE_SCRIPT_URL + '?action=getDiscontinuedItems')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      renderDiscontinued(d || []);
+    })
+    .catch(function(){
+      document.getElementById('short-discontinued-content').innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اسحب لتحت عشان تحدث</p></div>';
+    });
+}
+
+function renderDiscontinued(list) {
+  var el = document.getElementById('short-discontinued-content');
+  if (!list.length) {
+    el.innerHTML = '<div class="loading"><p style="color:#64748b">مفيش أصناف مقطوعة دلوقتي</p></div>';
+    return;
+  }
+
+  var html = '';
+  list.forEach(function(item, idx){
+    html += '<div class="short-item" id="disc-item-' + idx + '">' +
+      '<div class="short-item-top">' +
+        '<div class="short-item-name">' + item.name + '</div>' +
+        '<button class="btn-restore" data-code="' + escAttr(item.code) + '" onclick="restoreDiscontinuedBtn(this)">رجّعه ↩️</button>' +
+      '</div>' +
+      '<div class="short-item-sub">' +
+        '<span>اتعلّم مقطوع بتاريخ: ' + item.markedAt + '</span>' +
+      '</div>' +
+    '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function restoreDiscontinuedBtn(btn) {
+  var code = btn.dataset.code;
+  fetch(SHORTAGE_SCRIPT_URL, {
+    method: 'post', mode: 'no-cors', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'unmarkDiscontinued', code: code})
+  }).catch(function(){});
+
+  var itemEl = btn.closest('.short-item');
+  if (itemEl) itemEl.remove();
+
+  var remaining = document.querySelectorAll('#short-discontinued-content .short-item').length;
+  if (remaining === 0) {
+    document.getElementById('short-discontinued-content').innerHTML = '<div class="loading"><p style="color:#64748b">مفيش أصناف مقطوعة دلوقتي</p></div>';
+  }
+
+  showToast('↩️ الصنف رجع يتراقب تاني في قائمة النواقص');
+}
+
 function loadShortKPI() {
   if (!SHORTAGE_SCRIPT_URL || SHORTAGE_SCRIPT_URL.indexOf('http') !== 0) {
     document.getElementById('short-kpi-content').innerHTML = '<div class="loading"><p style="color:#F87171">لازم تحط رابط ويب أب سكريبت النواقص في المتغير SHORTAGE_SCRIPT_URL</p></div>';
@@ -1140,6 +1239,7 @@ function loadShortKPI() {
 }
 
 function renderShortKPI(d) {
+  lastKPIData = d;
   var html = '';
 
   html += '<div class="dash-panel">';
@@ -1150,26 +1250,46 @@ function renderShortKPI(d) {
   html += '</div></div>';
 
   html += '<div class="dash-panel">';
-  html += '<div class="dash-panel-title">📊 توزيع الأصناف الناقصة</div>';
+  html += '<div class="dash-panel-title">📊 توزيع الأصناف الناقصة <span style="font-size:10px;color:#64748b;font-weight:400">(دوس على أي مربع للتفاصيل)</span></div>';
   html += '<div class="kpi-grid">';
-  html += '<div class="kpi-card"><div class="kv" style="color:#34D399">' + d.counts.normal + '</div><div class="kl">✅ طبيعي (1-3 أيام)</div></div>';
-  html += '<div class="kpi-card"><div class="kv" style="color:#FBBF24">' + d.counts.warning + '</div><div class="kl">🟡 تنبيه (3-7 أيام)</div></div>';
-  html += '<div class="kpi-card"><div class="kv" style="color:#F87171">' + d.counts.urgent + '</div><div class="kl">🔴 عاجل (7-21 يوم)</div></div>';
-  html += '</div></div>';
+  html += '<div class="kpi-card" onclick="toggleKPIList(\'normal\')"><div class="kv" style="color:#34D399">' + d.counts.normal + '</div><div class="kl">✅ طبيعي (1-3 أيام)</div></div>';
+  html += '<div class="kpi-card" onclick="toggleKPIList(\'warning\')"><div class="kv" style="color:#FBBF24">' + d.counts.warning + '</div><div class="kl">🟡 تنبيه (3-7 أيام)</div></div>';
+  html += '<div class="kpi-card" onclick="toggleKPIList(\'urgent\')"><div class="kv" style="color:#F87171">' + d.counts.urgent + '</div><div class="kl">🔴 عاجل (7-21 يوم)</div></div>';
+  html += '</div>';
+  html += '<div id="kpi-list-detail"></div>';
+  html += '</div>';
 
-  if (d.urgent.length > 0) {
-    html += '<div class="dash-panel">';
-    html += '<div class="dash-panel-title">🔴 الأصناف العاجلة (' + d.urgent.length + ')</div>';
-    d.urgent.forEach(function(item){
+  document.getElementById('short-kpi-content').innerHTML = html;
+}
+
+function toggleKPIList(type) {
+  var el = document.getElementById('kpi-list-detail');
+  if (!lastKPIData) return;
+
+  if (el.dataset.open === type) {
+    el.innerHTML = '';
+    el.dataset.open = '';
+    return;
+  }
+
+  var items = lastKPIData[type] || [];
+  var labels = { normal: '✅ الأصناف الطبيعية', warning: '🟡 أصناف تحت التنبيه', urgent: '🔴 الأصناف العاجلة' };
+
+  var html = '<div class="kpi-detail-box">';
+  if (!items.length) {
+    html += '<p style="color:#64748b;font-size:12px;text-align:center;padding:10px 0">مفيش أصناف في القسم ده</p>';
+  } else {
+    items.forEach(function(item){
       html += '<div class="urgent-item">' +
         '<div class="un">' + item.name + '</div>' +
         '<div class="us">' + item.days + ' يوم غايب | ' + item.lost + 'ج فاقد | ' + item.company + '</div>' +
       '</div>';
     });
-    html += '</div>';
   }
+  html += '</div>';
 
-  document.getElementById('short-kpi-content').innerHTML = html;
+  el.innerHTML = html;
+  el.dataset.open = type;
 }
 
 // ===== DASHBOARD =====
@@ -1222,8 +1342,9 @@ var DASH_INFO = {
   comm_total: 'Total Contacts — إجمالي محاولات التواصل (واتساب + اتصال + SMS + ملاحظات) خلال المدة.',
   bought: 'Bought After Contact — عدد العملاء اللي اشتروا بعد ما الفريق تواصل معاهم. ده مقياس نجاح التواصل.',
   response_rate: 'Response Rate — نسبة محاولات التواصل اللي العميل فيها رد أو اشترى، من إجمالي المحاولات.',
-  short_list: '📦 المطلوب = الكمية اللي المفروض تتطلب من المورد للصنف ده.\n📉 المخزون الحالي = اللي متبقي عندك دلوقتي في الصيدلية.\n🔴 مخزون صفر = خلص تمامًا.\n🟡 مخزون منخفض = لسه فيه شوية بس تحت الحد الأدنى.\n✓ لما تدوس على الدائرة الخضرا جنب الصنف، بيتحط في قسم 📦 الطلبيات المعلقة ويختفي من هنا. النظام بيراقب المخزون أوتوماتيك، وأول ما الصنف يوصل هيتشال لوحده من قايمة الطلبيات.',
-  short_orders: 'هنا الأصناف اللي دُست عليها "تم الطلب" وبانتظار وصولها من المورد.\n✅ النظام بيتابعها أوتوماتيك: أول ما الصنف يرجع يظهر بمخزون كفاية في ملف النواقص، بيتشال من هنا لوحده من غير ما تعمل حاجة.\n⏳ لو فضل ناقص فترة طويلة، معناه الطلبية اتأخرت.'
+  short_list: '📦 المطلوب = الكمية اللي المفروض تتطلب من المورد للصنف ده.\n📉 المخزون الحالي = اللي متبقي عندك دلوقتي في الصيدلية.\n🔴 مخزون صفر = خلص تمامًا.\n🟡 مخزون منخفض = لسه فيه شوية بس تحت الحد الأدنى.\n✓ الدائرة الخضرا = "تم الطلب"، بيروح قسم 📦 الطلبيات المعلقة ويرجع لوحده لما يوصل.\n🚫 الدائرة الحمرا = "مقطوع من السوق"، بيختفي نهائيًا (تقدر ترجّعه بعدين من قسم الأصناف المقطوعة).',
+  short_orders: 'هنا الأصناف اللي دُست عليها "تم الطلب" وبانتظار وصولها من المورد.\n✅ النظام بيتابعها أوتوماتيك: أول ما الصنف يرجع يظهر بمخزون كفاية في ملف النواقص، بيتشال من هنا لوحده من غير ما تعمل حاجة.\n⏳ لو فضل ناقص فترة طويلة، معناه الطلبية اتأخرت.',
+  short_discontinued: 'الأصناف اللي دُست عليها 🚫 "مقطوع من السوق" بتختفي نهائيًا من قائمة النواقص ومن الطلبيات المعلقة — عشان محدش يفضل يطلبها كل شوية وهي مش متاحة أصلاً.\nلو حسّيت إن المورد رجع يوفرها، دوس "رجّعه ↩️" وهترجع تتراقب تاني عادي.'
 };
 
 function showDashInfo(key) {

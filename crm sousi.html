@@ -181,10 +181,9 @@
   .sub-tab-btn { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.55); border-radius: 8px; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
   .sub-tab-btn.active { background: rgba(56,189,248,0.15); border-color: #38BDF8; color: #38BDF8; }
 
-  .days-row { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; scrollbar-width: none; }
-  .days-row::-webkit-scrollbar { display: none; }
-  .day-pill { flex-shrink: 0; background: rgba(255,255,255,0.08); border: 2px solid transparent; color: #e2e8f0; border-radius: 8px; padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
-  .day-pill.active { background: rgba(56,189,248,0.15); border-color: #38BDF8; color: #38BDF8; }
+  .days-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 4px; }
+  .day-pill { flex: 1 1 auto; text-align: center; background: transparent; border: 2px solid transparent; color: rgba(255,255,255,0.6); border-radius: 8px; padding: 8px 10px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.15s; }
+  .day-pill.active { background: rgba(56,189,248,0.18); border-color: #38BDF8; color: #38BDF8; transform: scale(1.08); font-weight: 800; box-shadow: 0 2px 8px rgba(56,189,248,0.25); }
 
   .custom-days-box { display: flex; gap: 8px; margin-bottom: 12px; }
   .custom-days-box input { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 9px 12px; color: #f1f5f9; font-size: 13px; font-family: inherit; }
@@ -390,10 +389,10 @@
 
 <div id="short-kpi-section" class="short-wrap" style="display:none">
   <div class="days-row">
-    <div class="day-pill" id="kday-7" onclick="setKPIDays(7)">آخر 7 أيام</div>
+    <div class="day-pill active" id="kday-7" onclick="setKPIDays(7)">آخر 7 أيام</div>
     <div class="day-pill" id="kday-14" onclick="setKPIDays(14)">آخر 14 يوم</div>
     <div class="day-pill" id="kday-30" onclick="setKPIDays(30)">آخر 30 يوم</div>
-    <div class="day-pill active" id="kday-0" onclick="setKPIDays(0)">كل الوقت</div>
+    <div class="day-pill" id="kday-0" onclick="setKPIDays(0)">كل الوقت</div>
     <div class="day-pill" id="kday-custom" onclick="toggleKPICustomDays()">⚙️ مدة أخرى</div>
   </div>
   <div class="custom-days-box" id="kpi-custom-days-box" style="display:none">
@@ -500,7 +499,7 @@ var logPhone = '', logName = '', currentView = 'mob';
 var currentMode = 'crm', crmTab = 'customers', shortTab = 'list', dashLoaded = false;
 var shortDays_ = 7, shortStock_ = 'zero';
 var lastKPIData = null;
-var kpiDays_ = 0;
+var kpiDays_ = 7;
 var shortListData = null, shortKPILoaded = false;
 
 var TYPE_INFO = {
@@ -1391,7 +1390,7 @@ var DASH_INFO = {
   response_rate: 'Response Rate — نسبة محاولات التواصل اللي العميل فيها رد أو اشترى، من إجمالي المحاولات.',
   short_list: '📦 المطلوب = الكمية اللي المفروض تتطلب من المورد للصنف ده.\n📉 المخزون الحالي = اللي متبقي عندك دلوقتي في الصيدلية.\n🔴 مخزون صفر = خلص تمامًا.\n🟡 مخزون منخفض = لسه فيه شوية بس تحت الحد الأدنى.\n✓ الدائرة الخضرا = "تم الطلب"، بيروح قسم 📦 الطلبيات المعلقة ويرجع لوحده لما يوصل.\n🚫 الدائرة الحمرا = "مقطوع من السوق"، بيختفي نهائيًا (تقدر ترجّعه بعدين من قسم الأصناف المقطوعة).',
   short_orders: 'هنا الأصناف اللي دُست عليها "تم الطلب" وبانتظار وصولها من المورد.\n✅ النظام بيتابعها أوتوماتيك: أول ما الصنف يرجع يظهر بمخزون كفاية في ملف النواقص، بيتشال من هنا لوحده من غير ما تعمل حاجة.\n⏳ لو فضل ناقص فترة طويلة، معناه الطلبية اتأخرت.',
-  short_discontinued: 'الأصناف اللي دُست عليها 🚫 "مقطوع من السوق" بتختفي نهائيًا من قائمة النواقص ومن الطلبيات المعلقة — عشان محدش يفضل يطلبها كل شوية وهي مش متاحة أصلاً.\nلو حسّيت إن المورد رجع يوفرها، دوس "رجّعه ↩️" وهترجع تتراقب تاني عادي.'
+  short_discontinued: 'الأصناف اللي دُست عليها 🚫 "مقطوع من السوق" بتختفي نهائيًا من قائمة النواقص ومن الطلبيات المعلقة — عشان محدش يفضل يطلبها كل شوية وهي مش متاحة.\n✅ النظام بيتابعها أوتوماتيك برضو: لو الصنف رجع يتوفر بأي طريقة (حتى لو طلبته بنفسك من غير النظام)، البلوك بيتفك لوحده وهيرجع يترصد عادي.\nولو مستعجل، تقدر تدوس "رجّعه ↩️" يدوي في أي وقت.'
 };
 
 function showDashInfo(key) {

@@ -277,7 +277,16 @@
   .deliv-active-sub { font-size: 11px; color: #64748b; margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; }
   .deliv-active-btns { display: flex; gap: 8px; margin-top: 8px; }
   .deliv-active-btns button { flex: 1; background: #1A2E6E; color: #fff; border: none; border-radius: 8px; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  #deliv-map { width: 100%; height: 340px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #1e3a4a; background: #0F1E2E; z-index: 1; }
+  .leaflet-popup-content-wrapper { background: #1A2F4A; color: #e2e8f0; border-radius: 10px; }
+  .leaflet-popup-tip { background: #1A2F4A; }
+  .leaflet-popup-content { margin: 10px 12px; font-family: 'Tajawal', sans-serif; direction: rtl; text-align: right; }
+  .map-pop-name { font-size: 13px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
+  .map-pop-sub { font-size: 11px; color: #94a3b8; margin-bottom: 8px; }
+  .map-pop-btn { display: inline-block; background: #38BDF8; color: #fff; border-radius: 6px; padding: 6px 12px; font-size: 11px; font-weight: 700; text-decoration: none; }
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -430,6 +439,7 @@
 
 <div id="deliv-map-section" class="deliv-wrap" style="display:none">
   <div class="dash-panel-title">🗺️ مواقع العملاء المحفوظة</div>
+  <div id="deliv-map"></div>
   <div class="deliv-sort-row">
     <div class="deliv-sort-btn active" id="dsort-recent" onclick="setDelivSort('recent')">🕐 الأحدث طلب</div>
     <div class="deliv-sort-btn" id="dsort-near" onclick="setDelivSort('near')">📍 الأقرب للصيدلية</div>
@@ -448,15 +458,15 @@
 
 <div id="deliv-kpi-section" class="deliv-wrap" style="display:none">
   <div class="days-row">
-    <div class="day-pill active" id="dkday-7" onclick="setDelivKPIDays(7)">آخر 7 أيام</div>
-    <div class="day-pill" id="dkday-14" onclick="setDelivKPIDays(14)">آخر 14 يوم</div>
-    <div class="day-pill" id="dkday-30" onclick="setDelivKPIDays(30)">آخر 30 يوم</div>
-    <div class="day-pill" id="dkday-0" onclick="setDelivKPIDays(0)">كل الوقت</div>
-    <div class="day-pill" id="dkday-custom" onclick="toggleDelivKPICustomDays()">⚙️ مدة أخرى</div>
+    <div class="day-pill active" id="dkday-today" onclick="setDelivKPIRange('today')">📅 اليوم</div>
+    <div class="day-pill" id="dkday-month" onclick="setDelivKPIRange('month')">🗓️ من أول الشهر</div>
+    <div class="day-pill" id="dkday-range" onclick="toggleDelivKPIRange()">⚙️ تحديد فترة</div>
   </div>
-  <div class="custom-days-box" id="deliv-kpi-custom-days-box" style="display:none">
-    <input type="number" id="deliv-kpi-custom-days-input" min="1" placeholder="عدد الأيام">
-    <button onclick="applyDelivKPICustomDays()">تطبيق</button>
+  <div class="dash-range" id="deliv-kpi-range-box" style="display:none">
+    <input type="date" id="deliv-kpi-from">
+    <span style="color:#64748b;font-size:11px">إلى</span>
+    <input type="date" id="deliv-kpi-to">
+    <button onclick="applyDelivKPIRange()">تطبيق</button>
   </div>
   <div id="deliv-kpi-content">
     <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
@@ -561,7 +571,9 @@ var shortDays_ = 7, shortStock_ = 'zero';
 var lastKPIData = null;
 var kpiDays_ = 7;
 var shortListData = null, shortKPILoaded = false;
-var delivSort_ = 'recent', delivKPIDays_ = 7, delivLocations_ = null, delivKPILoaded = false;
+var delivSort_ = 'recent', delivKPIRange_ = 'today', delivKPIFrom_ = '', delivKPITo_ = '', delivLocations_ = null, delivKPILoaded = false;
+var delivMap_ = null, delivMarkers_ = [];
+var PHARMACY_LAT = 31.0970143, PHARMACY_LNG = 30.3114289;
 
 var TYPE_INFO = {
   'مزمن': {icon:'💊', label:'مريض مزمن'},
@@ -961,6 +973,7 @@ function navigateTo(mode, tab) {
   }
   if (mode === 'delivery' && tab === 'map') {
     loadDeliveryMap();
+    setTimeout(function(){ if (delivMap_) delivMap_.invalidateSize(); }, 250);
   }
   if (mode === 'delivery' && tab === 'active') {
     loadDeliveryActive();
@@ -1454,7 +1467,11 @@ function loadDeliveryMap() {
 function renderDeliveryMap() {
   var box = document.getElementById('deliv-map-content');
   if (!delivLocations_) return;
-  if (!delivLocations_.length) { box.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">لسه مفيش مواقع عملاء متسجلة</p>'; return; }
+  if (!delivLocations_.length) {
+    box.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">لسه مفيش مواقع عملاء متسجلة</p>';
+    renderMapPins([]);
+    return;
+  }
 
   var list = delivLocations_.slice();
   if (delivSort_ === 'near') {
@@ -1463,19 +1480,74 @@ function renderDeliveryMap() {
     list.sort(function(a,b){ return new Date(b.last_order||0) - new Date(a.last_order||0); });
   }
 
+  renderMapPins(list);
+
   box.innerHTML = list.map(function(c){
     var distKm = c.distance ? (c.distance/1000).toFixed(1) + ' كم' : '—';
     var lastOrderStr = c.last_order ? fmtDate(c.last_order) : '—';
     return '<div class="deliv-loc-item">' +
       '<div><div class="deliv-loc-name">' + (c.name||'عميل') + '</div>' +
       '<div class="deliv-loc-sub"><span>📞 ' + c.phone + '</span><span>📍 ' + distKm + '</span><span>🕐 آخر طلب ' + lastOrderStr + '</span></div></div>' +
-      '<button class="btn-map" onclick="doOpenMap(' + c.lat + ',' + c.lng + ')">فتح الموقع</button>' +
+      '<button class="btn-map" onclick="focusMapOn(' + c.lat + ',' + c.lng + ')">📍 على الخريطة</button>' +
     '</div>';
   }).join('');
 }
 
-function doOpenMap(lat, lng) {
-  window.open('https://maps.google.com/?q=' + lat + ',' + lng, '_blank');
+// بيرسم/بيحدّث الخريطة والـ pins
+function renderMapPins(list) {
+  if (typeof L === 'undefined') return; // مكتبة الخرائط لسه ما اتحملتش
+  var mapEl = document.getElementById('deliv-map');
+  if (!mapEl) return;
+
+  if (!delivMap_) {
+    delivMap_ = L.map('deliv-map').setView([PHARMACY_LAT, PHARMACY_LNG], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(delivMap_);
+
+    // pin الصيدلية
+    L.marker([PHARMACY_LAT, PHARMACY_LNG], {
+      icon: L.divIcon({
+        html: '<div style="font-size:26px">🏥</div>',
+        className: 'pharmacy-pin', iconSize: [30,30], iconAnchor: [15,15]
+      })
+    }).addTo(delivMap_).bindPopup('<div class="map-pop-name">🏥 صيدلية السوسي</div>');
+  }
+
+  // امسح الـ pins القديمة
+  delivMarkers_.forEach(function(m){ delivMap_.removeLayer(m); });
+  delivMarkers_ = [];
+
+  var bounds = [[PHARMACY_LAT, PHARMACY_LNG]];
+  list.forEach(function(c){
+    if (!c.lat || !c.lng) return;
+    var distKm = c.distance ? (c.distance/1000).toFixed(1) + ' كم' : '—';
+    var popup = '<div class="map-pop-name">👤 ' + (c.name||'عميل') + '</div>' +
+      '<div class="map-pop-sub">📞 ' + c.phone + ' · 📍 ' + distKm + '</div>' +
+      '<a class="map-pop-btn" href="https://maps.google.com/?q=' + c.lat + ',' + c.lng + '" target="_blank">روح بالموقع</a>';
+    var marker = L.marker([c.lat, c.lng]).addTo(delivMap_).bindPopup(popup);
+    delivMarkers_.push(marker);
+    bounds.push([c.lat, c.lng]);
+  });
+
+  if (bounds.length > 1) {
+    try { delivMap_.fitBounds(bounds, { padding: [30,30], maxZoom: 15 }); } catch(e){}
+  }
+
+  // إصلاح مشكلة ظهور الخريطة رمادية لما تكون في تاب مخفي وقت الإنشاء
+  setTimeout(function(){ if (delivMap_) delivMap_.invalidateSize(); }, 200);
+}
+
+// دوسة "على الخريطة" في القائمة: بتزوّم على العميل وتفتح البوب اب
+function focusMapOn(lat, lng) {
+  if (!delivMap_) return;
+  document.getElementById('deliv-map').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  delivMap_.setView([lat, lng], 16);
+  delivMarkers_.forEach(function(m){
+    var ll = m.getLatLng();
+    if (Math.abs(ll.lat - lat) < 1e-6 && Math.abs(ll.lng - lng) < 1e-6) m.openPopup();
+  });
 }
 
 // ---- طلبيات جارية ----
@@ -1508,37 +1580,38 @@ function renderDeliveryActive(list) {
   }).join('');
 }
 
-// ---- كفاءة التوصيل ----
-function setDelivKPIDays(days) {
-  delivKPIDays_ = days;
-  ['7','14','30','0'].forEach(function(d) {
-    document.getElementById('dkday-' + d).classList.toggle('active', parseInt(d) === days);
-  });
-  var customPill = document.getElementById('dkday-custom');
-  customPill.classList.remove('active');
-  customPill.textContent = '⚙️ مدة أخرى';
-  document.getElementById('deliv-kpi-custom-days-box').style.display = 'none';
+// ---- كفاءة التوصيل: اليوم / من أول الشهر / تحديد فترة ----
+function setDelivKPIRange(kind) {
+  delivKPIRange_ = kind;
+  document.getElementById('dkday-today').classList.toggle('active', kind === 'today');
+  document.getElementById('dkday-month').classList.toggle('active', kind === 'month');
+  document.getElementById('dkday-range').classList.remove('active');
+  document.getElementById('deliv-kpi-range-box').style.display = 'none';
   loadDeliveryKPI();
 }
 
-function toggleDelivKPICustomDays() {
-  var box = document.getElementById('deliv-kpi-custom-days-box');
-  box.style.display = box.style.display === 'none' ? 'flex' : 'none';
-  if (box.style.display === 'flex') document.getElementById('deliv-kpi-custom-days-input').focus();
+function toggleDelivKPIRange() {
+  var box = document.getElementById('deliv-kpi-range-box');
+  var showing = box.style.display !== 'none';
+  box.style.display = showing ? 'none' : 'flex';
+  document.getElementById('dkday-today').classList.remove('active');
+  document.getElementById('dkday-month').classList.remove('active');
+  document.getElementById('dkday-range').classList.toggle('active', !showing);
+  if (!showing && !document.getElementById('deliv-kpi-to').value) {
+    var today = new Date();
+    var first = new Date(today.getFullYear(), today.getMonth(), 1);
+    document.getElementById('deliv-kpi-to').value = toLocalDateStr(today);
+    document.getElementById('deliv-kpi-from').value = toLocalDateStr(first);
+  }
 }
 
-function applyDelivKPICustomDays() {
-  var val = parseInt(document.getElementById('deliv-kpi-custom-days-input').value);
-  if (!val || val < 1) { showToast('اكتب عدد أيام صحيح'); return; }
-
-  delivKPIDays_ = val;
-  ['7','14','30','0'].forEach(function(d) {
-    document.getElementById('dkday-' + d).classList.remove('active');
-  });
-  var customPill = document.getElementById('dkday-custom');
-  customPill.classList.add('active');
-  customPill.textContent = '⚙️ آخر ' + val + ' يوم';
-  document.getElementById('deliv-kpi-custom-days-box').style.display = 'none';
+function applyDelivKPIRange() {
+  var from = document.getElementById('deliv-kpi-from').value;
+  var to = document.getElementById('deliv-kpi-to').value;
+  if (!from || !to) { showToast('اختار الفترة من وإلى'); return; }
+  delivKPIRange_ = 'range';
+  delivKPIFrom_ = from;
+  delivKPITo_ = to;
   loadDeliveryKPI();
 }
 
@@ -1546,7 +1619,15 @@ function loadDeliveryKPI() {
   var box = document.getElementById('deliv-kpi-content');
   if (!delivReady()) { box.innerHTML = delivNotConfiguredHTML(); return; }
   box.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
-  fetch(DELIVERY_SCRIPT_URL + '?action=getKPI&days=' + delivKPIDays_)
+
+  var url = DELIVERY_SCRIPT_URL + '?action=getKPI';
+  if (delivKPIRange_ === 'range' && delivKPIFrom_ && delivKPITo_) {
+    url += '&from=' + delivKPIFrom_ + '&to=' + delivKPITo_;
+  } else {
+    url += '&range=' + delivKPIRange_; // today | month
+  }
+
+  fetch(url)
     .then(function(r){ return r.json(); })
     .then(function(d){ delivKPILoaded = true; renderDeliveryKPI(d); })
     .catch(function(){ box.innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اضغط 🔄</p></div>'; });

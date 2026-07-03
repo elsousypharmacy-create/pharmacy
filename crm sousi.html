@@ -258,6 +258,25 @@
   .sidebar-group-title:first-of-type { margin-top: 0; }
   .sidebar-item { display: block; width: 100%; text-align: right; background: transparent; border: none; color: rgba(255,255,255,0.65); border-radius: 8px; padding: 11px 12px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; margin-bottom: 4px; }
   .sidebar-item.active { background: #38BDF8; color: #fff; }
+
+  /* DELIVERY */
+  .deliv-wrap { padding: 12px; }
+  .deliv-sort-row { display: flex; gap: 6px; margin-bottom: 12px; }
+  .deliv-sort-btn { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.55); border-radius: 8px; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .deliv-sort-btn.active { background: rgba(56,189,248,0.15); border-color: #38BDF8; color: #38BDF8; }
+  .deliv-loc-item { background: #1A2F4A; border: 1px solid #1e3a4a; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .deliv-loc-name { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+  .deliv-loc-sub { font-size: 11px; color: #64748b; margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-map { background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.4); color: #38BDF8; border-radius: 8px; padding: 8px 12px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
+  .deliv-active-item { background: #1A2F4A; border-radius: 10px; padding: 12px; margin-bottom: 8px; border-right: 3px solid #38BDF8; }
+  .deliv-active-item.warn { border-right-color: #FBBF24; }
+  .deliv-active-item.late { border-right-color: #F87171; }
+  .deliv-active-top { display: flex; justify-content: space-between; align-items: center; }
+  .deliv-active-name { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+  .deliv-active-time { font-size: 12px; font-weight: 800; }
+  .deliv-active-sub { font-size: 11px; color: #64748b; margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .deliv-active-btns { display: flex; gap: 8px; margin-top: 8px; }
+  .deliv-active-btns button { flex: 1; background: #1A2E6E; color: #fff; border: none; border-radius: 8px; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
 </style>
 </head>
 <body>
@@ -280,6 +299,11 @@
   <button class="sidebar-item" id="side-short-orders" onclick="navigateTo('shortages','orders')">📦 الطلبيات المعلقة</button>
   <button class="sidebar-item" id="side-short-discontinued" onclick="navigateTo('shortages','discontinued')">🚫 أصناف مقطوعة</button>
   <button class="sidebar-item" id="side-short-kpi" onclick="navigateTo('shortages','kpi')">📈 كفاءة الطلبات</button>
+
+  <div class="sidebar-group-title">الدليفري</div>
+  <button class="sidebar-item" id="side-deliv-map" onclick="navigateTo('delivery','map')">🗺️ مواقع العملاء</button>
+  <button class="sidebar-item" id="side-deliv-active" onclick="navigateTo('delivery','active')">📦 طلبيات جارية</button>
+  <button class="sidebar-item" id="side-deliv-kpi" onclick="navigateTo('delivery','kpi')">📊 كفاءة التوصيل</button>
 </div>
 
 <div class="header">
@@ -404,6 +428,41 @@
   </div>
 </div>
 
+<div id="deliv-map-section" class="deliv-wrap" style="display:none">
+  <div class="dash-panel-title">🗺️ مواقع العملاء المحفوظة</div>
+  <div class="deliv-sort-row">
+    <div class="deliv-sort-btn active" id="dsort-recent" onclick="setDelivSort('recent')">🕐 الأحدث طلب</div>
+    <div class="deliv-sort-btn" id="dsort-near" onclick="setDelivSort('near')">📍 الأقرب للصيدلية</div>
+  </div>
+  <div id="deliv-map-content">
+    <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
+  </div>
+</div>
+
+<div id="deliv-active-section" class="deliv-wrap" style="display:none">
+  <div class="dash-panel-title">📦 الطلبيات الجارية دلوقتي</div>
+  <div id="deliv-active-content">
+    <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
+  </div>
+</div>
+
+<div id="deliv-kpi-section" class="deliv-wrap" style="display:none">
+  <div class="days-row">
+    <div class="day-pill active" id="dkday-7" onclick="setDelivKPIDays(7)">آخر 7 أيام</div>
+    <div class="day-pill" id="dkday-14" onclick="setDelivKPIDays(14)">آخر 14 يوم</div>
+    <div class="day-pill" id="dkday-30" onclick="setDelivKPIDays(30)">آخر 30 يوم</div>
+    <div class="day-pill" id="dkday-0" onclick="setDelivKPIDays(0)">كل الوقت</div>
+    <div class="day-pill" id="dkday-custom" onclick="toggleDelivKPICustomDays()">⚙️ مدة أخرى</div>
+  </div>
+  <div class="custom-days-box" id="deliv-kpi-custom-days-box" style="display:none">
+    <input type="number" id="deliv-kpi-custom-days-input" min="1" placeholder="عدد الأيام">
+    <button onclick="applyDelivKPICustomDays()">تطبيق</button>
+  </div>
+  <div id="deliv-kpi-content">
+    <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
+  </div>
+</div>
+
 <!-- LOG MODAL -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
@@ -493,14 +552,16 @@
 <script>
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7ctTVJjckmbTxegDq7E3R3p6aEBzqt275HNL8SBfWg/exec';
 var SHORTAGE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyKMrAmkZ9Ipjgy59Kak2nUT0YsW0xfTWVjypo8J1Izaiof-qky7p2-Ebugx--HWjGK8A/exec';
+var DELIVERY_SCRIPT_URL = 'PUT_DELIVERY_WEBAPP_URL_HERE'; // رابط الويب أب بتاع كود الدليفري بعد النشر
 var allCustomers = [], histories = {}, openPhone = '';
 var filterCls_ = 'S', filterStatus_ = 'alert', searchStr_ = '';
 var logPhone = '', logName = '', currentView = 'mob';
-var currentMode = 'crm', crmTab = 'customers', shortTab = 'list', dashLoaded = false;
+var currentMode = 'crm', crmTab = 'customers', shortTab = 'list', delivTab = 'map', dashLoaded = false;
 var shortDays_ = 7, shortStock_ = 'zero';
 var lastKPIData = null;
 var kpiDays_ = 7;
 var shortListData = null, shortKPILoaded = false;
+var delivSort_ = 'recent', delivKPIDays_ = 7, delivLocations_ = null, delivKPILoaded = false;
 
 var TYPE_INFO = {
   'مزمن': {icon:'💊', label:'مريض مزمن'},
@@ -837,7 +898,10 @@ var VIEW_LABELS = {
   'shortages:list': '📦 قائمة النواقص',
   'shortages:orders': '📦 الطلبيات المعلقة',
   'shortages:discontinued': '🚫 أصناف مقطوعة',
-  'shortages:kpi': '📈 كفاءة الطلبات'
+  'shortages:kpi': '📈 كفاءة الطلبات',
+  'delivery:map': '🗺️ مواقع العملاء',
+  'delivery:active': '📦 طلبيات جارية',
+  'delivery:kpi': '📊 كفاءة التوصيل'
 };
 
 function openSidebar() {
@@ -852,17 +916,20 @@ function closeSidebar() {
 
 function navigateTo(mode, tab) {
   currentMode = mode;
-  if (mode === 'crm') { crmTab = tab; } else { shortTab = tab; }
+  if (mode === 'crm') { crmTab = tab; }
+  else if (mode === 'shortages') { shortTab = tab; }
+  else { delivTab = tab; }
 
   document.getElementById('current-view-label').textContent = VIEW_LABELS[mode + ':' + tab];
 
-  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi'].forEach(function(id){
+  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi'].forEach(function(id){
     document.getElementById(id).classList.remove('active');
   });
   var shortActiveMap = { list: 'side-short-list', orders: 'side-short-orders', discontinued: 'side-short-discontinued', kpi: 'side-short-kpi' };
+  var delivActiveMap = { map: 'side-deliv-map', active: 'side-deliv-active', kpi: 'side-deliv-kpi' };
   var activeId = mode === 'crm'
     ? (tab === 'customers' ? 'side-customers' : 'side-dashboard')
-    : shortActiveMap[tab];
+    : mode === 'shortages' ? shortActiveMap[tab] : delivActiveMap[tab];
   document.getElementById(activeId).classList.add('active');
 
   document.getElementById('customers-controls').style.display = (mode === 'crm' && tab === 'customers') ? 'block' : 'none';
@@ -872,6 +939,9 @@ function navigateTo(mode, tab) {
   document.getElementById('short-orders-section').style.display = (mode === 'shortages' && tab === 'orders') ? 'block' : 'none';
   document.getElementById('short-discontinued-section').style.display = (mode === 'shortages' && tab === 'discontinued') ? 'block' : 'none';
   document.getElementById('short-kpi-section').style.display = (mode === 'shortages' && tab === 'kpi') ? 'block' : 'none';
+  document.getElementById('deliv-map-section').style.display = (mode === 'delivery' && tab === 'map') ? 'block' : 'none';
+  document.getElementById('deliv-active-section').style.display = (mode === 'delivery' && tab === 'active') ? 'block' : 'none';
+  document.getElementById('deliv-kpi-section').style.display = (mode === 'delivery' && tab === 'kpi') ? 'block' : 'none';
 
   if (mode === 'crm' && tab === 'dashboard' && !dashLoaded) {
     initDashboardDates();
@@ -889,6 +959,15 @@ function navigateTo(mode, tab) {
   if (mode === 'shortages' && tab === 'kpi' && !shortKPILoaded) {
     loadShortKPI();
   }
+  if (mode === 'delivery' && tab === 'map') {
+    loadDeliveryMap();
+  }
+  if (mode === 'delivery' && tab === 'active') {
+    loadDeliveryActive();
+  }
+  if (mode === 'delivery' && tab === 'kpi' && !delivKPILoaded) {
+    loadDeliveryKPI();
+  }
 
   closeSidebar();
 }
@@ -896,11 +975,15 @@ function navigateTo(mode, tab) {
 function refreshCurrentTab() {
   if (currentMode === 'crm') {
     if (crmTab === 'dashboard') { loadDashboard(); } else { loadData(); }
-  } else {
+  } else if (currentMode === 'shortages') {
     if (shortTab === 'kpi') { loadShortKPI(); }
     else if (shortTab === 'orders') { loadShortOrders(); }
     else if (shortTab === 'discontinued') { loadDiscontinued(); }
     else { loadShortages(); }
+  } else if (currentMode === 'delivery') {
+    if (delivTab === 'kpi') { loadDeliveryKPI(); }
+    else if (delivTab === 'active') { loadDeliveryActive(); }
+    else { loadDeliveryMap(); }
   }
 }
 
@@ -1336,6 +1419,176 @@ function toggleKPIList(type) {
 
   el.innerHTML = html;
   el.dataset.open = type;
+}
+
+// ===== DELIVERY =====
+function delivReady() {
+  if (!DELIVERY_SCRIPT_URL || DELIVERY_SCRIPT_URL.indexOf('http') !== 0) return false;
+  return true;
+}
+function delivNotConfiguredHTML() {
+  return '<div class="loading"><p style="color:#F87171">لازم تحط رابط ويب أب سكريبت الدليفري في المتغير DELIVERY_SCRIPT_URL</p></div>';
+}
+
+// ---- مواقع العملاء ----
+function setDelivSort(kind) {
+  delivSort_ = kind;
+  document.getElementById('dsort-recent').classList.toggle('active', kind === 'recent');
+  document.getElementById('dsort-near').classList.toggle('active', kind === 'near');
+  renderDeliveryMap();
+}
+
+function loadDeliveryMap() {
+  var box = document.getElementById('deliv-map-content');
+  if (!delivReady()) { box.innerHTML = delivNotConfiguredHTML(); return; }
+  box.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+  fetch(DELIVERY_SCRIPT_URL + '?action=getLocations')
+    .then(function(r){ return r.json(); })
+    .then(function(list){
+      delivLocations_ = Array.isArray(list) ? list : [];
+      renderDeliveryMap();
+    })
+    .catch(function(){ box.innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اضغط 🔄</p></div>'; });
+}
+
+function renderDeliveryMap() {
+  var box = document.getElementById('deliv-map-content');
+  if (!delivLocations_) return;
+  if (!delivLocations_.length) { box.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">لسه مفيش مواقع عملاء متسجلة</p>'; return; }
+
+  var list = delivLocations_.slice();
+  if (delivSort_ === 'near') {
+    list.sort(function(a,b){ return (a.distance||0) - (b.distance||0); });
+  } else {
+    list.sort(function(a,b){ return new Date(b.last_order||0) - new Date(a.last_order||0); });
+  }
+
+  box.innerHTML = list.map(function(c){
+    var distKm = c.distance ? (c.distance/1000).toFixed(1) + ' كم' : '—';
+    var lastOrderStr = c.last_order ? fmtDate(c.last_order) : '—';
+    return '<div class="deliv-loc-item">' +
+      '<div><div class="deliv-loc-name">' + (c.name||'عميل') + '</div>' +
+      '<div class="deliv-loc-sub"><span>📞 ' + c.phone + '</span><span>📍 ' + distKm + '</span><span>🕐 آخر طلب ' + lastOrderStr + '</span></div></div>' +
+      '<button class="btn-map" onclick="doOpenMap(' + c.lat + ',' + c.lng + ')">فتح الموقع</button>' +
+    '</div>';
+  }).join('');
+}
+
+function doOpenMap(lat, lng) {
+  window.open('https://maps.google.com/?q=' + lat + ',' + lng, '_blank');
+}
+
+// ---- طلبيات جارية ----
+function loadDeliveryActive() {
+  var box = document.getElementById('deliv-active-content');
+  if (!delivReady()) { box.innerHTML = delivNotConfiguredHTML(); return; }
+  box.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+  fetch(DELIVERY_SCRIPT_URL + '?action=getActiveOrders')
+    .then(function(r){ return r.json(); })
+    .then(function(list){ renderDeliveryActive(Array.isArray(list) ? list : []); })
+    .catch(function(){ box.innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اضغط 🔄</p></div>'; });
+}
+
+function renderDeliveryActive(list) {
+  var box = document.getElementById('deliv-active-content');
+  if (!list.length) { box.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">مفيش طلبيات جارية دلوقتي ✅</p>'; return; }
+
+  box.innerHTML = list.map(function(o){
+    var mins = o.elapsedMinutes || 0;
+    var stateClass = mins > 35 ? 'late' : (mins > 20 ? 'warn' : '');
+    var timeColor = mins > 35 ? '#F87171' : (mins > 20 ? '#FBBF24' : '#34D399');
+    return '<div class="deliv-active-item ' + stateClass + '">' +
+      '<div class="deliv-active-top">' +
+        '<div class="deliv-active-name">👤 ' + o.customername + '</div>' +
+        '<div class="deliv-active-time" style="color:' + timeColor + '">⏱️ ' + mins + ' دقيقة</div>' +
+      '</div>' +
+      '<div class="deliv-active-sub"><span>💰 ' + Number(o.grandtotal||0).toLocaleString() + ' ج</span><span>' + (o.hasLocation ? '📍 موقعه محفوظ' : '📍 موقع غير محفوظ') + '</span></div>' +
+      '<div class="deliv-active-btns"><button onclick="window.open(\'tel:0' + o.customerphone + '\')">📞 اتصال بالعميل</button></div>' +
+    '</div>';
+  }).join('');
+}
+
+// ---- كفاءة التوصيل ----
+function setDelivKPIDays(days) {
+  delivKPIDays_ = days;
+  ['7','14','30','0'].forEach(function(d) {
+    document.getElementById('dkday-' + d).classList.toggle('active', parseInt(d) === days);
+  });
+  var customPill = document.getElementById('dkday-custom');
+  customPill.classList.remove('active');
+  customPill.textContent = '⚙️ مدة أخرى';
+  document.getElementById('deliv-kpi-custom-days-box').style.display = 'none';
+  loadDeliveryKPI();
+}
+
+function toggleDelivKPICustomDays() {
+  var box = document.getElementById('deliv-kpi-custom-days-box');
+  box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+  if (box.style.display === 'flex') document.getElementById('deliv-kpi-custom-days-input').focus();
+}
+
+function applyDelivKPICustomDays() {
+  var val = parseInt(document.getElementById('deliv-kpi-custom-days-input').value);
+  if (!val || val < 1) { showToast('اكتب عدد أيام صحيح'); return; }
+
+  delivKPIDays_ = val;
+  ['7','14','30','0'].forEach(function(d) {
+    document.getElementById('dkday-' + d).classList.remove('active');
+  });
+  var customPill = document.getElementById('dkday-custom');
+  customPill.classList.add('active');
+  customPill.textContent = '⚙️ آخر ' + val + ' يوم';
+  document.getElementById('deliv-kpi-custom-days-box').style.display = 'none';
+  loadDeliveryKPI();
+}
+
+function loadDeliveryKPI() {
+  var box = document.getElementById('deliv-kpi-content');
+  if (!delivReady()) { box.innerHTML = delivNotConfiguredHTML(); return; }
+  box.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+  fetch(DELIVERY_SCRIPT_URL + '?action=getKPI&days=' + delivKPIDays_)
+    .then(function(r){ return r.json(); })
+    .then(function(d){ delivKPILoaded = true; renderDeliveryKPI(d); })
+    .catch(function(){ box.innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اضغط 🔄</p></div>'; });
+}
+
+function renderDeliveryKPI(d) {
+  var box = document.getElementById('deliv-kpi-content');
+  if (!d || !d.total) {
+    box.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">مفيش طلبيات مكتملة في الفترة دي</p>';
+    return;
+  }
+
+  var html = '';
+  html += '<div class="dash-panel"><div class="dash-panel-title">📦 نظرة عامة — ' + (d.label||'') + '</div>';
+  html += '<div class="dash-grid">';
+  html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + d.total + '</div><div class="dl">إجمالي الطلبيات</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#FBBF24">' + d.totalValue.toLocaleString() + ' ج</div><div class="dl">إجمالي القيمة</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + d.avgDuration + ' د</div><div class="dl">متوسط مدة التوصيل</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + d.inRangePct + '%</div><div class="dl">دقة الموقع<div class="ds2">' + d.inRange + ' في النطاق / ' + d.outRange + ' خارجه</div></div></div>';
+  html += '</div></div>';
+
+  html += '<div class="dash-panel"><div class="dash-panel-title">⏱️ الوقت</div><div class="dash-card">';
+  html += '<div class="dash-comm-row"><span>أسرع توصيل</span><span>' + (d.minDuration||'—') + ' دقيقة</span></div>';
+  html += '<div class="dash-comm-row"><span>أبطأ توصيل</span><span>' + d.maxDuration + ' دقيقة</span></div>';
+  html += '<div class="dash-comm-row"><span>أكتر وقت طلبيات</span><span>' + (d.topHour!==null && d.topHour!==undefined ? d.topHour + ':00' : '—') + '</span></div>';
+  html += '<div class="dash-comm-row"><span>أكتر يوم</span><span>' + (d.topDay||'—') + '</span></div>';
+  html += '</div></div>';
+
+  html += '<div class="dash-panel"><div class="dash-panel-title">👥 العملاء</div><div class="dash-card">';
+  html += '<div class="dash-comm-row"><span>عملاء جدد</span><span>' + d.newClients + '</span></div>';
+  html += '<div class="dash-comm-row"><span>عملاء متكررين</span><span>' + d.repeatClients + '</span></div>';
+  html += '</div></div>';
+
+  if (d.top10 && d.top10.length) {
+    html += '<div class="dash-panel"><div class="dash-panel-title">🏆 Top 10 عملاء</div>';
+    d.top10.forEach(function(c, i){
+      html += '<div class="dash-comm-row"><span>' + (i+1) + '. ' + c.name + '</span><span>' + c.count + ' مرات — ' + Math.round(c.value).toLocaleString() + ' ج</span></div>';
+    });
+    html += '</div>';
+  }
+
+  box.innerHTML = html;
 }
 
 // ===== DASHBOARD =====

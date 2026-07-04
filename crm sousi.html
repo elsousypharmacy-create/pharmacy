@@ -278,6 +278,7 @@
   .deliv-active-btns { display: flex; gap: 8px; margin-top: 8px; }
   .deliv-active-btns button { flex: 1; background: #1A2E6E; color: #fff; border: none; border-radius: 8px; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
   #deliv-map { width: 100%; height: 340px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #1e3a4a; background: #0F1E2E; z-index: 1; }
+  .leaflet-control-zoom a { width: 40px !important; height: 40px !important; line-height: 40px !important; font-size: 22px !important; }
   .leaflet-popup-content-wrapper { background: #1A2F4A; color: #e2e8f0; border-radius: 10px; }
   .leaflet-popup-tip { background: #1A2F4A; }
   .leaflet-popup-content { margin: 10px 12px; font-family: 'Tajawal', sans-serif; direction: rtl; text-align: right; }
@@ -359,11 +360,11 @@
     <input class="search-input" type="text" placeholder="🔍 ابحث باسم أو رقم..." oninput="search(this.value)">
   </div>
   <div class="status-filters">
-    <div class="status-pill active" id="f-alert" onclick="filterStatus('alert')"><div class="sdot" style="background:#F87171"></div><div class="slbl">تنبيه</div><div class="scnt" id="scnt-alert">0</div></div>
+    <div class="status-pill" id="f-alert" onclick="filterStatus('alert')"><div class="sdot" style="background:#F87171"></div><div class="slbl">تنبيه</div><div class="scnt" id="scnt-alert">0</div></div>
     <div class="status-pill" id="f-pending" onclick="filterStatus('pending')"><div class="sdot" style="background:#38BDF8"></div><div class="slbl">قيد المتابعة</div><div class="scnt" id="scnt-pending">0</div></div>
     <div class="status-pill" id="f-failed" onclick="filterStatus('failed')"><div class="sdot" style="background:#94A3B8"></div><div class="slbl">فشلت</div><div class="scnt" id="scnt-failed">0</div></div>
     <div class="status-pill" id="f-active" onclick="filterStatus('active')"><div class="sdot" style="background:#34D399"></div><div class="slbl">نشط</div><div class="scnt" id="scnt-active">0</div></div>
-    <div class="status-pill" id="f-all" onclick="filterStatus('all')"><div class="sdot" style="background:#94A3B8"></div><div class="slbl">الكل</div><div class="scnt" id="scnt-all">0</div></div>
+    <div class="status-pill active" id="f-all" onclick="filterStatus('all')"><div class="sdot" style="background:#94A3B8"></div><div class="slbl">الكل</div><div class="scnt" id="scnt-all">0</div></div>
   </div>
   </div>
 </div>
@@ -446,7 +447,20 @@
 </div>
 
 <div id="deliv-map-section" class="deliv-wrap" style="display:none">
-  <div class="dash-panel-title">🗺️ مواقع العملاء المحفوظة</div>
+  <div class="dash-panel-title">🗺️ خريطة الطلبات — تغطية المناطق</div>
+  <div class="days-row">
+    <div class="day-pill" id="dmap-today" onclick="setDelivMapRange('today')">📅 اليوم</div>
+    <div class="day-pill" id="dmap-month" onclick="setDelivMapRange('month')">🗓️ الشهر</div>
+    <div class="day-pill active" id="dmap-all" onclick="setDelivMapRange('all')">📊 الكل</div>
+    <div class="day-pill" id="dmap-range" onclick="toggleDelivMapRange()">⚙️ فترة</div>
+  </div>
+  <div class="dash-range" id="deliv-map-range-box" style="display:none">
+    <input type="date" id="deliv-map-from">
+    <span style="color:#64748b;font-size:11px">إلى</span>
+    <input type="date" id="deliv-map-to">
+    <button onclick="applyDelivMapRange()">تطبيق</button>
+  </div>
+  <div id="deliv-map-stats" style="font-size:12px;color:#94a3b8;margin-bottom:8px"></div>
   <input class="search-input" id="deliv-map-search" type="text" placeholder="🔍 دور على عميل بالاسم أو الرقم..." oninput="searchDelivMap(this.value)" style="margin-bottom:10px;width:100%">
   <div id="deliv-map-search-results"></div>
   <div id="deliv-map"></div>
@@ -574,7 +588,7 @@ var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKH
 var SHORTAGE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyKMrAmkZ9Ipjgy59Kak2nUT0YsW0xfTWVjypo8J1Izaiof-qky7p2-Ebugx--HWjGK8A/exec';
 var DELIVERY_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyVCXe3o3lvt_nZ5l_SihDaBz9xr7CMVl3jcyzZ9U00a-rdVcjwQ66_3k_jYjwHdLVM6g/exec';
 var allCustomers = [], histories = {}, openPhone = '';
-var filterCls_ = 'S', filterStatus_ = 'alert', searchStr_ = '';
+var filterCls_ = '', filterStatus_ = 'all', searchStr_ = '';
 var logPhone = '', logName = '', currentView = 'mob';
 var currentMode = 'crm', crmTab = 'customers', shortTab = 'list', delivTab = 'map', dashLoaded = false;
 var shortDays_ = 7, shortStock_ = 'zero';
@@ -582,8 +596,10 @@ var lastKPIData = null;
 var kpiDays_ = 7;
 var shortListData = null, shortKPILoaded = false;
 var delivSort_ = 'recent', delivKPIRange_ = 'today', delivKPIFrom_ = '', delivKPITo_ = '', delivLocations_ = null, delivKPILoaded = false;
-var delivMap_ = null, delivMarkers_ = [], delivCluster_ = null;
+var delivMap_ = null, delivMarkers_ = [], delivCluster_ = null, delivRangeCircle_ = null;
+var delivMapRange_ = 'all', delivMapFrom_ = '', delivMapTo_ = '', delivOrders_ = null;
 var PHARMACY_LAT = 31.0970143, PHARMACY_LNG = 30.3114289;
+var DELIVERY_RADIUS_KM = 5;
 
 var TYPE_INFO = {
   'مزمن': {icon:'💊', label:'مريض مزمن'},
@@ -612,8 +628,11 @@ function getAction(cls, alert, type, status) {
   return {cls:'act-passive', title:'🔄 استرجاع', desc:'واتساب كوبون — لو ما ردش تجاهل'};
 }
 
-function loadData() {
-  document.getElementById('list').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+function loadData(keepScroll) {
+  var savedScroll = keepScroll ? (window.pageYOffset || document.documentElement.scrollTop) : 0;
+  if (!keepScroll) {
+    document.getElementById('list').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+  }
   fetch(SCRIPT_URL + '?action=getCustomers')
     .then(function(r){ return r.json(); })
     .then(function(data){
@@ -623,10 +642,15 @@ function loadData() {
       updateCounts();
       renderList();
       document.getElementById('last-sync').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar-EG');
-      showToast('تم تحميل ' + allCustomers.length + ' عميل');
+      if (keepScroll) {
+        // رجّع الصفحة لمكانها بعد إعادة الرسم بدل ما تقفز لفوق
+        requestAnimationFrame(function(){ window.scrollTo(0, savedScroll); });
+      } else {
+        showToast('تم تحميل ' + allCustomers.length + ' عميل');
+      }
     })
     .catch(function(){
-      document.getElementById('list').innerHTML = '<div class="loading"><p style="color:#F87171">خطأ — اضغط 🔄</p></div>';
+      if (!keepScroll) document.getElementById('list').innerHTML = '<div class="loading"><p style="color:#F87171">خطأ — اضغط 🔄</p></div>';
     });
 }
 
@@ -997,7 +1021,7 @@ function navigateTo(mode, tab) {
 
 function refreshCurrentTab() {
   if (currentMode === 'crm') {
-    if (crmTab === 'dashboard') { loadDashboard(); } else { loadData(); }
+    if (crmTab === 'dashboard') { loadDashboard(); } else { loadData(true); }
   } else if (currentMode === 'shortages') {
     if (shortTab === 'kpi') { loadShortKPI(); }
     else if (shortTab === 'orders') { loadShortOrders(); }
@@ -1454,6 +1478,80 @@ function delivNotConfiguredHTML() {
 }
 
 // ---- مواقع العملاء ----
+// ---- فلتر مدة الخريطة ----
+function setDelivMapRange(kind) {
+  delivMapRange_ = kind;
+  ['today','month','all'].forEach(function(k){
+    document.getElementById('dmap-' + k).classList.toggle('active', k === kind);
+  });
+  document.getElementById('dmap-range').classList.remove('active');
+  document.getElementById('deliv-map-range-box').style.display = 'none';
+  loadDeliveryMap();
+}
+
+function toggleDelivMapRange() {
+  var box = document.getElementById('deliv-map-range-box');
+  var showing = box.style.display !== 'none';
+  box.style.display = showing ? 'none' : 'flex';
+  ['today','month','all'].forEach(function(k){ document.getElementById('dmap-' + k).classList.remove('active'); });
+  document.getElementById('dmap-range').classList.toggle('active', !showing);
+  if (!showing && !document.getElementById('deliv-map-to').value) {
+    var today = new Date();
+    var first = new Date(today.getFullYear(), today.getMonth(), 1);
+    document.getElementById('deliv-map-to').value = toLocalDateStr(today);
+    document.getElementById('deliv-map-from').value = toLocalDateStr(first);
+  }
+}
+
+function applyDelivMapRange() {
+  var from = document.getElementById('deliv-map-from').value;
+  var to = document.getElementById('deliv-map-to').value;
+  if (!from || !to) { showToast('اختار الفترة من وإلى'); return; }
+  delivMapRange_ = 'range';
+  delivMapFrom_ = from;
+  delivMapTo_ = to;
+  loadDeliveryMap();
+}
+
+function loadDeliveryMap() {
+  var box = document.getElementById('deliv-map-content');
+  if (!delivReady()) { box.innerHTML = delivNotConfiguredHTML(); return; }
+  box.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+
+  var ordersUrl = DELIVERY_SCRIPT_URL + '?action=getOrdersMap';
+  if (delivMapRange_ === 'range' && delivMapFrom_ && delivMapTo_) {
+    ordersUrl += '&from=' + delivMapFrom_ + '&to=' + delivMapTo_;
+  } else {
+    ordersUrl += '&range=' + delivMapRange_;
+  }
+
+  // نحمّل الطلبات (للخريطة) ومواقع العملاء (للقائمة والبحث) مع بعض
+  Promise.all([
+    fetch(ordersUrl).then(function(r){ return r.json(); }),
+    fetch(DELIVERY_SCRIPT_URL + '?action=getLocations').then(function(r){ return r.json(); })
+  ]).then(function(res){
+    var ordersData = res[0] || {};
+    delivOrders_ = Array.isArray(ordersData.orders) ? ordersData.orders : [];
+    delivLocations_ = Array.isArray(res[1]) ? res[1] : [];
+    updateMapStats(ordersData.label || '');
+    renderDeliveryMap();
+  }).catch(function(){
+    box.innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اضغط 🔄</p></div>';
+  });
+}
+
+// إحصائية سريعة فوق الخريطة: كام طلب، كام جوّا النطاق وكام برّه
+function updateMapStats(label) {
+  var el = document.getElementById('deliv-map-stats');
+  if (!el || !delivOrders_) return;
+  var total = delivOrders_.length;
+  var inR = delivOrders_.filter(function(o){ return o.inRange5km; }).length;
+  var out = total - inR;
+  el.innerHTML = '📦 <b style="color:#38BDF8">' + total + '</b> طلب (' + label + ') · ' +
+    '🎯 جوّا ' + DELIVERY_RADIUS_KM + 'كم: <b style="color:#34D399">' + inR + '</b> · ' +
+    '🚗 برّه: <b style="color:#FBBF24">' + out + '</b>';
+}
+
 function setDelivSort(kind) {
   delivSort_ = kind;
   document.getElementById('dsort-recent').classList.toggle('active', kind === 'recent');
@@ -1461,25 +1559,15 @@ function setDelivSort(kind) {
   renderDeliveryMap();
 }
 
-function loadDeliveryMap() {
-  var box = document.getElementById('deliv-map-content');
-  if (!delivReady()) { box.innerHTML = delivNotConfiguredHTML(); return; }
-  box.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
-  fetch(DELIVERY_SCRIPT_URL + '?action=getLocations')
-    .then(function(r){ return r.json(); })
-    .then(function(list){
-      delivLocations_ = Array.isArray(list) ? list : [];
-      renderDeliveryMap();
-    })
-    .catch(function(){ box.innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اضغط 🔄</p></div>'; });
-}
-
 function renderDeliveryMap() {
   var box = document.getElementById('deliv-map-content');
+
+  // الخريطة بترسم الطلبات (لو موجودة) عشان توري تغطية المناطق
+  renderMapPins(delivOrders_ || []);
+
   if (!delivLocations_) return;
   if (!delivLocations_.length) {
     box.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">لسه مفيش مواقع عملاء متسجلة</p>';
-    renderMapPins([]);
     return;
   }
 
@@ -1489,8 +1577,6 @@ function renderDeliveryMap() {
   } else {
     list.sort(function(a,b){ return new Date(b.last_order||0) - new Date(a.last_order||0); });
   }
-
-  renderMapPins(list);
 
   box.innerHTML = list.map(function(c){
     var distKm = c.distance ? (c.distance/1000).toFixed(1) + ' كم' : '—';
@@ -1524,6 +1610,12 @@ function renderMapPins(list) {
         className: 'pharmacy-pin', iconSize: [30,30], iconAnchor: [15,15]
       })
     }).addTo(delivMap_).bindPopup('<div class="map-pop-name">🏥 صيدلية السوسي</div>');
+
+    // دائرة نطاق التوصيل 5 كم حوالين الصيدلية
+    delivRangeCircle_ = L.circle([PHARMACY_LAT, PHARMACY_LNG], {
+      radius: DELIVERY_RADIUS_KM * 1000,
+      color: '#38BDF8', weight: 2, fillColor: '#38BDF8', fillOpacity: 0.07
+    }).addTo(delivMap_).bindPopup('<div class="map-pop-name">🎯 نطاق التوصيل ' + DELIVERY_RADIUS_KM + ' كم</div>');
   }
 
   // طبقة التجميع — لو المكتبة موجودة نستخدمها، لو لأ نرجع للطريقة العادية
@@ -1542,11 +1634,19 @@ function renderMapPins(list) {
   list.forEach(function(c){
     if (!c.lat || !c.lng) return;
     var distKm = c.distance ? (c.distance/1000).toFixed(1) + ' كم' : '—';
-    var ordersLine = c.orders_count ? ' · 📦 ' + c.orders_count + ' طلب' : '';
+    var inRange = c.inRange5km !== undefined ? c.inRange5km : (c.distance ? c.distance <= DELIVERY_RADIUS_KM*1000 : false);
+    var valLine = c.value ? ' · 💰 ' + Number(c.value).toLocaleString() + ' ج' : '';
+    var timeLine = c.time ? '<div class="map-pop-sub">🕐 ' + fmtDate(c.time) + '</div>' : '';
     var popup = '<div class="map-pop-name">👤 ' + (c.name||'عميل') + '</div>' +
-      '<div class="map-pop-sub">📞 ' + c.phone + ' · 📍 ' + distKm + ordersLine + '</div>' +
+      '<div class="map-pop-sub">📞 ' + c.phone + ' · 📍 ' + distKm + valLine + '</div>' +
+      timeLine +
       '<a class="map-pop-btn" href="https://maps.google.com/?q=' + c.lat + ',' + c.lng + '" target="_blank">روح بالموقع</a>';
-    var marker = L.marker([c.lat, c.lng]).bindPopup(popup);
+
+    // نقطة ملونة: أخضر لو جوّا النطاق، أصفر لو برّه
+    var color = inRange ? '#34D399' : '#FBBF24';
+    var marker = L.circleMarker([c.lat, c.lng], {
+      radius: 7, color: color, weight: 2, fillColor: color, fillOpacity: 0.7
+    }).bindPopup(popup);
     marker._phone = String(c.phone);
     if (delivCluster_) { delivCluster_.addLayer(marker); }
     else { marker.addTo(delivMap_); }
@@ -1556,6 +1656,9 @@ function renderMapPins(list) {
 
   if (bounds.length > 1) {
     try { delivMap_.fitBounds(bounds, { padding: [30,30], maxZoom: 15 }); } catch(e){}
+  } else {
+    // مفيش طلبات — نركّز على الصيدلية ونطاقها
+    delivMap_.setView([PHARMACY_LAT, PHARMACY_LNG], 13);
   }
 
   setTimeout(function(){ if (delivMap_) delivMap_.invalidateSize(); }, 200);
@@ -1916,7 +2019,6 @@ function triggerPullRefresh() {
 }
 
 loadData();
-document.getElementById('pill-S').classList.add('active');
 </script>
 </body>
 </html>

@@ -1936,6 +1936,24 @@ function renderStaffCare(d) {
   var emps = d.employees;
   var html = '';
 
+  // ===== إجمالي الصيدلية (كل الموظفين مع بعض) =====
+  var totInv = 0, totSales = 0, totNet = 0, totReturns = 0, totReturnsVal = 0;
+  emps.forEach(function(s){
+    totInv += s.invoices;
+    totSales += s.sales;
+    totNet += s.net;
+    totReturns += s.returns;
+    totReturnsVal += s.returns_val;
+  });
+
+  html += '<div class="dash-panel"><div class="dash-panel-title">🏪 إجمالي الصيدلية — ' + (d.label||'') + '</div>';
+  html += '<div class="dash-grid">';
+  html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + totInv + '</div><div class="dl">إجمالي الفواتير</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + totSales.toLocaleString() + '</div><div class="dl">إجمالي البيع (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + totReturns + '</div><div class="dl">إجمالي المرتجع<div class="ds2">' + totReturnsVal.toLocaleString() + ' ج</div></div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#FBBF24">' + totNet.toLocaleString() + '</div><div class="dl">الصافي (ج)</div></div>';
+  html += '</div></div>';
+
   // ===== شرح المؤشر =====
   html += '<div class="dash-panel" style="background:rgba(56,189,248,0.06)"><div style="font-size:11px;color:#94a3b8;line-height:1.7">';
   html += '<b style="color:#e2e8f0">مؤشر رعاية المريض</b> بيجمع 4 عوامل بأوزان:<br>';

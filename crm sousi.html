@@ -1937,13 +1937,15 @@ function renderStaffCare(d) {
   var html = '';
 
   // ===== إجمالي الصيدلية (كل الموظفين مع بعض) =====
-  var totInv = 0, totSales = 0, totNet = 0, totReturns = 0, totReturnsVal = 0;
+  var totInv = 0, totSales = 0, totNet = 0, totReturns = 0, totReturnsVal = 0, totProfit = 0, totDiscount = 0;
   emps.forEach(function(s){
     totInv += s.invoices;
     totSales += s.sales;
     totNet += s.net;
     totReturns += s.returns;
     totReturnsVal += s.returns_val;
+    totProfit += (s.profit || 0);
+    totDiscount += (s.discount || 0);
   });
 
   html += '<div class="dash-panel"><div class="dash-panel-title">🏪 إجمالي الصيدلية — ' + (d.label||'') + '</div>';
@@ -1952,6 +1954,8 @@ function renderStaffCare(d) {
   html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + totSales.toLocaleString() + '</div><div class="dl">إجمالي البيع (ج)</div></div>';
   html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + totReturns + '</div><div class="dl">إجمالي المرتجع<div class="ds2">' + totReturnsVal.toLocaleString() + ' ج</div></div></div>';
   html += '<div class="dash-card"><div class="dv" style="color:#FBBF24">' + totNet.toLocaleString() + '</div><div class="dl">الصافي (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#A78BFA">' + totProfit.toLocaleString() + '</div><div class="dl">الربح الصافي (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#FB923C">' + totDiscount.toLocaleString() + '</div><div class="dl">إجمالي الخصم (ج)</div></div>';
   html += '</div></div>';
 
   // ===== شرح المؤشر =====
@@ -2000,6 +2004,8 @@ function renderStaffCare(d) {
     html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + s.returns + '</div><div class="dl">مرتجعات<div class="ds2">' + s.returns_val.toLocaleString() + ' ج</div></div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:#FBBF24">' + s.avg_inv + '</div><div class="dl">متوسط الفاتورة</div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:#94A3B8">' + s.days + '</div><div class="dl">أيام عمل</div></div>';
+    html += '<div class="dash-card"><div class="dv" style="color:#A78BFA">' + (s.profit||0).toLocaleString() + '</div><div class="dl">الربح الصافي (ج)</div></div>';
+    html += '<div class="dash-card"><div class="dv" style="color:#FB923C">' + (s.discount||0).toLocaleString() + '</div><div class="dl">الخصم (ج)</div></div>';
     html += '</div>';
     html += '</div>';
   });

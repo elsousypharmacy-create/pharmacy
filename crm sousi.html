@@ -284,9 +284,17 @@
   .map-pop-name { font-size: 13px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
   .map-pop-sub { font-size: 11px; color: #94a3b8; margin-bottom: 8px; }
   .map-pop-btn { display: inline-block; background: #38BDF8; color: #fff; border-radius: 6px; padding: 6px 12px; font-size: 11px; font-weight: 700; text-decoration: none; }
+  #deliv-map-search-results { margin-bottom: 10px; }
+  .map-search-item { background: #1A2F4A; border: 1px solid #1e3a4a; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+  .map-search-item:active { background: #24405f; }
+  .map-search-name { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+  .map-search-sub { font-size: 11px; color: #64748b; }
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 </head>
 <body>
 
@@ -439,6 +447,8 @@
 
 <div id="deliv-map-section" class="deliv-wrap" style="display:none">
   <div class="dash-panel-title">🗺️ مواقع العملاء المحفوظة</div>
+  <input class="search-input" id="deliv-map-search" type="text" placeholder="🔍 دور على عميل بالاسم أو الرقم..." oninput="searchDelivMap(this.value)" style="margin-bottom:10px;width:100%">
+  <div id="deliv-map-search-results"></div>
   <div id="deliv-map"></div>
   <div class="deliv-sort-row">
     <div class="deliv-sort-btn active" id="dsort-recent" onclick="setDelivSort('recent')">🕐 الأحدث طلب</div>
@@ -572,7 +582,7 @@ var lastKPIData = null;
 var kpiDays_ = 7;
 var shortListData = null, shortKPILoaded = false;
 var delivSort_ = 'recent', delivKPIRange_ = 'today', delivKPIFrom_ = '', delivKPITo_ = '', delivLocations_ = null, delivKPILoaded = false;
-var delivMap_ = null, delivMarkers_ = [];
+var delivMap_ = null, delivMarkers_ = [], delivCluster_ = null;
 var PHARMACY_LAT = 31.0970143, PHARMACY_LNG = 30.3114289;
 
 var TYPE_INFO = {
@@ -1485,15 +1495,16 @@ function renderDeliveryMap() {
   box.innerHTML = list.map(function(c){
     var distKm = c.distance ? (c.distance/1000).toFixed(1) + ' كم' : '—';
     var lastOrderStr = c.last_order ? fmtDate(c.last_order) : '—';
+    var ordersLine = c.orders_count ? '<span>📦 ' + c.orders_count + ' طلب</span>' : '';
     return '<div class="deliv-loc-item">' +
       '<div><div class="deliv-loc-name">' + (c.name||'عميل') + '</div>' +
-      '<div class="deliv-loc-sub"><span>📞 ' + c.phone + '</span><span>📍 ' + distKm + '</span><span>🕐 آخر طلب ' + lastOrderStr + '</span></div></div>' +
+      '<div class="deliv-loc-sub"><span>📞 ' + c.phone + '</span><span>📍 ' + distKm + '</span>' + ordersLine + '<span>🕐 ' + lastOrderStr + '</span></div></div>' +
       '<button class="btn-map" onclick="focusMapOn(' + c.lat + ',' + c.lng + ')">📍 على الخريطة</button>' +
     '</div>';
   }).join('');
 }
 
-// بيرسم/بيحدّث الخريطة والـ pins
+// بيرسم/بيحدّث الخريطة والـ pins مع التجميع البصري (clustering)
 function renderMapPins(list) {
   if (typeof L === 'undefined') return; // مكتبة الخرائط لسه ما اتحملتش
   var mapEl = document.getElementById('deliv-map');
@@ -1515,18 +1526,30 @@ function renderMapPins(list) {
     }).addTo(delivMap_).bindPopup('<div class="map-pop-name">🏥 صيدلية السوسي</div>');
   }
 
-  // امسح الـ pins القديمة
-  delivMarkers_.forEach(function(m){ delivMap_.removeLayer(m); });
+  // طبقة التجميع — لو المكتبة موجودة نستخدمها، لو لأ نرجع للطريقة العادية
+  if (delivCluster_) {
+    delivCluster_.clearLayers();
+  } else if (typeof L.markerClusterGroup === 'function') {
+    delivCluster_ = L.markerClusterGroup({ maxClusterRadius: 45, spiderfyOnMaxZoom: true });
+    delivMap_.addLayer(delivCluster_);
+  }
+
+  // امسح الـ pins الفردية القديمة (في حالة عدم وجود cluster)
+  delivMarkers_.forEach(function(m){ if (!delivCluster_) delivMap_.removeLayer(m); });
   delivMarkers_ = [];
 
   var bounds = [[PHARMACY_LAT, PHARMACY_LNG]];
   list.forEach(function(c){
     if (!c.lat || !c.lng) return;
     var distKm = c.distance ? (c.distance/1000).toFixed(1) + ' كم' : '—';
+    var ordersLine = c.orders_count ? ' · 📦 ' + c.orders_count + ' طلب' : '';
     var popup = '<div class="map-pop-name">👤 ' + (c.name||'عميل') + '</div>' +
-      '<div class="map-pop-sub">📞 ' + c.phone + ' · 📍 ' + distKm + '</div>' +
+      '<div class="map-pop-sub">📞 ' + c.phone + ' · 📍 ' + distKm + ordersLine + '</div>' +
       '<a class="map-pop-btn" href="https://maps.google.com/?q=' + c.lat + ',' + c.lng + '" target="_blank">روح بالموقع</a>';
-    var marker = L.marker([c.lat, c.lng]).addTo(delivMap_).bindPopup(popup);
+    var marker = L.marker([c.lat, c.lng]).bindPopup(popup);
+    marker._phone = String(c.phone);
+    if (delivCluster_) { delivCluster_.addLayer(marker); }
+    else { marker.addTo(delivMap_); }
     delivMarkers_.push(marker);
     bounds.push([c.lat, c.lng]);
   });
@@ -1535,18 +1558,44 @@ function renderMapPins(list) {
     try { delivMap_.fitBounds(bounds, { padding: [30,30], maxZoom: 15 }); } catch(e){}
   }
 
-  // إصلاح مشكلة ظهور الخريطة رمادية لما تكون في تاب مخفي وقت الإنشاء
   setTimeout(function(){ if (delivMap_) delivMap_.invalidateSize(); }, 200);
 }
 
-// دوسة "على الخريطة" في القائمة: بتزوّم على العميل وتفتح البوب اب
+// بحث في الخريطة بالاسم أو الرقم
+function searchDelivMap(q) {
+  var box = document.getElementById('deliv-map-search-results');
+  q = (q || '').trim();
+  if (!q || !delivLocations_) { box.innerHTML = ''; return; }
+
+  var matches = delivLocations_.filter(function(c){
+    return (c.name && c.name.indexOf(q) >= 0) || String(c.phone).indexOf(q) >= 0;
+  }).slice(0, 6);
+
+  if (!matches.length) { box.innerHTML = '<div class="map-search-sub" style="padding:6px">مفيش عميل بالاسم/الرقم ده</div>'; return; }
+
+  box.innerHTML = matches.map(function(c){
+    var distKm = c.distance ? (c.distance/1000).toFixed(1) + ' كم' : '—';
+    return '<div class="map-search-item" onclick="focusMapOn(' + c.lat + ',' + c.lng + ')">' +
+      '<span class="map-search-name">👤 ' + (c.name||'عميل') + '</span>' +
+      '<span class="map-search-sub">📞 ' + c.phone + ' · 📍 ' + distKm + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+// دوسة "على الخريطة": بتزوّم على العميل وتفتح البوب اب
 function focusMapOn(lat, lng) {
   if (!delivMap_) return;
   document.getElementById('deliv-map').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  delivMap_.setView([lat, lng], 16);
+  delivMap_.setView([lat, lng], 17);
   delivMarkers_.forEach(function(m){
     var ll = m.getLatLng();
-    if (Math.abs(ll.lat - lat) < 1e-6 && Math.abs(ll.lng - lng) < 1e-6) m.openPopup();
+    if (Math.abs(ll.lat - lat) < 1e-6 && Math.abs(ll.lng - lng) < 1e-6) {
+      if (delivCluster_ && delivCluster_.zoomToShowLayer) {
+        delivCluster_.zoomToShowLayer(m, function(){ m.openPopup(); });
+      } else {
+        m.openPopup();
+      }
+    }
   });
 }
 

@@ -324,7 +324,7 @@
   <button class="sidebar-item" id="side-deliv-kpi" onclick="navigateTo('delivery','kpi')">📊 كفاءة التوصيل</button>
 
   <div class="sidebar-group-title">فريق العمل</div>
-  <button class="sidebar-item" id="side-staff-care" onclick="navigateTo('staff','care')">💙 كفاءة رعاية المريض</button>
+  <button class="sidebar-item" id="side-staff-care" onclick="navigateTo('staff','care')">كفاءة رعاية المريض</button>
 </div>
 
 <div class="header">
@@ -501,7 +501,7 @@
 </div>
 
 <div id="staff-care-section" class="deliv-wrap" style="display:none">
-  <div class="dash-panel-title">💙 كفاءة رعاية المريض</div>
+  <div class="dash-panel-title">كفاءة رعاية المريض</div>
   <div class="days-row">
     <div class="day-pill" id="scare-today" onclick="setStaffRange('today')">📅 اليوم</div>
     <div class="day-pill active" id="scare-month" onclick="setStaffRange('month')">🗓️ الشهر</div>
@@ -973,7 +973,7 @@ var VIEW_LABELS = {
   'delivery:map': '🗺️ مواقع العملاء',
   'delivery:active': '📦 طلبيات جارية',
   'delivery:kpi': '📊 كفاءة التوصيل',
-  'staff:care': '💙 كفاءة رعاية المريض'
+  'staff:care': 'كفاءة رعاية المريض'
 };
 
 function openSidebar() {
@@ -1938,7 +1938,7 @@ function renderStaffCare(d) {
 
   // ===== شرح المؤشر =====
   html += '<div class="dash-panel" style="background:rgba(56,189,248,0.06)"><div style="font-size:11px;color:#94a3b8;line-height:1.7">';
-  html += '💙 <b style="color:#e2e8f0">مؤشر رعاية المريض</b> بيجمع 4 عوامل بأوزان:<br>';
+  html += '<b style="color:#e2e8f0">مؤشر رعاية المريض</b> بيجمع 4 عوامل بأوزان:<br>';
   html += '🆕 عملاء جدد <b>35%</b> · 📋 نسبة تسجيل <b>30%</b> · 🔄 متكررين <b>20%</b> · ✅ قلة مرتجعات <b>15%</b>';
   html += '</div></div>';
 
@@ -1964,21 +1964,22 @@ function renderStaffCare(d) {
     html += '<div class="dash-panel">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
     html += '<span style="font-size:14px;font-weight:800;color:#f1f5f9">👤 ' + s.name + '</span>';
-    html += '<span style="font-size:12px;font-weight:700;color:' + col + '">💙 ' + s.care_score + '/100</span>';
+    html += '<span style="font-size:12px;font-weight:800;color:' + col + ';background:' + col + '22;border:1px solid ' + col + ';border-radius:20px;padding:3px 12px">' + s.care_score + '/100</span>';
     html += '</div>';
 
     // مكوّنات المؤشر
     html += '<div style="margin-bottom:10px">';
     html += staffBar('🆕 عملاء جدد', s.care_new, s.new_c + ' عميل');
-    html += staffBar('📋 نسبة تسجيل', s.care_reg, s.reg_pct + '%');
+    html += staffBar('📋 نسبة تسجيل', s.care_reg, s.registered + '/' + s.total_cust + ' (' + s.reg_pct + '%)');
     html += staffBar('🔄 متكررين', s.care_repeat, s.repeat_c + ' عميل');
-    html += staffBar('✅ قلة مرتجعات', s.care_return, s.return_pct + '% مرتجع');
+    html += staffBar('✅ قلة مرتجعات', s.care_return, s.returns + ' مرتجع (' + s.return_pct + '%)');
     html += '</div>';
 
     // أرقام إضافية
     html += '<div class="dash-grid">';
     html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + s.invoices + '</div><div class="dl">فواتير</div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + s.net.toLocaleString() + '</div><div class="dl">صافي (ج)</div></div>';
+    html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + s.returns + '</div><div class="dl">مرتجعات<div class="ds2">' + s.returns_val.toLocaleString() + ' ج</div></div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:#FBBF24">' + s.avg_inv + '</div><div class="dl">متوسط الفاتورة</div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:#94A3B8">' + s.days + '</div><div class="dl">أيام عمل</div></div>';
     html += '</div>';

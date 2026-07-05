@@ -612,7 +612,7 @@ var STAFF_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw4CLCl4pzWkMGzM
 var allCustomers = [], histories = {}, openPhone = '';
 var filterCls_ = '', filterStatus_ = 'all', searchStr_ = '';
 var logPhone = '', logName = '', currentView = 'mob';
-var currentMode = 'crm', crmTab = 'customers', shortTab = 'list', delivTab = 'map', staffTab = 'care', dashLoaded = false;
+var currentMode = 'staff', crmTab = 'customers', shortTab = 'list', delivTab = 'map', staffTab = 'care', dashLoaded = false;
 var staffRange_ = 'today', staffFrom_ = '', staffTo_ = '', staffLoaded = false;
 var lastStaffEmployees_ = [];
 var staffBreakdownOpen_ = null;
@@ -1567,13 +1567,24 @@ function loadDeliveryMap() {
     fetch(DELIVERY_SCRIPT_URL + '?action=getLocations').then(function(r){ return r.json(); })
   ]).then(function(res){
     var ordersData = res[0] || {};
-    delivOrders_ = Array.isArray(ordersData.orders) ? ordersData.orders : [];
-    delivLocations_ = Array.isArray(res[1]) ? res[1] : [];
+    delivOrders_ = filterEgyptOnly(Array.isArray(ordersData.orders) ? ordersData.orders : []);
+    delivLocations_ = filterEgyptOnly(Array.isArray(res[1]) ? res[1] : []);
     updateMapStats(ordersData.label || '');
     renderDeliveryMap();
   }).catch(function(){
     box.innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اضغط 🔄</p></div>';
   });
+}
+
+// 🔧 فلترة في الـ CRM بس (من غير ما نلمس كود الدليفري): بنستبعد أي عميل/طلب
+// إحداثياته برة نطاق مصر تماماً بدل ما يظهر غلط على الخريطة (زي مواقع في السعودية إلخ)
+function isInEgypt(lat, lng) {
+  lat = parseFloat(lat); lng = parseFloat(lng);
+  if (isNaN(lat) || isNaN(lng)) return false;
+  return lat >= 22 && lat <= 32 && lng >= 25 && lng <= 37;
+}
+function filterEgyptOnly(list) {
+  return list.filter(function(item){ return isInEgypt(item.lat, item.lng); });
 }
 
 // إحصائية سريعة فوق الخريطة: كام طلب، كام جوّا النطاق وكام برّه
@@ -2024,6 +2035,7 @@ function renderStaffCare(d) {
   // ===== كروت تفصيلية لكل موظف =====
   emps.forEach(function(s){
     var col = careColor(s.care_score);
+    var empSafeId = s.name.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '');
     html += '<div class="dash-panel">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
     html += '<span style="font-size:14px;font-weight:800;color:#f1f5f9">👤 ' + s.name + '</span>';
@@ -2032,7 +2044,9 @@ function renderStaffCare(d) {
 
     // مكوّنات المؤشر
     html += '<div style="margin-bottom:10px">';
-    html += staffBar('🆕 عملاء جدد', s.care_new, s.new_c + ' عميل');
+    html += '<div style="cursor:pointer" onclick="showNewCustomersFor(\'' + s.name.replace(/'/g,"\\'") + '\',\'newcust-' + empSafeId + '\')">' +
+      staffBar('🆕 عملاء جدد (دوس للأسماء)', s.care_new, s.new_c + ' عميل') + '</div>';
+    html += '<div id="newcust-' + empSafeId + '" style="display:none;margin:-4px 0 10px"></div>';
     html += staffBar('📋 نسبة تسجيل', s.care_reg, s.registered + '/' + s.total_cust + ' (' + s.reg_pct + '%)');
     html += staffBar('🔄 متكررين', s.care_repeat, s.repeat_c + ' عميل');
     html += staffBar('✅ قلة مرتجعات', s.care_return, s.returns + ' مرتجع (' + s.return_pct + '%)');
@@ -2052,6 +2066,51 @@ function renderStaffCare(d) {
   });
 
   box.innerHTML = html;
+}
+
+// بتفتح/تقفل قائمة أسماء وأرقام العملاء الجدد لموظف معين
+var newCustCache_ = {}; // كاش بسيط عشان ما نكررش الطلب لو دوس تاني بنفس الفترة
+function showNewCustomersFor(employeeName, boxId) {
+  var box = document.getElementById(boxId);
+  if (!box) return;
+
+  if (box.style.display === 'block') {
+    box.style.display = 'none';
+    return;
+  }
+  // نقفل أي صندوق تاني مفتوح
+  document.querySelectorAll('[id^="newcust-"]').forEach(function(b){ b.style.display = 'none'; });
+
+  box.style.display = 'block';
+  box.innerHTML = '<div style="font-size:11px;color:#64748b;padding:6px 0">جاري التحميل...</div>';
+
+  if (!staffReady()) { box.innerHTML = '<div style="font-size:11px;color:#F87171">رابط سكريبت الموظفين مش متظبط</div>'; return; }
+
+  var url = STAFF_SCRIPT_URL + '?action=getNewCustomersDetail&employee=' + encodeURIComponent(employeeName);
+  if (staffRange_ === 'range' && staffFrom_ && staffTo_) {
+    url += '&from=' + staffFrom_ + '&to=' + staffTo_;
+  } else {
+    url += '&range=' + staffRange_;
+  }
+
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var list = (d && d.customers) ? d.customers : [];
+      if (!list.length) {
+        box.innerHTML = '<div style="font-size:11px;color:#64748b;background:#0F1E2E;border-radius:8px;padding:10px">مفيش عملاء جدد مسجلين بالاسم في الفترة دي</div>';
+        return;
+      }
+      var html = '<div style="background:#0F1E2E;border-radius:8px;padding:10px">';
+      list.forEach(function(c){
+        html += '<div class="dash-comm-row"><span>👤 ' + c.name + '</span><span>📞 ' + c.phone + (list.length>1 && staffRange_!=='today' ? ' · ' + c.date : '') + '</span></div>';
+      });
+      html += '</div>';
+      box.innerHTML = html;
+    })
+    .catch(function(){
+      box.innerHTML = '<div style="font-size:11px;color:#F87171">خطأ في التحميل</div>';
+    });
 }
 
 // bar صغير لكل مكوّن من مكوّنات المؤشر
@@ -2260,7 +2319,22 @@ function triggerPullRefresh() {
   }, 900);
 }
 
-loadData();
+navigateTo('staff', 'care');
+
+// 🔄 تحديث تلقائي دوري لتاب كفاءة رعاية المريض — كل 60 ثانية، وبس لو التاب ده مفتوح فعلاً
+setInterval(function() {
+  if (currentMode === 'staff' && staffTab === 'care') {
+    loadStaffCare();
+  }
+}, 60000);
+
+// 🔧 المتصفحات بتوقف التحديث التلقائي (setInterval) لما التطبيق يبقى في الخلفية أو الشاشة تتقفل
+// فنعمل تحديث فوري لحظة ما الصفحة ترجع تظهر قدام المستخدم تاني، عشان الرقم ميفضلش قديم
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden && currentMode === 'staff' && staffTab === 'care') {
+    loadStaffCare();
+  }
+});
 </script>
 </body>
 </html>

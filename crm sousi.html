@@ -503,9 +503,8 @@
 <div id="staff-care-section" class="deliv-wrap" style="display:none">
   <div class="dash-panel-title">كفاءة رعاية المريض</div>
   <div class="days-row">
-    <div class="day-pill" id="scare-today" onclick="setStaffRange('today')">📅 اليوم</div>
-    <div class="day-pill active" id="scare-month" onclick="setStaffRange('month')">🗓️ الشهر</div>
-    <div class="day-pill" id="scare-all" onclick="setStaffRange('all')">📊 الكل</div>
+    <div class="day-pill active" id="scare-today" onclick="setStaffRange('today')">📅 اليوم</div>
+    <div class="day-pill" id="scare-month" onclick="setStaffRange('month')">🗓️ الشهر</div>
     <div class="day-pill" id="scare-range" onclick="toggleStaffRange()">⚙️ فترة</div>
   </div>
   <div class="dash-range" id="staff-range-box" style="display:none">
@@ -614,7 +613,9 @@ var allCustomers = [], histories = {}, openPhone = '';
 var filterCls_ = '', filterStatus_ = 'all', searchStr_ = '';
 var logPhone = '', logName = '', currentView = 'mob';
 var currentMode = 'crm', crmTab = 'customers', shortTab = 'list', delivTab = 'map', staffTab = 'care', dashLoaded = false;
-var staffRange_ = 'month', staffFrom_ = '', staffTo_ = '', staffLoaded = false;
+var staffRange_ = 'today', staffFrom_ = '', staffTo_ = '', staffLoaded = false;
+var lastStaffEmployees_ = [];
+var staffBreakdownOpen_ = null;
 var shortDays_ = 7, shortStock_ = 'zero';
 var lastKPIData = null;
 var kpiDays_ = 7;
@@ -1864,9 +1865,46 @@ function staffReady() {
   return STAFF_SCRIPT_URL && STAFF_SCRIPT_URL.indexOf('http') === 0;
 }
 
+// بتفتح/تقفل تفصيل الموظفين لأي كارت من كروت إجمالي الصيدلية
+function toggleStaffBreakdown(metric, title) {
+  var box = document.getElementById('staff-breakdown-box');
+  if (!box) return;
+
+  if (staffBreakdownOpen_ === metric) {
+    box.style.display = 'none';
+    staffBreakdownOpen_ = null;
+    return;
+  }
+  staffBreakdownOpen_ = metric;
+
+  var fieldMap = {
+    invoices: function(s){ return s.invoices; },
+    sales: function(s){ return s.sales; },
+    returns: function(s){ return s.returns; },
+    net: function(s){ return s.net; },
+    profit: function(s){ return s.profit || 0; },
+    discount: function(s){ return s.discount || 0; }
+  };
+  var getVal = fieldMap[metric];
+  if (!getVal) return;
+
+  var list = lastStaffEmployees_.slice().sort(function(a,b){ return getVal(b) - getVal(a); });
+  var html = '<div style="background:#0F1E2E;border-radius:10px;padding:12px">';
+  html += '<div style="font-size:12px;font-weight:800;color:#94a3b8;margin-bottom:8px">' + title + '</div>';
+  list.forEach(function(s){
+    var v = getVal(s);
+    var vStr = (metric === 'invoices' || metric === 'returns') ? v : v.toLocaleString() + ' ج';
+    html += '<div class="dash-comm-row"><span>👤 ' + s.name + '</span><span>' + vStr + '</span></div>';
+  });
+  html += '</div>';
+
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+
 function setStaffRange(kind) {
   staffRange_ = kind;
-  ['today','month','all'].forEach(function(k){
+  ['today','month'].forEach(function(k){
     document.getElementById('scare-' + k).classList.toggle('active', k === kind);
   });
   document.getElementById('scare-range').classList.remove('active');
@@ -1878,7 +1916,7 @@ function toggleStaffRange() {
   var box = document.getElementById('staff-range-box');
   var showing = box.style.display !== 'none';
   box.style.display = showing ? 'none' : 'flex';
-  ['today','month','all'].forEach(function(k){ document.getElementById('scare-' + k).classList.remove('active'); });
+  ['today','month'].forEach(function(k){ document.getElementById('scare-' + k).classList.remove('active'); });
   document.getElementById('scare-range').classList.toggle('active', !showing);
   if (!showing && !document.getElementById('staff-to').value) {
     var today = new Date();
@@ -1947,16 +1985,19 @@ function renderStaffCare(d) {
     totProfit += (s.profit || 0);
     totDiscount += (s.discount || 0);
   });
+  lastStaffEmployees_ = emps; // نحفظها عشان نقدر نعرض تفصيل كل موظف لما حد يدوس على أي كارت
 
   html += '<div class="dash-panel"><div class="dash-panel-title">🏪 إجمالي الصيدلية — ' + (d.label||'') + '</div>';
   html += '<div class="dash-grid">';
-  html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + totInv + '</div><div class="dl">إجمالي الفواتير</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + totSales.toLocaleString() + '</div><div class="dl">إجمالي البيع (ج)</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + totReturns + '</div><div class="dl">إجمالي المرتجع<div class="ds2">' + totReturnsVal.toLocaleString() + ' ج</div></div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#FBBF24">' + totNet.toLocaleString() + '</div><div class="dl">الصافي (ج)</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#A78BFA">' + totProfit.toLocaleString() + '</div><div class="dl">الربح الصافي (ج)</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#FB923C">' + totDiscount.toLocaleString() + '</div><div class="dl">إجمالي الخصم (ج)</div></div>';
-  html += '</div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'invoices\',\'📦 الفواتير لكل موظف\')"><div class="dv" style="color:#38BDF8">' + totInv + '</div><div class="dl">إجمالي الفواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'sales\',\'💰 البيع لكل موظف\')"><div class="dv" style="color:#34D399">' + totSales.toLocaleString() + '</div><div class="dl">إجمالي البيع (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'returns\',\'↩️ المرتجع لكل موظف\')"><div class="dv" style="color:#F87171">' + totReturns + '</div><div class="dl">إجمالي المرتجع<div class="ds2">' + totReturnsVal.toLocaleString() + ' ج · دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'net\',\'✅ الصافي لكل موظف\')"><div class="dv" style="color:#FBBF24">' + totNet.toLocaleString() + '</div><div class="dl">الصافي (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'profit\',\'💜 الربح لكل موظف\')"><div class="dv" style="color:#A78BFA">' + totProfit.toLocaleString() + '</div><div class="dl">الربح الصافي (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'discount\',\'🏷️ الخصم لكل موظف\')"><div class="dv" style="color:#FB923C">' + totDiscount.toLocaleString() + '</div><div class="dl">إجمالي الخصم (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '</div>';
+  html += '<div id="staff-breakdown-box" style="display:none;margin-top:12px"></div>';
+  html += '</div>';
 
   // ===== شرح المؤشر =====
   html += '<div class="dash-panel" style="background:rgba(56,189,248,0.06)"><div style="font-size:11px;color:#94a3b8;line-height:1.7">';

@@ -1962,9 +1962,24 @@ function loadStaffCare() {
     url += '&range=' + staffRange_;
   }
 
-  fetch(url)
-    .then(function(r){ return r.json(); })
-    .then(function(d){ staffLoaded = true; renderStaffCare(d); })
+  // 🎯 لو الفلتر "اليوم" — نجيب كمان الأرقام الرسمية المضمونة مباشرة من نظام الصيدلية
+  // (ملف Daily_Mini_Statics) عشان إجمالي الصيدلية يبقى مطابق 100% للنظام
+  var fetches = [fetch(url).then(function(r){ return r.json(); })];
+  if (staffRange_ === 'today') {
+    fetches.push(
+      fetch(STAFF_SCRIPT_URL + '?action=getSystemDailyTotals')
+        .then(function(r){ return r.json(); })
+        .catch(function(){ return null; })
+    );
+  }
+
+  Promise.all(fetches)
+    .then(function(res){
+      var d = res[0];
+      if (res[1] && res[1].ok) d.systemTotals = res[1];
+      staffLoaded = true;
+      renderStaffCare(d);
+    })
     .catch(function(){ box.innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اضغط 🔄</p></div>'; });
 }
 
@@ -1996,9 +2011,23 @@ function renderStaffCare(d) {
     totProfit += (s.profit || 0);
     totDiscount += (s.discount || 0);
   });
+
+  // 🎯 لو متاح رقم رسمي من النظام مباشرة (Daily_Mini_Statics) نستخدمه بدل حسابنا الذاتي
+  // للمبيعات/الربح/الخصم — ده مضمون 100% مطابق للنظام
+  var usingSystemNumbers = false;
+  if (d.systemTotals) {
+    totSales = d.systemTotals.sales_today;
+    totProfit = d.systemTotals.profit_today;
+    totDiscount = d.systemTotals.discount_today;
+    totNet = totSales - totReturnsVal;
+    usingSystemNumbers = true;
+  }
   lastStaffEmployees_ = emps; // نحفظها عشان نقدر نعرض تفصيل كل موظف لما حد يدوس على أي كارت
 
   html += '<div class="dash-panel"><div class="dash-panel-title">🏪 إجمالي الصيدلية — ' + (d.label||'') + '</div>';
+  if (usingSystemNumbers) {
+    html += '<div style="font-size:10px;color:#34D399;margin-bottom:8px">✅ المبيعات/الربح/الخصم من نظام الصيدلية مباشرة (مطابق 100%)</div>';
+  }
   html += '<div class="dash-grid">';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'invoices\',\'📦 الفواتير لكل موظف\')"><div class="dv" style="color:#38BDF8">' + totInv + '</div><div class="dl">إجمالي الفواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'sales\',\'💰 البيع لكل موظف\')"><div class="dv" style="color:#34D399">' + totSales.toLocaleString() + '</div><div class="dl">إجمالي البيع (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';

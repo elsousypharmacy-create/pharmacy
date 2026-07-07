@@ -2032,9 +2032,8 @@ function renderStaffCare(d) {
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'invoices\',\'📦 الفواتير لكل موظف\')"><div class="dv" style="color:#38BDF8">' + totInv + '</div><div class="dl">إجمالي الفواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'sales\',\'💰 البيع لكل موظف\')"><div class="dv" style="color:#34D399">' + totSales.toLocaleString() + '</div><div class="dl">إجمالي البيع (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'returns\',\'↩️ المرتجع لكل موظف\')"><div class="dv" style="color:#F87171">' + totReturns + '</div><div class="dl">إجمالي المرتجع<div class="ds2">' + totReturnsVal.toLocaleString() + ' ج · دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'net\',\'✅ الصافي لكل موظف\')"><div class="dv" style="color:#FBBF24">' + totNet.toLocaleString() + '</div><div class="dl">الصافي (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'profit\',\'💜 الربح لكل موظف\')"><div class="dv" style="color:#A78BFA">' + totProfit.toLocaleString() + '</div><div class="dl">الربح الصافي (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'discount\',\'🏷️ الخصم لكل موظف\')"><div class="dv" style="color:#FB923C">' + totDiscount.toLocaleString() + '</div><div class="dl">إجمالي الخصم (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'profit\',\'💜 الربح لكل موظف\')"><div class="dv" style="color:#A78BFA">' + totProfit.toLocaleString() + '</div><div class="dl">الربح الصافي (ج)<div class="ds2">' + (totSales>0 ? (totProfit/totSales*100).toFixed(1) : '0.0') + '% هامش · دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'discount\',\'🏷️ الخصم لكل موظف\')"><div class="dv" style="color:#FB923C">' + totDiscount.toLocaleString() + '</div><div class="dl">إجمالي الخصم (ج)<div class="ds2">' + (totSales>0 ? (totDiscount/totSales*100).toFixed(1) : '0.0') + '% من البيع · دوس للتفاصيل</div></div></div>';
   html += '</div>';
   html += '<div id="staff-breakdown-box" style="display:none;margin-top:12px"></div>';
   html += '</div>';
@@ -2084,12 +2083,12 @@ function renderStaffCare(d) {
     // أرقام إضافية
     html += '<div class="dash-grid">';
     html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + s.invoices + '</div><div class="dl">فواتير</div></div>';
-    html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + s.net.toLocaleString() + '</div><div class="dl">صافي (ج)</div></div>';
+    html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + s.sales.toLocaleString() + '</div><div class="dl">مبيعات (ج)</div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + s.returns + '</div><div class="dl">مرتجعات<div class="ds2">' + s.returns_val.toLocaleString() + ' ج</div></div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:#FBBF24">' + s.avg_inv + '</div><div class="dl">متوسط الفاتورة</div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:#94A3B8">' + s.days + '</div><div class="dl">أيام عمل</div></div>';
-    html += '<div class="dash-card"><div class="dv" style="color:#A78BFA">' + (s.profit||0).toLocaleString() + '</div><div class="dl">الربح الصافي (ج)</div></div>';
-    html += '<div class="dash-card"><div class="dv" style="color:#FB923C">' + (s.discount||0).toLocaleString() + '</div><div class="dl">الخصم (ج)</div></div>';
+    html += '<div class="dash-card"><div class="dv" style="color:#A78BFA">' + (s.profit||0).toLocaleString() + '</div><div class="dl">الربح الصافي (ج)<div class="ds2">' + (s.sales>0 ? ((s.profit||0)/s.sales*100).toFixed(1) : '0.0') + '% هامش</div></div></div>';
+    html += '<div class="dash-card"><div class="dv" style="color:#FB923C">' + (s.discount||0).toLocaleString() + '</div><div class="dl">الخصم (ج)<div class="ds2">' + (s.sales>0 ? ((s.discount||0)/s.sales*100).toFixed(1) : '0.0') + '% من البيع</div></div></div>';
     html += '</div>';
     html += '</div>';
   });

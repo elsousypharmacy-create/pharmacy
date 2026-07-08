@@ -2034,6 +2034,17 @@ function renderStaffCare(d) {
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'returns\',\'↩️ المرتجع لكل موظف\')"><div class="dv" style="color:#F87171">' + totReturns + '</div><div class="dl">إجمالي المرتجع<div class="ds2">' + totReturnsVal.toLocaleString() + ' ج · دوس للتفاصيل</div></div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'profit\',\'💜 الربح لكل موظف\')"><div class="dv" style="color:#A78BFA">' + totProfit.toLocaleString() + '</div><div class="dl">الربح الصافي (ج)<div class="ds2">' + (totSales>0 ? (totProfit/totSales*100).toFixed(1) : '0.0') + '% هامش · دوس للتفاصيل</div></div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'discount\',\'🏷️ الخصم لكل موظف\')"><div class="dv" style="color:#FB923C">' + totDiscount.toLocaleString() + '</div><div class="dl">إجمالي الخصم (ج)<div class="ds2">' + (totSales>0 ? (totDiscount/totSales*100).toFixed(1) : '0.0') + '% من البيع · دوس للتفاصيل</div></div></div>';
+
+  // 🆕 المتوسط اليومي ومتوسط العملاء — بنحسبهم من البيانات اليومية (متاحين لأي فترة أكتر من يوم واحد)
+  var dailyList = Array.isArray(d.daily) ? d.daily : [];
+  if (dailyList.length > 1) {
+    var sumDailySales = 0, sumDailyCust = 0;
+    dailyList.forEach(function(x){ sumDailySales += (x.sales||0); sumDailyCust += (x.total_cust||0); });
+    var avgDailySales = Math.round(sumDailySales / dailyList.length);
+    var avgDailyCust = Math.round(sumDailyCust / dailyList.length);
+    html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + avgDailySales.toLocaleString() + '</div><div class="dl">متوسط المبيعات اليومي (ج)<div class="ds2">على ' + dailyList.length + ' يوم</div></div></div>';
+    html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + avgDailyCust + '</div><div class="dl">متوسط العملاء اليومي<div class="ds2">على ' + dailyList.length + ' يوم</div></div></div>';
+  }
   html += '</div>';
   html += '<div id="staff-breakdown-box" style="display:none;margin-top:12px"></div>';
   html += '</div>';

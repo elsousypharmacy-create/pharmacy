@@ -325,6 +325,9 @@
 
   <div class="sidebar-group-title">فريق العمل</div>
   <button class="sidebar-item" id="side-staff-care" onclick="navigateTo('staff','care')">كفاءة رعاية المريض</button>
+
+  <div class="sidebar-group-title">الديون</div>
+  <button class="sidebar-item" id="side-debts-list" onclick="navigateTo('debts','list')">💳 ديون العملاء</button>
 </div>
 
 <div class="header">
@@ -518,6 +521,13 @@
   </div>
 </div>
 
+<div id="debts-list-section" class="deliv-wrap" style="display:none">
+  <div class="dash-panel-title">💳 ديون العملاء</div>
+  <div id="debts-content">
+    <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
+  </div>
+</div>
+
 <!-- LOG MODAL -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
@@ -616,6 +626,7 @@ var currentMode = 'staff', crmTab = 'customers', shortTab = 'list', delivTab = '
 var staffRange_ = 'today', staffFrom_ = '', staffTo_ = '', staffLoaded = false;
 var lastStaffEmployees_ = [];
 var staffBreakdownOpen_ = null;
+var debtsTab = 'list', debtsLoaded = false;
 var shortDays_ = 7, shortStock_ = 'zero';
 var lastKPIData = null;
 var kpiDays_ = 7;
@@ -974,7 +985,8 @@ var VIEW_LABELS = {
   'delivery:map': '🗺️ مواقع العملاء',
   'delivery:active': '📦 طلبيات جارية',
   'delivery:kpi': '📊 كفاءة التوصيل',
-  'staff:care': 'كفاءة رعاية المريض'
+  'staff:care': 'كفاءة رعاية المريض',
+  'debts:list': '💳 ديون العملاء'
 };
 
 function openSidebar() {
@@ -992,11 +1004,12 @@ function navigateTo(mode, tab) {
   if (mode === 'crm') { crmTab = tab; }
   else if (mode === 'shortages') { shortTab = tab; }
   else if (mode === 'delivery') { delivTab = tab; }
-  else { staffTab = tab; }
+  else if (mode === 'staff') { staffTab = tab; }
+  else if (mode === 'debts') { debtsTab = tab; }
 
   document.getElementById('current-view-label').textContent = VIEW_LABELS[mode + ':' + tab];
 
-  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi','side-staff-care'].forEach(function(id){
+  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi','side-staff-care','side-debts-list'].forEach(function(id){
     document.getElementById(id).classList.remove('active');
   });
   var shortActiveMap = { list: 'side-short-list', orders: 'side-short-orders', discontinued: 'side-short-discontinued', kpi: 'side-short-kpi' };
@@ -1005,6 +1018,7 @@ function navigateTo(mode, tab) {
     ? (tab === 'customers' ? 'side-customers' : 'side-dashboard')
     : mode === 'shortages' ? shortActiveMap[tab]
     : mode === 'delivery' ? delivActiveMap[tab]
+    : mode === 'debts' ? 'side-debts-list'
     : 'side-staff-care';
   document.getElementById(activeId).classList.add('active');
 
@@ -1019,6 +1033,9 @@ function navigateTo(mode, tab) {
   document.getElementById('deliv-active-section').style.display = (mode === 'delivery' && tab === 'active') ? 'block' : 'none';
   document.getElementById('deliv-kpi-section').style.display = (mode === 'delivery' && tab === 'kpi') ? 'block' : 'none';
   document.getElementById('staff-care-section').style.display = (mode === 'staff' && tab === 'care') ? 'block' : 'none';
+  document.getElementById('debts-list-section').style.display = (mode === 'debts' && tab === 'list') ? 'block' : 'none';
+
+  if (mode === 'debts' && tab === 'list') { loadDebts(); }
 
   if (mode === 'crm' && tab === 'dashboard' && !dashLoaded) {
     initDashboardDates();
@@ -1947,6 +1964,61 @@ function applyStaffRange() {
   loadStaffCare();
 }
 
+// ===== الديون =====
+function loadDebts() {
+  var box = document.getElementById('debts-content');
+  if (!staffReady()) {
+    box.innerHTML = '<div class="loading"><p style="color:#F87171">لازم تحط رابط ويب أب سكريبت الموظفين في STAFF_SCRIPT_URL</p></div>';
+    return;
+  }
+  box.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+
+  fetch(STAFF_SCRIPT_URL + '?action=getDebtsData')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ debtsLoaded = true; renderDebts(d); })
+    .catch(function(){ box.innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اضغط 🔄</p></div>'; });
+}
+
+function renderDebts(d) {
+  var box = document.getElementById('debts-content');
+  if (!d || !d.ok) {
+    box.innerHTML = '<div class="loading"><p style="color:#F87171">' + (d && d.error ? d.error : 'خطأ في تحميل الديون') + '</p></div>';
+    return;
+  }
+
+  var html = '';
+  html += '<div class="dash-panel"><div class="dash-panel-title">📊 إجمالي الديون</div>';
+  html += '<div class="dash-grid">';
+  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + d.count + '</div><div class="dl">عدد المديونين</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#FBBF24">' + Math.round(d.total_owed).toLocaleString() + '</div><div class="dl">إجمالي الديون (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + Math.round(d.total_paid).toLocaleString() + '</div><div class="dl">المدفوع (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + Math.round(d.total_net).toLocaleString() + '</div><div class="dl">صافي المتبقي (ج)</div></div>';
+  html += '</div></div>';
+
+  html += '<div class="dash-panel"><div class="dash-panel-title">👥 قائمة المديونين (الأعلى أولاً)</div>';
+  if (!d.debtors || !d.debtors.length) {
+    html += '<div style="text-align:center;color:#64748b;padding:20px">مفيش عملاء عليهم ديون 🎉</div>';
+  } else {
+    d.debtors.forEach(function(c){
+      var telLink = c.phone && c.phone.length > 3 ? 'tel:+20' + c.phone.replace(/^0/, '') : null;
+      html += '<div style="background:#0F1E2E;border-radius:10px;padding:12px;margin-bottom:8px">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+      html += '<span style="font-weight:800;color:#f1f5f9">👤 ' + c.name + '</span>';
+      html += '<span style="font-weight:800;color:#F87171">' + Math.round(c.net).toLocaleString() + ' ج</span>';
+      html += '</div>';
+      html += '<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:#94a3b8">';
+      html += '<span>' + (telLink ? '<a href="' + telLink + '" style="color:#38BDF8">📞 ' + c.phone + '</a>' : c.phone) + '</span>';
+      html += '<span>إجمالي: ' + Math.round(c.owed).toLocaleString() + ' · مدفوع: ' + Math.round(c.paid).toLocaleString() + '</span>';
+      html += '</div>';
+      html += '<div style="font-size:10px;color:#64748b;margin-top:4px">آخر نشاط: ' + c.lastActivity + '</div>';
+      html += '</div>';
+    });
+  }
+  html += '</div>';
+
+  box.innerHTML = html;
+}
+
 function loadStaffCare() {
   var box = document.getElementById('staff-care-content');
   if (!staffReady()) {
@@ -2044,6 +2116,12 @@ function renderStaffCare(d) {
     var avgDailyCust = Math.round(sumDailyCust / dailyList.length);
     html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + avgDailySales.toLocaleString() + '</div><div class="dl">متوسط المبيعات اليومي (ج)<div class="ds2">على ' + dailyList.length + ' يوم</div></div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + avgDailyCust + '</div><div class="dl">متوسط العملاء اليومي<div class="ds2">على ' + dailyList.length + ' يوم</div></div></div>';
+  }
+
+  // 🆕 كارت الديون — بيظهر بس لما الأرقام الرسمية متاحة (فلتر "اليوم")
+  if (usingSystemNumbers && d.systemTotals) {
+    html += '<div class="dash-card" style="cursor:pointer" onclick="navigateTo(\'debts\',\'list\')"><div class="dv" style="color:#F87171">' + Math.round(d.systemTotals.total_debt).toLocaleString() + '</div><div class="dl">صافي الدين الإجمالي (ج)<div class="ds2">دوس لعرض التفاصيل</div></div></div>';
+    html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + Math.round(d.systemTotals.debt_paid_today).toLocaleString() + '</div><div class="dl">دين متحصّل اليوم (ج)</div></div>';
   }
   html += '</div>';
   html += '<div id="staff-breakdown-box" style="display:none;margin-top:12px"></div>';

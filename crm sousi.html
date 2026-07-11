@@ -523,6 +523,19 @@
 
 <div id="debts-list-section" class="deliv-wrap" style="display:none">
   <div class="dash-panel-title">💳 ديون العملاء</div>
+  <div class="days-row">
+    <div class="day-pill active" id="ddebt-all" onclick="setDebtsRange('all')">📊 الكل</div>
+    <div class="day-pill" id="ddebt-today" onclick="setDebtsRange('today')">📅 نشاط اليوم</div>
+    <div class="day-pill" id="ddebt-month" onclick="setDebtsRange('month')">🗓️ نشاط الشهر</div>
+    <div class="day-pill" id="ddebt-range" onclick="toggleDebtsRange()">⚙️ فترة</div>
+  </div>
+  <div class="dash-range" id="debts-range-box" style="display:none">
+    <input type="date" id="debts-from">
+    <span style="color:#64748b;font-size:11px">إلى</span>
+    <input type="date" id="debts-to">
+    <button onclick="applyDebtsRange()">تطبيق</button>
+  </div>
+  <div style="font-size:10px;color:#64748b;margin:6px 0 10px">⚠️ الفلترة هنا حسب "آخر نشاط" لكل عميل (آخر مرة اتحرك فيها دينه)، مش تاريخ نشوء الدين</div>
   <div id="debts-content">
     <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
   </div>
@@ -627,6 +640,7 @@ var staffRange_ = 'today', staffFrom_ = '', staffTo_ = '', staffLoaded = false;
 var lastStaffEmployees_ = [];
 var staffBreakdownOpen_ = null;
 var debtsTab = 'list', debtsLoaded = false;
+var debtsRange_ = 'all', debtsFrom_ = '', debtsTo_ = '', lastDebtsData_ = null;
 var shortDays_ = 7, shortStock_ = 'zero';
 var lastKPIData = null;
 var kpiDays_ = 7;
@@ -1964,6 +1978,32 @@ function applyStaffRange() {
   loadStaffCare();
 }
 
+function setDebtsRange(kind) {
+  debtsRange_ = kind;
+  ['all','today','month'].forEach(function(k){
+    document.getElementById('ddebt-' + k).classList.toggle('active', k === kind);
+  });
+  document.getElementById('ddebt-range').classList.remove('active');
+  document.getElementById('debts-range-box').style.display = 'none';
+  if (lastDebtsData_) renderDebts(lastDebtsData_);
+}
+
+function toggleDebtsRange() {
+  var box = document.getElementById('debts-range-box');
+  var showing = box.style.display !== 'none';
+  box.style.display = showing ? 'none' : 'flex';
+  ['all','today','month'].forEach(function(k){ document.getElementById('ddebt-' + k).classList.remove('active'); });
+  document.getElementById('ddebt-range').classList.toggle('active', !showing);
+}
+
+function applyDebtsRange() {
+  debtsFrom_ = document.getElementById('debts-from').value;
+  debtsTo_ = document.getElementById('debts-to').value;
+  if (!debtsFrom_ || !debtsTo_) return;
+  debtsRange_ = 'range';
+  if (lastDebtsData_) renderDebts(lastDebtsData_);
+}
+
 // ===== الديون =====
 function loadDebts() {
   var box = document.getElementById('debts-content');
@@ -1975,7 +2015,7 @@ function loadDebts() {
 
   fetch(STAFF_SCRIPT_URL + '?action=getDebtsData')
     .then(function(r){ return r.json(); })
-    .then(function(d){ debtsLoaded = true; renderDebts(d); })
+    .then(function(d){ debtsLoaded = true; lastDebtsData_ = d; renderDebts(d); })
     .catch(function(){ box.innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اضغط 🔄</p></div>'; });
 }
 
@@ -1986,20 +2026,39 @@ function renderDebts(d) {
     return;
   }
 
+  // فلترة حسب "آخر نشاط" لكل عميل بناءً على الفترة المختارة
+  var allDebtors = d.debtors || [];
+  var filtered = allDebtors;
+  if (debtsRange_ !== 'all') {
+    var today = new Date();
+    var todayStr = toLocalDateStr(today);
+    var monthStr = todayStr.substring(0, 7);
+    filtered = allDebtors.filter(function(c){
+      var cDate = (c.lastActivity || '').substring(0, 10);
+      if (debtsRange_ === 'today') return cDate === todayStr;
+      if (debtsRange_ === 'month') return cDate.substring(0, 7) === monthStr;
+      if (debtsRange_ === 'range') return cDate >= debtsFrom_ && cDate <= debtsTo_;
+      return true;
+    });
+  }
+
+  var fTotalOwed = 0, fTotalPaid = 0, fTotalNet = 0;
+  filtered.forEach(function(c){ fTotalOwed += c.owed; fTotalPaid += c.paid; fTotalNet += c.net; });
+
   var html = '';
   html += '<div class="dash-panel"><div class="dash-panel-title">📊 إجمالي الديون</div>';
   html += '<div class="dash-grid">';
-  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + d.count + '</div><div class="dl">عدد المديونين</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#FBBF24">' + Math.round(d.total_owed).toLocaleString() + '</div><div class="dl">إجمالي الديون (ج)</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + Math.round(d.total_paid).toLocaleString() + '</div><div class="dl">المدفوع (ج)</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + Math.round(d.total_net).toLocaleString() + '</div><div class="dl">صافي المتبقي (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + filtered.length + '</div><div class="dl">عدد المديونين</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#FBBF24">' + Math.round(fTotalOwed).toLocaleString() + '</div><div class="dl">إجمالي الديون (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + Math.round(fTotalPaid).toLocaleString() + '</div><div class="dl">المدفوع (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + Math.round(fTotalNet).toLocaleString() + '</div><div class="dl">صافي المتبقي (ج)</div></div>';
   html += '</div></div>';
 
   html += '<div class="dash-panel"><div class="dash-panel-title">👥 قائمة المديونين (الأعلى أولاً)</div>';
-  if (!d.debtors || !d.debtors.length) {
-    html += '<div style="text-align:center;color:#64748b;padding:20px">مفيش عملاء عليهم ديون 🎉</div>';
+  if (!filtered.length) {
+    html += '<div style="text-align:center;color:#64748b;padding:20px">مفيش عملاء عليهم ديون في الفترة دي</div>';
   } else {
-    d.debtors.forEach(function(c){
+    filtered.forEach(function(c){
       var telLink = c.phone && c.phone.length > 3 ? 'tel:+20' + c.phone.replace(/^0/, '') : null;
       html += '<div style="background:#0F1E2E;border-radius:10px;padding:12px;margin-bottom:8px">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center">';

@@ -635,7 +635,7 @@ var STAFF_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-
 var allCustomers = [], histories = {}, openPhone = '';
 var filterCls_ = '', filterStatus_ = 'all', searchStr_ = '';
 var logPhone = '', logName = '', currentView = 'mob';
-var currentMode = 'staff', crmTab = 'customers', shortTab = 'list', delivTab = 'map', staffTab = 'care', dashLoaded = false;
+var currentMode = 'staff', crmTab = 'customers', shortTab = 'list', delivTab = 'map', staffTab = 'care', dashLoaded = false, customersLoaded = false;
 var staffRange_ = 'today', staffFrom_ = '', staffTo_ = '', staffLoaded = false;
 var lastStaffEmployees_ = [];
 var staffBreakdownOpen_ = null;
@@ -1051,6 +1051,10 @@ function navigateTo(mode, tab) {
 
   if (mode === 'debts' && tab === 'list') { loadDebts(); }
 
+  if (mode === 'crm' && tab === 'customers' && !customersLoaded) {
+    customersLoaded = true;
+    loadData();
+  }
   if (mode === 'crm' && tab === 'dashboard' && !dashLoaded) {
     initDashboardDates();
     loadDashboard();

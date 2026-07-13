@@ -328,6 +328,9 @@
 
   <div class="sidebar-group-title">الديون</div>
   <button class="sidebar-item" id="side-debts-list" onclick="navigateTo('debts','list')">💳 ديون العملاء</button>
+
+  <div class="sidebar-group-title">المصروفات</div>
+  <button class="sidebar-item" id="side-expenses-list" onclick="navigateTo('expenses','list')">💸 المصروفات</button>
 </div>
 
 <div class="header">
@@ -541,6 +544,25 @@
   </div>
 </div>
 
+<div id="expenses-list-section" class="deliv-wrap" style="display:none">
+  <div class="dash-panel-title">💸 المصروفات</div>
+  <div class="days-row">
+    <div class="day-pill active" id="dexp-today" onclick="setExpensesRange('today')">📅 اليوم</div>
+    <div class="day-pill" id="dexp-month" onclick="setExpensesRange('month')">🗓️ الشهر</div>
+    <div class="day-pill" id="dexp-all" onclick="setExpensesRange('all')">📊 الكل</div>
+    <div class="day-pill" id="dexp-range" onclick="toggleExpensesRange()">⚙️ فترة</div>
+  </div>
+  <div class="dash-range" id="expenses-range-box" style="display:none">
+    <input type="date" id="expenses-from">
+    <span style="color:#64748b;font-size:11px">إلى</span>
+    <input type="date" id="expenses-to">
+    <button onclick="applyExpensesRange()">تطبيق</button>
+  </div>
+  <div id="expenses-content">
+    <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
+  </div>
+</div>
+
 <!-- LOG MODAL -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
@@ -641,6 +663,8 @@ var lastStaffEmployees_ = [];
 var staffBreakdownOpen_ = null;
 var debtsTab = 'list', debtsLoaded = false;
 var debtsRange_ = 'all', debtsFrom_ = '', debtsTo_ = '', lastDebtsData_ = null;
+var expensesTab = 'list', expensesLoaded = false;
+var expensesRange_ = 'today', expensesFrom_ = '', expensesTo_ = '';
 var shortDays_ = 7, shortStock_ = 'zero';
 var lastKPIData = null;
 var kpiDays_ = 7;
@@ -1000,7 +1024,8 @@ var VIEW_LABELS = {
   'delivery:active': '📦 طلبيات جارية',
   'delivery:kpi': '📊 كفاءة التوصيل',
   'staff:care': 'كفاءة رعاية المريض',
-  'debts:list': '💳 ديون العملاء'
+  'debts:list': '💳 ديون العملاء',
+  'expenses:list': '💸 المصروفات'
 };
 
 function openSidebar() {
@@ -1020,10 +1045,11 @@ function navigateTo(mode, tab) {
   else if (mode === 'delivery') { delivTab = tab; }
   else if (mode === 'staff') { staffTab = tab; }
   else if (mode === 'debts') { debtsTab = tab; }
+  else if (mode === 'expenses') { expensesTab = tab; }
 
   document.getElementById('current-view-label').textContent = VIEW_LABELS[mode + ':' + tab];
 
-  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi','side-staff-care','side-debts-list'].forEach(function(id){
+  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi','side-staff-care','side-debts-list','side-expenses-list'].forEach(function(id){
     document.getElementById(id).classList.remove('active');
   });
   var shortActiveMap = { list: 'side-short-list', orders: 'side-short-orders', discontinued: 'side-short-discontinued', kpi: 'side-short-kpi' };
@@ -1033,6 +1059,7 @@ function navigateTo(mode, tab) {
     : mode === 'shortages' ? shortActiveMap[tab]
     : mode === 'delivery' ? delivActiveMap[tab]
     : mode === 'debts' ? 'side-debts-list'
+    : mode === 'expenses' ? 'side-expenses-list'
     : 'side-staff-care';
   document.getElementById(activeId).classList.add('active');
 
@@ -1048,8 +1075,10 @@ function navigateTo(mode, tab) {
   document.getElementById('deliv-kpi-section').style.display = (mode === 'delivery' && tab === 'kpi') ? 'block' : 'none';
   document.getElementById('staff-care-section').style.display = (mode === 'staff' && tab === 'care') ? 'block' : 'none';
   document.getElementById('debts-list-section').style.display = (mode === 'debts' && tab === 'list') ? 'block' : 'none';
+  document.getElementById('expenses-list-section').style.display = (mode === 'expenses' && tab === 'list') ? 'block' : 'none';
 
   if (mode === 'debts' && tab === 'list') { loadDebts(); }
+  if (mode === 'expenses' && tab === 'list') { loadExpenses(); }
 
   if (mode === 'crm' && tab === 'customers' && !customersLoaded) {
     customersLoaded = true;
@@ -2074,6 +2103,93 @@ function renderDebts(d) {
       html += '<span>إجمالي: ' + Math.round(c.owed).toLocaleString() + ' · مدفوع: ' + Math.round(c.paid).toLocaleString() + '</span>';
       html += '</div>';
       html += '<div style="font-size:10px;color:#64748b;margin-top:4px">آخر نشاط: ' + c.lastActivity + '</div>';
+      html += '</div>';
+    });
+  }
+  html += '</div>';
+
+  box.innerHTML = html;
+}
+
+// ===== المصروفات =====
+function setExpensesRange(kind) {
+  expensesRange_ = kind;
+  ['today','month','all'].forEach(function(k){
+    document.getElementById('dexp-' + k).classList.toggle('active', k === kind);
+  });
+  document.getElementById('dexp-range').classList.remove('active');
+  document.getElementById('expenses-range-box').style.display = 'none';
+  loadExpenses();
+}
+
+function toggleExpensesRange() {
+  var box = document.getElementById('expenses-range-box');
+  var showing = box.style.display !== 'none';
+  box.style.display = showing ? 'none' : 'flex';
+  ['today','month','all'].forEach(function(k){ document.getElementById('dexp-' + k).classList.remove('active'); });
+  document.getElementById('dexp-range').classList.toggle('active', !showing);
+}
+
+function applyExpensesRange() {
+  expensesFrom_ = document.getElementById('expenses-from').value;
+  expensesTo_ = document.getElementById('expenses-to').value;
+  if (!expensesFrom_ || !expensesTo_) return;
+  expensesRange_ = 'range';
+  loadExpenses();
+}
+
+function loadExpenses() {
+  var box = document.getElementById('expenses-content');
+  if (!staffReady()) {
+    box.innerHTML = '<div class="loading"><p style="color:#F87171">لازم تحط رابط ويب أب سكريبت الموظفين في STAFF_SCRIPT_URL</p></div>';
+    return;
+  }
+  box.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+
+  var url = STAFF_SCRIPT_URL + '?action=getExpensesData';
+  if (expensesRange_ === 'range' && expensesFrom_ && expensesTo_) {
+    url += '&from=' + expensesFrom_ + '&to=' + expensesTo_;
+  } else {
+    url += '&range=' + expensesRange_;
+  }
+
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(d){ expensesLoaded = true; renderExpenses(d); })
+    .catch(function(){ box.innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اضغط 🔄</p></div>'; });
+}
+
+function renderExpenses(d) {
+  var box = document.getElementById('expenses-content');
+  if (!d || !d.ok) {
+    box.innerHTML = '<div class="loading"><p style="color:#F87171">' + (d && d.error ? d.error : 'خطأ في تحميل المصروفات') + '</p></div>';
+    return;
+  }
+
+  var html = '';
+  html += '<div class="dash-panel"><div class="dash-panel-title">📊 إجمالي المصروفات</div>';
+  html += '<div class="dash-grid">';
+  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + Math.round(d.total).toLocaleString() + '</div><div class="dl">إجمالي المصروفات (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + d.count + '</div><div class="dl">عدد العمليات</div></div>';
+  html += '</div></div>';
+
+  html += '<div class="dash-panel"><div class="dash-panel-title">📂 مقسّمة حسب النوع</div>';
+  if (!d.byCategory || !d.byCategory.length) {
+    html += '<div style="text-align:center;color:#64748b;padding:20px">مفيش مصروفات في الفترة دي</div>';
+  } else {
+    var maxVal = Math.max.apply(null, d.byCategory.map(function(c){ return c.total; }));
+    d.byCategory.forEach(function(c){
+      var pct = maxVal > 0 ? Math.round(c.total / maxVal * 100) : 0;
+      var sharePct = d.total > 0 ? (c.total / d.total * 100).toFixed(1) : '0.0';
+      html += '<div style="background:#0F1E2E;border-radius:10px;padding:12px;margin-bottom:8px">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+      html += '<span style="font-weight:800;color:#f1f5f9">📁 ' + c.category + '</span>';
+      html += '<span style="font-weight:800;color:#F87171">' + Math.round(c.total).toLocaleString() + ' ج</span>';
+      html += '</div>';
+      html += '<div style="background:#1E293B;border-radius:6px;height:6px;overflow:hidden;margin-bottom:4px">';
+      html += '<div style="background:#F87171;height:100%;width:' + pct + '%"></div>';
+      html += '</div>';
+      html += '<div style="font-size:11px;color:#64748b">' + c.count + ' عملية · ' + sharePct + '% من الإجمالي</div>';
       html += '</div>';
     });
   }

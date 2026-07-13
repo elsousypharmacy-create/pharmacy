@@ -2171,9 +2171,11 @@ function loadProfitLoss() {
   var url = STAFF_SCRIPT_URL + '?action=getProfitLoss';
   if (plMonth_) url += '&month=' + plMonth_;
 
-  fetch(url)
-    .then(function(r){ return r.json(); })
-    .then(function(d){ renderProfitLoss(d); })
+  Promise.all([
+    fetch(url).then(function(r){ return r.json(); }),
+    fetch(STAFF_SCRIPT_URL + '?action=getNetWorth').then(function(r){ return r.json(); }).catch(function(){ return null; })
+  ])
+    .then(function(res){ renderProfitLoss(res[0], res[1]); })
     .catch(function(){ box.innerHTML = '<div class="loading"><p style="color:#F87171">خطأ في التحميل — اضغط 🔄</p></div>'; });
 }
 
@@ -2187,7 +2189,7 @@ function savePlSalaries() {
   }).then(function(){ loadProfitLoss(); });
 }
 
-function renderProfitLoss(d) {
+function renderProfitLoss(d, nw) {
   var box = document.getElementById('pl-content');
   if (!d || !d.ok) {
     box.innerHTML = '<div class="loading"><p style="color:#F87171">' + (d && d.error ? d.error : 'خطأ في تحميل البيانات') + '</p></div>';
@@ -2201,6 +2203,26 @@ function renderProfitLoss(d) {
   var netLabel = d.net_profit >= 0 ? '✅ صافي ربح الشهر' : '⚠️ صافي خسارة الشهر';
 
   var html = '';
+
+  // 🆕 كارت صافي الأصول — من نقطة انطلاق حقيقية (كاش الدرج + المخزون بالتكلفة أول الشهر)
+  if (nw && nw.ok) {
+    var changeColor = nw.change_since_start >= 0 ? '#34D399' : '#F87171';
+    var changeSign = nw.change_since_start >= 0 ? '+' : '';
+    html += '<div class="dash-panel">';
+    html += '<div class="dash-panel-title">🏦 صافي الأصول (منذ ' + nw.starting_date + ')</div>';
+    html += '<div style="text-align:center;padding:10px 0 16px">';
+    html += '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">التغيير في صافي الأصول</div>';
+    html += '<div style="font-size:26px;font-weight:900;color:' + changeColor + '">' + changeSign + nw.change_since_start.toLocaleString() + ' ج</div>';
+    html += '<div style="font-size:11px;color:#64748b;margin-top:4px">من ' + nw.starting_total.toLocaleString() + ' ج → تقريباً ' + nw.estimated_total_now.toLocaleString() + ' ج</div>';
+    html += '</div>';
+    html += '<div class="dash-grid">';
+    html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + nw.starting_cash.toLocaleString() + '</div><div class="dl">كاش البداية (ج)</div></div>';
+    html += '<div class="dash-card"><div class="dv" style="color:#38BDF8">' + Math.round(nw.starting_inventory).toLocaleString() + '</div><div class="dl">مخزون البداية (ج)</div></div>';
+    html += '<div class="dash-card"><div class="dv" style="color:#FB923C">' + nw.total_purchases_since_start.toLocaleString() + '</div><div class="dl">مشتروات (تحويل لمخزون)<div class="ds2">مش خسارة</div></div></div>';
+    html += '<div class="dash-card"><div class="dv" style="color:#A78BFA">' + Math.round(nw.current_inventory_actual).toLocaleString() + '</div><div class="dl">المخزون الفعلي دلوقتي (ج)</div></div>';
+    html += '</div></div>';
+  }
+
   html += '<div class="dash-panel">';
   html += '<div style="text-align:center;padding:16px 0">';
   html += '<div style="font-size:12px;color:#94a3b8;margin-bottom:6px">' + netLabel + '</div>';
@@ -2209,7 +2231,7 @@ function renderProfitLoss(d) {
   html += '<div class="dash-grid">';
   html += '<div class="dash-card"><div class="dv" style="color:#34D399">' + Math.round(d.total_sales).toLocaleString() + '</div><div class="dl">مبيعات الشهر (ج)</div></div>';
   html += '<div class="dash-card"><div class="dv" style="color:#A78BFA">' + Math.round(d.total_profit).toLocaleString() + '</div><div class="dl">ربح الشهر (ج)</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + Math.round(d.total_expenses).toLocaleString() + '</div><div class="dl">مصروفات الشهر (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#F87171">' + Math.round(d.total_expenses).toLocaleString() + '</div><div class="dl">مصروفات الشهر (ج)<div class="ds2">بدون المشتروات</div></div></div>';
   html += '<div class="dash-card"><div class="dv" style="color:#FB923C">' + Math.round(d.total_salaries_so_far).toLocaleString() + '</div><div class="dl">مرتبات (حتى دلوقتي)<div class="ds2">' + Math.round(d.daily_salary).toLocaleString() + ' ج/يوم</div></div></div>';
   html += '</div></div>';
 

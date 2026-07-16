@@ -2446,20 +2446,22 @@ function renderExpenses(d) {
   if (!d.byCategory || !d.byCategory.length) {
     html += '<div style="text-align:center;color:var(--text2);padding:20px">مفيش مصروفات في الفترة دي</div>';
   } else {
+    var catColors = ['#E0727C', '#D9A441', '#0A84FF', '#5FB88A', '#BF5AF2', '#64D2FF', '#FF9F0A', '#5E5CE6'];
     var maxVal = Math.max.apply(null, d.byCategory.map(function(c){ return c.total; }));
     d.byCategory.forEach(function(c, idx){
+      var color = catColors[idx % catColors.length];
       var pct = maxVal > 0 ? Math.round(c.total / maxVal * 100) : 0;
       var sharePct = d.total > 0 ? (c.total / d.total * 100).toFixed(1) : '0.0';
-      html += '<div style="background:var(--card-bg2);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer" onclick="toggleExpenseCategory(' + idx + ')">';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
-      html += '<span style="font-weight:800;color:var(--text)">📁 ' + c.category + '</span>';
-      html += '<span style="font-weight:800;color:#E0727C">' + Math.round(c.total).toLocaleString() + ' ج</span>';
+      html += '<div style="background:var(--card-bg2);border-radius:var(--r-md);padding:13px;margin-bottom:8px;cursor:pointer" onclick="toggleExpenseCategory(' + idx + ')">';
+      html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">';
+      html += '<span style="width:30px;height:30px;border-radius:8px;background:' + color + '22;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">📁</span>';
+      html += '<div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--text);font-size:13.5px">' + c.category + '</div><div style="font-size:11px;color:var(--text2);margin-top:1px">' + c.count + ' عملية · ' + sharePct + '% من الإجمالي</div></div>';
+      html += '<span style="font-weight:700;color:' + color + ';font-size:15px;white-space:nowrap">' + Math.round(c.total).toLocaleString() + ' ج</span>';
       html += '</div>';
-      html += '<div style="background:var(--fill);border-radius:6px;height:6px;overflow:hidden;margin-bottom:4px">';
-      html += '<div style="background:#E0727C;height:100%;width:' + pct + '%"></div>';
+      html += '<div style="background:var(--fill);border-radius:5px;height:8px;overflow:hidden">';
+      html += '<div style="background:' + color + ';height:100%;width:' + pct + '%;border-radius:5px"></div>';
       html += '</div>';
-      html += '<div style="font-size:11px;color:var(--text2)">' + c.count + ' عملية · ' + sharePct + '% من الإجمالي</div>';
-      html += '<div id="expcat-' + idx + '" style="display:none;margin-top:8px"></div>';
+      html += '<div id="expcat-' + idx + '" style="display:none;margin-top:10px"></div>';
       html += '</div>';
     });
   }

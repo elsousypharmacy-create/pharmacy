@@ -2513,12 +2513,23 @@ function loadStaffCare(silent) {
         .then(function(r){ return r.json(); })
         .catch(function(){ return null; })
     );
+  } else {
+    fetches.push(Promise.resolve(null));
   }
+
+  // 🆕 نجيب أرقام "اليوم" و"الشهر" لكل موظف مع بعض دايمًا (بغض النظر عن التاب المختار)
+  // عشان تبقى المقارنة بين الفترتين واضحة قدامك على طول من غير ما تنقّل بين التابات
+  fetches.push(fetch(STAFF_SCRIPT_URL + '?action=getStaffKPI&range=today').then(function(r){ return r.json(); }).catch(function(){ return null; }));
+  fetches.push(fetch(STAFF_SCRIPT_URL + '?action=getStaffKPI&range=month').then(function(r){ return r.json(); }).catch(function(){ return null; }));
 
   Promise.all(fetches)
     .then(function(res){
       var d = res[0];
       if (res[1] && res[1].ok) d.systemTotals = res[1];
+      d.todayByEmployee = {};
+      d.monthByEmployee = {};
+      if (res[2] && res[2].employees) res[2].employees.forEach(function(s){ d.todayByEmployee[s.name] = s; });
+      if (res[3] && res[3].employees) res[3].employees.forEach(function(s){ d.monthByEmployee[s.name] = s; });
       staffLoaded = true;
       box.dataset.loaded = '1';
       renderStaffCare(d);
@@ -2637,6 +2648,16 @@ function renderStaffCare(d) {
     html += '<span style="font-size:14px;font-weight:800;color:var(--text)">👤 ' + s.name + '</span>';
     html += '<span style="font-size:12px;font-weight:800;color:' + col + ';background:' + col + '22;border:1px solid ' + col + ';border-radius:20px;padding:3px 12px">' + s.care_score + '/100</span>';
     html += '</div>';
+
+    // 🆕 مقارنة سريعة: اليوم مقابل الشهر - واضحة دايمًا من غير ما تحتاج تنقّل بين التابات
+    var todayS = d.todayByEmployee && d.todayByEmployee[s.name];
+    var monthS = d.monthByEmployee && d.monthByEmployee[s.name];
+    if (todayS || monthS) {
+      html += '<div style="display:flex;gap:8px;margin-bottom:12px">';
+      html += '<div style="flex:1;background:var(--fill);border-radius:var(--r-sm);padding:8px 10px;text-align:center"><div style="font-size:9.5px;color:var(--text2);margin-bottom:2px">اليوم</div><div style="font-size:13px;font-weight:700;color:var(--text)">' + (todayS ? todayS.sales.toLocaleString() : '0') + ' ج</div></div>';
+      html += '<div style="flex:1;background:var(--fill);border-radius:var(--r-sm);padding:8px 10px;text-align:center"><div style="font-size:9.5px;color:var(--text2);margin-bottom:2px">الشهر</div><div style="font-size:13px;font-weight:700;color:var(--text)">' + (monthS ? monthS.sales.toLocaleString() : '0') + ' ج</div></div>';
+      html += '</div>';
+    }
 
     // مكوّنات المؤشر
     html += '<div style="margin-bottom:10px">';

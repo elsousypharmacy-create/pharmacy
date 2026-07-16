@@ -2279,7 +2279,9 @@ function renderDebts(d) {
   html += '<div class="dash-card"><div class="dv" style="color:#5FB88A">' + Math.round(fTotalPaid).toLocaleString() + '</div><div class="dl">المدفوع (ج)</div></div>';
   var netVal = (debtsRange_ === 'all' && typeof d.systemTotalDebt === 'number') ? d.systemTotalDebt : fTotalNet;
   html += '<div class="dash-card"><div class="dv" style="color:#E0727C">' + Math.round(netVal).toLocaleString() + '</div><div class="dl">صافي المتبقي (ج)' + (debtsRange_ === 'all' && typeof d.systemTotalDebt === 'number' ? '<div class="ds2">رقم رسمي مضمون</div>' : '') + '</div></div>';
-  html += '</div></div>';
+  html += '</div>';
+  html += '<button onclick="openDayDebits()" style="width:100%;margin-top:10px;background:var(--fill);border:none;color:var(--accent);border-radius:var(--r-md);padding:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">👥 ديون اليوم لكل موظف (دوس للتفاصيل)</button>';
+  html += '</div>';
 
   html += '<div class="dash-panel"><div class="dash-panel-title">👥 قائمة المديونين (الأعلى أولاً)</div>';
   if (!filtered.length) {
@@ -2527,19 +2529,10 @@ function loadStaffCare(silent) {
     fetches.push(Promise.resolve(null));
   }
 
-  // 🆕 نجيب أرقام "اليوم" و"الشهر" لكل موظف مع بعض دايمًا (بغض النظر عن التاب المختار)
-  // عشان تبقى المقارنة بين الفترتين واضحة قدامك على طول من غير ما تنقّل بين التابات
-  fetches.push(fetch(STAFF_SCRIPT_URL + '?action=getStaffKPI&range=today').then(function(r){ return r.json(); }).catch(function(){ return null; }));
-  fetches.push(fetch(STAFF_SCRIPT_URL + '?action=getStaffKPI&range=month').then(function(r){ return r.json(); }).catch(function(){ return null; }));
-
   Promise.all(fetches)
     .then(function(res){
       var d = res[0];
       if (res[1] && res[1].ok) d.systemTotals = res[1];
-      d.todayByEmployee = {};
-      d.monthByEmployee = {};
-      if (res[2] && res[2].employees) res[2].employees.forEach(function(s){ d.todayByEmployee[s.name] = s; });
-      if (res[3] && res[3].employees) res[3].employees.forEach(function(s){ d.monthByEmployee[s.name] = s; });
       staffLoaded = true;
       box.dataset.loaded = '1';
       renderStaffCare(d);
@@ -2659,16 +2652,6 @@ function renderStaffCare(d) {
     html += '<span style="font-size:12px;font-weight:800;color:' + col + ';background:' + col + '22;border:1px solid ' + col + ';border-radius:20px;padding:3px 12px">' + s.care_score + '/100</span>';
     html += '</div>';
 
-    // 🆕 مقارنة سريعة: اليوم مقابل الشهر - واضحة دايمًا من غير ما تحتاج تنقّل بين التابات
-    var todayS = d.todayByEmployee && d.todayByEmployee[s.name];
-    var monthS = d.monthByEmployee && d.monthByEmployee[s.name];
-    if (todayS || monthS) {
-      html += '<div style="display:flex;gap:8px;margin-bottom:12px">';
-      html += '<div style="flex:1;background:var(--fill);border-radius:var(--r-sm);padding:8px 10px;text-align:center"><div style="font-size:9.5px;color:var(--text2);margin-bottom:2px">اليوم</div><div style="font-size:13px;font-weight:700;color:var(--text)">' + (todayS ? todayS.sales.toLocaleString() : '0') + ' ج</div></div>';
-      html += '<div style="flex:1;background:var(--fill);border-radius:var(--r-sm);padding:8px 10px;text-align:center"><div style="font-size:9.5px;color:var(--text2);margin-bottom:2px">الشهر</div><div style="font-size:13px;font-weight:700;color:var(--text)">' + (monthS ? monthS.sales.toLocaleString() : '0') + ' ج</div></div>';
-      html += '</div>';
-    }
-
     // مكوّنات المؤشر
     html += '<div style="margin-bottom:10px">';
     html += '<div style="cursor:pointer" onclick="showNewCustomersFor(\'' + s.name.replace(/'/g,"\\'") + '\',\'newcust-' + empSafeId + '\')">' +
@@ -2768,6 +2751,95 @@ function toLocalDateStr(d) {
 // ===================================================================
 var dinvDate_ = '', dinvData_ = null, dinvStack_ = [];
 
+// ===================================================================
+// 🆕 ديون اليوم لكل موظف - بنفس فكرة الفواتير وبنفس المودال، بس بيانات
+// أبسط (مفيش تفاصيل أصناف هنا، بس اسم العميل والمبلغ والوقت)
+// ===================================================================
+var dbtDate_ = '', dbtData_ = null;
+
+function resolveSingleDayForDebits() {
+  var today = toLocalDateStr(new Date());
+  if (debtsRange_ === 'today') return today;
+  if (debtsRange_ === 'range') {
+    var from = document.getElementById('debts-from').value;
+    var to = document.getElementById('debts-to').value;
+    if (from && to && from === to) return from;
+  }
+  return null;
+}
+
+function openDayDebits() {
+  var date = resolveSingleDayForDebits();
+  document.getElementById('day-invoices-modal').classList.add('show');
+  document.getElementById('dinv-back-row').style.display = 'none';
+  if (!date) {
+    document.getElementById('dinv-title').textContent = 'ديون اليوم';
+    document.getElementById('dinv-content').innerHTML = '<div style="text-align:center;padding:24px 10px;color:var(--text2);font-size:13px;line-height:1.8">📅 عرض الديون التفصيليّة متاح بس لما تختار "نشاط اليوم"<br>أو تحدد يوم واحد بالظبط من "فترة"<br><br>مش متاح لما الفترة "الكل" أو "الشهر" أو أكتر من يوم</div>';
+    return;
+  }
+  dbtDate_ = date;
+  document.getElementById('dinv-title').textContent = 'ديون يوم ' + dbtDate_;
+  document.getElementById('dinv-content').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+
+  fetch(STAFF_SCRIPT_URL + '?action=getDayDebits&date=' + dbtDate_)
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      dbtData_ = res;
+      if (!res.ok) {
+        document.getElementById('dinv-content').innerHTML = '<p style="color:#E0727C;text-align:center">' + (res.error || 'خطأ في التحميل') + '</p>';
+        return;
+      }
+      renderDbtEmployeeList();
+    })
+    .catch(function(){
+      document.getElementById('dinv-content').innerHTML = '<div class="loading"><p style="color:#E0727C">خطأ في التحميل — تأكد من STAFF_SCRIPT_URL</p></div>';
+    });
+}
+
+function renderDbtEmployeeList() {
+  document.getElementById('dinv-title').textContent = 'ديون يوم ' + dbtDate_;
+  document.getElementById('dinv-back-row').style.display = 'none';
+
+  var emps = dbtData_.employees || {};
+  var names = Object.keys(emps);
+  if (!names.length) {
+    document.getElementById('dinv-content').innerHTML = '<p style="color:var(--text2);text-align:center;padding:20px">مفيش ديون اتسجلت في اليوم ده</p>';
+    return;
+  }
+  var rows = names.map(function(name){
+    var items = emps[name];
+    var total = items.reduce(function(s,i){ return s + (i.amount||0); }, 0);
+    return { name: name, count: items.length, total: total };
+  }).sort(function(a,b){ return b.total - a.total; });
+
+  var html = '';
+  rows.forEach(function(r){
+    html += '<div class="hist-item" style="cursor:pointer;padding:12px 4px" onclick=\'renderDbtDetailList(' + JSON.stringify(r.name) + ')\'>';
+    html += '<div class="hist-icon">👤</div>';
+    html += '<div style="flex:1"><div style="font-size:13.5px;font-weight:600;color:var(--text)">' + r.name + '</div><div class="hist-text">' + r.count + ' دين مسجّل</div></div>';
+    html += '<div style="font-weight:700;color:#E0727C;font-size:14px">' + Math.round(r.total).toLocaleString() + ' ج</div>';
+    html += '</div>';
+  });
+  document.getElementById('dinv-content').innerHTML = html;
+}
+
+function renderDbtDetailList(empName) {
+  document.getElementById('dinv-title').textContent = 'ديون ' + empName;
+  document.getElementById('dinv-back-row').innerHTML = '<button onclick="renderDbtEmployeeList()" style="background:var(--fill);border:none;color:var(--accent);border-radius:var(--r-sm);padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">→ رجوع</button>';
+  document.getElementById('dinv-back-row').style.display = 'block';
+
+  var items = (dbtData_.employees[empName] || []);
+  var html = '';
+  items.forEach(function(it){
+    html += '<div class="hist-item" style="padding:12px 4px">';
+    html += '<div class="hist-icon">💳</div>';
+    html += '<div style="flex:1"><div style="font-size:13.5px;font-weight:600;color:var(--text)">' + it.custname + '</div><div class="hist-text">' + it.time + (it.phone ? ' · ' + it.phone : '') + '</div></div>';
+    html += '<div style="font-weight:700;color:#E0727C">' + Math.round(it.amount).toLocaleString() + ' ج</div>';
+    html += '</div>';
+  });
+  document.getElementById('dinv-content').innerHTML = html;
+}
+
 function resolveSingleDayForInvoices() {
   var today = toLocalDateStr(new Date());
   if (staffRange_ === 'today') return today;
@@ -2781,6 +2853,7 @@ function resolveSingleDayForInvoices() {
 
 function openEmployeeInvoicesDirect(empName) {
   var date = resolveSingleDayForInvoices();
+  document.getElementById('dinv-back-row').innerHTML = '<button onclick="dinvGoBack()" style="background:var(--fill);border:none;color:var(--accent);border-radius:var(--r-sm);padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">→ رجوع</button>';
   document.getElementById('day-invoices-modal').classList.add('show');
   document.getElementById('dinv-back-row').style.display = 'none';
   if (!date) {
@@ -2815,6 +2888,7 @@ function openEmployeeInvoicesDirect(empName) {
 
 function openDayInvoices() {
   var date = resolveSingleDayForInvoices();
+  document.getElementById('dinv-back-row').innerHTML = '<button onclick="dinvGoBack()" style="background:var(--fill);border:none;color:var(--accent);border-radius:var(--r-sm);padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">→ رجوع</button>';
   document.getElementById('day-invoices-modal').classList.add('show');
   document.getElementById('dinv-back-row').style.display = 'none';
   if (!date) {

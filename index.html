@@ -2750,15 +2750,16 @@ function resolveSingleDayForInvoices() {
 
 function openEmployeeInvoicesDirect(empName) {
   var date = resolveSingleDayForInvoices();
+  document.getElementById('day-invoices-modal').classList.add('show');
+  document.getElementById('dinv-back-row').style.display = 'none';
   if (!date) {
-    alert('عرض الفواتير التفصيلية متاح بس لما تختار "اليوم" أو تحدد يوم واحد بالظبط من "فترة" — مش متاح لما الفترة المختارة تبقى شهر كامل أو أكتر من يوم');
+    document.getElementById('dinv-title').textContent = 'فواتير ' + empName;
+    document.getElementById('dinv-content').innerHTML = '<div style="text-align:center;padding:24px 10px;color:var(--text2);font-size:13px;line-height:1.8">📅 عرض الفواتير التفصيليّة متاح بس لما تختار "اليوم"<br>أو تحدد يوم واحد بالظبط من "فترة"<br><br>مش متاح لما الفترة المختارة تبقى شهر كامل أو أكتر من يوم</div>';
     return;
   }
   dinvDate_ = date;
   dinvStack_ = [];
-  document.getElementById('day-invoices-modal').classList.add('show');
   document.getElementById('dinv-title').textContent = 'فواتير ' + empName;
-  document.getElementById('dinv-back-row').style.display = 'none';
   document.getElementById('dinv-content').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
 
   fetch(STAFF_SCRIPT_URL + '?action=getDayInvoices&date=' + dinvDate_)

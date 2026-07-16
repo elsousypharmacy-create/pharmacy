@@ -637,6 +637,21 @@
   <div id="staff-care-content">
     <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
   </div>
+  <button id="btn-day-invoices" onclick="openDayInvoices()" style="display:none;width:100%;margin-top:10px;background:var(--card-bg);box-shadow:var(--card-shadow);border:none;color:var(--accent);border-radius:var(--r-md);padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">🧾 عرض فواتير اليوم تفصيليًا</button>
+</div>
+
+<!-- 🆕 مودال فواتير اليوم: قائمة الموظفين → فواتير الموظف → تفاصيل الفاتورة -->
+<div class="modal-overlay" id="day-invoices-modal">
+  <div class="modal" style="max-width:420px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 id="dinv-title" style="margin-bottom:0">فواتير اليوم</h3>
+      <button onclick="closeDayInvoices()" style="background:var(--fill);border:none;color:var(--text2);width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer">✕</button>
+    </div>
+    <div id="dinv-back-row" style="display:none;margin-bottom:10px">
+      <button onclick="dinvGoBack()" style="background:var(--fill);border:none;color:var(--accent);border-radius:var(--r-sm);padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">→ رجوع</button>
+    </div>
+    <div id="dinv-content" style="max-height:60vh;overflow-y:auto"></div>
+  </div>
 </div>
 
 <div id="debts-list-section" class="deliv-wrap" style="display:none">
@@ -2527,6 +2542,7 @@ function careColor(score) {
 
 function renderStaffCare(d) {
   var box = document.getElementById('staff-care-content');
+  updateDayInvoicesButton();
   if (!d || !d.employees || !d.employees.length) {
     box.innerHTML = '<p style="color:var(--text2);text-align:center;padding:20px">مفيش بيانات في الفترة دي</p>';
     return;
@@ -2713,6 +2729,152 @@ function toLocalDateStr(d) {
   var m = String(d.getMonth() + 1).padStart(2, '0');
   var day = String(d.getDate()).padStart(2, '0');
   return y + '-' + m + '-' + day;
+}
+
+// ===================================================================
+// 🆕 فواتير اليوم تفصيليًا: بتشتغل بس لما الفترة المختارة تبقى "يوم واحد"
+// (تاب "اليوم"، أو فترة مخصصة من نفس اليوم لنفس اليوم) — لأن ملفات
+// المبيعات الخام متقسّمة يوم بيوم على درايف، فمينفعش نجيب أكتر من يوم
+// من غير ما نقرا كذا ملف (ده ممكن نضيفه بعدين لو احتجناه)
+// ===================================================================
+var dinvDate_ = '', dinvData_ = null, dinvStack_ = [];
+
+function updateDayInvoicesButton() {
+  var btn = document.getElementById('btn-day-invoices');
+  if (!btn) return;
+  var date = resolveSingleDayForInvoices();
+  if (date) {
+    dinvDate_ = date;
+    btn.style.display = 'block';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function resolveSingleDayForInvoices() {
+  var today = toLocalDateStr(new Date());
+  if (staffRange_ === 'today') return today;
+  if (staffRange_ === 'range') {
+    var from = document.getElementById('staff-from').value;
+    var to = document.getElementById('staff-to').value;
+    if (from && to && from === to) return from;
+  }
+  return null; // شهر أو فترة أكتر من يوم - مش مدعوم دلوقتي
+}
+
+function openDayInvoices() {
+  if (!dinvDate_) return;
+  dinvStack_ = [];
+  document.getElementById('day-invoices-modal').classList.add('show');
+  document.getElementById('dinv-title').textContent = 'فواتير يوم ' + dinvDate_;
+  document.getElementById('dinv-back-row').style.display = 'none';
+  document.getElementById('dinv-content').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+
+  fetch(STAFF_SCRIPT_URL + '?action=getDayInvoices&date=' + dinvDate_)
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      dinvData_ = res;
+      if (!res.ok) {
+        document.getElementById('dinv-content').innerHTML = '<p style="color:#E0727C;text-align:center">' + (res.error || 'خطأ في التحميل') + '</p>';
+        return;
+      }
+      renderDinvEmployeeList();
+    })
+    .catch(function(){
+      document.getElementById('dinv-content').innerHTML = '<div class="loading"><p style="color:#E0727C">خطأ في التحميل — تأكد من STAFF_SCRIPT_URL</p></div>';
+    });
+}
+
+function closeDayInvoices() {
+  document.getElementById('day-invoices-modal').classList.remove('show');
+}
+
+function renderDinvEmployeeList() {
+  dinvStack_ = ['employees'];
+  document.getElementById('dinv-title').textContent = 'فواتير يوم ' + dinvDate_;
+  document.getElementById('dinv-back-row').style.display = 'none';
+
+  var emps = dinvData_.employees || {};
+  var names = Object.keys(emps);
+  if (!names.length) {
+    document.getElementById('dinv-content').innerHTML = '<p style="color:var(--text2);text-align:center;padding:20px">مفيش فواتير في اليوم ده</p>';
+    return;
+  }
+  // نرتب الموظفين حسب إجمالي مبيعاتهم من الأعلى للأقل
+  var rows = names.map(function(name){
+    var invs = emps[name];
+    var total = invs.reduce(function(s,i){ return s + (i.total||0); }, 0);
+    return { name: name, count: invs.length, total: total };
+  }).sort(function(a,b){ return b.total - a.total; });
+
+  var html = '';
+  rows.forEach(function(r){
+    html += '<div class="hist-item" style="cursor:pointer;padding:12px 4px" onclick=\'renderDinvInvoiceList(' + JSON.stringify(r.name) + ')\'>';
+    html += '<div class="hist-icon">👤</div>';
+    html += '<div style="flex:1"><div style="font-size:13.5px;font-weight:600;color:var(--text)">' + r.name + '</div><div class="hist-text">' + r.count + ' فاتورة</div></div>';
+    html += '<div style="font-weight:700;color:var(--accent);font-size:14px">' + Math.round(r.total).toLocaleString() + ' ج</div>';
+    html += '</div>';
+  });
+  document.getElementById('dinv-content').innerHTML = html;
+}
+
+function renderDinvInvoiceList(empName) {
+  dinvStack_.push('invoices:' + empName);
+  document.getElementById('dinv-title').textContent = 'فواتير ' + empName;
+  document.getElementById('dinv-back-row').style.display = 'block';
+
+  var invs = (dinvData_.employees[empName] || []).slice();
+  var html = '';
+  invs.forEach(function(inv){
+    html += '<div class="hist-item" style="cursor:pointer;padding:12px 4px" onclick=\'renderDinvInvoiceDetail(' + JSON.stringify(empName) + ',' + JSON.stringify(inv.invoiceid) + ')\'>';
+    html += '<div class="hist-icon">🧾</div>';
+    html += '<div style="flex:1"><div style="font-size:13.5px;font-weight:600;color:var(--text)">' + inv.custname + '</div><div class="hist-text">فاتورة #' + inv.invoiceid + ' · ' + inv.itemCount + ' صنف</div></div>';
+    html += '<div style="font-weight:700;color:var(--text)">' + Math.round(inv.total).toLocaleString() + ' ج</div>';
+    html += '</div>';
+  });
+  document.getElementById('dinv-content').innerHTML = html;
+}
+
+function renderDinvInvoiceDetail(empName, invoiceid) {
+  dinvStack_.push('detail');
+  document.getElementById('dinv-title').textContent = 'فاتورة #' + invoiceid;
+  document.getElementById('dinv-back-row').style.display = 'block';
+
+  var inv = (dinvData_.employees[empName] || []).find(function(i){ return i.invoiceid === invoiceid; });
+  if (!inv) return;
+
+  var html = '<div style="background:var(--fill);border-radius:var(--r-md);padding:14px;margin-bottom:10px">';
+  html += '<div class="dash-comm-row"><span>العميل</span><span>' + inv.custname + '</span></div>';
+  if (inv.phone) html += '<div class="dash-comm-row"><span>الموبايل</span><span dir="ltr">' + inv.phone + '</span></div>';
+  html += '<div class="dash-comm-row"><span>الموظف</span><span>' + empName + '</span></div>';
+  html += '<div class="dash-comm-row"><span>الخصم</span><span>' + Math.round(inv.discount).toLocaleString() + ' ج</span></div>';
+  html += '<div class="dash-comm-row"><span>الإجمالي المدفوع</span><span style="color:#5FB88A;font-weight:700">' + Math.round(inv.total).toLocaleString() + ' ج</span></div>';
+  html += '</div>';
+
+  if (inv.items && inv.items.length) {
+    html += '<div class="hist-title">الأصناف (' + inv.items.length + ')</div>';
+    html += '<div style="background:var(--fill);border-radius:var(--r-md);padding:4px 14px">';
+    inv.items.forEach(function(it, idx){
+      html += '<div class="hist-item"' + (idx === inv.items.length-1 ? ' style="border-bottom:none"' : '') + '>';
+      html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + it.name + '</div><div class="hist-text">الكمية: ' + it.qty + ' × ' + it.price.toLocaleString() + ' ج</div></div>';
+      html += '<div style="font-weight:600;color:var(--text)">' + Math.round(it.qty * it.price).toLocaleString() + ' ج</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  document.getElementById('dinv-content').innerHTML = html;
+}
+
+function dinvGoBack() {
+  dinvStack_.pop(); // نشيل الشاشة الحالية
+  var prev = dinvStack_[dinvStack_.length - 1];
+  if (!prev || prev === 'employees') {
+    renderDinvEmployeeList();
+  } else if (prev.indexOf('invoices:') === 0) {
+    var empName = prev.substring('invoices:'.length);
+    dinvStack_.pop();
+    renderDinvInvoiceList(empName);
+  }
 }
 
 function initDashboardDates() {

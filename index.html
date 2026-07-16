@@ -637,7 +637,6 @@
   <div id="staff-care-content">
     <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
   </div>
-  <button id="btn-day-invoices" onclick="openDayInvoices()" style="display:none;width:100%;margin-top:10px;background:var(--card-bg);box-shadow:var(--card-shadow);border:none;color:var(--accent);border-radius:var(--r-md);padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">🧾 عرض فواتير اليوم تفصيليًا</button>
 </div>
 
 <!-- 🆕 مودال فواتير اليوم: قائمة الموظفين → فواتير الموظف → تفاصيل الفاتورة -->
@@ -2542,7 +2541,6 @@ function careColor(score) {
 
 function renderStaffCare(d) {
   var box = document.getElementById('staff-care-content');
-  updateDayInvoicesButton();
   if (!d || !d.employees || !d.employees.length) {
     box.innerHTML = '<p style="color:var(--text2);text-align:center;padding:20px">مفيش بيانات في الفترة دي</p>';
     return;
@@ -2652,8 +2650,8 @@ function renderStaffCare(d) {
 
     // أرقام إضافية
     html += '<div class="dash-grid">';
-    html += '<div class="dash-card"><div class="dv">' + s.invoices + '</div><div class="dl">فواتير</div></div>';
-    html += '<div class="dash-card"><div class="dv">' + s.sales.toLocaleString() + '</div><div class="dl">مبيعات (ج)</div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick="openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')"><div class="dv">' + s.invoices + '</div><div class="dl">فواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick="openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')"><div class="dv">' + s.sales.toLocaleString() + '</div><div class="dl">مبيعات (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:#E0727C">' + s.returns + '</div><div class="dl">مرتجعات<div class="ds2">' + s.returns_val.toLocaleString() + ' ج</div></div></div>';
     html += '<div class="dash-card"><div class="dv">' + s.avg_inv + '</div><div class="dl">متوسط الفاتورة</div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:#94A3B8">' + s.days + '</div><div class="dl">أيام عمل</div></div>';
@@ -2739,18 +2737,6 @@ function toLocalDateStr(d) {
 // ===================================================================
 var dinvDate_ = '', dinvData_ = null, dinvStack_ = [];
 
-function updateDayInvoicesButton() {
-  var btn = document.getElementById('btn-day-invoices');
-  if (!btn) return;
-  var date = resolveSingleDayForInvoices();
-  if (date) {
-    dinvDate_ = date;
-    btn.style.display = 'block';
-  } else {
-    btn.style.display = 'none';
-  }
-}
-
 function resolveSingleDayForInvoices() {
   var today = toLocalDateStr(new Date());
   if (staffRange_ === 'today') return today;
@@ -2760,6 +2746,39 @@ function resolveSingleDayForInvoices() {
     if (from && to && from === to) return from;
   }
   return null; // شهر أو فترة أكتر من يوم - مش مدعوم دلوقتي
+}
+
+function openEmployeeInvoicesDirect(empName) {
+  var date = resolveSingleDayForInvoices();
+  if (!date) {
+    alert('عرض الفواتير التفصيلية متاح بس لما تختار "اليوم" أو تحدد يوم واحد بالظبط من "فترة" — مش متاح لما الفترة المختارة تبقى شهر كامل أو أكتر من يوم');
+    return;
+  }
+  dinvDate_ = date;
+  dinvStack_ = [];
+  document.getElementById('day-invoices-modal').classList.add('show');
+  document.getElementById('dinv-title').textContent = 'فواتير ' + empName;
+  document.getElementById('dinv-back-row').style.display = 'none';
+  document.getElementById('dinv-content').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+
+  fetch(STAFF_SCRIPT_URL + '?action=getDayInvoices&date=' + dinvDate_)
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      dinvData_ = res;
+      if (!res.ok) {
+        document.getElementById('dinv-content').innerHTML = '<p style="color:#E0727C;text-align:center">' + (res.error || 'خطأ في التحميل') + '</p>';
+        return;
+      }
+      if (!res.employees[empName] || !res.employees[empName].length) {
+        document.getElementById('dinv-content').innerHTML = '<p style="color:var(--text2);text-align:center;padding:20px">مفيش فواتير لـ ' + empName + ' في يوم ' + dinvDate_ + '</p>';
+        return;
+      }
+      dinvStack_ = ['employees'];
+      renderDinvInvoiceList(empName);
+    })
+    .catch(function(){
+      document.getElementById('dinv-content').innerHTML = '<div class="loading"><p style="color:#E0727C">خطأ في التحميل — تأكد من STAFF_SCRIPT_URL</p></div>';
+    });
 }
 
 function openDayInvoices() {

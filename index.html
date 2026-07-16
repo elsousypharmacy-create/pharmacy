@@ -61,7 +61,7 @@
   .theme-toggle { width: 34px; height: 32px; border-radius: 8px; background: var(--fill); border: none; color: var(--text2); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .icon-btn.menu-btn { background: var(--fill); }
 
-  .stats-bar { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-bottom: 14px; }
+  .stats-bar { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-bottom: 14px; align-items: start; }
   .stat-pill { background: var(--card-bg); border-radius: var(--r-md); padding: 10px 4px; text-align: center; cursor: pointer; box-shadow: var(--card-shadow); border: 1.5px solid transparent; transition: border-color 0.15s; }
   .stat-pill.active { border-color: var(--accent); }
   .stat-pill .lbl { font-size: 15px; font-weight: 700; }
@@ -111,7 +111,7 @@
   .detail { display: none; border-top: 0.5px solid var(--sep); padding: 16px; background: var(--card-bg2); }
   .detail.open { display: block; }
 
-  .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 12px; }
+  .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 12px; align-items: start; }
   .stat-cell { background: var(--fill); border-radius: var(--r-sm); padding: 10px 6px; text-align: center; }
   .stat-v { font-size: 15px; font-weight: 700; }
   .stat-l { font-size: 9.5px; color: var(--text2); margin-top: 2px; font-weight: 500; }
@@ -202,7 +202,7 @@
   .dash-range input[type="date"] { background: var(--fill); border: none; color: var(--text); border-radius: var(--r-md); padding: 0 10px; font-size: 12px; font-family: inherit; flex: 1; min-width: 120px; height: 34px; -webkit-appearance: none; appearance: none; box-sizing: border-box; display: block; }
   .dash-range button { background: var(--accent); color: #fff; border: none; border-radius: var(--r-md); padding: 9px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
   .dash-section-title { font-size: 11.5px; color: var(--text2); font-weight: 600; margin: 18px 2px 8px; }
-  .dash-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
+  .dash-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; align-items: start; }
   .dash-card { background: var(--card-bg); border-radius: var(--r-lg); box-shadow: var(--card-shadow); padding: 14px; }
   .dash-card .dv { font-size: 21px; font-weight: 700; }
   .dash-card .dl { font-size: 11.5px; color: var(--text2); margin-top: 4px; }
@@ -263,14 +263,14 @@
   .badge-waiting { background: rgba(217,164,65,0.12); border: none; color: #D9A441; border-radius: var(--r-sm); padding: 6px 10px; font-size: 11px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
   .btn-restore { background: rgba(10,132,255,0.12); border: none; color: var(--accent); border-radius: var(--r-sm); padding: 7px 12px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
 
-  .kpi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; align-items: start; }
   .kpi-card { background: var(--card-bg); box-shadow: var(--card-shadow); border-radius: var(--r-md); padding: 13px 6px; text-align: center; cursor: pointer; transition: background 0.15s; }
   .kpi-card:active { background: var(--fill); }
   .kpi-detail-box { max-height: 320px; overflow-y: auto; margin-top: 12px; padding-top: 12px; border-top: 0.5px solid var(--sep); }
   .kpi-card .kv { font-size: 19px; font-weight: 700; }
   .kpi-card .kl { font-size: 10.5px; color: var(--text2); margin-top: 4px; }
 
-  .kpi-big { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 14px; }
+  .kpi-big { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 14px; align-items: start; }
   .kpi-big-card { background: var(--card-bg); box-shadow: var(--card-shadow); border-radius: var(--r-lg); padding: 15px; text-align: center; }
   .kpi-big-card .dv { font-size: 20px; font-weight: 700; white-space: nowrap; }
   .kpi-big-card .dl { font-size: 11.5px; color: var(--text2); margin-top: 4px; }

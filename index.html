@@ -2580,7 +2580,7 @@ function renderStaffCare(d) {
     html += '<div style="font-size:10px;color:#5FB88A;margin-bottom:8px">✅ المبيعات/الربح/الخصم من نظام الصيدلية مباشرة (مطابق 100%)</div>';
   }
   html += '<div class="dash-grid">';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'invoices\',\'📦 الفواتير لكل موظف\')"><div class="dv">' + totInv + '</div><div class="dl">إجمالي الفواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="openDayInvoices()"><div class="dv">' + totInv + '</div><div class="dl">إجمالي الفواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'sales\',\'💰 البيع لكل موظف\')"><div class="dv" style="color:#5FB88A">' + totNet.toLocaleString() + '</div><div class="dl">صافي البيع (ج)<div class="ds2">بعد خصم المرتجع · دوس للتفاصيل</div></div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'returns\',\'↩️ المرتجع لكل موظف\')"><div class="dv" style="color:#E0727C">' + totReturns + '</div><div class="dl">إجمالي المرتجع<div class="ds2">' + totReturnsVal.toLocaleString() + ' ج · دوس للتفاصيل</div></div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'profit\',\'💜 الربح لكل موظف\')"><div class="dv" style="color:#A78BFA">' + totProfit.toLocaleString() + ' <span style="font-size:13px;font-weight:600;color:#A78BFA;opacity:0.75">(' + (totSales>0 ? (totProfit/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">الربح الصافي (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
@@ -2783,11 +2783,17 @@ function openEmployeeInvoicesDirect(empName) {
 }
 
 function openDayInvoices() {
-  if (!dinvDate_) return;
-  dinvStack_ = [];
+  var date = resolveSingleDayForInvoices();
   document.getElementById('day-invoices-modal').classList.add('show');
-  document.getElementById('dinv-title').textContent = 'فواتير يوم ' + dinvDate_;
   document.getElementById('dinv-back-row').style.display = 'none';
+  if (!date) {
+    document.getElementById('dinv-title').textContent = 'فواتير اليوم';
+    document.getElementById('dinv-content').innerHTML = '<div style="text-align:center;padding:24px 10px;color:var(--text2);font-size:13px;line-height:1.8">📅 عرض الفواتير التفصيليّة متاح بس لما تختار "اليوم"<br>أو تحدد يوم واحد بالظبط من "فترة"<br><br>مش متاح لما الفترة المختارة تبقى شهر كامل أو أكتر من يوم</div>';
+    return;
+  }
+  dinvDate_ = date;
+  dinvStack_ = [];
+  document.getElementById('dinv-title').textContent = 'فواتير يوم ' + dinvDate_;
   document.getElementById('dinv-content').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
 
   fetch(STAFF_SCRIPT_URL + '?action=getDayInvoices&date=' + dinvDate_)

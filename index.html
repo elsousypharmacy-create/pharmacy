@@ -2614,7 +2614,7 @@ function renderStaffCare(d) {
   // 🆕 كارت الديون — بيظهر بس لما الأرقام الرسمية متاحة (فلتر "اليوم")
   if (usingSystemNumbers && d.systemTotals) {
     html += '<div class="dash-card" style="cursor:pointer" onclick="navigateTo(\'debts\',\'list\')"><div class="dv" style="color:#E0727C">' + Math.round(d.systemTotals.total_debt).toLocaleString() + '</div><div class="dl">صافي الدين الإجمالي (ج)<div class="ds2">دوس لعرض التفاصيل</div></div></div>';
-    html += '<div class="dash-card" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center"><div><div class="dl" style="margin-bottom:2px">دين متحصّل اليوم (ج)</div></div><div class="dv" style="color:#5FB88A">' + Math.round(d.systemTotals.debt_paid_today).toLocaleString() + '</div></div>';
+    html += '<div class="dash-card" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="debtsRange_=\'today\';openDayDebits()"><div><div class="dl" style="margin-bottom:2px">دين متحصّل اليوم (ج)<div class="ds2">دوس للتفاصيل</div></div></div><div class="dv" style="color:#5FB88A">' + Math.round(d.systemTotals.debt_paid_today).toLocaleString() + '</div></div>';
   }
   html += '</div>';
   html += '<div id="staff-breakdown-box" style="display:none;margin-top:12px"></div>';

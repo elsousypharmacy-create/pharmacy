@@ -2230,9 +2230,15 @@ function loadDebts() {
   }
   box.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
 
-  fetch(STAFF_SCRIPT_URL + '?action=getDebtsData')
-    .then(function(r){ return r.json(); })
-    .then(function(d){ debtsLoaded = true; lastDebtsData_ = d; renderDebts(d); })
+  Promise.all([
+    fetch(STAFF_SCRIPT_URL + '?action=getDebtsData').then(function(r){ return r.json(); }),
+    fetch(STAFF_SCRIPT_URL + '?action=getSystemDailyTotals').then(function(r){ return r.json(); }).catch(function(){ return null; })
+  ])
+    .then(function(res){
+      var d = res[0];
+      if (res[1] && res[1].ok) d.systemTotalDebt = res[1].total_debt;
+      debtsLoaded = true; lastDebtsData_ = d; renderDebts(d);
+    })
     .catch(function(){ box.innerHTML = '<div class="loading"><p style="color:#E0727C">خطأ في التحميل — اضغط 🔄</p></div>'; });
 }
 
@@ -2264,11 +2270,15 @@ function renderDebts(d) {
 
   var html = '';
   html += '<div class="dash-panel"><div class="dash-panel-title">💳 إجمالي الديون</div>';
+  if (typeof d.systemTotalDebt === 'number') {
+    html += '<div style="font-size:10px;color:#5FB88A;margin-bottom:8px">✅ صافي الدين من نظام الصيدلية مباشرة (مطابق 100%)</div>';
+  }
   html += '<div class="dash-grid">';
   html += '<div class="dash-card"><div class="dv" style="color:#E0727C">' + filtered.length + '</div><div class="dl">عدد المديونين</div></div>';
   html += '<div class="dash-card"><div class="dv">' + Math.round(fTotalOwed).toLocaleString() + '</div><div class="dl">إجمالي الديون (ج)</div></div>';
   html += '<div class="dash-card"><div class="dv" style="color:#5FB88A">' + Math.round(fTotalPaid).toLocaleString() + '</div><div class="dl">المدفوع (ج)</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#E0727C">' + Math.round(fTotalNet).toLocaleString() + '</div><div class="dl">صافي المتبقي (ج)</div></div>';
+  var netVal = (debtsRange_ === 'all' && typeof d.systemTotalDebt === 'number') ? d.systemTotalDebt : fTotalNet;
+  html += '<div class="dash-card"><div class="dv" style="color:#E0727C">' + Math.round(netVal).toLocaleString() + '</div><div class="dl">صافي المتبقي (ج)' + (debtsRange_ === 'all' && typeof d.systemTotalDebt === 'number' ? '<div class="ds2">رقم رسمي مضمون</div>' : '') + '</div></div>';
   html += '</div></div>';
 
   html += '<div class="dash-panel"><div class="dash-panel-title">👥 قائمة المديونين (الأعلى أولاً)</div>';

@@ -2547,12 +2547,14 @@ function renderStaffCare(d) {
 
   // 🎯 لو متاح رقم رسمي من النظام مباشرة (Daily_Mini_Statics) نستخدمه بدل حسابنا الذاتي
   // للمبيعات/الربح/الخصم — ده مضمون 100% مطابق للنظام
+  // 🔧 مهم: الرقم الرسمي "sales_today" أصلاً صافي بعد خصم المرتجع من مصدره،
+  // فمينفعش نخصم المرتجع منه تاني (كان ده بيسبب خصم مزدوج وبيطلع الرقم أقل من الصح)
   var usingSystemNumbers = false;
   if (d.systemTotals) {
     totSales = d.systemTotals.sales_today;
     totProfit = d.systemTotals.profit_today;
     totDiscount = d.systemTotals.discount_today;
-    totNet = totSales - totReturnsVal;
+    totNet = totSales; // صافي بالفعل - من غير خصم تاني
     usingSystemNumbers = true;
   }
   lastStaffEmployees_ = emps; // نحفظها عشان نقدر نعرض تفصيل كل موظف لما حد يدوس على أي كارت
@@ -2565,8 +2567,8 @@ function renderStaffCare(d) {
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'invoices\',\'📦 الفواتير لكل موظف\')"><div class="dv">' + totInv + '</div><div class="dl">إجمالي الفواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'sales\',\'💰 البيع لكل موظف\')"><div class="dv" style="color:#5FB88A">' + totNet.toLocaleString() + '</div><div class="dl">صافي البيع (ج)<div class="ds2">بعد خصم المرتجع · دوس للتفاصيل</div></div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'returns\',\'↩️ المرتجع لكل موظف\')"><div class="dv" style="color:#E0727C">' + totReturns + '</div><div class="dl">إجمالي المرتجع<div class="ds2">' + totReturnsVal.toLocaleString() + ' ج · دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'profit\',\'💜 الربح لكل موظف\')"><div class="dv" style="color:#A78BFA">' + totProfit.toLocaleString() + '</div><div class="dl">الربح الصافي (ج)<div class="ds2">' + (totSales>0 ? (totProfit/totSales*100).toFixed(1) : '0.0') + '% هامش · دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'discount\',\'🏷️ الخصم لكل موظف\')"><div class="dv" style="color:#FB923C">' + totDiscount.toLocaleString() + '</div><div class="dl">إجمالي الخصم (ج)<div class="ds2">' + (totSales>0 ? (totDiscount/totSales*100).toFixed(1) : '0.0') + '% من البيع · دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'profit\',\'💜 الربح لكل موظف\')"><div class="dv" style="color:#A78BFA">' + totProfit.toLocaleString() + ' <span style="font-size:13px;font-weight:600;color:#A78BFA;opacity:0.75">(' + (totSales>0 ? (totProfit/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">الربح الصافي (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'discount\',\'🏷️ الخصم لكل موظف\')"><div class="dv" style="color:#FB923C">' + totDiscount.toLocaleString() + ' <span style="font-size:13px;font-weight:600;color:#FB923C;opacity:0.75">(' + (totSales>0 ? (totDiscount/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">إجمالي الخصم (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
 
   // 🆕 المتوسط اليومي ومتوسط العملاء — بنحسبهم من البيانات اليومية (متاحين لأي فترة أكتر من يوم واحد)
   var dailyList = Array.isArray(d.daily) ? d.daily : [];

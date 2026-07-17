@@ -2308,6 +2308,9 @@ function renderDebts(d) {
   if (typeof d.systemTotalDebt === 'number') {
     html += '<div style="font-size:10px;color:#5FB88A;margin-bottom:8px">✅ صافي الدين من نظام الصيدلية مباشرة (مطابق 100%)</div>';
   }
+  if (d.source_updated) {
+    html += '<div style="font-size:10px;color:var(--text2);margin-bottom:8px">🕐 قائمة المديونين محدّثة لغاية: ' + d.source_updated + '</div>';
+  }
   html += '<div class="dash-grid">';
   html += '<div class="dash-card"><div class="dv" style="color:#E0727C">' + filtered.length + '</div><div class="dl">عدد المديونين</div></div>';
   html += '<div class="dash-card"><div class="dv">' + Math.round(fTotalOwed).toLocaleString() + '</div><div class="dl">إجمالي الديون (ج)</div></div>';

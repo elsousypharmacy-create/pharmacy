@@ -2197,6 +2197,8 @@ function applyStaffRange() {
   loadStaffCare();
 }
 
+var monthDebtsSummary_ = null;
+
 function setDebtsRange(kind) {
   debtsRange_ = kind;
   ['all','today','yesterday','month'].forEach(function(k){
@@ -2204,7 +2206,17 @@ function setDebtsRange(kind) {
   });
   document.getElementById('ddebt-range').classList.remove('active');
   document.getElementById('debts-range-box').style.display = 'none';
-  if (lastDebtsData_) renderDebts(lastDebtsData_);
+  if (kind === 'month') {
+    monthDebtsSummary_ = null;
+    if (lastDebtsData_) renderDebts(lastDebtsData_);
+    var mKey = toLocalDateStr(new Date()).substring(0, 7);
+    fetch(STAFF_SCRIPT_URL + '?action=getMonthDebtsSummary&month=' + mKey)
+      .then(function(r){ return r.json(); })
+      .then(function(res){ monthDebtsSummary_ = res; if (lastDebtsData_) renderDebts(lastDebtsData_); })
+      .catch(function(){});
+  } else {
+    if (lastDebtsData_) renderDebts(lastDebtsData_);
+  }
 }
 
 function toggleDebtsRange() {
@@ -2273,6 +2285,25 @@ function renderDebts(d) {
   filtered.forEach(function(c){ fTotalOwed += c.owed; fTotalPaid += c.paid; fTotalNet += c.net; });
 
   var html = '';
+
+  // 🆕 لوحة العجز الشهري: دين جديد اتسجل مقابل اللي اتحصّل فعليًا (من الملفات الخام اليومية)
+  if (debtsRange_ === 'month') {
+    if (!monthDebtsSummary_) {
+      html += '<div class="dash-panel"><div class="dash-panel-title">📊 تحليل دين الشهر</div><div style="text-align:center;padding:16px;color:var(--text2);font-size:12.5px">جاري حساب دين الشهر من الملفات اليومية...</div></div>';
+    } else if (!monthDebtsSummary_.ok) {
+      html += '<div class="dash-panel"><div class="dash-panel-title">📊 تحليل دين الشهر</div><div style="text-align:center;padding:16px;color:#E0727C;font-size:12.5px">' + (monthDebtsSummary_.error || 'خطأ في الحساب') + '</div></div>';
+    } else {
+      var ms = monthDebtsSummary_;
+      var deficitColor = ms.deficit > 0 ? '#E0727C' : '#5FB88A';
+      html += '<div class="dash-panel"><div class="dash-panel-title">📊 تحليل دين الشهر (من ' + ms.days_with_data + ' يوم بيانات)</div>';
+      html += '<div class="dash-grid">';
+      html += '<div class="dash-card"><div class="dv" style="color:#E0727C">' + ms.total_new_debt.toLocaleString() + '</div><div class="dl">دين جديد اتسجل (ج)</div></div>';
+      html += '<div class="dash-card"><div class="dv" style="color:#5FB88A">' + ms.total_collected.toLocaleString() + '</div><div class="dl">اتحصّل فعليًا (ج)</div></div>';
+      html += '<div class="dash-card" style="grid-column:1/-1"><div class="dv" style="color:' + deficitColor + '">' + (ms.deficit > 0 ? '−' : '+') + Math.abs(ms.deficit).toLocaleString() + '</div><div class="dl">' + (ms.deficit > 0 ? 'العجز (دين أكتر من التحصيل)' : 'فايض (تحصيل أكتر من الدين الجديد)') + '</div></div>';
+      html += '</div></div>';
+    }
+  }
+
   html += '<div class="dash-panel"><div class="dash-panel-title">💳 إجمالي الديون</div>';
   if (typeof d.systemTotalDebt === 'number') {
     html += '<div style="font-size:10px;color:#5FB88A;margin-bottom:8px">✅ صافي الدين من نظام الصيدلية مباشرة (مطابق 100%)</div>';

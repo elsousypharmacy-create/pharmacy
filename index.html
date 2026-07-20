@@ -2127,7 +2127,12 @@ function staffReady() {
 }
 
 // بتفتح/تقفل تفصيل الموظفين لأي كارت من كروت إجمالي الصيدلية
+function closeInlineBoxes() {
+  document.querySelectorAll('[id^="newcust-"]').forEach(function(b){ b.style.display = 'none'; });
+}
+
 function toggleStaffBreakdown(metric, title) {
+  closeInlineBoxes();
   var fieldMap = {
     invoices: function(s){ return s.invoices; },
     sales: function(s){ return s.sales; },
@@ -2783,6 +2788,10 @@ function showNewCustomersFor(employeeName, boxId) {
   var box = document.getElementById(boxId);
   if (!box) return;
 
+  // نقفل المودال لو كان مفتوح من دوسة سابقة عشان ميتعرضش مع القائمة دي مع بعض
+  var modal = document.getElementById('day-invoices-modal');
+  if (modal) modal.classList.remove('show');
+
   if (box.style.display === 'block') {
     box.style.display = 'none';
     return;
@@ -2987,6 +2996,7 @@ function resolveSingleDayForInvoices() {
 }
 
 function openEmployeeInvoicesDirect(empName) {
+  closeInlineBoxes();
   var date = resolveSingleDayForInvoices();
   document.getElementById('dinv-back-row').innerHTML = '<button onclick="dinvGoBack()" style="background:var(--fill);border:none;color:var(--accent);border-radius:var(--r-sm);padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">→ رجوع</button>';
   document.getElementById('day-invoices-modal').classList.add('show');
@@ -3022,6 +3032,7 @@ function openEmployeeInvoicesDirect(empName) {
 }
 
 function openDayInvoices() {
+  closeInlineBoxes();
   var date = resolveSingleDayForInvoices();
   document.getElementById('dinv-back-row').innerHTML = '<button onclick="dinvGoBack()" style="background:var(--fill);border:none;color:var(--accent);border-radius:var(--r-sm);padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">→ رجوع</button>';
   document.getElementById('day-invoices-modal').classList.add('show');

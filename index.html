@@ -2709,13 +2709,13 @@ function renderStaffCare(d) {
     var newcCol = s.new_c > 0 ? '#5FB88A' : 'var(--text)';
     html += '<div class="dash-grid">';
     html += '<div class="dash-card" style="cursor:pointer" onclick=\'showNewCustomersFor(' + JSON.stringify(s.name) + ',' + JSON.stringify('newcust-' + empSafeId) + ')\'><div class="dv" style="color:' + newcCol + '">' + s.new_c + '</div><div class="dl">عملاء جدد<div class="ds2">دوس للأسماء</div></div></div>';
-    html += '<div class="dash-card" style="cursor:pointer" onclick="openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')"><div class="dv">' + s.invoices + '</div><div class="dl">فواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
-    html += '<div class="dash-card" style="cursor:pointer" onclick="openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')"><div class="dv">' + s.sales.toLocaleString() + '</div><div class="dl">مبيعات (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
-    html += '<div class="dash-card"><div class="dv" style="color:#E0727C">' + s.returns + '</div><div class="dl">مرتجعات<div class="ds2">' + s.returns_val.toLocaleString() + ' ج</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick=\'openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')\'><div class="dv">' + s.invoices + '</div><div class="dl">فواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick=\'openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')\'><div class="dv">' + s.sales.toLocaleString() + '</div><div class="dl">مبيعات (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick=\'openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')\'><div class="dv" style="color:#E0727C">' + s.returns + '</div><div class="dl">مرتجعات<div class="ds2">' + s.returns_val.toLocaleString() + ' ج · دوس للتفاصيل</div></div></div>';
     html += '<div class="dash-card"><div class="dv">' + s.avg_inv + '</div><div class="dl">متوسط الفاتورة</div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:#94A3B8">' + s.days + '</div><div class="dl">أيام عمل</div></div>';
-    html += '<div class="dash-card"><div class="dv" style="color:#5FB88A">' + (s.profit||0).toLocaleString() + '</div><div class="dl">الربح الصافي (ج)<div class="ds2">' + (s.sales>0 ? ((s.profit||0)/s.sales*100).toFixed(1) : '0.0') + '% هامش</div></div></div>';
-    html += '<div class="dash-card"><div class="dv" style="color:#94A3B8">' + (s.discount||0).toLocaleString() + '</div><div class="dl">الخصم (ج)<div class="ds2">' + (s.sales>0 ? ((s.discount||0)/s.sales*100).toFixed(1) : '0.0') + '% من البيع</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick=\'openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')\'><div class="dv" style="color:#5FB88A">' + (s.profit||0).toLocaleString() + '</div><div class="dl">الربح الصافي (ج)<div class="ds2">' + (s.sales>0 ? ((s.profit||0)/s.sales*100).toFixed(1) : '0.0') + '% هامش · دوس للتفاصيل</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick=\'openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')\'><div class="dv" style="color:#94A3B8">' + (s.discount||0).toLocaleString() + '</div><div class="dl">الخصم (ج)<div class="ds2">' + (s.sales>0 ? ((s.discount||0)/s.sales*100).toFixed(1) : '0.0') + '% من البيع · دوس للتفاصيل</div></div></div>';
     html += '</div>';
     html += '<div id="newcust-' + empSafeId + '" style="display:none;margin-top:10px"></div>';
     html += '</div>';

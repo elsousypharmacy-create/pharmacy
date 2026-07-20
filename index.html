@@ -2610,7 +2610,7 @@ function renderStaffCare(d) {
   var html = '';
 
   // ===== إجمالي الصيدلية (كل الموظفين مع بعض) =====
-  var totInv = 0, totSales = 0, totNet = 0, totReturns = 0, totReturnsVal = 0, totProfit = 0, totDiscount = 0;
+  var totInv = 0, totSales = 0, totNet = 0, totReturns = 0, totReturnsVal = 0, totProfit = 0, totDiscount = 0, totNewC = 0;
   emps.forEach(function(s){
     totInv += s.invoices;
     totSales += s.sales;
@@ -2619,6 +2619,7 @@ function renderStaffCare(d) {
     totReturnsVal += s.returns_val;
     totProfit += (s.profit || 0);
     totDiscount += (s.discount || 0);
+    totNewC += (s.new_c || 0);
   });
 
   // 🎯 لو متاح رقم رسمي من النظام مباشرة (Daily_Mini_Statics) نستخدمه بدل حسابنا الذاتي
@@ -2635,13 +2636,14 @@ function renderStaffCare(d) {
   }
   lastStaffEmployees_ = emps; // نحفظها عشان نقدر نعرض تفصيل كل موظف لما حد يدوس على أي كارت
 
-  html += '<div class="dash-panel"><div class="dash-panel-title">📊 تفاصيل ' + (d.label||'') + '</div>';
+  html += '<div class="dash-panel"><div class="dash-panel-title"><span class="row-icon" style="background:#5E5CE6"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>تفاصيل ' + (d.label||'') + '</div>';
   html += '<div style="font-size:10.5px;color:var(--text2);margin-bottom:8px">🕐 آخر تحديث: ' + new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}) + '</div>';
   if (usingSystemNumbers) {
     // (اتشال سطر التأكيد بناءً على طلب المستخدم)
   }
   html += '<div class="dash-grid">';
   html += '<div class="dash-card" style="cursor:pointer" onclick="openDayInvoices()"><div class="dv">' + totInv + '</div><div class="dl">إجمالي الفواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:#5FB88A">' + totNewC + '</div><div class="dl">عملاء جدد</div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'sales\',\'💰 البيع لكل موظف\')"><div class="dv" style="color:#5FB88A">' + totNet.toLocaleString() + '</div><div class="dl">صافي البيع (ج)<div class="ds2">بعد خصم المرتجع · دوس للتفاصيل</div></div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'returns\',\'↩️ المرتجع لكل موظف\')"><div class="dv" style="color:#E0727C">' + totReturns + '</div><div class="dl">إجمالي المرتجع<div class="ds2">' + totReturnsVal.toLocaleString() + ' ج · دوس للتفاصيل</div></div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'profit\',\'💜 الربح لكل موظف\')"><div class="dv" style="color:#A78BFA">' + totProfit.toLocaleString() + ' <span style="font-size:13px;font-weight:600;color:#A78BFA;opacity:0.75">(' + (totSales>0 ? (totProfit/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">الربح الصافي (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
@@ -2716,7 +2718,7 @@ function renderStaffCare(d) {
 
     // أرقام إضافية
     html += '<div class="dash-grid">';
-    html += '<div class="dash-card" style="cursor:pointer" onclick="openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')"><div class="dv">' + s.invoices + '</div><div class="dl">فواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick="toggleEmployeeInvoicesInline(' + JSON.stringify(s.name) + ',\'empinv-' + empSafeId + '\')"><div class="dv">' + s.invoices + '</div><div class="dl">فواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
     html += '<div class="dash-card" style="cursor:pointer" onclick="openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')"><div class="dv">' + s.sales.toLocaleString() + '</div><div class="dl">مبيعات (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:#E0727C">' + s.returns + '</div><div class="dl">مرتجعات<div class="ds2">' + s.returns_val.toLocaleString() + ' ج</div></div></div>';
     html += '<div class="dash-card"><div class="dv">' + s.avg_inv + '</div><div class="dl">متوسط الفاتورة</div></div>';
@@ -2724,6 +2726,7 @@ function renderStaffCare(d) {
     html += '<div class="dash-card"><div class="dv" style="color:#A78BFA">' + (s.profit||0).toLocaleString() + '</div><div class="dl">الربح الصافي (ج)<div class="ds2">' + (s.sales>0 ? ((s.profit||0)/s.sales*100).toFixed(1) : '0.0') + '% هامش</div></div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:#FB923C">' + (s.discount||0).toLocaleString() + '</div><div class="dl">الخصم (ج)<div class="ds2">' + (s.sales>0 ? ((s.discount||0)/s.sales*100).toFixed(1) : '0.0') + '% من البيع</div></div></div>';
     html += '</div>';
+    html += '<div id="empinv-' + empSafeId + '" style="display:none;margin-top:10px"></div>';
     html += '</div>';
   });
 
@@ -2731,6 +2734,59 @@ function renderStaffCare(d) {
 }
 
 // بتفتح/تقفل قائمة أسماء وأرقام العملاء الجدد لموظف معين
+// بتفتح/تقفل قائمة فواتير موظف معين Inline تحت كارته مباشرة
+function toggleEmployeeInvoicesInline(empName, boxId) {
+  var box = document.getElementById(boxId);
+  if (!box) return;
+
+  if (box.style.display === 'block') {
+    box.style.display = 'none';
+    return;
+  }
+  document.querySelectorAll('[id^="empinv-"]').forEach(function(b){ b.style.display = 'none'; });
+
+  box.style.display = 'block';
+  box.innerHTML = '<div style="font-size:11px;color:var(--text2);padding:6px 0">جاري التحميل...</div>';
+
+  var date = resolveSingleDayForInvoices();
+  if (!date) {
+    box.innerHTML = '<div style="font-size:11.5px;color:var(--text2);background:var(--card-bg2);border-radius:8px;padding:12px;line-height:1.7">📅 عرض الفواتير التفصيليّة متاح بس لما تختار "اليوم" أو "أمس" أو تحدد يوم واحد من "فترة"</div>';
+    return;
+  }
+
+  fetch(STAFF_SCRIPT_URL + '?action=getDayInvoices&date=' + date)
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if (!res.ok || !res.employees[empName] || !res.employees[empName].length) {
+        box.innerHTML = '<div style="font-size:11px;color:var(--text2);background:var(--card-bg2);border-radius:8px;padding:10px">مفيش فواتير مسجّلة للموظف ده في اليوم ده</div>';
+        return;
+      }
+      dinvDate_ = date;
+      dinvData_ = res;
+      var html = '<div style="background:var(--card-bg2);border-radius:8px;padding:6px 10px">';
+      res.employees[empName].forEach(function(inv){
+        html += '<div class="hist-item" style="cursor:pointer" onclick=\'openInvoiceDetailModal(' + JSON.stringify(empName) + ',' + JSON.stringify(inv.invoiceid) + ')\'>';
+        html += '<div class="hist-icon">🧾</div>';
+        html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + inv.custname + '</div><div class="hist-text">فاتورة #' + inv.invoiceid + ' · ' + inv.itemCount + ' صنف</div></div>';
+        html += '<div style="font-weight:700;color:var(--text)">' + Math.round(inv.total).toLocaleString() + ' ج</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+      box.innerHTML = html;
+    })
+    .catch(function(){
+      box.innerHTML = '<div style="font-size:11px;color:#E0727C">خطأ في التحميل</div>';
+    });
+}
+
+// بتفتح مودال تفاصيل فاتورة واحدة (مستخدَمة من قائمة الفواتير الـ Inline)
+function openInvoiceDetailModal(empName, invoiceid) {
+  dinvStack_ = ['employees', 'invoices:' + empName];
+  document.getElementById('day-invoices-modal').classList.add('show');
+  document.getElementById('dinv-back-row').style.display = 'none';
+  renderDinvInvoiceDetail(empName, invoiceid);
+}
+
 var newCustCache_ = {}; // كاش بسيط عشان ما نكررش الطلب لو دوس تاني بنفس الفترة
 function showNewCustomersFor(employeeName, boxId) {
   var box = document.getElementById(boxId);

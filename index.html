@@ -2638,7 +2638,7 @@ function renderStaffCare(d) {
   html += '<div class="dash-panel"><div class="dash-panel-title">📊 تفاصيل ' + (d.label||'') + '</div>';
   html += '<div style="font-size:10.5px;color:var(--text2);margin-bottom:8px">🕐 آخر تحديث: ' + new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}) + '</div>';
   if (usingSystemNumbers) {
-    html += '<div style="font-size:10px;color:#5FB88A;margin-bottom:8px">✅ المبيعات/الربح/الخصم من نظام الصيدلية مباشرة (مطابق 100%)</div>';
+    // (اتشال سطر التأكيد بناءً على طلب المستخدم)
   }
   html += '<div class="dash-grid">';
   html += '<div class="dash-card" style="cursor:pointer" onclick="openDayInvoices()"><div class="dv">' + totInv + '</div><div class="dl">إجمالي الفواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
@@ -2661,7 +2661,7 @@ function renderStaffCare(d) {
   // 🆕 كارت الديون — بيظهر بس لما الأرقام الرسمية متاحة (فلتر "اليوم")
   if (usingSystemNumbers && d.systemTotals) {
     html += '<div class="dash-card" style="cursor:pointer" onclick="navigateTo(\'debts\',\'list\')"><div class="dv" style="color:#E0727C">' + Math.round(d.systemTotals.total_debt).toLocaleString() + '</div><div class="dl">صافي الدين الإجمالي (ج)<div class="ds2">دوس لعرض التفاصيل</div></div></div>';
-    html += '<div class="dash-card" style="cursor:pointer" onclick="debtsRange_=\'today\';openDayDebits()"><div class="dv" style="color:#5FB88A">' + Math.round(d.systemTotals.debt_paid_today).toLocaleString() + '</div><div class="dl">دين متحصّل اليوم (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick="openDayCollections()"><div class="dv" style="color:#5FB88A">' + Math.round(d.systemTotals.debt_paid_today).toLocaleString() + '</div><div class="dl">دين متحصّل اليوم (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
   }
   html += '</div>';
   html += '<div id="staff-breakdown-box" style="display:none;margin-top:12px"></div>';
@@ -2706,7 +2706,10 @@ function renderStaffCare(d) {
 
     // مكوّنات المؤشر
     html += '<div style="margin-bottom:10px">';
-    html += '<div class="dash-comm-row" style="cursor:pointer" onclick="showNewCustomersFor(\'' + s.name.replace(/'/g,"\\'") + '\',\'newcust-' + empSafeId + '\')"><span>🆕 عملاء جدد (دوس للأسماء)</span><span style="font-weight:700;color:var(--text)">' + s.new_c + '</span></div>';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(95,184,138,0.16),rgba(95,184,138,0.06));border:1px solid rgba(95,184,138,0.35);border-radius:var(--r-md);padding:10px 14px;margin-bottom:10px;cursor:pointer" onclick="showNewCustomersFor(\'' + s.name.replace(/'/g,"\\'") + '\',\'newcust-' + empSafeId + '\')">' +
+      '<span style="font-size:12.5px;font-weight:700;color:#5FB88A">🆕 عملاء جدد <span style="font-weight:400;opacity:0.75">(دوس للأسماء)</span></span>' +
+      '<span style="background:#5FB88A;color:#04140c;font-weight:800;font-size:15px;min-width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0 4px">' + s.new_c + '</span>' +
+      '</div>';
     html += '<div id="newcust-' + empSafeId + '" style="display:none;margin:-4px 0 10px"></div>';
     html += staffBar('📋 نسبة تسجيل', s.care_reg, s.registered + '/' + s.total_cust + ' (' + s.reg_pct + '%)');
     html += '</div>';
@@ -2816,6 +2819,40 @@ function resolveSingleDayForDebits() {
     if (from && to && from === to) return from;
   }
   return null;
+}
+
+// 🆕 تحصيل اليوم - منفصلة عن ديون اليوم، بتوري مين دفع وبكام فعليًا
+function openDayCollections() {
+  var today = toLocalDateStr(new Date());
+  document.getElementById('day-invoices-modal').classList.add('show');
+  document.getElementById('dinv-back-row').style.display = 'none';
+  document.getElementById('dinv-title').textContent = 'تحصيل يوم ' + today;
+  document.getElementById('dinv-content').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+
+  fetch(STAFF_SCRIPT_URL + '?action=getDayCollections&date=' + today)
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if (!res.ok) {
+        document.getElementById('dinv-content').innerHTML = '<p style="color:#E0727C;text-align:center">' + (res.error || 'خطأ في التحميل') + '</p>';
+        return;
+      }
+      if (!res.collections || !res.collections.length) {
+        document.getElementById('dinv-content').innerHTML = '<p style="color:var(--text2);text-align:center;padding:20px">مفيش تحصيل مسجّل النهاردة</p>';
+        return;
+      }
+      var html = '';
+      res.collections.forEach(function(c){
+        html += '<div class="hist-item">';
+        html += '<div class="hist-icon">💰</div>';
+        html += '<div style="flex:1"><div style="font-size:13.5px;font-weight:600;color:var(--text)">' + c.custname + '</div><div class="hist-text">كان عليه ' + Math.round(c.before).toLocaleString() + ' ج، بقى ' + Math.round(c.after).toLocaleString() + ' ج</div></div>';
+        html += '<div style="font-weight:700;color:#5FB88A">' + Math.round(c.amount).toLocaleString() + ' ج</div>';
+        html += '</div>';
+      });
+      document.getElementById('dinv-content').innerHTML = html;
+    })
+    .catch(function(){
+      document.getElementById('dinv-content').innerHTML = '<div class="loading"><p style="color:#E0727C">خطأ في التحميل — تأكد من STAFF_SCRIPT_URL</p></div>';
+    });
 }
 
 function openDayDebits() {

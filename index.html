@@ -2173,6 +2173,11 @@ function setStaffRange(kind) {
   loadStaffCare();
 }
 
+function toggleCareInfo() {
+  var box = document.getElementById('care-info-box');
+  if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+
 function toggleStaffRange() {
   var box = document.getElementById('staff-range-box');
   var showing = box.style.display !== 'none';
@@ -2630,7 +2635,8 @@ function renderStaffCare(d) {
   }
   lastStaffEmployees_ = emps; // نحفظها عشان نقدر نعرض تفصيل كل موظف لما حد يدوس على أي كارت
 
-  html += '<div class="dash-panel"><div class="dash-panel-title">🏪 إجمالي الصيدلية — ' + (d.label||'') + '</div>';
+  html += '<div class="dash-panel"><div class="dash-panel-title">📊 تفاصيل ' + (d.label||'') + '</div>';
+  html += '<div style="font-size:10.5px;color:var(--text2);margin-bottom:8px">🕐 آخر تحديث: ' + new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}) + '</div>';
   if (usingSystemNumbers) {
     html += '<div style="font-size:10px;color:#5FB88A;margin-bottom:8px">✅ المبيعات/الربح/الخصم من نظام الصيدلية مباشرة (مطابق 100%)</div>';
   }
@@ -2655,33 +2661,38 @@ function renderStaffCare(d) {
   // 🆕 كارت الديون — بيظهر بس لما الأرقام الرسمية متاحة (فلتر "اليوم")
   if (usingSystemNumbers && d.systemTotals) {
     html += '<div class="dash-card" style="cursor:pointer" onclick="navigateTo(\'debts\',\'list\')"><div class="dv" style="color:#E0727C">' + Math.round(d.systemTotals.total_debt).toLocaleString() + '</div><div class="dl">صافي الدين الإجمالي (ج)<div class="ds2">دوس لعرض التفاصيل</div></div></div>';
-    html += '<div class="dash-card" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="debtsRange_=\'today\';openDayDebits()"><div><div class="dl" style="margin-bottom:2px">دين متحصّل اليوم (ج)<div class="ds2">دوس للتفاصيل</div></div></div><div class="dv" style="color:#5FB88A">' + Math.round(d.systemTotals.debt_paid_today).toLocaleString() + '</div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick="debtsRange_=\'today\';openDayDebits()"><div class="dv" style="color:#5FB88A">' + Math.round(d.systemTotals.debt_paid_today).toLocaleString() + '</div><div class="dl">دين متحصّل اليوم (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
   }
   html += '</div>';
   html += '<div id="staff-breakdown-box" style="display:none;margin-top:12px"></div>';
   html += '</div>';
 
-  // ===== شرح المؤشر =====
-  html += '<div class="dash-panel" style="background:rgba(10,132,255,0.06)"><div style="font-size:11px;color:var(--text2);line-height:1.7">';
+  // ===== شرح المؤشر - أيقونة ⓘ صغيرة تفتح/تقفل الشرح =====
+  html += '<div style="display:flex;justify-content:flex-end;margin-bottom:6px">';
+  html += '<span onclick="toggleCareInfo()" style="cursor:pointer;width:24px;height:24px;border-radius:50%;background:var(--fill);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--accent)">ⓘ</span>';
+  html += '</div>';
+  html += '<div id="care-info-box" style="display:none;background:rgba(10,132,255,0.06);border-radius:var(--r-md);padding:12px;margin-bottom:12px;font-size:11px;color:var(--text2);line-height:1.7">';
   html += '<b style="color:#e2e8f0">مؤشر رعاية المريض</b> بيجمع 4 عوامل بأوزان:<br>';
   html += '🆕 عملاء جدد <b>35%</b> · 📋 نسبة تسجيل <b>30%</b> · 🔄 متكررين <b>20%</b> · ✅ قلة مرتجعات <b>15%</b>';
-  html += '</div></div>';
-
-  // ===== الترتيب العام (bar chart للمؤشر) =====
-  html += '<div class="dash-panel"><div class="dash-panel-title">🏆 ترتيب الفريق — ' + (d.label||'') + '</div>';
-  emps.forEach(function(s, i){
-    var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1) + '.';
-    var col = careColor(s.care_score);
-    html += '<div style="margin-bottom:12px">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
-    html += '<span style="font-size:13px;font-weight:700;color:var(--text)">' + medal + ' ' + s.name + '</span>';
-    html += '<span style="font-size:15px;font-weight:800;color:' + col + '">' + s.care_score + '</span>';
-    html += '</div>';
-    html += '<div style="height:8px;background:var(--card-bg2);border-radius:4px;overflow:hidden">';
-    html += '<div style="height:100%;width:' + s.care_score + '%;background:' + col + ';border-radius:4px"></div>';
-    html += '</div></div>';
-  });
   html += '</div>';
+
+  // ===== الترتيب العام (bar chart للمؤشر) - يظهر بس لو أكتر من موظف واحد =====
+  if (emps.length > 1) {
+    html += '<div class="dash-panel"><div class="dash-panel-title">🏆 ترتيب الفريق — ' + (d.label||'') + '</div>';
+    emps.forEach(function(s, i){
+      var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1) + '.';
+      var col = careColor(s.care_score);
+      html += '<div style="margin-bottom:12px">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+      html += '<span style="font-size:13px;font-weight:700;color:var(--text)">' + medal + ' ' + s.name + '</span>';
+      html += '<span style="font-size:15px;font-weight:800;color:' + col + '">' + s.care_score + '</span>';
+      html += '</div>';
+      html += '<div style="height:8px;background:var(--card-bg2);border-radius:4px;overflow:hidden">';
+      html += '<div style="height:100%;width:' + s.care_score + '%;background:' + col + ';border-radius:4px"></div>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+  }
 
   // ===== كروت تفصيلية لكل موظف =====
   emps.forEach(function(s){
@@ -2695,12 +2706,9 @@ function renderStaffCare(d) {
 
     // مكوّنات المؤشر
     html += '<div style="margin-bottom:10px">';
-    html += '<div style="cursor:pointer" onclick="showNewCustomersFor(\'' + s.name.replace(/'/g,"\\'") + '\',\'newcust-' + empSafeId + '\')">' +
-      staffBar('🆕 عملاء جدد (دوس للأسماء)', s.care_new, s.new_c + ' عميل') + '</div>';
+    html += '<div class="dash-comm-row" style="cursor:pointer" onclick="showNewCustomersFor(\'' + s.name.replace(/'/g,"\\'") + '\',\'newcust-' + empSafeId + '\')"><span>🆕 عملاء جدد (دوس للأسماء)</span><span style="font-weight:700;color:var(--text)">' + s.new_c + '</span></div>';
     html += '<div id="newcust-' + empSafeId + '" style="display:none;margin:-4px 0 10px"></div>';
     html += staffBar('📋 نسبة تسجيل', s.care_reg, s.registered + '/' + s.total_cust + ' (' + s.reg_pct + '%)');
-    html += staffBar('🔄 متكررين', s.care_repeat, s.repeat_c + ' عميل');
-    html += staffBar('✅ قلة مرتجعات', s.care_return, s.returns + ' مرتجع (' + s.return_pct + '%)');
     html += '</div>';
 
     // أرقام إضافية

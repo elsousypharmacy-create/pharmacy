@@ -2320,7 +2320,7 @@ function renderDebts(d) {
   var netVal = (debtsRange_ === 'all' && typeof d.systemTotalDebt === 'number') ? d.systemTotalDebt : fTotalNet;
   html += '<div class="dash-card"><div class="dv" style="color:#E0727C">' + Math.round(netVal).toLocaleString() + '</div><div class="dl">صافي المتبقي (ج)' + (debtsRange_ === 'all' && typeof d.systemTotalDebt === 'number' ? '<div class="ds2">رقم رسمي مضمون</div>' : '') + '</div></div>';
   html += '</div>';
-  html += '<button onclick="openDayDebits()" style="width:100%;margin-top:10px;background:var(--fill);border:none;color:var(--accent);border-radius:var(--r-md);padding:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">👥 ديون اليوم لكل موظف (دوس للتفاصيل)</button>';
+  html += '<button onclick="openDayDebits()" style="width:100%;margin-top:10px;background:var(--fill);border:none;color:var(--accent);border-radius:var(--r-md);padding:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">ديون اليوم لكل موظف (دوس للتفاصيل)</button>';
   html += '</div>';
 
   html += '<div class="dash-panel"><div class="dash-panel-title">👥 قائمة المديونين (الأعلى أولاً)</div>';
@@ -2638,10 +2638,10 @@ function renderStaffCare(d) {
   html += '<div class="dash-grid">';
   // القصة المالية بالترتيب الطبيعي
   html += '<div class="dash-card" style="cursor:pointer" onclick="openDayInvoices()"><div class="dv">' + totInv + '</div><div class="dl">إجمالي الفواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'sales\',\'💰 البيع لكل موظف\')"><div class="dv" style="color:#5FB88A">' + totNet.toLocaleString() + '</div><div class="dl">صافي البيع (ج)<div class="ds2">بعد خصم المرتجع · دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'returns\',\'↩️ المرتجع لكل موظف\')"><div class="dv" style="color:#E0727C">' + totReturns + '</div><div class="dl">إجمالي المرتجع<div class="ds2">' + totReturnsVal.toLocaleString() + ' ج · دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'profit\',\'💜 الربح لكل موظف\')"><div class="dv" style="color:#5FB88A">' + totProfit.toLocaleString() + ' <span style="font-size:13px;font-weight:600;color:#5FB88A;opacity:0.75">(' + (totSales>0 ? (totProfit/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">الربح الصافي (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'discount\',\'🏷️ الخصم لكل موظف\')"><div class="dv" style="color:#94A3B8">' + totDiscount.toLocaleString() + ' <span style="font-size:13px;font-weight:600;color:#94A3B8;opacity:0.75">(' + (totSales>0 ? (totDiscount/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">إجمالي الخصم (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'sales\',\'البيع لكل موظف\')"><div class="dv" style="color:#5FB88A">' + totNet.toLocaleString() + '</div><div class="dl">صافي البيع (ج)<div class="ds2">بعد خصم المرتجع · دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'returns\',\'المرتجع لكل موظف\')"><div class="dv" style="color:#E0727C">' + totReturns + '</div><div class="dl">إجمالي المرتجع<div class="ds2">' + totReturnsVal.toLocaleString() + ' ج · دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'profit\',\'الربح لكل موظف\')"><div class="dv" style="color:#5FB88A">' + totProfit.toLocaleString() + ' <span style="font-size:13px;font-weight:600;color:#5FB88A;opacity:0.75">(' + (totSales>0 ? (totProfit/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">الربح الصافي (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'discount\',\'الخصم لكل موظف\')"><div class="dv" style="color:#94A3B8">' + totDiscount.toLocaleString() + ' <span style="font-size:13px;font-weight:600;color:#94A3B8;opacity:0.75">(' + (totSales>0 ? (totDiscount/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">إجمالي الخصم (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
 
   // 🆕 المتوسط اليومي ومتوسط العملاء — بنحسبهم من البيانات اليومية (متاحين لأي فترة أكتر من يوم واحد)
   var dailyList = Array.isArray(d.daily) ? d.daily : [];

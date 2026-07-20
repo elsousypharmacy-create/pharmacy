@@ -2636,18 +2636,15 @@ function renderStaffCare(d) {
   }
   lastStaffEmployees_ = emps; // نحفظها عشان نقدر نعرض تفصيل كل موظف لما حد يدوس على أي كارت
 
-  html += '<div class="dash-panel"><div class="dash-panel-title"><span class="row-icon" style="background:#5E5CE6"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>تفاصيل ' + (d.label||'') + '</div>';
+  html += '<div class="dash-panel"><div class="dash-panel-title"><span style="width:20px;height:20px;border-radius:6px;background:#5E5CE6;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>تفاصيل ' + (d.label||'') + '</div>';
   html += '<div style="font-size:10.5px;color:var(--text2);margin-bottom:8px">🕐 آخر تحديث: ' + new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}) + '</div>';
-  if (usingSystemNumbers) {
-    // (اتشال سطر التأكيد بناءً على طلب المستخدم)
-  }
   html += '<div class="dash-grid">';
+  // القصة المالية بالترتيب الطبيعي
   html += '<div class="dash-card" style="cursor:pointer" onclick="openDayInvoices()"><div class="dv">' + totInv + '</div><div class="dl">إجمالي الفواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:#5FB88A">' + totNewC + '</div><div class="dl">عملاء جدد</div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'sales\',\'💰 البيع لكل موظف\')"><div class="dv" style="color:#5FB88A">' + totNet.toLocaleString() + '</div><div class="dl">صافي البيع (ج)<div class="ds2">بعد خصم المرتجع · دوس للتفاصيل</div></div></div>';
   html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'returns\',\'↩️ المرتجع لكل موظف\')"><div class="dv" style="color:#E0727C">' + totReturns + '</div><div class="dl">إجمالي المرتجع<div class="ds2">' + totReturnsVal.toLocaleString() + ' ج · دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'profit\',\'💜 الربح لكل موظف\')"><div class="dv" style="color:#A78BFA">' + totProfit.toLocaleString() + ' <span style="font-size:13px;font-weight:600;color:#A78BFA;opacity:0.75">(' + (totSales>0 ? (totProfit/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">الربح الصافي (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'discount\',\'🏷️ الخصم لكل موظف\')"><div class="dv" style="color:#FB923C">' + totDiscount.toLocaleString() + ' <span style="font-size:13px;font-weight:600;color:#FB923C;opacity:0.75">(' + (totSales>0 ? (totDiscount/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">إجمالي الخصم (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'profit\',\'💜 الربح لكل موظف\')"><div class="dv" style="color:#5FB88A">' + totProfit.toLocaleString() + ' <span style="font-size:13px;font-weight:600;color:#5FB88A;opacity:0.75">(' + (totSales>0 ? (totProfit/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">الربح الصافي (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'discount\',\'🏷️ الخصم لكل موظف\')"><div class="dv" style="color:#94A3B8">' + totDiscount.toLocaleString() + ' <span style="font-size:13px;font-weight:600;color:#94A3B8;opacity:0.75">(' + (totSales>0 ? (totDiscount/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">إجمالي الخصم (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
 
   // 🆕 المتوسط اليومي ومتوسط العملاء — بنحسبهم من البيانات اليومية (متاحين لأي فترة أكتر من يوم واحد)
   var dailyList = Array.isArray(d.daily) ? d.daily : [];
@@ -2660,10 +2657,11 @@ function renderStaffCare(d) {
     html += '<div class="dash-card"><div class="dv">' + avgDailyCust + '</div><div class="dl">متوسط العملاء اليومي<div class="ds2">على ' + dailyList.length + ' يوم</div></div></div>';
   }
 
-  // 🆕 كارت الديون — بيظهر بس لما الأرقام الرسمية متاحة (فلتر "اليوم")
+  // مؤشرات تانية (مش مبيعات مباشرة) — عملاء جدد والديون مع بعض في الآخر
+  html += '<div class="dash-card"><div class="dv" style="color:#5FB88A">' + totNewC + '</div><div class="dl">عملاء جدد</div></div>';
   if (usingSystemNumbers && d.systemTotals) {
-    html += '<div class="dash-card" style="cursor:pointer" onclick="navigateTo(\'debts\',\'list\')"><div class="dv" style="color:#E0727C">' + Math.round(d.systemTotals.total_debt).toLocaleString() + '</div><div class="dl">صافي الدين الإجمالي (ج)<div class="ds2">دوس لعرض التفاصيل</div></div></div>';
     html += '<div class="dash-card" style="cursor:pointer" onclick="openDayCollections()"><div class="dv" style="color:#5FB88A">' + Math.round(d.systemTotals.debt_paid_today).toLocaleString() + '</div><div class="dl">دين متحصّل اليوم (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick="navigateTo(\'debts\',\'list\')"><div class="dv" style="color:#E0727C">' + Math.round(d.systemTotals.total_debt).toLocaleString() + '</div><div class="dl">صافي الدين الإجمالي (ج)<div class="ds2">دوس لعرض التفاصيل</div></div></div>';
   }
   html += '</div>';
   html += '<div id="staff-breakdown-box" style="display:none;margin-top:12px"></div>';

@@ -2785,24 +2785,13 @@ function openInvoiceDetailModal(empName, invoiceid) {
 
 var newCustCache_ = {}; // كاش بسيط عشان ما نكررش الطلب لو دوس تاني بنفس الفترة
 function showNewCustomersFor(employeeName, boxId) {
-  var box = document.getElementById(boxId);
-  if (!box) return;
+  closeInlineBoxes();
+  document.getElementById('day-invoices-modal').classList.add('show');
+  document.getElementById('dinv-back-row').style.display = 'none';
+  document.getElementById('dinv-title').textContent = 'عملاء جدد — ' + employeeName;
+  document.getElementById('dinv-content').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
 
-  // نقفل المودال لو كان مفتوح من دوسة سابقة عشان ميتعرضش مع القائمة دي مع بعض
-  var modal = document.getElementById('day-invoices-modal');
-  if (modal) modal.classList.remove('show');
-
-  if (box.style.display === 'block') {
-    box.style.display = 'none';
-    return;
-  }
-  // نقفل أي صندوق تاني مفتوح
-  document.querySelectorAll('[id^="newcust-"]').forEach(function(b){ b.style.display = 'none'; });
-
-  box.style.display = 'block';
-  box.innerHTML = '<div style="font-size:11px;color:var(--text2);padding:6px 0">جاري التحميل...</div>';
-
-  if (!staffReady()) { box.innerHTML = '<div style="font-size:11px;color:#E0727C">رابط سكريبت الموظفين مش متظبط</div>'; return; }
+  if (!staffReady()) { document.getElementById('dinv-content').innerHTML = '<p style="color:#E0727C;text-align:center">رابط سكريبت الموظفين مش متظبط</p>'; return; }
 
   var url = STAFF_SCRIPT_URL + '?action=getNewCustomersDetail&employee=' + encodeURIComponent(employeeName);
   if (staffRange_ === 'range' && staffFrom_ && staffTo_) {
@@ -2816,18 +2805,21 @@ function showNewCustomersFor(employeeName, boxId) {
     .then(function(d){
       var list = (d && d.customers) ? d.customers : [];
       if (!list.length) {
-        box.innerHTML = '<div style="font-size:11px;color:var(--text2);background:var(--card-bg2);border-radius:8px;padding:10px">مفيش عملاء جدد مسجلين بالاسم في الفترة دي</div>';
+        document.getElementById('dinv-content').innerHTML = '<p style="color:var(--text2);text-align:center;padding:20px">مفيش عملاء جدد مسجلين بالاسم في الفترة دي</p>';
         return;
       }
-      var html = '<div style="background:var(--card-bg2);border-radius:8px;padding:10px">';
+      var html = '';
       list.forEach(function(c){
-        html += '<div class="dash-comm-row"><span>👤 ' + c.name + '</span><span>📞 ' + c.phone + (list.length>1 && staffRange_!=='today' ? ' · ' + c.date : '') + '</span></div>';
+        html += '<div class="hist-item">';
+        html += '<div class="hist-icon">👤</div>';
+        html += '<div style="flex:1"><div style="font-size:13.5px;font-weight:600;color:var(--text)">' + c.name + '</div>' + (list.length>1 && staffRange_!=='today' ? '<div class="hist-text">' + c.date + '</div>' : '') + '</div>';
+        html += '<div style="font-weight:700;color:var(--accent);font-size:13px" dir="ltr">' + c.phone + '</div>';
+        html += '</div>';
       });
-      html += '</div>';
-      box.innerHTML = html;
+      document.getElementById('dinv-content').innerHTML = html;
     })
     .catch(function(){
-      box.innerHTML = '<div style="font-size:11px;color:#E0727C">خطأ في التحميل</div>';
+      document.getElementById('dinv-content').innerHTML = '<p style="color:#E0727C;text-align:center">خطأ في التحميل</p>';
     });
 }
 

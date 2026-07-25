@@ -217,6 +217,38 @@
   .dash-comm-row span:last-child { font-weight: 600; color: var(--text); }
   .dash-link { color: var(--accent); font-size: 12.5px; text-decoration: none; cursor: pointer; display: inline-block; margin-top: 10px; font-weight: 500; }
 
+  /* INVENTORY / AGING */
+  .inv-hero-value { font-size: 30px; font-weight: 800; letter-spacing: -1px; margin-top: 4px; }
+  .inv-hero-value span { font-size: 15px; font-weight: 600; color: var(--text2); }
+  .inv-range-track { flex: 1; height: 8px; border-radius: 5px; background: var(--fill); position: relative; overflow: hidden; }
+  .inv-range-fill { position: absolute; top: 0; bottom: 0; right: 0; border-radius: 5px; width: 100%; background: linear-gradient(90deg, #FF9F0A, #5FB88A 35%, #5FB88A 65%, #FF9F0A); }
+  .inv-range-marker { position: absolute; top: -3px; width: 2px; height: 14px; background: var(--text); border-radius: 1px; }
+  .inv-range-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text3); margin-top: 4px; font-weight: 600; }
+  .inv-bar-row { padding: 8px 0; }
+  .inv-bar-row + .inv-bar-row { border-top: 0.5px solid var(--sep); }
+  .inv-bar-top { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; margin-bottom: 5px; }
+  .inv-bar-top .pct { color: var(--text2); font-weight: 700; }
+  .inv-bar-track { height: 6px; border-radius: 4px; background: var(--fill); overflow: hidden; }
+  .inv-bar-fill { height: 100%; border-radius: 4px; }
+  .inv-bar-meta { font-size: 10.5px; color: var(--text3); margin-top: 4px; }
+  .inv-legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .inv-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .inv-legend-lbl { flex: 1; color: var(--text2); font-weight: 500; }
+  .inv-legend-val { font-weight: 700; }
+  .inv-list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; gap: 10px; cursor: pointer; }
+  .inv-list-item + .inv-list-item { border-top: 0.5px solid var(--sep); }
+  .inv-li-left { min-width: 0; flex: 1; }
+  .inv-li-name { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .inv-li-sub { font-size: 10.5px; color: var(--text2); margin-top: 2px; }
+  .inv-li-right { text-align: left; flex-shrink: 0; }
+  .inv-li-cost { font-size: 13px; font-weight: 700; }
+  .inv-li-badge { font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 6px; margin-top: 3px; display: inline-block; }
+  .inv-badge-red { background: rgba(224,114,124,.15); color: #E0727C; }
+  .inv-badge-amber { background: rgba(255,159,10,.18); color: #FF9F0A; }
+  .inv-show-more { width: 100%; background: var(--fill); border: none; color: var(--accent); font-weight: 700; font-size: 12.5px; padding: 11px; border-radius: var(--r-md); margin-top: 12px; cursor: pointer; font-family: inherit; }
+  .inv-list-body { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+  .inv-list-body.open { max-height: 2400px; }
+
   /* SHORTAGES */
   .short-wrap { padding: 16px; }
   .sub-tab-row { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -394,6 +426,14 @@
     <button class="sidebar-item" id="side-short-kpi" onclick="navigateTo('shortages','kpi')">
       <span class="row-icon" style="background:#30D158"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
       <span class="row-label">كفاءة الطلبات</span>
+    </button>
+  </div>
+
+  <div class="sidebar-group-title">المخزون</div>
+  <div class="settings-group">
+    <button class="sidebar-item" id="side-inv-aging" onclick="navigateTo('inventory','aging')">
+      <span class="row-icon" style="background:#AF52DE"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg></span>
+      <span class="row-label">تحليل المخزون (Aging)</span>
     </button>
   </div>
 
@@ -728,6 +768,48 @@
   </div>
 </div>
 
+<div id="inventory-aging-section" class="dash-wrap" style="display:none">
+  <div class="dash-card" style="background:linear-gradient(155deg, var(--card-bg) 0%, var(--card-bg2) 100%); margin-bottom:12px" id="inv-hero"></div>
+  <div class="stats-row" id="inv-kpis" style="margin-bottom:12px"></div>
+
+  <div class="dash-panel">
+    <div class="dash-panel-title">📊 توزيع القيمة حسب آخر بيع (Aging)</div>
+    <div id="inv-aging-bars"></div>
+  </div>
+
+  <div class="dash-panel">
+    <div class="dash-panel-title">⏳ توزيع القيمة حسب الصلاحية</div>
+    <div style="display:flex;align-items:center;gap:18px">
+      <svg width="110" height="110" viewBox="0 0 120 120" id="inv-expiry-donut"></svg>
+      <div style="flex:1;display:flex;flex-direction:column;gap:9px" id="inv-expiry-legend"></div>
+    </div>
+  </div>
+
+  <div class="dash-panel">
+    <div class="dash-panel-title">🐌 أكبر الأصناف الراكدة</div>
+    <div style="font-size:11.5px;color:var(--text2);margin-bottom:10px" id="inv-slow-sub"></div>
+    <div id="inv-slow-preview"></div>
+    <div class="inv-list-body" id="inv-slow-rest"></div>
+    <button class="inv-show-more" onclick="toggleInvList('slow')" id="inv-slow-btn">عرض كل الـ 30 صنف</button>
+    <div class="action-box act-normal" style="margin-top:12px">
+      <div class="act-title">💡 توصية</div>
+      <div class="act-desc">راجع القايمة دي مع المورد — رجّع اللي ينفع يترجع، وخصّم الباقي عشان تفرّغ رأس المال ده لأصناف أسرع حركة.</div>
+    </div>
+  </div>
+
+  <div class="dash-panel">
+    <div class="dash-panel-title">⚠️ أقرب أصناف للصلاحية</div>
+    <div style="font-size:11.5px;color:var(--text2);margin-bottom:10px">أصناف صلاحيتها أقل من ٦ شهور، مرتبة من الأقرب</div>
+    <div id="inv-exp-preview"></div>
+    <div class="inv-list-body" id="inv-exp-rest"></div>
+    <button class="inv-show-more" onclick="toggleInvList('exp')" id="inv-exp-btn">عرض كل الأصناف</button>
+  </div>
+
+  <div style="text-align:center;font-size:10.5px;color:var(--text3);margin-top:8px;padding:0 8px;line-height:1.6">
+    البيانات من شيت "STOCK LIVE" — آخر تحديث للتحليل: <span id="inv-updated-date"></span>. القيم بسعر الصيدلي (صافي التكلفة).
+  </div>
+</div>
+
 <!-- LOG MODAL -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
@@ -812,6 +894,51 @@
   </div>
 </div>
 
+<!-- INVENTORY ITEM DETAIL MODAL -->
+<div class="modal-overlay" id="inv-item-modal">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px">
+      <h3 id="inv-item-title" style="margin-bottom:0;flex:1">اسم الصنف</h3>
+      <button onclick="closeInvItemDetail()" style="background:var(--fill);border:none;color:var(--text2);width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;flex-shrink:0">✕</button>
+    </div>
+    <div id="inv-item-stats"></div>
+    <div id="inv-item-note"></div>
+    <div class="modal-btns" style="margin-top:14px">
+      <button class="btn-save" onclick="closeInvItemDetail()">تمام</button>
+    </div>
+  </div>
+</div>
+
+<!-- INVENTORY BUCKET DRILL-DOWN MODAL -->
+<div class="modal-overlay" id="inv-bucket-modal">
+  <div class="modal" style="max-width:440px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px">
+      <h3 id="inv-bucket-title" style="margin-bottom:0;flex:1">تفاصيل الشريحة</h3>
+      <button onclick="closeInvBucketDetail()" style="background:var(--fill);border:none;color:var(--text2);width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;flex-shrink:0">✕</button>
+    </div>
+    <div id="inv-bucket-stats"></div>
+    <div id="inv-bucket-note"></div>
+    <div id="inv-bucket-list" style="margin-top:12px"></div>
+    <div class="modal-btns" style="margin-top:14px">
+      <button class="btn-save" onclick="closeInvBucketDetail()">تمام</button>
+    </div>
+  </div>
+</div>
+
+<!-- INVENTORY KPI INFO MODAL -->
+<div class="modal-overlay" id="inv-kpi-modal">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px">
+      <h3 id="inv-kpi-title" style="margin-bottom:0;flex:1">تفاصيل</h3>
+      <button onclick="closeInvKpiInfo()" style="background:var(--fill);border:none;color:var(--text2);width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;flex-shrink:0">✕</button>
+    </div>
+    <div id="inv-kpi-body"></div>
+    <div class="modal-btns" style="margin-top:14px">
+      <button class="btn-save" onclick="closeInvKpiInfo()">تمام</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -832,6 +959,7 @@ var expensesTab = 'list', expensesLoaded = false;
 var expensesRange_ = 'today', expensesFrom_ = '', expensesTo_ = '', lastExpensesData_ = null;
 var plTab = 'list', plMonth_ = '';
 var smsTab = 'list', smsLoaded = false, smsFilter_ = 'failed';
+var invTab = 'aging', invLoaded = false;
 
 function toggleExpenseCategory(idx) {
   var box = document.getElementById('expcat-' + idx);
@@ -1201,6 +1329,7 @@ function toggleTheme() {
   document.body.style.display = 'none';
   void document.body.offsetHeight;
   document.body.style.display = '';
+  if (invLoaded) { renderInvExpiryDonut(); }
 }
 
 function showInfo() { document.getElementById('info-modal').classList.add('show'); }
@@ -1227,7 +1356,8 @@ var VIEW_LABELS = {
   'debts:list': '💳 ديون العملاء',
   'expenses:list': '💸 المصروفات',
   'pl:list': '💹 الربح والخسارة',
-  'sms:list': '💬 رسائل العملاء'
+  'sms:list': '💬 رسائل العملاء',
+  'inventory:aging': '📦 تحليل المخزون'
 };
 
 function openSidebar() {
@@ -1250,10 +1380,11 @@ function navigateTo(mode, tab) {
   else if (mode === 'expenses') { expensesTab = tab; }
   else if (mode === 'pl') { plTab = tab; }
   else if (mode === 'sms') { smsTab = tab; }
+  else if (mode === 'inventory') { invTab = tab; }
 
   document.getElementById('current-view-label').textContent = VIEW_LABELS[mode + ':' + tab];
 
-  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi','side-staff-care','side-debts-list','side-expenses-list','side-pl-list','side-sms-list'].forEach(function(id){
+  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi','side-staff-care','side-debts-list','side-expenses-list','side-pl-list','side-sms-list','side-inv-aging'].forEach(function(id){
     document.getElementById(id).classList.remove('active');
   });
   var shortActiveMap = { list: 'side-short-list', orders: 'side-short-orders', discontinued: 'side-short-discontinued', kpi: 'side-short-kpi' };
@@ -1266,6 +1397,7 @@ function navigateTo(mode, tab) {
     : mode === 'expenses' ? 'side-expenses-list'
     : mode === 'pl' ? 'side-pl-list'
     : mode === 'sms' ? 'side-sms-list'
+    : mode === 'inventory' ? 'side-inv-aging'
     : 'side-staff-care';
   document.getElementById(activeId).classList.add('active');
 
@@ -1284,11 +1416,13 @@ function navigateTo(mode, tab) {
   document.getElementById('expenses-list-section').style.display = (mode === 'expenses' && tab === 'list') ? 'block' : 'none';
   document.getElementById('pl-list-section').style.display = (mode === 'pl' && tab === 'list') ? 'block' : 'none';
   document.getElementById('sms-list-section').style.display = (mode === 'sms' && tab === 'list') ? 'block' : 'none';
+  document.getElementById('inventory-aging-section').style.display = (mode === 'inventory' && tab === 'aging') ? 'block' : 'none';
 
   if (mode === 'debts' && tab === 'list') { loadDebts(); }
   if (mode === 'expenses' && tab === 'list') { loadExpenses(); }
   if (mode === 'pl' && tab === 'list') { loadProfitLoss(); }
   if (mode === 'sms' && tab === 'list') { loadSMS(); }
+  if (mode === 'inventory' && tab === 'aging') { invLoaded = true; loadInventoryAging(); }
 
   if (mode === 'crm' && tab === 'customers' && !customersLoaded) {
     customersLoaded = true;
@@ -1341,6 +1475,8 @@ function refreshCurrentTab() {
     else { loadDeliveryMap(); }
   } else if (currentMode === 'staff') {
     loadStaffCare();
+  } else if (currentMode === 'inventory') {
+    loadInventoryAging();
   }
 }
 
@@ -3374,6 +3510,316 @@ function doUnblock(phone, name) {
   }).catch(function(){});
   showToast('تم إلغاء حظر ' + name + ' — اضغط تحديث في تاب العملاء عشان يظهر');
   closeBlockedModal();
+}
+
+// ===== INVENTORY AGING (تحليل المخزون) =====
+// البيانات بتيجي لايف من الـ Apps Script عن طريق action=getInventoryAging
+
+var INV_DAILY_SALES_RETAIL = 6000; // مبيعات الجمهور اليومية المفترضة — غيّرها لو حبيت تعيد الحساب على رقم مختلف
+
+function invFmt(n){ return Math.round(n).toLocaleString('en-US'); }
+function invPct(part, total){ return (part/total*100).toFixed(1); }
+
+function loadInventoryAging(){
+  var hero = document.getElementById('inv-hero');
+  if (hero && !_lastInvData) {
+    hero.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري تحليل المخزون...</p></div>';
+  }
+  fetch(SCRIPT_URL + '?action=getInventoryAging')
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res && res.ok) {
+        renderInventoryAging(res);
+      } else {
+        showInvError((res && res.error) ? res.error : 'الرد من السيرفر مش مفهوم');
+      }
+    })
+    .catch(function(){
+      showInvError('تعذر الاتصال بالسيرفر');
+    });
+}
+
+function showInvError(msg){
+  document.getElementById('inv-hero').innerHTML =
+    '<div style="text-align:center;padding:16px">' +
+      '<div style="font-size:13px;font-weight:700;color:#E0727C;margin-bottom:6px">مش قادر أحمّل تحليل المخزون</div>' +
+      '<div style="font-size:11.5px;color:var(--text2);line-height:1.7">' + msg + '<br>اتأكد إنك ضفت <b>getInventoryAging</b> في الـ Apps Script وعملت Deploy لنسخة جديدة.</div>' +
+      '<button class="inv-show-more" style="margin-top:12px" onclick="loadInventoryAging()">حاول تاني</button>' +
+    '</div>';
+  ['inv-kpis','inv-aging-bars','inv-expiry-legend','inv-slow-preview','inv-slow-rest','inv-exp-preview','inv-exp-rest'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.innerHTML = '';
+  });
+  var donut = document.getElementById('inv-expiry-donut'); if (donut) donut.innerHTML = '';
+  var sub = document.getElementById('inv-slow-sub'); if (sub) sub.textContent = '';
+}
+
+function renderInventoryAging(d){
+  var marginRatio = d.total_cost_value / d.total_retail_value;
+  var monthlyRetail = INV_DAILY_SALES_RETAIL * 30;
+  var dailyCogs = (monthlyRetail * marginRatio) / 30;
+  var idealLow = Math.round(dailyCogs * 45);
+  var idealHigh = Math.round(dailyCogs * 60);
+
+  // Hero
+  var cur = d.total_cost_value;
+  var pos = Math.min(100, Math.max(0, (cur - idealLow/1.3) / ((idealHigh*1.3) - idealLow/1.3) * 100));
+  var withinRange = cur >= idealLow && cur <= idealHigh;
+  document.getElementById('inv-hero').innerHTML =
+    '<div style="font-size:12px;color:var(--text2);font-weight:600">إجمالي المخزون بسعر الصيدلي</div>' +
+    '<div class="inv-hero-value">' + invFmt(cur) + ' <span>ج.م</span></div>' +
+    '<div style="font-size:12.5px;color:var(--text2);margin-top:8px;line-height:1.6">بسعر الجمهور: ' + invFmt(d.total_retail_value) + ' ج.م &nbsp;·&nbsp; ' + d.sku_in_stock.toLocaleString('en-US') + ' صنف برصيد من إجمالي ' + d.sku_total.toLocaleString('en-US') + '</div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-top:16px">' +
+      '<div class="inv-range-track"><div class="inv-range-fill"></div><div class="inv-range-marker" style="right:' + pos + '%; background:' + (withinRange ? '#fff' : '#E0727C') + '"></div></div>' +
+    '</div>' +
+    '<div class="inv-range-labels"><span>أقل من المطلوب</span><span>النطاق الصحي (٤٥-٦٠ يوم)</span><span>زيادة عن المطلوب</span></div>' +
+    '<div style="font-size:12.5px;color:var(--text2);margin-top:10px;line-height:1.6">' + (withinRange ? '✅ الرصيد الحالي واقع جوه النطاق الصحي' : (cur < idealLow ? '⚠️ الرصيد أقل من المطلوب' : '⚠️ الرصيد أعلى من المطلوب')) + ' بناءً على مبيعات ' + invFmt(INV_DAILY_SALES_RETAIL) + ' ج.م/يوم</div>';
+
+  // KPIs
+  var slowPct = invPct(d.slow_dead_total_cost, d.stock_positive_cost_total);
+  document.getElementById('inv-kpis').innerHTML =
+    '<div class="stat-cell" style="cursor:pointer" onclick="openInvKpiInfo(\'range\')"><div class="stat-v">' + invFmt(idealLow) + '-' + invFmt(idealHigh) + '</div><div class="stat-l">النطاق المطلوب</div></div>' +
+    '<div class="stat-cell" style="cursor:pointer" onclick="openInvKpiInfo(\'margin\')"><div class="stat-v" style="color:#5FB88A">' + (100-marginRatio*100).toFixed(0) + '%</div><div class="stat-l">هامش الربح</div></div>' +
+    '<div class="stat-cell" style="cursor:pointer" onclick="openInvKpiInfo(\'dead\')"><div class="stat-v" style="color:#E0727C">' + invFmt(d.slow_dead_total_cost) + '</div><div class="stat-l">قيمة الراكد</div></div>' +
+    '<div class="stat-cell" style="cursor:pointer" onclick="openInvKpiInfo(\'deadpct\')"><div class="stat-v" style="color:#FF9F0A">' + slowPct + '%</div><div class="stat-l">نسبة الركود</div></div>';
+
+  // Aging bars
+  var order = [
+    {k:'never', lbl:'لسه ما اتباعش أبدًا', color:'#E0727C'},
+    {k:'b0_30', lbl:'باع من ٠-٣٠ يوم', color:'#5FB88A'},
+    {k:'b31_60', lbl:'٣١-٦٠ يوم', color:'#5FB88A'},
+    {k:'b61_90', lbl:'٦١-٩٠ يوم', color:'#FF9F0A'},
+    {k:'b91_180', lbl:'٩١-١٨٠ يوم', color:'#FF9F0A'},
+    {k:'b181_365', lbl:'١٨١-٣٦٥ يوم', color:'#E0727C'},
+    {k:'b365plus', lbl:'أكتر من سنة', color:'#E0727C'}
+  ];
+  var total = d.stock_positive_cost_total;
+  var barsHtml = '';
+  order.forEach(function(o){
+    var bd = d.aging[o.k];
+    var p = invPct(bd.cost, total);
+    barsHtml += '<div class="inv-bar-row" style="cursor:pointer" onclick="openInvBucketDetail(\'aging\',\'' + o.k + '\')"><div class="inv-bar-top"><span>' + o.lbl + ' ›</span><span class="pct">' + p + '%</span></div>' +
+      '<div class="inv-bar-track"><div class="inv-bar-fill" style="width:' + p + '%;background:' + o.color + '"></div></div>' +
+      '<div class="inv-bar-meta">' + invFmt(bd.cost) + ' ج.م &nbsp;·&nbsp; ' + bd.skus + ' صنف</div></div>';
+  });
+  document.getElementById('inv-aging-bars').innerHTML = barsHtml;
+
+  // Expiry donut
+  renderInvExpiryDonut(d);
+
+  // Slow list
+  var slowList = d.slow_dead_list;
+  document.getElementById('inv-slow-sub').textContent = 'إجمالي ' + d.slow_dead_count + ' صنف راكد بقيمة ' + invFmt(d.slow_dead_total_cost) + ' ج.م — أكبر 30 صنف موضحين تحت';
+  document.getElementById('inv-slow-preview').innerHTML = slowList.slice(0,5).map(function(it,i){ return invSlowItemHtml(it,i); }).join('');
+  document.getElementById('inv-slow-rest').innerHTML = slowList.slice(5).map(function(it,i){ return invSlowItemHtml(it,i+5); }).join('');
+
+  // Near expiry list
+  var expList = d.near_expiry_list;
+  document.getElementById('inv-exp-preview').innerHTML = expList.slice(0,5).map(function(it,i){ return invExpItemHtml(it,i); }).join('');
+  document.getElementById('inv-exp-rest').innerHTML = expList.slice(5).map(function(it,i){ return invExpItemHtml(it,i+5); }).join('');
+
+  document.getElementById('inv-updated-date').textContent = d.generated_date;
+  d._calc = { idealLow: idealLow, idealHigh: idealHigh, marginPct: (100-marginRatio*100).toFixed(0), slowPct: slowPct, dailyCogs: dailyCogs };
+  _lastInvData = d;
+}
+
+function invSlowItemHtml(it, idx){
+  var daysLbl = (it.days === null || it.days === undefined) ? 'لم تُباع أبدًا' : it.days + ' يوم من آخر بيع';
+  return '<div class="inv-list-item" onclick="openInvItemDetail(\'slow\',' + idx + ')"><div class="inv-li-left"><div class="inv-li-name">' + it.name + '</div><div class="inv-li-sub">رصيد: ' + it.stock + ' &nbsp;·&nbsp; ' + daysLbl + '</div></div>' +
+    '<div class="inv-li-right"><div class="inv-li-cost">' + invFmt(it.cost) + '</div><div class="inv-li-badge inv-badge-red">راكد</div></div></div>';
+}
+function invExpItemHtml(it, idx){
+  var badge = it.days_to_expire <= 90 ? 'inv-badge-red' : 'inv-badge-amber';
+  return '<div class="inv-list-item" onclick="openInvItemDetail(\'exp\',' + idx + ')"><div class="inv-li-left"><div class="inv-li-name">' + it.name + '</div><div class="inv-li-sub">رصيد: ' + it.stock + ' &nbsp;·&nbsp; صلاحية ' + it.expire + '</div></div>' +
+    '<div class="inv-li-right"><div class="inv-li-cost">' + invFmt(it.cost) + '</div><div class="inv-li-badge ' + badge + '">' + it.days_to_expire + ' يوم</div></div></div>';
+}
+
+function openInvItemDetail(type, idx){
+  var d = _lastInvData;
+  if (!d) return;
+  var it = type === 'slow' ? d.slow_dead_list[idx] : d.near_expiry_list[idx];
+  if (!it) return;
+
+  document.getElementById('inv-item-title').textContent = it.name;
+
+  var statsHtml = '<div class="stats-row" style="margin-bottom:12px">' +
+    '<div class="stat-cell"><div class="stat-v">' + it.stock + '</div><div class="stat-l">الرصيد الحالي</div></div>' +
+    '<div class="stat-cell"><div class="stat-v">' + invFmt(it.cost) + '</div><div class="stat-l">القيمة (سعر الصيدلي)</div></div>';
+
+  if (type === 'slow') {
+    var daysLbl = (it.days === null || it.days === undefined) ? '—' : it.days;
+    statsHtml += '<div class="stat-cell"><div class="stat-v" style="color:#E0727C">' + ((it.days === null || it.days === undefined) ? 'لم تُباع' : daysLbl + ' يوم') + '</div><div class="stat-l">من آخر بيع</div></div>' +
+      '<div class="stat-cell"><div class="stat-v">راكد</div><div class="stat-l">الحالة</div></div></div>';
+  } else {
+    statsHtml += '<div class="stat-cell"><div class="stat-v">' + it.expire + '</div><div class="stat-l">تاريخ الصلاحية</div></div>' +
+      '<div class="stat-cell"><div class="stat-v" style="color:' + (it.days_to_expire<=90?'#E0727C':'#FF9F0A') + '">' + it.days_to_expire + ' يوم</div><div class="stat-l">متبقي للصلاحية</div></div></div>';
+  }
+
+  var noteHtml;
+  if (type === 'slow') {
+    noteHtml = '<div class="action-box act-normal"><div class="act-title">💡 مقترح</div><div class="act-desc">الصنف ده مش بيتحرك. راجعه مع المورد لو ينفع يترجع، أو اعمله عرض/خصم لتصريفه بدل ما يفضل رأس مال معطّل.</div></div>';
+  } else if (it.days_to_expire <= 90) {
+    noteHtml = '<div class="action-box act-urgent"><div class="act-title">⏰ عاجل</div><div class="act-desc">صلاحيته قربت خالص. صرّفه بالأولوية (عرض/خصم) أو راجع إمكانية إرجاعه للمورد قبل ما يخلص الوقت.</div></div>';
+  } else {
+    noteHtml = '<div class="action-box act-normal"><div class="act-title">💡 مقترح</div><div class="act-desc">تابع الصنف ده — لسه في وقت، بس حطه في خطة البيع أو الإرجاع قبل ما يقرب أكتر.</div></div>';
+  }
+
+  document.getElementById('inv-item-stats').innerHTML = statsHtml;
+  document.getElementById('inv-item-note').innerHTML = noteHtml;
+  document.getElementById('inv-item-modal').classList.add('show');
+}
+function closeInvItemDetail(){ document.getElementById('inv-item-modal').classList.remove('show'); }
+
+var INV_AGING_META = {
+  never:     { lbl:'لسه ما اتباعش أبدًا', color:'#E0727C', desc:'أصناف عندها رصيد بس مفيش لها أي عملية بيع مسجلة خالص. دي أخطر شريحة — رأس مال متجمّد من غير أي دليل إنه بيتحرك.' },
+  b0_30:     { lbl:'باع من ٠-٣٠ يوم', color:'#5FB88A', desc:'الأصناف السريعة الحركة. دي اللي المفروض ياخدوا أكبر نصيب من فلوسك ومن مساحة الرفوف.' },
+  b31_60:    { lbl:'٣١-٦٠ يوم', color:'#5FB88A', desc:'حركة طبيعية وصحية. مفيش قلق هنا — بس خلي بالك من الكميات وقت الطلب.' },
+  b61_90:    { lbl:'٦١-٩٠ يوم', color:'#FF9F0A', desc:'بدأت تبطّأ. راجع كمياتك في الطلبية الجاية عشان متزودش الرصيد أكتر من كده.' },
+  b91_180:   { lbl:'٩١-١٨٠ يوم', color:'#FF9F0A', desc:'حركة ضعيفة. الأصناف دي مرشحة تتحول لركود لو استمرت كده — تدخّل بعرض أو خصم بدري.' },
+  b181_365:  { lbl:'١٨١-٣٦٥ يوم', color:'#E0727C', desc:'راكدة فعليًا. مر أكتر من ٦ شهور على آخر بيع — أولوية للإرجاع للمورد أو التصريف بخصم.' },
+  b365plus:  { lbl:'أكتر من سنة', color:'#E0727C', desc:'راكدة تمامًا. أعلى أولوية للتخلص منها — الفلوس دي واقفة من أكتر من سنة.' }
+};
+var INV_EXPIRY_META = {
+  e0_3:    { lbl:'أقل من ٣ شهور', color:'#E0727C', desc:'خطر قريب. صرّفها بالأولوية القصوى (عرض/خصم) أو راجع إمكانية إرجاعها للمورد فورًا.' },
+  e3_6:    { lbl:'٣-٦ شهور', color:'#FF9F0A', desc:'محتاجة متابعة. لسه في وقت، بس حطها في خطة البيع أو الإرجاع من دلوقتي.' },
+  e6_12:   { lbl:'٦-١٢ شهر', color:'#0A84FF', desc:'وضع مقبول. راقبها في المراجعة الشهرية ومتزودش رصيدها.' },
+  e12plus: { lbl:'أكتر من سنة', color:'#5FB88A', desc:'آمنة من ناحية الصلاحية. مفيش إجراء مطلوب دلوقتي.' }
+};
+
+function openInvBucketDetail(kind, key){
+  var d = _lastInvData;
+  if (!d) return;
+  var meta = kind === 'aging' ? INV_AGING_META[key] : INV_EXPIRY_META[key];
+  var bd = kind === 'aging' ? d.aging[key] : d.expiry[key];
+  if (!meta || !bd) return;
+
+  var total = kind === 'aging'
+    ? d.stock_positive_cost_total
+    : Object.keys(d.expiry).reduce(function(s,k){ return s + d.expiry[k].cost; }, 0);
+  var p = invPct(bd.cost, total);
+  var avg = bd.skus > 0 ? bd.cost / bd.skus : 0;
+
+  document.getElementById('inv-bucket-title').textContent = meta.lbl;
+
+  document.getElementById('inv-bucket-stats').innerHTML =
+    '<div class="stats-row" style="margin-bottom:12px">' +
+      '<div class="stat-cell"><div class="stat-v" style="color:' + meta.color + '">' + invFmt(bd.cost) + '</div><div class="stat-l">القيمة (سعر الصيدلي)</div></div>' +
+      '<div class="stat-cell"><div class="stat-v">' + p + '%</div><div class="stat-l">من المخزون</div></div>' +
+      '<div class="stat-cell"><div class="stat-v">' + bd.skus + '</div><div class="stat-l">عدد الأصناف</div></div>' +
+      '<div class="stat-cell"><div class="stat-v">' + invFmt(avg) + '</div><div class="stat-l">متوسط الصنف</div></div>' +
+    '</div>';
+
+  var boxClass = (meta.color === '#E0727C') ? 'act-urgent' : (meta.color === '#FF9F0A' ? 'act-normal' : 'act-passive');
+  document.getElementById('inv-bucket-note').innerHTML =
+    '<div class="action-box ' + boxClass + '"><div class="act-title">ℹ️ يعني إيه</div><div class="act-desc">' + meta.desc + '</div></div>';
+
+  // قائمة الأصناف جوه الشريحة (بترجع من السيرفر لو الـ endpoint بيدعمها)
+  var items = kind === 'aging'
+    ? (d.aging_items && d.aging_items[key])
+    : (d.expiry_items && d.expiry_items[key]);
+
+  var listHtml = '';
+  if (items && items.length) {
+    listHtml = '<div style="font-size:11.5px;color:var(--text2);margin-bottom:8px">أكبر ' + items.length + ' صنف في الشريحة دي بالقيمة</div>';
+    items.forEach(function(it){
+      var sub = kind === 'aging'
+        ? ((it.days === null || it.days === undefined) ? 'لم تُباع أبدًا' : it.days + ' يوم من آخر بيع')
+        : ('صلاحية ' + (it.expire || '—'));
+      listHtml += '<div class="inv-list-item"><div class="inv-li-left"><div class="inv-li-name">' + it.name + '</div>' +
+        '<div class="inv-li-sub">رصيد: ' + it.stock + ' &nbsp;·&nbsp; ' + sub + '</div></div>' +
+        '<div class="inv-li-right"><div class="inv-li-cost">' + invFmt(it.cost) + '</div></div></div>';
+    });
+  } else {
+    listHtml = '<div style="font-size:11.5px;color:var(--text3);text-align:center;padding:10px">تفاصيل الأصناف مش متاحة في النسخة دي من البيانات.</div>';
+  }
+  document.getElementById('inv-bucket-list').innerHTML = listHtml;
+
+  document.getElementById('inv-bucket-modal').classList.add('show');
+}
+function closeInvBucketDetail(){ document.getElementById('inv-bucket-modal').classList.remove('show'); }
+
+function openInvKpiInfo(key){
+  var d = _lastInvData;
+  if (!d || !d._calc) return;
+  var c = d._calc;
+  var title = '', body = '';
+
+  if (key === 'range') {
+    title = '📏 النطاق المطلوب للمخزون';
+    body = '<div class="act-desc" style="line-height:1.8">القاعدة إن الصيدلية تحتفظ برصيد يغطي من ٤٥ لـ ٦٠ يوم مبيعات، محسوبة <b>بسعر الصيدلي</b> مش سعر الجمهور.<br><br>' +
+      '• مبيعاتك اليومية (سعر جمهور): <b>' + invFmt(INV_DAILY_SALES_RETAIL) + ' ج.م</b><br>' +
+      '• تكلفة البضاعة المباعة يوميًا: <b>' + invFmt(c.dailyCogs) + ' ج.م</b><br>' +
+      '• تغطية ٤٥ يوم: <b>' + invFmt(c.idealLow) + ' ج.م</b><br>' +
+      '• تغطية ٦٠ يوم: <b>' + invFmt(c.idealHigh) + ' ج.م</b><br><br>' +
+      'أقل من كده = هتقع في نواقص متكررة. أكتر من كده = فلوس واقفة من غير لزوم.</div>';
+  } else if (key === 'margin') {
+    title = '💰 هامش الربح المتوسط';
+    body = '<div class="act-desc" style="line-height:1.8">الفرق بين قيمة المخزون بسعر الجمهور وقيمته بسعر الصيدلي.<br><br>' +
+      '• بسعر الجمهور: <b>' + invFmt(d.total_retail_value) + ' ج.م</b><br>' +
+      '• بسعر الصيدلي: <b>' + invFmt(d.total_cost_value) + ' ج.م</b><br>' +
+      '• الهامش: <b>' + c.marginPct + '%</b><br><br>' +
+      'ده متوسط مرجّح على كل الأصناف اللي عندك — الأصناف الأعلى قيمة بتأثر فيه أكتر.</div>';
+  } else if (key === 'dead') {
+    title = '🐌 قيمة المخزون الراكد';
+    body = '<div class="act-desc" style="line-height:1.8">إجمالي قيمة الأصناف اللي مر عليها أكتر من ٦ شهور من غير بيع، أو اللي ما اتباعتش أبدًا.<br><br>' +
+      '• القيمة: <b>' + invFmt(d.slow_dead_total_cost) + ' ج.م</b> (سعر الصيدلي)<br>' +
+      '• عدد الأصناف: <b>' + d.slow_dead_count + ' صنف</b><br><br>' +
+      'ده رأس مال معطّل — لو حوّلته لأصناف سريعة الحركة، هيرجّعلك ربح بدل ما يفضل واقف.</div>';
+  } else if (key === 'deadpct') {
+    title = '📉 نسبة الركود';
+    body = '<div class="act-desc" style="line-height:1.8">نسبة قيمة المخزون الراكد من إجمالي قيمة المخزون اللي عنده رصيد.<br><br>' +
+      '• النسبة الحالية: <b>' + c.slowPct + '%</b><br><br>' +
+      'المستوى الصحي عادة أقل من ١٥٪. لو النسبة أعلى من كده، ده مؤشر إن في خلل في قرارات الشراء — بتطلب أصناف مش بتتحرك.</div>';
+  }
+
+  document.getElementById('inv-kpi-title').textContent = title;
+  document.getElementById('inv-kpi-body').innerHTML = body;
+  document.getElementById('inv-kpi-modal').classList.add('show');
+}
+function closeInvKpiInfo(){ document.getElementById('inv-kpi-modal').classList.remove('show'); }
+
+var _lastInvData = null;
+function renderInvExpiryDonut(d){
+  d = d || _lastInvData;
+  if (!d) return;
+  var order = [
+    {k:'e0_3', lbl:'أقل من ٣ شهور', color:'#E0727C'},
+    {k:'e3_6', lbl:'٣-٦ شهور', color:'#FF9F0A'},
+    {k:'e6_12', lbl:'٦-١٢ شهر', color:'#0A84FF'},
+    {k:'e12plus', lbl:'أكتر من سنة', color:'#5FB88A'}
+  ];
+  var total = order.reduce(function(s,o){ return s + d.expiry[o.k].cost; }, 0);
+  var cumulative = 0, r = 50, cx = 60, cy = 60, paths = '';
+  order.forEach(function(o){
+    var ed = d.expiry[o.k];
+    var frac = ed.cost/total;
+    var startAngle = cumulative * 2*Math.PI - Math.PI/2;
+    cumulative += frac;
+    var endAngle = cumulative * 2*Math.PI - Math.PI/2;
+    var x1 = cx + r*Math.cos(startAngle), y1 = cy + r*Math.sin(startAngle);
+    var x2 = cx + r*Math.cos(endAngle), y2 = cy + r*Math.sin(endAngle);
+    var largeArc = frac > 0.5 ? 1 : 0;
+    if (frac > 0.001) {
+      paths += '<path d="M' + cx + ',' + cy + ' L' + x1.toFixed(2) + ',' + y1.toFixed(2) + ' A' + r + ',' + r + ' 0 ' + largeArc + ' 1 ' + x2.toFixed(2) + ',' + y2.toFixed(2) + ' Z" fill="' + o.color + '"></path>';
+    }
+  });
+  var holeColor = getComputedStyle(document.body).getPropertyValue('--card-bg').trim();
+  paths += '<circle cx="' + cx + '" cy="' + cy + '" r="30" fill="' + holeColor + '"></circle>';
+  document.getElementById('inv-expiry-donut').innerHTML = paths;
+
+  var legendHtml = '';
+  order.forEach(function(o){
+    var ed = d.expiry[o.k];
+    var p = invPct(ed.cost, total);
+    legendHtml += '<div class="inv-legend-item" style="cursor:pointer" onclick="openInvBucketDetail(\'expiry\',\'' + o.k + '\')"><div class="inv-legend-dot" style="background:' + o.color + '"></div><div class="inv-legend-lbl">' + o.lbl + ' ›</div><div class="inv-legend-val">' + p + '%</div></div>';
+  });
+  document.getElementById('inv-expiry-legend').innerHTML = legendHtml;
+}
+
+function toggleInvList(which){
+  var body = document.getElementById('inv-' + which + '-rest');
+  var btn = document.getElementById('inv-' + which + '-btn');
+  var open = body.classList.toggle('open');
+  btn.textContent = open ? 'عرض أقل' : (which === 'slow' ? 'عرض كل الـ 30 صنف' : 'عرض كل الأصناف');
 }
 
 // ===== PULL TO REFRESH =====

@@ -429,6 +429,14 @@
     </button>
   </div>
 
+  <div class="sidebar-group-title">رسائل SMS</div>
+  <div class="settings-group">
+    <button class="sidebar-item" id="side-sms-list" onclick="navigateTo('sms','list')">
+      <span class="row-icon" style="background:#32D74B"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+      <span class="row-label">رسائل العملاء</span>
+    </button>
+  </div>
+
   <div class="sidebar-group-title">المصروفات</div>
   <div class="settings-group">
     <button class="sidebar-item" id="side-expenses-list" onclick="navigateTo('expenses','list')">
@@ -676,6 +684,16 @@
   </div>
 </div>
 
+<div id="sms-list-section" class="deliv-wrap" style="display:none">
+  <div class="days-row">
+    <div class="day-pill active" id="dsms-failed" onclick="setSmsFilter('failed')">❌ فشلت</div>
+    <div class="day-pill" id="dsms-all" onclick="setSmsFilter('all')">📊 الكل</div>
+  </div>
+  <div id="sms-content">
+    <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
+  </div>
+</div>
+
 <div id="expenses-list-section" class="deliv-wrap" style="display:none">
   <div class="days-row">
     <div class="day-pill active" id="dexp-today" onclick="setExpensesRange('today')">اليوم</div>
@@ -813,6 +831,7 @@ var debtsRange_ = 'all', debtsFrom_ = '', debtsTo_ = '', lastDebtsData_ = null;
 var expensesTab = 'list', expensesLoaded = false;
 var expensesRange_ = 'today', expensesFrom_ = '', expensesTo_ = '', lastExpensesData_ = null;
 var plTab = 'list', plMonth_ = '';
+var smsTab = 'list', smsLoaded = false, smsFilter_ = 'failed';
 
 function toggleExpenseCategory(idx) {
   var box = document.getElementById('expcat-' + idx);
@@ -1207,7 +1226,8 @@ var VIEW_LABELS = {
   'staff:care': 'كفاءة رعاية المريض',
   'debts:list': '💳 ديون العملاء',
   'expenses:list': '💸 المصروفات',
-  'pl:list': '💹 الربح والخسارة'
+  'pl:list': '💹 الربح والخسارة',
+  'sms:list': '💬 رسائل العملاء'
 };
 
 function openSidebar() {
@@ -1229,10 +1249,11 @@ function navigateTo(mode, tab) {
   else if (mode === 'debts') { debtsTab = tab; }
   else if (mode === 'expenses') { expensesTab = tab; }
   else if (mode === 'pl') { plTab = tab; }
+  else if (mode === 'sms') { smsTab = tab; }
 
   document.getElementById('current-view-label').textContent = VIEW_LABELS[mode + ':' + tab];
 
-  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi','side-staff-care','side-debts-list','side-expenses-list','side-pl-list'].forEach(function(id){
+  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi','side-staff-care','side-debts-list','side-expenses-list','side-pl-list','side-sms-list'].forEach(function(id){
     document.getElementById(id).classList.remove('active');
   });
   var shortActiveMap = { list: 'side-short-list', orders: 'side-short-orders', discontinued: 'side-short-discontinued', kpi: 'side-short-kpi' };
@@ -1244,6 +1265,7 @@ function navigateTo(mode, tab) {
     : mode === 'debts' ? 'side-debts-list'
     : mode === 'expenses' ? 'side-expenses-list'
     : mode === 'pl' ? 'side-pl-list'
+    : mode === 'sms' ? 'side-sms-list'
     : 'side-staff-care';
   document.getElementById(activeId).classList.add('active');
 
@@ -1261,10 +1283,12 @@ function navigateTo(mode, tab) {
   document.getElementById('debts-list-section').style.display = (mode === 'debts' && tab === 'list') ? 'block' : 'none';
   document.getElementById('expenses-list-section').style.display = (mode === 'expenses' && tab === 'list') ? 'block' : 'none';
   document.getElementById('pl-list-section').style.display = (mode === 'pl' && tab === 'list') ? 'block' : 'none';
+  document.getElementById('sms-list-section').style.display = (mode === 'sms' && tab === 'list') ? 'block' : 'none';
 
   if (mode === 'debts' && tab === 'list') { loadDebts(); }
   if (mode === 'expenses' && tab === 'list') { loadExpenses(); }
   if (mode === 'pl' && tab === 'list') { loadProfitLoss(); }
+  if (mode === 'sms' && tab === 'list') { loadSMS(); }
 
   if (mode === 'crm' && tab === 'customers' && !customersLoaded) {
     customersLoaded = true;
@@ -2475,6 +2499,77 @@ function applyExpensesRange() {
   if (!expensesFrom_ || !expensesTo_) return;
   expensesRange_ = 'range';
   loadExpenses();
+}
+
+// ===== SMS =====
+var lastSmsData_ = null;
+
+function setSmsFilter(f) {
+  smsFilter_ = f;
+  document.getElementById('dsms-failed').classList.toggle('active', f === 'failed');
+  document.getElementById('dsms-all').classList.toggle('active', f === 'all');
+  if (lastSmsData_) renderSMS(lastSmsData_);
+}
+
+function loadSMS() {
+  var box = document.getElementById('sms-content');
+  if (!staffReady()) {
+    box.innerHTML = '<div class="loading"><p style="color:#E0727C">لازم تحط رابط ويب أب سكريبت الموظفين في STAFF_SCRIPT_URL</p></div>';
+    return;
+  }
+  box.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+  fetch(STAFF_SCRIPT_URL + '?action=getSMSLog')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ smsLoaded = true; lastSmsData_ = d; renderSMS(d); })
+    .catch(function(){ box.innerHTML = '<div class="loading"><p style="color:#E0727C">خطأ في التحميل — اضغط 🔄</p></div>'; });
+}
+
+function renderSMS(d) {
+  var box = document.getElementById('sms-content');
+  if (!d || !d.ok) {
+    box.innerHTML = '<div class="loading"><p style="color:#E0727C">' + (d && d.error ? d.error : 'خطأ في تحميل الرسائل') + '</p></div>';
+    return;
+  }
+  var list = d.messages || [];
+  var filtered = smsFilter_ === 'failed' ? list.filter(function(m){ return m.status === 'فشل'; }) : list;
+
+  if (!filtered.length) {
+    box.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">' +
+      (smsFilter_ === 'failed' ? '🎉 مفيش رسائل فشلت' : 'مفيش رسائل مسجلة') + '</div>';
+    return;
+  }
+
+  box.innerHTML = filtered.map(function(m){
+    var statusColor = m.status === 'تم الإرسال للموبايل' ? '#5FB88A' : m.status === 'فشل' ? '#E0727C' : '#8E8E93';
+    var actions = m.status === 'فشل'
+      ? '<div class="btns" style="margin-top:8px">' +
+          '<button class="btn-wa" style="background:var(--accent)" onclick="doRetrySMS(\'' + m.invoiceid + '\')">🔄 إعادة إرسال</button>' +
+          '<button class="btn-block" style="flex:1" onclick="doDismissSMS(\'' + m.invoiceid + '\')">✖️ رفض</button>' +
+        '</div>'
+      : '';
+    return '<div class="cust-card"><div class="card-head" style="flex-direction:column;align-items:stretch;gap:6px">' +
+      '<div style="display:flex;justify-content:space-between"><span class="cust-name">' + (m.customername || 'عميل') + '</span><span style="font-size:12px;font-weight:700;color:' + statusColor + '">' + m.status + '</span></div>' +
+      '<div class="cust-sub">' + m.phone + ' — ' + m.amount + ' جنيه — فاتورة ' + m.invoiceid + '</div>' +
+      '<div class="cust-sub" style="font-size:11px">' + m.message + '</div>' +
+      actions +
+      '</div></div>';
+  }).join('');
+}
+
+function doRetrySMS(invoiceid) {
+  fetch(STAFF_SCRIPT_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action:'retrySMS', invoiceid: invoiceid})
+  }).catch(function(){});
+  showToast('جاري إعادة الإرسال...');
+  setTimeout(loadSMS, 2000);
+}
+
+function doDismissSMS(invoiceid) {
+  fetch(STAFF_SCRIPT_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action:'dismissSMS', invoiceid: invoiceid})
+  }).catch(function(){});
+  showToast('تم الرفض');
+  setTimeout(loadSMS, 1000);
 }
 
 function loadExpenses() {

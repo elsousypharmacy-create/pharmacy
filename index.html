@@ -461,6 +461,14 @@
     </button>
   </div>
 
+  <div class="sidebar-group-title">المندوبين</div>
+  <div class="settings-group">
+    <button class="sidebar-item" id="side-agents-list" onclick="navigateTo('agents','list')">
+      <span class="row-icon" style="background:#0A84FF"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+      <span class="row-label">المندوبين والعمولات</span>
+    </button>
+  </div>
+
   <div class="sidebar-group-title">الديون</div>
   <div class="settings-group">
     <button class="sidebar-item" id="side-debts-list" onclick="navigateTo('debts','list')">
@@ -810,6 +818,30 @@
   </div>
 </div>
 
+<!-- ═══ سكشن المندوبين ═══ -->
+<div id="agents-list-section" class="deliv-wrap" style="display:none">
+  <div id="agents-content">
+    <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
+  </div>
+</div>
+
+<!-- ═══ مودال تسجيل دفعة لمندوب ═══ -->
+<div class="modal-overlay" id="agent-pay-modal">
+  <div class="modal" style="max-width:360px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="margin-bottom:0">تسجيل دفعة</h3>
+      <button onclick="closeAgentPay()" style="background:var(--fill);border:none;color:var(--text2);width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer">✕</button>
+    </div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:6px">المندوب: <span id="agent-pay-phone" style="color:var(--text);font-weight:600"></span></div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px">الباقي المستحق: <span id="agent-pay-balance" style="color:#5FB88A;font-weight:700"></span> ج</div>
+    <input type="number" id="agent-pay-amount" placeholder="المبلغ المدفوع" style="width:100%;background:var(--fill);border:none;color:var(--text);border-radius:var(--r-md);padding:12px;font-size:15px;font-family:inherit;margin-bottom:12px" dir="ltr">
+    <div style="display:flex;gap:8px">
+      <button onclick="submitAgentPay()" style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:var(--r-md);padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">تسجيل</button>
+      <button onclick="payAllAgent()" style="flex:1;background:#5FB88A;color:#fff;border:none;border-radius:var(--r-md);padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">دفع الكل</button>
+    </div>
+  </div>
+</div>
+
 <!-- LOG MODAL -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
@@ -950,6 +982,7 @@ var allCustomers = [], histories = {}, openPhone = '';
 var filterCls_ = '', filterStatus_ = 'all', searchStr_ = '';
 var logPhone = '', logName = '', currentView = 'mob';
 var currentMode = 'staff', crmTab = 'customers', shortTab = 'list', delivTab = 'map', staffTab = 'care', dashLoaded = false, customersLoaded = false;
+var agentsTab = 'list', agentsData_ = null;
 var staffRange_ = 'today', staffFrom_ = '', staffTo_ = '', staffLoaded = false;
 var lastStaffEmployees_ = [];
 var staffBreakdownOpen_ = null;
@@ -1357,7 +1390,8 @@ var VIEW_LABELS = {
   'expenses:list': '💸 المصروفات',
   'pl:list': '💹 الربح والخسارة',
   'sms:list': '💬 رسائل العملاء',
-  'inventory:aging': '📦 تحليل المخزون'
+  'inventory:aging': '📦 تحليل المخزون',
+  'agents:list': '🤝 المندوبين والعمولات'
 };
 
 function openSidebar() {
@@ -1381,10 +1415,11 @@ function navigateTo(mode, tab) {
   else if (mode === 'pl') { plTab = tab; }
   else if (mode === 'sms') { smsTab = tab; }
   else if (mode === 'inventory') { invTab = tab; }
+  else if (mode === 'agents') { agentsTab = tab; }
 
   document.getElementById('current-view-label').textContent = VIEW_LABELS[mode + ':' + tab];
 
-  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi','side-staff-care','side-debts-list','side-expenses-list','side-pl-list','side-sms-list','side-inv-aging'].forEach(function(id){
+  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi','side-staff-care','side-debts-list','side-expenses-list','side-pl-list','side-sms-list','side-inv-aging','side-agents-list'].forEach(function(id){
     document.getElementById(id).classList.remove('active');
   });
   var shortActiveMap = { list: 'side-short-list', orders: 'side-short-orders', discontinued: 'side-short-discontinued', kpi: 'side-short-kpi' };
@@ -1398,6 +1433,7 @@ function navigateTo(mode, tab) {
     : mode === 'pl' ? 'side-pl-list'
     : mode === 'sms' ? 'side-sms-list'
     : mode === 'inventory' ? 'side-inv-aging'
+    : mode === 'agents' ? 'side-agents-list'
     : 'side-staff-care';
   document.getElementById(activeId).classList.add('active');
 
@@ -1417,12 +1453,14 @@ function navigateTo(mode, tab) {
   document.getElementById('pl-list-section').style.display = (mode === 'pl' && tab === 'list') ? 'block' : 'none';
   document.getElementById('sms-list-section').style.display = (mode === 'sms' && tab === 'list') ? 'block' : 'none';
   document.getElementById('inventory-aging-section').style.display = (mode === 'inventory' && tab === 'aging') ? 'block' : 'none';
+  document.getElementById('agents-list-section').style.display = (mode === 'agents' && tab === 'list') ? 'block' : 'none';
 
   if (mode === 'debts' && tab === 'list') { loadDebts(); }
   if (mode === 'expenses' && tab === 'list') { loadExpenses(); }
   if (mode === 'pl' && tab === 'list') { loadProfitLoss(); }
   if (mode === 'sms' && tab === 'list') { loadSMS(); }
   if (mode === 'inventory' && tab === 'aging') { invLoaded = true; loadInventoryAging(); }
+  if (mode === 'agents' && tab === 'list') { loadAgents(); }
 
   if (mode === 'crm' && tab === 'customers' && !customersLoaded) {
     customersLoaded = true;
@@ -1477,6 +1515,8 @@ function refreshCurrentTab() {
     loadStaffCare();
   } else if (currentMode === 'inventory') {
     loadInventoryAging();
+  } else if (currentMode === 'agents') {
+    loadAgents();
   }
 }
 
@@ -3892,6 +3932,111 @@ document.addEventListener('visibilitychange', function() {
     loadStaffCare(true);
   }
 });
+
+// ═══════════════════════════════════════════════
+// المندوبين
+// ═══════════════════════════════════════════════
+function loadAgents() {
+  var box = document.getElementById('agents-content');
+  box.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+  fetch(STAFF_SCRIPT_URL + '?action=getAgents')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ agentsData_ = d; renderAgents(d); })
+    .catch(function(e){ box.innerHTML = '<div class="loading"><p style="color:#E0727C">حصل خطأ في التحميل</p></div>'; });
+}
+
+function renderAgents(d) {
+  var box = document.getElementById('agents-content');
+  if (!d || !d.ok) { box.innerHTML = '<div class="loading"><p style="color:#E0727C">' + ((d && d.error) || 'خطأ') + '</p></div>'; return; }
+  if (!d.agents || !d.agents.length) {
+    box.innerHTML = '<div style="text-align:center;padding:40px 16px;color:var(--text2)"><div style="font-size:38px;margin-bottom:10px">🤝</div>لسه مفيش مندوبين — أول ما مندوب يبعت عميل هيظهر هنا.</div>';
+    return;
+  }
+  var totalDue = 0, totalPaid = 0, totalPending = 0, totalActive = 0;
+  d.agents.forEach(function(a){
+    totalDue += a.total_due; totalPaid += a.total_paid;
+    totalPending += a.pending; totalActive += a.activated;
+  });
+  var totalBalance = totalDue - totalPaid;
+  var out = '';
+  out += '<div class="stats-row" style="margin-bottom:14px">' +
+    '<div class="stat-cell"><div class="stat-v">' + d.agents.length + '</div><div class="stat-l">مندوب</div></div>' +
+    '<div class="stat-cell"><div class="stat-v" style="color:#FF9F0A">' + totalPending + '</div><div class="stat-l">معلّق</div></div>' +
+    '<div class="stat-cell"><div class="stat-v" style="color:#5FB88A">' + totalActive + '</div><div class="stat-l">مفعّل</div></div>' +
+    '<div class="stat-cell"><div class="stat-v" style="color:#E0727C">' + Math.round(totalBalance) + '</div><div class="stat-l">مستحق (ج)</div></div>' +
+    '</div>';
+  d.agents.forEach(function(a, i){
+    var idc = 'agent-card-' + i;
+    out += '<div class="cust-card" style="margin-bottom:10px">' +
+      '<div class="card-head" onclick="toggleAgentCard(' + i + ')" style="cursor:pointer">' +
+        '<div class="card-left">' +
+          '<div class="cls-badge cls-A">🤝</div>' +
+          '<div><div class="cust-name">' + a.agentPhone + '</div>' +
+          '<div class="cust-sub">' + a.activated + ' مفعّل · ' + a.pending + ' معلّق</div></div>' +
+        '</div>' +
+        '<div style="text-align:left">' +
+          '<div style="font-size:17px;font-weight:700;color:' + (a.balance > 0 ? '#5FB88A' : 'var(--text3)') + '">' + Math.round(a.balance) + ' ج</div>' +
+          '<div style="font-size:10px;color:var(--text3)">باقي مستحق</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="detail" id="' + idc + '">' +
+        '<div class="stats-row">' +
+          '<div class="stat-cell"><div class="stat-v">' + Math.round(a.total_due) + '</div><div class="stat-l">إجمالي مستحق</div></div>' +
+          '<div class="stat-cell"><div class="stat-v" style="color:#5FB88A">' + Math.round(a.total_paid) + '</div><div class="stat-l">مدفوع</div></div>' +
+          '<div class="stat-cell"><div class="stat-v" style="color:#E0727C">' + Math.round(a.balance) + '</div><div class="stat-l">باقي</div></div>' +
+        '</div>' +
+        renderAgentCustomers(a.customers) +
+        '<button onclick="openAgentPay(\'' + a.agentPhone + '\',' + a.balance + ')" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--r-md);padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:10px">تسجيل دفعة</button>' +
+      '</div>' +
+    '</div>';
+  });
+  box.innerHTML = out;
+}
+
+function renderAgentCustomers(custs) {
+  if (!custs || !custs.length) return '';
+  var rows = custs.map(function(c){
+    var color = c.status === 'مفعّل' ? '#5FB88A' : '#FF9F0A';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--sep)">' +
+      '<div><div style="font-size:13px;font-weight:600">' + c.name + '</div>' +
+      '<div style="font-size:11px;color:var(--text3)">' + c.phone + '</div></div>' +
+      '<div style="font-size:11px;font-weight:700;color:' + color + '">' + c.status + '</div>' +
+    '</div>';
+  }).join('');
+  return '<div style="margin-top:8px">' + rows + '</div>';
+}
+
+function toggleAgentCard(i) {
+  document.getElementById('agent-card-' + i).classList.toggle('open');
+}
+
+var _agentPayPhone = null;
+function openAgentPay(phone, balance) {
+  _agentPayPhone = phone;
+  document.getElementById('agent-pay-phone').textContent = phone;
+  document.getElementById('agent-pay-balance').textContent = Math.round(balance);
+  document.getElementById('agent-pay-amount').value = '';
+  document.getElementById('agent-pay-modal').classList.add('show');
+}
+function closeAgentPay() {
+  document.getElementById('agent-pay-modal').classList.remove('show');
+}
+function payAllAgent() {
+  var bal = parseFloat(document.getElementById('agent-pay-balance').textContent) || 0;
+  document.getElementById('agent-pay-amount').value = bal;
+  submitAgentPay();
+}
+function submitAgentPay() {
+  var amount = parseFloat(document.getElementById('agent-pay-amount').value) || 0;
+  if (amount <= 0) { alert('اكتب مبلغ صحيح'); return; }
+  fetch(STAFF_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'payAgent', agentPhone: _agentPayPhone, amount: amount })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(res){ closeAgentPay(); loadAgents(); })
+  .catch(function(e){ alert('حصل خطأ في التسجيل'); });
+}
 </script>
 </body>
 </html>

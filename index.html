@@ -3985,7 +3985,7 @@ function renderAgents(d) {
           '<div class="stat-cell"><div class="stat-v" style="color:#5FB88A">' + Math.round(a.total_paid) + '</div><div class="stat-l">مدفوع</div></div>' +
           '<div class="stat-cell"><div class="stat-v" style="color:#E0727C">' + Math.round(a.balance) + '</div><div class="stat-l">باقي</div></div>' +
         '</div>' +
-        renderAgentCustomers(a.customers) +
+        renderAgentCustomers(a.customers, a.agentPhone) +
         '<button onclick="openAgentPay(\'' + a.agentPhone + '\',' + a.balance + ')" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--r-md);padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:10px">تسجيل دفعة</button>' +
       '</div>' +
     '</div>';
@@ -3993,17 +3993,31 @@ function renderAgents(d) {
   box.innerHTML = out;
 }
 
-function renderAgentCustomers(custs) {
+function renderAgentCustomers(custs, agentPhone) {
   if (!custs || !custs.length) return '';
   var rows = custs.map(function(c){
     var color = c.status === 'مفعّل' ? '#5FB88A' : '#FF9F0A';
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--sep)">' +
       '<div><div style="font-size:13px;font-weight:600">' + c.name + '</div>' +
       '<div style="font-size:11px;color:var(--text3)">' + c.phone + '</div></div>' +
-      '<div style="font-size:11px;font-weight:700;color:' + color + '">' + c.status + '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<div style="font-size:11px;font-weight:700;color:' + color + '">' + c.status + '</div>' +
+        '<button onclick="event.stopPropagation();deleteAgentCustomer(\'' + agentPhone + '\',\'' + c.phone + '\')" style="background:rgba(224,114,124,0.15);border:none;color:#E0727C;width:22px;height:22px;border-radius:50%;font-size:12px;cursor:pointer;flex-shrink:0">✕</button>' +
+      '</div>' +
     '</div>';
   }).join('');
   return '<div style="margin-top:8px">' + rows + '</div>';
+}
+
+function deleteAgentCustomer(agentPhone, customerPhone) {
+  if (!confirm('متأكد إنك عايز تمسح العميل ده من قايمة المندوب؟')) return;
+  fetch(STAFF_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'deleteAgentPending', agentPhone: agentPhone, customerPhone: customerPhone })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(res){ loadAgents(); })
+  .catch(function(e){ alert('حصل خطأ في الحذف'); });
 }
 
 function toggleAgentCard(i) {

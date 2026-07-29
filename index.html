@@ -734,22 +734,34 @@
 
 <div id="sms-list-section" class="deliv-wrap" style="display:none">
   <div class="days-row">
-    <div class="day-pill active" id="dsms-all" onclick="setSmsFilter('all')">📊 الكل</div>
-    <div class="day-pill" id="dsms-failed" onclick="setSmsFilter('failed')">❌ محتاجة مراجعة</div>
-  </div>
-  <div id="sms-test-box" class="cust-card" style="padding:16px;margin-bottom:12px">
-    <div style="font-size:15px;font-weight:600;letter-spacing:-0.2px;margin-bottom:12px">تجربة إرسال</div>
-    <div style="display:flex;gap:8px">
-      <input id="sms-test-phone" inputmode="numeric" placeholder="01xxxxxxxxx"
-        style="flex:1;padding:12px 14px;border-radius:var(--r-md);border:none;background:var(--fill);color:var(--text);font-family:inherit;font-size:14px;outline:none">
-      <button onclick="sendTestSMS()"
-        style="padding:12px 20px;border:none;border-radius:var(--r-md);background:var(--accent);color:#fff;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer">إرسال</button>
+    <div class="day-pill active" id="dsms-all" onclick="setSmsFilter('all')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="vertical-align:-2px;margin-left:4px"><path d="M3 12h4M10 6h4M17 3h4v18h-4M10 18h4M3 12v6h4v-6"/></svg>
+      الكل
     </div>
-    <div id="sms-test-result" style="margin-top:12px"></div>
-
-    <div style="margin-top:16px;padding-top:14px;border-top:0.5px solid var(--sep)">
-      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:12px">مسار الرسالة</div>
-      <div id="sms-pipeline"></div>
+    <div class="day-pill" id="dsms-failed" onclick="setSmsFilter('failed')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="vertical-align:-2px;margin-left:4px"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+      محتاجة مراجعة
+    </div>
+  </div>
+  <div id="sms-test-box" class="cust-card" style="padding:0;margin-bottom:12px;overflow:hidden">
+    <div onclick="toggleSmsTest()" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer">
+      <span style="font-size:14.5px;font-weight:600;letter-spacing:-0.2px">تجربة إرسال</span>
+      <svg id="sms-test-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div id="sms-test-inner" style="max-height:0;overflow:hidden;transition:max-height .25s ease">
+      <div style="padding:0 16px 16px">
+        <div style="display:flex;gap:8px">
+          <input id="sms-test-phone" inputmode="numeric" placeholder="01xxxxxxxxx"
+            style="flex:1;padding:12px 14px;border-radius:var(--r-md);border:none;background:var(--fill);color:var(--text);font-family:inherit;font-size:14px;outline:none">
+          <button onclick="sendTestSMS()"
+            style="padding:12px 20px;border:none;border-radius:var(--r-md);background:var(--accent);color:#fff;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer">إرسال</button>
+        </div>
+        <div id="sms-test-result" style="margin-top:12px"></div>
+        <div style="margin-top:16px;padding-top:14px;border-top:0.5px solid var(--sep)">
+          <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">مسار الرسالة</div>
+          <div id="sms-pipeline"></div>
+        </div>
+      </div>
     </div>
   </div>
   <div id="sms-content">
@@ -2698,6 +2710,23 @@ var lastSmsData_ = null;
 var SMS_STAGES_ = ['الفاتورة', 'السكربت', 'AutoRemote', 'التليفون', 'Tasker', 'SMS'];
 
 // state: 'done' | 'active' | 'fail' | 'idle'
+function toggleSmsTest() {
+  var inner = document.getElementById('sms-test-inner');
+  var chev = document.getElementById('sms-test-chevron');
+  var isOpen = inner.style.maxHeight && inner.style.maxHeight !== '0px';
+  inner.style.maxHeight = isOpen ? '0px' : inner.scrollHeight + 'px';
+  chev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+
+// حالة كل مرحلة اعتمادًا على حالة الرسالة المسجّلة في الشيت
+function statusToStates(status) {
+  if (status === '✅ اتبعت من التليفون') return ['done','done','done','done','done','done'];
+  if (status === '❌ التليفون مبعتهاش')   return ['done','done','done','done','done','fail'];
+  if (status === 'تم الإرسال للموبايل')        return ['done','done','done','active','active','active'];
+  if (status === 'فشل')                        return ['done','done','fail','idle','idle','idle'];
+  return ['idle','idle','idle','idle','idle','idle'];
+}
+
 function renderPipeline(states) {
   var n = SMS_STAGES_.length;
   var dots = SMS_STAGES_.map(function(_, i){
@@ -2813,6 +2842,7 @@ function renderSMS(d) {
       '</div>' +
       '<div class="cust-sub">' + m.phone + ' · ' + m.amount + ' جنيه · فاتورة ' + m.invoiceid + '</div>' +
       '<div class="cust-sub" style="font-size:11.5px;opacity:.75">' + m.message + '</div>' +
+      '<div style="margin-top:4px">' + renderPipeline(statusToStates(m.status)) + '</div>' +
       '<button onclick="doRetrySMS(\'' + m.invoiceid + '\', this)" ' +
         'style="width:100%;margin-top:2px;padding:11px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .2s">' +
         'إعادة إرسال</button>' +

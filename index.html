@@ -500,6 +500,14 @@
       <span class="row-label">الربح والخسارة</span>
     </button>
   </div>
+
+  <div class="sidebar-group-title">متفرقات</div>
+  <div class="settings-group">
+    <button class="sidebar-item" id="side-misc-list" onclick="navigateTo('misc','list')">
+      <span class="row-icon" style="background:#8E8E93"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+      <span class="row-label">صيانة وأدوات</span>
+    </button>
+  </div>
 </div>
 
 <div class="header">
@@ -764,6 +772,7 @@
       </div>
     </div>
   </div>
+
   <div id="sms-content">
     <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
   </div>
@@ -849,6 +858,14 @@
 <div id="agents-list-section" class="deliv-wrap" style="display:none">
   <div id="agents-content">
     <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
+  </div>
+</div>
+
+<div id="misc-list-section" class="deliv-wrap" style="display:none">
+  <div class="cust-card" style="padding:16px">
+    <div style="font-size:15px;font-weight:700;letter-spacing:-0.2px;margin-bottom:2px">صيانة بيانات الموظفين</div>
+    <div style="font-size:12.5px;color:var(--text2);margin-bottom:14px">استخدمها لو شيت "الموظفين" فيه صفوف مكررة أو بيانات ناقصة</div>
+    <div id="maint-steps"></div>
   </div>
 </div>
 
@@ -1010,6 +1027,7 @@ var filterCls_ = '', filterStatus_ = 'all', searchStr_ = '';
 var logPhone = '', logName = '', currentView = 'mob';
 var currentMode = 'staff', crmTab = 'customers', shortTab = 'list', delivTab = 'map', staffTab = 'care', dashLoaded = false, customersLoaded = false;
 var agentsTab = 'list', agentsData_ = null;
+var miscTab = 'list';
 var staffRange_ = 'today', staffFrom_ = '', staffTo_ = '', staffLoaded = false;
 var lastStaffEmployees_ = [];
 var staffBreakdownOpen_ = null;
@@ -1418,7 +1436,8 @@ var VIEW_LABELS = {
   'pl:list': '💹 الربح والخسارة',
   'sms:list': '💬 رسائل العملاء',
   'inventory:aging': '📦 تحليل المخزون',
-  'agents:list': '🤝 المندوبين والعمولات'
+  'agents:list': '🤝 المندوبين والعمولات',
+  'misc:list': '🧰 صيانة وأدوات'
 };
 
 function openSidebar() {
@@ -1443,10 +1462,11 @@ function navigateTo(mode, tab) {
   else if (mode === 'sms') { smsTab = tab; }
   else if (mode === 'inventory') { invTab = tab; }
   else if (mode === 'agents') { agentsTab = tab; }
+  else if (mode === 'misc') { miscTab = tab; }
 
   document.getElementById('current-view-label').textContent = VIEW_LABELS[mode + ':' + tab];
 
-  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi','side-staff-care','side-debts-list','side-expenses-list','side-pl-list','side-sms-list','side-inv-aging','side-agents-list'].forEach(function(id){
+  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi','side-staff-care','side-debts-list','side-expenses-list','side-pl-list','side-sms-list','side-inv-aging','side-agents-list','side-misc-list'].forEach(function(id){
     document.getElementById(id).classList.remove('active');
   });
   var shortActiveMap = { list: 'side-short-list', orders: 'side-short-orders', discontinued: 'side-short-discontinued', kpi: 'side-short-kpi' };
@@ -1461,6 +1481,7 @@ function navigateTo(mode, tab) {
     : mode === 'sms' ? 'side-sms-list'
     : mode === 'inventory' ? 'side-inv-aging'
     : mode === 'agents' ? 'side-agents-list'
+    : mode === 'misc' ? 'side-misc-list'
     : 'side-staff-care';
   document.getElementById(activeId).classList.add('active');
 
@@ -1481,6 +1502,7 @@ function navigateTo(mode, tab) {
   document.getElementById('sms-list-section').style.display = (mode === 'sms' && tab === 'list') ? 'block' : 'none';
   document.getElementById('inventory-aging-section').style.display = (mode === 'inventory' && tab === 'aging') ? 'block' : 'none';
   document.getElementById('agents-list-section').style.display = (mode === 'agents' && tab === 'list') ? 'block' : 'none';
+  document.getElementById('misc-list-section').style.display = (mode === 'misc' && tab === 'list') ? 'block' : 'none';
 
   if (mode === 'debts' && tab === 'list') { loadDebts(); }
   if (mode === 'expenses' && tab === 'list') { loadExpenses(); }
@@ -1488,6 +1510,7 @@ function navigateTo(mode, tab) {
   if (mode === 'sms' && tab === 'list') { loadSMS(); }
   if (mode === 'inventory' && tab === 'aging') { invLoaded = true; loadInventoryAging(); }
   if (mode === 'agents' && tab === 'list') { loadAgents(); }
+  if (mode === 'misc' && tab === 'list') { renderMaintSteps(); }
 
   if (mode === 'crm' && tab === 'customers' && !customersLoaded) {
     customersLoaded = true;
@@ -2718,8 +2741,92 @@ function toggleSmsTest() {
   chev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
 }
 
+// ===================================================================
+// صيانة بيانات الموظفين — 3 خطوات، كل واحدة بتتأكد من نتيجتها فعليًا
+// ===================================================================
+var MAINT_STEPS_ = [
+  { id: 'stop',    label: 'إيقاف التعارض',        action: 'maintenanceStop' },
+  { id: 'dedup',   label: 'تنظيف التكرار',         action: 'maintenanceDedup' },
+  { id: 'rebuild', label: 'إعادة بناء البيانات',    action: 'maintenanceStartRebuild' }
+];
+var maintState_ = { stop: 'idle', dedup: 'idle', rebuild: 'idle' };
+var maintPollTimer_ = null;
+
+function maintIcon_(st) {
+  if (st === 'done') return '<span style="color:#34C759;font-weight:800;font-size:14px">✓</span>';
+  if (st === 'fail') return '<span style="color:#FF453A;font-weight:800;font-size:14px">✕</span>';
+  if (st === 'busy') return '<span style="width:13px;height:13px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;display:inline-block;animation:spin .7s linear infinite"></span>';
+  return '';
+}
+
+function renderMaintSteps(extra) {
+  var box = document.getElementById('maint-steps');
+  if (!box) return;
+  var html = MAINT_STEPS_.map(function(s, i){
+    var st = maintState_[s.id];
+    var disabled = st === 'busy' || (i > 0 && maintState_[MAINT_STEPS_[i-1].id] !== 'done');
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;' +
+        (i > 0 ? 'border-top:0.5px solid var(--sep)' : '') + '">' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span style="width:18px;text-align:center">' + maintIcon_(st) + '</span>' +
+        '<span style="font-size:13.5px;font-weight:600;color:' + (st === 'done' ? 'var(--text2)' : 'var(--text)') + '">' + s.label + '</span>' +
+      '</div>' +
+      '<button onclick="runMaintStep(&#39;' + s.id + '&#39;)" ' + (disabled ? 'disabled' : '') +
+        ' style="padding:7px 14px;border:none;border-radius:20px;background:' + (disabled ? 'var(--card-bg2)' : 'var(--fill)') +
+        ';color:' + (disabled ? 'var(--text3)' : 'var(--accent)') + ';font-size:12px;font-weight:600;font-family:inherit;cursor:' + (disabled ? 'default' : 'pointer') + '">تشغيل</button>' +
+    '</div>';
+  }).join('');
+  html += '<div id="maint-progress" style="font-size:12px;color:var(--text2);margin-top:6px"></div>';
+  box.innerHTML = html + (extra || '');
+}
+
+function runMaintStep(id) {
+  maintState_[id] = 'busy';
+  renderMaintSteps();
+
+  var step = MAINT_STEPS_.filter(function(s){ return s.id === id; })[0];
+  fetch(STAFF_SCRIPT_URL + '?action=' + step.action)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d || !d.ok) { maintState_[id] = 'fail'; renderMaintSteps(); return; }
+      if (id === 'dedup') {
+        maintState_.dedup = 'done';
+        renderMaintSteps('<div style="font-size:12px;color:var(--text2);margin-top:6px">من ' + d.before + ' صف لـ ' + d.after + ' صف</div>');
+        return;
+      }
+      if (id === 'rebuild') {
+        maintState_.rebuild = 'busy';
+        renderMaintSteps();
+        startMaintPolling();
+        return;
+      }
+      maintState_[id] = 'done';
+      renderMaintSteps();
+    })
+    .catch(function(){ maintState_[id] = 'fail'; renderMaintSteps(); });
+}
+
+function startMaintPolling() {
+  if (maintPollTimer_) clearInterval(maintPollTimer_);
+  maintPollTimer_ = setInterval(function(){
+    fetch(STAFF_SCRIPT_URL + '?action=maintenanceStatus')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d || !d.ok) return;
+        var p = document.getElementById('maint-progress');
+        if (p) p.textContent = d.cursor + ' / ' + d.total + ' يوم';
+        if (!d.rebuildRunning && d.liveTriggerOn) {
+          clearInterval(maintPollTimer_);
+          maintState_.rebuild = 'done';
+          renderMaintSteps('<div style="font-size:12px;color:#34C759;margin-top:6px">✓ اكتمل — الفواتير الحية شغالة تاني</div>');
+        }
+      }).catch(function(){});
+  }, 5000);
+}
+
 // حالة كل مرحلة اعتمادًا على حالة الرسالة المسجّلة في الشيت
 function statusToStates(status) {
+
   if (status === '✅ اتبعت من التليفون') return ['done','done','done','done','done','done'];
   if (status === '❌ التليفون مبعتهاش')   return ['done','done','done','done','done','fail'];
   if (status === 'تم الإرسال للموبايل')        return ['done','done','done','active','active','active'];

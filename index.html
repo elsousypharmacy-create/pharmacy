@@ -2695,39 +2695,31 @@ function applyExpensesRange() {
 // ===== SMS =====
 var lastSmsData_ = null;
 
-var SMS_STAGES_ = [
-  { t: 'قفل الفاتورة',      d: 'النظام بيكتبها على درايف' },
-  { t: 'قراءة السكربت',     d: 'بيقرا الملف كل دقيقة' },
-  { t: 'إرسال لـ AutoRemote', d: 'الأمر بيخرج من السكربت' },
-  { t: 'استقبال التليفون',   d: 'تطبيق AutoRemote' },
-  { t: 'تنفيذ Tasker',       d: 'بيقسّم الرقم والنص' },
-  { t: 'إرسال SMS',          d: 'التليفون بيبعت فعليًا' }
-];
+var SMS_STAGES_ = ['الفاتورة', 'السكربت', 'AutoRemote', 'التليفون', 'Tasker', 'SMS'];
 
 // state: 'done' | 'active' | 'fail' | 'idle'
 function renderPipeline(states) {
-  var COL = { done: '#34C759', active: 'var(--accent)', fail: '#FF453A', idle: 'var(--sep)' };
-  return SMS_STAGES_.map(function(st, i) {
-    var k = (states && states[i]) || 'idle';
-    var c = COL[k];
-    var isLast = i === SMS_STAGES_.length - 1;
-    var dot = k === 'done'
-      ? '<div style="width:22px;height:22px;border-radius:50%;background:' + c + ';display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">✓</div>'
-      : k === 'fail'
-      ? '<div style="width:22px;height:22px;border-radius:50%;background:' + c + ';display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">✕</div>'
-      : k === 'active'
-      ? '<div style="width:22px;height:22px;border-radius:50%;border:2.5px solid ' + c + ';box-sizing:border-box"></div>'
-      : '<div style="width:22px;height:22px;border-radius:50%;border:1.5px solid ' + c + ';box-sizing:border-box"></div>';
-    var line = isLast ? '' :
-      '<div style="width:1.5px;height:26px;background:' + (k === 'done' ? COL.done : COL.idle) + ';margin:2px auto"></div>';
-    var op = k === 'idle' ? '0.45' : '1';
-    return '<div style="display:flex;gap:12px;align-items:flex-start;opacity:' + op + '">' +
-      '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">' + dot + line + '</div>' +
-      '<div style="padding-top:1px;min-height:' + (isLast ? '22' : '50') + 'px">' +
-        '<div style="font-size:13.5px;font-weight:600;letter-spacing:-0.2px">' + st.t + '</div>' +
-        '<div style="font-size:11.5px;color:var(--text2);margin-top:1px">' + st.d + '</div>' +
-      '</div></div>';
-  }).join('');
+  var n = SMS_STAGES_.length;
+  var dots = SMS_STAGES_.map(function(_, i){
+    var st = (states && states[i]) || 'idle';
+    var col = st === 'done' ? '#34C759' : st === 'fail' ? '#FF453A' : st === 'active' ? 'var(--accent)' : 'var(--card-bg2)';
+    var seg = '<div style="flex:1;height:4px;border-radius:2px;background:' + col + ';transition:background .25s"></div>';
+    return seg;
+  }).join('<div style="width:4px"></div>');
+
+  var activeIdx = states ? states.lastIndexOf('active') : -1;
+  var failIdx = states ? states.indexOf('fail') : -1;
+  var doneAll = states ? states.every(function(x){ return x === 'done'; }) : false;
+
+  var caption = doneAll ? 'وصلت السيستم — تأكد من الموبايل'
+    : failIdx > -1 ? 'توقفت عند: ' + SMS_STAGES_[failIdx]
+    : activeIdx > -1 ? SMS_STAGES_[activeIdx] + '…'
+    : 'جاهز';
+
+  var capColor = doneAll ? '#34C759' : failIdx > -1 ? '#FF453A' : activeIdx > -1 ? 'var(--accent)' : 'var(--text2)';
+
+  return '<div style="display:flex;align-items:center">' + dots + '</div>' +
+    '<div style="margin-top:8px;font-size:12.5px;font-weight:600;color:' + capColor + '">' + caption + '</div>';
 }
 
 function setPipeline(states) {
@@ -2735,6 +2727,7 @@ function setPipeline(states) {
   if (el) el.innerHTML = renderPipeline(states);
 }
 
+function sendTestSMS() {
 function sendTestSMS() {
   var phone = (document.getElementById('sms-test-phone').value || '').trim();
   var box = document.getElementById('sms-test-result');
@@ -2767,18 +2760,25 @@ function setSmsFilter(f) {
   if (lastSmsData_) renderSMS(lastSmsData_);
 }
 
+var smsRefreshLocked_ = false;
 function loadSMS() {
   var box = document.getElementById('sms-content');
   if (!staffReady()) {
     box.innerHTML = '<div class="loading"><p style="color:#E0727C">لازم تحط رابط ويب أب سكريبت الموظفين في STAFF_SCRIPT_URL</p></div>';
     return;
   }
-  box.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+  if (smsRefreshLocked_) return;
+  smsRefreshLocked_ = true;
+  if (!lastSmsData_) box.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+  var smsTimeout_ = setTimeout(function(){
+    smsRefreshLocked_ = false;
+    if (!lastSmsData_) box.innerHTML = '<div class="loading"><p style="color:#E0727C">خطأ في التحميل — <span style="text-decoration:underline;cursor:pointer" onclick="loadSMS()">حاول تاني</span></p></div>';
+  }, 10000);
   setPipeline(['idle','idle','idle','idle','idle','idle']);
   fetch(STAFF_SCRIPT_URL + '?action=getSMSLog')
     .then(function(r){ return r.json(); })
-    .then(function(d){ smsLoaded = true; lastSmsData_ = d; renderSMS(d); })
-    .catch(function(){ box.innerHTML = '<div class="loading"><p style="color:#E0727C">خطأ في التحميل — اضغط 🔄</p></div>'; });
+    .then(function(d){ clearTimeout(smsTimeout_); smsRefreshLocked_ = false; smsLoaded = true; lastSmsData_ = d; renderSMS(d); })
+    .catch(function(){ clearTimeout(smsTimeout_); smsRefreshLocked_ = false; if (!lastSmsData_) box.innerHTML = '<div class="loading"><p style="color:#E0727C">خطأ في التحميل — <span style="text-decoration:underline;cursor:pointer" onclick="loadSMS()">حاول تاني</span></p></div>'; });
 }
 
 function renderSMS(d) {
@@ -2814,20 +2814,23 @@ function renderSMS(d) {
       '</div>' +
       '<div class="cust-sub">' + m.phone + ' · ' + m.amount + ' جنيه · فاتورة ' + m.invoiceid + '</div>' +
       '<div class="cust-sub" style="font-size:11.5px;opacity:.75">' + m.message + '</div>' +
-      '<button onclick="doRetrySMS(\'' + m.invoiceid + '\')" ' +
-        'style="width:100%;margin-top:4px;padding:11px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">' +
+      '<button onclick="doRetrySMS(\'' + m.invoiceid + '\', this)" ' +
+        'style="width:100%;margin-top:2px;padding:11px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .2s">' +
         'إعادة إرسال</button>' +
       (failed ? '<button class="btn-block" onclick="doDismissSMS(\'' + m.invoiceid + '\')">تجاهل</button>' : '') +
       '</div></div>';
   }).join('');
 }
 
-function doRetrySMS(invoiceid) {
+function doRetrySMS(invoiceid, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'جاري الإرسال…'; btn.style.opacity = '0.6'; }
   fetch(STAFF_SCRIPT_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({action:'retrySMS', invoiceid: invoiceid})
-  }).catch(function(){});
-  showToast('جاري إعادة الإرسال...');
-  setTimeout(loadSMS, 2000);
+  }).catch(function(){}).finally(function(){
+    if (btn) { btn.textContent = 'تم الإرسال ✓'; btn.style.opacity = '1'; }
+    showToast('اتبعت الأمر تاني — تأكد من الموبايل');
+    setTimeout(function(){ if (!smsRefreshLocked_) loadSMS(); }, 3000);
+  });
 }
 
 function doDismissSMS(invoiceid) {

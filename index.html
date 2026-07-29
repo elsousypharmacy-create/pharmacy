@@ -737,6 +737,30 @@
     <div class="day-pill active" id="dsms-failed" onclick="setSmsFilter('failed')">❌ فشلت</div>
     <div class="day-pill" id="dsms-all" onclick="setSmsFilter('all')">📊 الكل</div>
   </div>
+  <div id="sms-test-box" style="background:var(--card,#1c1c1e);border-radius:14px;padding:14px;margin-bottom:14px">
+    <div style="font-weight:700;margin-bottom:8px">🧪 تجربة إرسال رسالة</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input id="sms-test-phone" placeholder="01xxxxxxxxx" style="flex:1;min-width:150px;padding:10px;border-radius:10px;border:1px solid #444;background:transparent;color:inherit;font-family:inherit">
+      <button onclick="sendTestSMS()" style="padding:10px 16px;border:none;border-radius:10px;background:#0A84FF;color:#fff;font-weight:600;font-family:inherit;cursor:pointer">إرسال</button>
+    </div>
+    <div id="sms-test-result" style="margin-top:10px;font-size:13px;line-height:1.7"></div>
+    <details style="margin-top:12px">
+      <summary style="cursor:pointer;font-weight:600">📖 مراحل إرسال الرسالة</summary>
+      <div style="font-size:13px;line-height:1.9;margin-top:8px;opacity:.9">
+        <div><b>1) الفاتورة بتتقفل</b> على نظام البيع، والنظام بيكتبها في ملف المبيعات على درايف.</div>
+        <div><b>2) السكربت</b> بيقرا الملف كل دقيقة، يلاقي فاتورة جديدة، ويجهّز نص الرسالة.</div>
+        <div><b>3) السكربت</b> بيبعت الأمر لسيرفر AutoRemote بصيغة: الرقم ثم <code>=:=</code> ثم نص الرسالة.</div>
+        <div><b>4) AutoRemote</b> على تليفون الصيدلية بيستقبل الأمر (لازم التطبيق شغال والنت متاح).</div>
+        <div><b>5) Tasker</b> بيقسّم النص عند <code>=:=</code> ويحطّ الرقم في خانة Number والنص في خانة Message.</div>
+        <div><b>6) التليفون</b> بيبعت SMS فعلي للعميل (لازم يكون فيه رصيد).</div>
+        <div style="margin-top:10px;font-weight:700">🎨 معنى الألوان في السجل:</div>
+        <div><span style="color:#E0A54A">🟠 تم الإرسال للموبايل</span> = الأمر خرج من السكربت بس لسه مفيش تأكيد من التليفون (وقف عند مرحلة 3)</div>
+        <div><span style="color:#5FB88A">🟢 اتبعت من التليفون</span> = Tasker نفّذ والتليفون بعت SMS فعلي (كل المراحل تمام)</div>
+        <div><span style="color:#E0727C">🔴 التليفون مبعتهاش</span> = Tasker حاول لكن فشل (غالباً رصيد أو شبكة)</div>
+        <div style="margin-top:8px;color:#E0A54A">⚠️ لو فضلت برتقالي، يبقى التليفون مستلمش الأمر أصلاً — راجع تطبيق AutoRemote والبروفايل في Tasker.</div>
+      </div>
+    </details>
+  </div>
   <div id="sms-content">
     <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
   </div>
@@ -2680,6 +2704,27 @@ function applyExpensesRange() {
 // ===== SMS =====
 var lastSmsData_ = null;
 
+function sendTestSMS() {
+  var phone = (document.getElementById('sms-test-phone').value || '').trim();
+  var box = document.getElementById('sms-test-result');
+  if (!/^01[0125][0-9]{8}$/.test(phone)) {
+    box.innerHTML = '<span style="color:#E0727C">الرقم مش مظبوط — لازم 11 رقم يبدأ بـ 010/011/012/015</span>';
+    return;
+  }
+  box.innerHTML = '<span style="opacity:.7">جاري الإرسال...</span>';
+  fetch(STAFF_SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ action: 'testSMS', phone: phone })
+  }).then(function(){
+    box.innerHTML = '✅ الأمر اتبعت للسكربت (مرحلة 3).<br>'
+      + '<span style="opacity:.8">دلوقتي شوف موبايلك: لو وصلت رسالة يبقى كل المراحل شغالة. لو مجتش، المشكلة في تليفون الصيدلية (AutoRemote / Tasker / الرصيد).</span>';
+  }).catch(function(){
+    box.innerHTML = '<span style="color:#E0727C">فشل الاتصال بالسكربت — راجع الرابط أو النت</span>';
+  });
+}
+
 function setSmsFilter(f) {
   smsFilter_ = f;
   document.getElementById('dsms-failed').classList.toggle('active', f === 'failed');
@@ -2707,7 +2752,7 @@ function renderSMS(d) {
     return;
   }
   var list = d.messages || [];
-  var filtered = smsFilter_ === 'failed' ? list.filter(function(m){ return m.status === 'فشل'; }) : list;
+  var filtered = smsFilter_ === 'failed' ? list.filter(function(m){ return m.status === 'فشل' || m.status === '❌ التليفون مبعتهاش'; }) : list;
 
   if (!filtered.length) {
     box.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">' +
@@ -2716,8 +2761,12 @@ function renderSMS(d) {
   }
 
   box.innerHTML = filtered.map(function(m){
-    var statusColor = m.status === 'تم الإرسال للموبايل' ? '#5FB88A' : m.status === 'فشل' ? '#E0727C' : '#8E8E93';
-    var actions = m.status === 'فشل'
+    var statusColor = m.status === '✅ اتبعت من التليفون' ? '#5FB88A'
+      : m.status === 'تم الإرسال للموبايل' ? '#E0A54A'
+      : (m.status === 'فشل' || m.status === '❌ التليفون مبعتهاش') ? '#E0727C' : '#8E8E93';
+    var hint = m.status === 'تم الإرسال للموبايل'
+      ? '<div class="cust-sub" style="font-size:11px;color:#E0A54A">⏳ الأمر خرج من السكربت — لسه مفيش تأكيد من التليفون</div>' : '';
+    var actions = (m.status === 'فشل' || m.status === '❌ التليفون مبعتهاش')
       ? '<div class="btns" style="margin-top:8px">' +
           '<button class="btn-wa" style="background:var(--accent)" onclick="doRetrySMS(\'' + m.invoiceid + '\')">🔄 إعادة إرسال</button>' +
           '<button class="btn-block" style="flex:1" onclick="doDismissSMS(\'' + m.invoiceid + '\')">✖️ رفض</button>' +
@@ -2727,6 +2776,7 @@ function renderSMS(d) {
       '<div style="display:flex;justify-content:space-between"><span class="cust-name">' + (m.customername || 'عميل') + '</span><span style="font-size:12px;font-weight:700;color:' + statusColor + '">' + m.status + '</span></div>' +
       '<div class="cust-sub">' + m.phone + ' — ' + m.amount + ' جنيه — فاتورة ' + m.invoiceid + '</div>' +
       '<div class="cust-sub" style="font-size:11px">' + m.message + '</div>' +
+      hint +
       actions +
       '</div></div>';
   }).join('');

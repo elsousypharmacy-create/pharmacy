@@ -1284,7 +1284,7 @@ function doWA(phone, name, coupon) {
   addHistory(phone, name, 'wa', 'تم إرسال واتساب', '');
 }
 function couponMessage_(name, coupon) {
-  return 'صيدلية السوسي: هدية لحضرتك يا ' + name + ' - ' + coupon + 'ج على التوصيل - صالحة لحد ' + giftExpiry() + ' - 01143404023';
+  return 'صيدلية السوسي: يا ' + name + '، لأنك من عملائنا المميزين، ليك توصيل مجاني دائمًا + خصم ' + coupon + ' جنيه على طلبك القادم. العرض حتى ' + giftExpiry() + '. 01143404023';
 }
 function doSMS(phone, name, coupon, btn) {
   var msg = couponMessage_(name, coupon);

@@ -875,6 +875,11 @@
 </div>
 
 <div id="misc-list-section" class="deliv-wrap" style="display:none">
+  <div class="cust-card" style="padding:16px;margin-bottom:12px">
+    <div style="font-size:15px;font-weight:700;letter-spacing:-0.2px;margin-bottom:2px">حالة السيستم</div>
+    <div style="font-size:12.5px;color:var(--text2);margin-bottom:14px">مؤشر مباشر — تحدّث كل 10 ثواني</div>
+    <div id="sys-status"></div>
+  </div>
   <div class="cust-card" style="padding:16px">
     <div style="font-size:15px;font-weight:700;letter-spacing:-0.2px;margin-bottom:2px">صيانة بيانات الموظفين</div>
     <div style="font-size:12.5px;color:var(--text2);margin-bottom:14px">استخدمها لو شيت "الموظفين" فيه صفوف مكررة أو بيانات ناقصة</div>
@@ -1608,7 +1613,7 @@ function navigateTo(mode, tab) {
   if (mode === 'sms' && tab === 'list') { loadSMS(); }
   if (mode === 'inventory' && tab === 'aging') { invLoaded = true; loadInventoryAging(); }
   if (mode === 'agents' && tab === 'list') { loadAgents(); }
-  if (mode === 'misc' && tab === 'list') { renderMaintSteps(); }
+  if (mode === 'misc' && tab === 'list') { renderMaintSteps(); startSysStatusPolling(); } else { stopSysStatusPolling(); }
 
   if (mode === 'crm' && tab === 'customers' && !customersLoaded) {
     customersLoaded = true;
@@ -2855,6 +2860,75 @@ function maintIcon_(st) {
   if (st === 'fail') return '<span style="color:#FF453A;font-weight:800;font-size:14px">✕</span>';
   if (st === 'busy') return '<span style="width:13px;height:13px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;display:inline-block;animation:spin .7s linear infinite"></span>';
   return '';
+}
+
+// ===================================================================
+// حالة السيستم — بروسس لاين مباشر (تريجر الفواتير الحي + إعادة البناء)
+// ===================================================================
+var sysStatusTimer_ = null;
+
+function sysDot_(on) {
+  return '<span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:' +
+    (on ? '#34C759' : '#FF453A') + ';flex-shrink:0"></span>';
+}
+
+function minutesAgo_(ts) {
+  if (!ts) return null;
+  var t = new Date(ts.replace(' ', 'T'));
+  if (isNaN(t.getTime())) return null;
+  return Math.round((Date.now() - t.getTime()) / 60000);
+}
+
+function renderSysStatus(d) {
+  var box = document.getElementById('sys-status');
+  if (!box || !d) return;
+
+  var ageMin = minutesAgo_(d.lastLiveRunAt);
+  var liveHealthy = d.liveTriggerOn && (ageMin === null || ageMin <= 3);
+  var liveLabel = !d.liveTriggerOn
+    ? 'متوقف — دوس تشغيل عشان الفواتير ترجع تتحدث'
+    : ageMin === null ? 'شغال — لسه ما اشتغلش'
+    : ageMin <= 3 ? 'شغال — آخر تشغيلة من ' + ageMin + ' دقيقة'
+    : 'مش بيرد من ' + ageMin + ' دقيقة — محتاج مراجعة';
+
+  var rebuildLabel = d.rebuildRunning
+    ? 'شغالة — ' + d.cursor + ' / ' + d.total + ' يوم'
+    : (d.cursor > 0 ? 'متوقفة في نص الطريق (' + d.cursor + ' / ' + d.total + ')' : 'مش شغالة دلوقتي');
+
+  box.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid var(--sep)">' +
+      '<div style="display:flex;align-items:center;gap:8px">' + sysDot_(liveHealthy) +
+        '<div><div style="font-size:13.5px;font-weight:600">تحديث الفواتير الحي</div>' +
+        '<div style="font-size:11.5px;color:var(--text2)">' + liveLabel + '</div></div>' +
+      '</div>' +
+      (d.liveTriggerOn ? '' :
+        '<button onclick="resumeLiveNow()" style="padding:7px 14px;border:none;border-radius:20px;background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">تشغيل</button>') +
+    '</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;padding:9px 0">' + sysDot_(true) +
+      '<div><div style="font-size:13.5px;font-weight:600">إعادة بناء البيانات القديمة</div>' +
+      '<div style="font-size:11.5px;color:var(--text2)">' + rebuildLabel + '</div></div>' +
+    '</div>';
+}
+
+function startSysStatusPolling() {
+  stopSysStatusPolling();
+  fetchSysStatus();
+  sysStatusTimer_ = setInterval(fetchSysStatus, 10000);
+}
+function stopSysStatusPolling() {
+  if (sysStatusTimer_) { clearInterval(sysStatusTimer_); sysStatusTimer_ = null; }
+}
+function fetchSysStatus() {
+  fetch(STAFF_SCRIPT_URL + '?action=maintenanceStatus')
+    .then(function(r){ return r.json(); })
+    .then(renderSysStatus)
+    .catch(function(){});
+}
+function resumeLiveNow() {
+  fetch(STAFF_SCRIPT_URL + '?action=maintenanceResumeLive')
+    .then(function(r){ return r.json(); })
+    .then(function(){ showToast('اتشغّل — استنى دقيقة'); fetchSysStatus(); })
+    .catch(function(){});
 }
 
 function renderMaintSteps(extra) {

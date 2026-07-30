@@ -4298,8 +4298,8 @@ function renderAgents(d) {
       '<div class="card-head" onclick="toggleAgentCard(' + i + ')" style="cursor:pointer">' +
         '<div class="card-left">' +
           '<div class="cls-badge cls-A">🤝</div>' +
-          '<div><div class="cust-name">' + a.agentPhone + '</div>' +
-          '<div class="cust-sub">' + a.activated + ' مفعّل · ' + a.pending + ' معلّق</div></div>' +
+          '<div><div class="cust-name">' + (a.agentName || a.agentPhone) + '</div>' +
+          '<div class="cust-sub">' + (a.agentName ? a.agentPhone + ' · ' : '') + a.activated + ' مفعّل · ' + a.pending + ' معلّق</div></div>' +
         '</div>' +
         '<div style="text-align:left">' +
           '<div style="font-size:17px;font-weight:700;color:' + (a.balance > 0 ? '#5FB88A' : 'var(--text3)') + '">' + Math.round(a.balance) + ' ج</div>' +

@@ -2844,7 +2844,7 @@ function toggleSmsTest() {
 // ===================================================================
 var MAINT_STEPS_ = [
   { id: 'stop',    label: 'إيقاف التعارض',        action: 'maintenanceStop' },
-  { id: 'dedup',   label: 'تنظيف التكرار',         action: 'maintenanceDedup' },
+  { id: 'dedup',   label: 'مسح البيانات القديمة',    action: 'maintenanceDedup' },
   { id: 'rebuild', label: 'إعادة بناء البيانات',    action: 'maintenanceStartRebuild' }
 ];
 var maintState_ = { stop: 'idle', dedup: 'idle', rebuild: 'idle' };
@@ -2889,7 +2889,7 @@ function runMaintStep(id) {
       if (!d || !d.ok) { maintState_[id] = 'fail'; renderMaintSteps(); return; }
       if (id === 'dedup') {
         maintState_.dedup = 'done';
-        renderMaintSteps('<div style="font-size:12px;color:var(--text2);margin-top:6px">من ' + d.before + ' صف لـ ' + d.after + ' صف</div>');
+        renderMaintSteps('<div style="font-size:12px;color:var(--text2);margin-top:6px">تمام — جاهز لإعادة البناء</div>');
         return;
       }
       if (id === 'rebuild') {

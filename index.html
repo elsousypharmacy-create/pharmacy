@@ -553,8 +553,21 @@
 </div>
 
 <div id="customers-section">
+<div style="display:flex;justify-content:flex-end;padding:6px 4px 10px">
+  <button id="multiselect-toggle" onclick="toggleMultiSelect()"
+    style="padding:8px 14px;border:none;border-radius:20px;background:var(--fill);color:var(--accent);font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer">
+    تحديد متعدد
+  </button>
+</div>
 <div class="list-wrap" id="list">
   <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
+</div>
+<div id="bulk-bar" style="display:none;position:fixed;left:16px;right:16px;bottom:16px;z-index:50;background:var(--card-bg);border:0.5px solid var(--sep);border-radius:var(--r-lg);padding:12px 16px;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:space-between;gap:10px">
+  <span id="bulk-count" style="font-size:13px;font-weight:600">0 محدد</span>
+  <button id="bulk-send-btn" onclick="startBulkSend()"
+    style="padding:9px 18px;border:none;border-radius:20px;background:var(--accent);color:#fff;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">
+    إرسال كوبونات
+  </button>
 </div>
 </div>
 
@@ -1176,8 +1189,9 @@ function cardHTML(c) {
   var dotClass = c.isAlert ? 'dot-alert' : (c.status === 'تمت المتابعة - في الانتظار' ? 'dot-pending' : (c.status === 'محاولات استرجاع فشلت' ? 'dot-failed' : 'dot-ok'));
   var actColor = c.isAlert ? '#E0727C' : (c.status === 'تمت المتابعة - في الانتظار' ? '#0A84FF' : (c.status === 'محاولات استرجاع فشلت' ? 'var(--text2)' : '#5FB88A'));
   return '<div class="cust-card ' + cardClass + '" data-phone="' + c.phone + '">' +
-    '<div class="card-head" onclick="toggleCard(\'' + c.phone + '\')">' +
+    '<div class="card-head" onclick="cardHeadClick(\'' + c.phone + '\')">' +
       '<div class="card-left">' +
+        '<span class="cust-checkbox" id="chk-' + c.phone + '" style="display:' + (multiSelectOn_ ? 'inline-flex' : 'none') + ';width:20px;height:20px;border-radius:50%;border:2px solid var(--sep);align-items:center;justify-content:center;margin-left:6px;flex-shrink:0"></span>' +
         '<div class="cls-badge cls-' + c.cls + '">' + c.cls + '</div>' +
         '<div>' +
           '<div class="cust-name">' + nm + '</div>' +
@@ -1240,7 +1254,7 @@ function detailHTML(c) {
     '</div>' +
     '<div class="btns">' +
       '<button class="btn-wa" onclick="doWA(\'' + c.phone + '\',\'' + c.name + '\',\'' + c.incentive + '\')">💬 واتساب</button>' +
-      '<button class="btn-sms" onclick="doSMS(\'' + c.phone + '\',\'' + c.name + '\',\'' + c.incentive + '\')">📱 SMS</button>' +
+      '<button class="btn-sms" id="smsbtn-' + c.phone + '" onclick="doSMS(\'' + c.phone + '\',\'' + c.name + '\',\'' + c.incentive + '\', this)">📱 SMS</button>' +
       '<button class="btn-call" onclick="doCall(\'' + c.phone + '\',\'' + c.name + '\')">📞 اتصال</button>' +
       '<button class="btn-log" onclick="openLog(\'' + c.phone + '\',\'' + c.name + '\')">📝</button>' +
     '</div>' +
@@ -1269,14 +1283,98 @@ function doWA(phone, name, coupon) {
   window.open('https://wa.me/20' + phone + '?text=' + msg, '_blank');
   addHistory(phone, name, 'wa', 'تم إرسال واتساب', '');
 }
-function doSMS(phone, name, coupon) {
-  var msg = encodeURIComponent('صيدلية السوسي: هدية لحضرتك يا ' + name + ' - ' + coupon + 'ج على التوصيل - صالحة لحد ' + giftExpiry() + ' - 01143404023');
-  window.open('sms:0' + phone + '?&body=' + msg, '_blank');
-  addHistory(phone, name, 'sms', 'تم إرسال SMS', '');
+function couponMessage_(name, coupon) {
+  return 'صيدلية السوسي: هدية لحضرتك يا ' + name + ' - ' + coupon + 'ج على التوصيل - صالحة لحد ' + giftExpiry() + ' - 01143404023';
+}
+function doSMS(phone, name, coupon, btn) {
+  var msg = couponMessage_(name, coupon);
+  if (btn) { btn.disabled = true; btn.textContent = '… جاري'; btn.style.opacity = '0.6'; }
+  fetch(STAFF_SCRIPT_URL + '?action=sendCoupon&phone=' + encodeURIComponent(phone) + '&name=' + encodeURIComponent(name) + '&message=' + encodeURIComponent(msg))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (btn) { btn.style.opacity = '1'; btn.textContent = (d && d.ok) ? '✓ اتبعتت' : '✕ فشلت'; }
+      addHistory(phone, name, 'sms', (d && d.ok) ? 'تم إرسال SMS' : 'فشل إرسال SMS', '');
+    })
+    .catch(function(){
+      if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '✕ حاول تاني'; }
+    });
 }
 function doCall(phone, name) {
   window.open('tel:0' + phone);
   addHistory(phone, name, 'call', 'تم الاتصال', '');
+}
+
+// ===================================================================
+// تحديد متعدد + إرسال كوبونات جماعي — بتأخير كبير بين كل رسالة عشان الشبكة متحظرش الرقم
+// ===================================================================
+var multiSelectOn_ = false;
+var selectedPhones_ = {};
+var BULK_SEND_DELAY_MS = 20000; // 20 ثانية بين كل رسالة
+
+function toggleMultiSelect() {
+  multiSelectOn_ = !multiSelectOn_;
+  selectedPhones_ = {};
+  updateBulkBar();
+  var btn = document.getElementById('multiselect-toggle');
+  btn.textContent = multiSelectOn_ ? 'إلغاء التحديد' : 'تحديد متعدد';
+  btn.style.background = multiSelectOn_ ? 'var(--accent)' : 'var(--fill)';
+  btn.style.color = multiSelectOn_ ? '#fff' : 'var(--accent)';
+  renderList();
+}
+
+function cardHeadClick(phone) {
+  if (multiSelectOn_) { toggleSelectPhone(phone); return; }
+  toggleCard(phone);
+}
+
+function toggleSelectPhone(phone) {
+  if (selectedPhones_[phone]) delete selectedPhones_[phone];
+  else selectedPhones_[phone] = true;
+  var chk = document.getElementById('chk-' + phone);
+  if (chk) {
+    var on = !!selectedPhones_[phone];
+    chk.style.background = on ? 'var(--accent)' : 'transparent';
+    chk.style.borderColor = on ? 'var(--accent)' : 'var(--sep)';
+    chk.innerHTML = on ? '<span style="color:#fff;font-size:12px;font-weight:800">✓</span>' : '';
+  }
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  var n = Object.keys(selectedPhones_).length;
+  var bar = document.getElementById('bulk-bar');
+  document.getElementById('bulk-count').textContent = n + ' محدد';
+  bar.style.display = (multiSelectOn_ && n > 0) ? 'flex' : 'none';
+}
+
+function startBulkSend() {
+  var phones = Object.keys(selectedPhones_);
+  if (!phones.length) return;
+  var btn = document.getElementById('bulk-send-btn');
+  btn.disabled = true;
+  var i = 0;
+  function sendNext() {
+    if (i >= phones.length) {
+      btn.disabled = false;
+      btn.textContent = '✓ اكتملت الدفعة';
+      showToast('اتبعت الكوبونات لكل المحددين');
+      setTimeout(function(){ toggleMultiSelect(); }, 1500);
+      return;
+    }
+    var phone = phones[i];
+    var c = allCustomers.filter(function(x){ return String(x.phone) === String(phone); })[0];
+    btn.textContent = 'جاري الإرسال ' + (i + 1) + ' / ' + phones.length;
+    if (c) {
+      var msg = couponMessage_(c.name, c.incentive);
+      fetch(STAFF_SCRIPT_URL + '?action=sendCoupon&phone=' + encodeURIComponent(phone) + '&name=' + encodeURIComponent(c.name) + '&message=' + encodeURIComponent(msg))
+        .then(function(){ addHistory(phone, c.name, 'sms', 'تم إرسال SMS (دفعة)', ''); })
+        .catch(function(){})
+        .finally(function(){ i++; setTimeout(sendNext, BULK_SEND_DELAY_MS); });
+    } else {
+      i++; setTimeout(sendNext, BULK_SEND_DELAY_MS);
+    }
+  }
+  sendNext();
 }
 
 function openLog(phone, name) {

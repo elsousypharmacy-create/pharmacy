@@ -413,9 +413,17 @@
     <button class="sidebar-close" onclick="closeSidebar()">✕</button>
   </div>
 
+  <div class="sidebar-group-title">الرئيسية</div>
+  <div class="settings-group">
+    <button class="sidebar-item" id="side-home-list" onclick="navigateTo('home','list')">
+      <span class="row-icon" style="background:#FF9F0A"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></span>
+      <span class="row-label">نظرة عامة</span>
+    </button>
+  </div>
+
   <div class="sidebar-group-title">CRM</div>
   <div class="settings-group">
-    <button class="sidebar-item active" id="side-customers" onclick="navigateTo('crm','customers')">
+    <button class="sidebar-item" id="side-customers" onclick="navigateTo('crm','customers')">
       <span class="row-icon" style="background:#0A84FF"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
       <span class="row-label">العملاء</span>
     </button>
@@ -576,7 +584,11 @@
   </div>
 </div>
 
-<div id="customers-section">
+<div id="home-list-section" style="display:none">
+  <div id="home-alerts"><div class="loading"><div class="spinner"></div></div></div>
+</div>
+
+<div id="customers-section" style="display:none">
 <div style="display:flex;justify-content:flex-end;padding:6px 4px 10px">
   <button id="multiselect-toggle" onclick="toggleMultiSelect()"
     style="padding:8px 14px;border:none;border-radius:20px;background:var(--fill);color:var(--accent);font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer">
@@ -876,8 +888,6 @@
     </div>
     <div style="font-size:11.5px;color:var(--text2);margin-bottom:10px" id="inv-slow-sub"></div>
     <div id="inv-slow-preview"></div>
-    <div class="inv-list-body" id="inv-slow-rest"></div>
-    <button class="inv-show-more" onclick="toggleInvList('slow')" id="inv-slow-btn">عرض كل الـ 30 صنف</button>
     <div class="action-box act-normal" style="margin-top:12px">
       <div class="act-title">💡 توصية</div>
       <div class="act-desc">راجع القايمة دي مع المورد — رجّع اللي ينفع يترجع، وخصّم الباقي عشان تفرّغ رأس المال ده لأصناف أسرع حركة.</div>
@@ -888,8 +898,6 @@
     <div class="dash-panel-title">⚠️ أقرب أصناف للصلاحية</div>
     <div style="font-size:11.5px;color:var(--text2);margin-bottom:10px">أصناف صلاحيتها أقل من ٦ شهور، مرتبة من الأقرب</div>
     <div id="inv-exp-preview"></div>
-    <div class="inv-list-body" id="inv-exp-rest"></div>
-    <button class="inv-show-more" onclick="toggleInvList('exp')" id="inv-exp-btn">عرض كل الأصناف</button>
   </div>
 
   <div class="dash-panel">
@@ -1109,10 +1117,11 @@ var STAFF_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-
 var allCustomers = [], histories = {}, openPhone = '';
 var filterCls_ = '', filterStatus_ = 'all', searchStr_ = '';
 var logPhone = '', logName = '', currentView = 'mob';
-var currentMode = 'staff', crmTab = 'customers', shortTab = 'list', delivTab = 'map', staffTab = 'care', dashLoaded = false, customersLoaded = false;
+var currentMode = 'home', crmTab = 'customers', shortTab = 'list', delivTab = 'map', staffTab = 'care', dashLoaded = false, customersLoaded = false;
 var agentsTab = 'list', agentsData_ = null;
 var miscTab = 'list';
 var attendanceTab = 'list', attRange_ = 'month', attHistoryData_ = null;
+var homeTab = 'list';
 var staffRange_ = 'today', staffFrom_ = '', staffTo_ = '', staffLoaded = false;
 var lastStaffEmployees_ = [];
 var staffBreakdownOpen_ = null;
@@ -1608,7 +1617,8 @@ var VIEW_LABELS = {
   'inventory:aging': '📦 تحليل المخزون',
   'agents:list': '🤝 المندوبين والعمولات',
   'misc:list': '🧰 صيانة وأدوات',
-  'attendance:list': '👥 الحضور والانصراف'
+  'attendance:list': '👥 الحضور والانصراف',
+  'home:list': '🏠 نظرة عامة'
 };
 
 function openSidebar() {
@@ -1635,10 +1645,11 @@ function navigateTo(mode, tab) {
   else if (mode === 'agents') { agentsTab = tab; }
   else if (mode === 'misc') { miscTab = tab; }
   else if (mode === 'attendance') { attendanceTab = tab; }
+  else if (mode === 'home') { homeTab = tab; }
 
   document.getElementById('current-view-label').textContent = VIEW_LABELS[mode + ':' + tab];
 
-  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi','side-staff-care','side-debts-list','side-expenses-list','side-pl-list','side-sms-list','side-inv-aging','side-agents-list','side-misc-list','side-attendance-list'].forEach(function(id){
+  ['side-customers','side-dashboard','side-short-list','side-short-orders','side-short-discontinued','side-short-kpi','side-deliv-map','side-deliv-active','side-deliv-kpi','side-staff-care','side-debts-list','side-expenses-list','side-pl-list','side-sms-list','side-inv-aging','side-agents-list','side-misc-list','side-attendance-list','side-home-list'].forEach(function(id){
     document.getElementById(id).classList.remove('active');
   });
   var shortActiveMap = { list: 'side-short-list', orders: 'side-short-orders', discontinued: 'side-short-discontinued', kpi: 'side-short-kpi' };
@@ -1655,6 +1666,7 @@ function navigateTo(mode, tab) {
     : mode === 'agents' ? 'side-agents-list'
     : mode === 'misc' ? 'side-misc-list'
     : mode === 'attendance' ? 'side-attendance-list'
+    : mode === 'home' ? 'side-home-list'
     : 'side-staff-care';
   document.getElementById(activeId).classList.add('active');
 
@@ -1677,6 +1689,7 @@ function navigateTo(mode, tab) {
   document.getElementById('agents-list-section').style.display = (mode === 'agents' && tab === 'list') ? 'block' : 'none';
   document.getElementById('misc-list-section').style.display = (mode === 'misc' && tab === 'list') ? 'block' : 'none';
   document.getElementById('attendance-list-section').style.display = (mode === 'attendance' && tab === 'list') ? 'block' : 'none';
+  document.getElementById('home-list-section').style.display = (mode === 'home' && tab === 'list') ? 'block' : 'none';
 
   if (mode === 'debts' && tab === 'list') { loadDebts(); }
   if (mode === 'expenses' && tab === 'list') { loadExpenses(); }
@@ -1686,6 +1699,7 @@ function navigateTo(mode, tab) {
   if (mode === 'agents' && tab === 'list') { loadAgents(); }
   if (mode === 'misc' && tab === 'list') { renderMaintSteps(); startSysStatusPolling(); } else { stopSysStatusPolling(); }
   if (mode === 'attendance' && tab === 'list') { loadAttendance(); }
+  if (mode === 'home' && tab === 'list') { loadHomeOverview(); }
 
   var printablePages = (mode === 'shortages' && (tab === 'list' || tab === 'orders' || tab === 'discontinued')) ||
                         (mode === 'inventory' && tab === 'aging');
@@ -3014,6 +3028,109 @@ function resumeLiveNow() {
 // 📅 جدول الصلاحية الشهري
 // ===================================================================
 var expMonthData_ = null;
+
+// ===================================================================
+// 🏠 نظرة عامة — ملخص سريع من كل الأقسام
+// ===================================================================
+function loadHomeOverview() {
+  var box = document.getElementById('home-alerts');
+  box.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  Promise.all([
+    fetch(SCRIPT_URL + '?action=getSystemDailyTotals').then(function(r){ return r.json(); }).catch(function(){ return null; }),
+    fetch(SCRIPT_URL + '?action=maintenanceStatus').then(function(r){ return r.json(); }).catch(function(){ return null; }),
+    fetch(SCRIPT_URL + '?action=getAttendanceLive').then(function(r){ return r.json(); }).catch(function(){ return null; }),
+    fetch(SCRIPT_URL + '?action=getExpiryByMonth').then(function(r){ return r.json(); }).catch(function(){ return null; }),
+    fetch(SCRIPT_URL + '?action=getAgents').then(function(r){ return r.json(); }).catch(function(){ return null; }),
+    fetch(SCRIPT_URL + '?action=getDebtsData').then(function(r){ return r.json(); }).catch(function(){ return null; })
+  ]).then(function(results){
+    renderHomeOverview(results[0], results[1], results[2], results[3], results[4], results[5]);
+  });
+}
+
+function homeIconBadge_(bg, svgPath) {
+  return '<span style="width:34px;height:34px;border-radius:9px;background:' + bg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
+    '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + svgPath + '</svg>' +
+  '</span>';
+}
+
+function homeGreeting_() {
+  var h = new Date().getHours();
+  return h < 12 ? 'صباح الخير' : h < 17 ? 'مساء الخير' : 'مساء الخير';
+}
+
+function homeAlertCard_(bg, svgPath, title, subtitle, onClick) {
+  return '<div onclick="' + onClick + '" style="padding:14px 2px;display:flex;align-items:center;gap:12px;cursor:pointer;border-bottom:0.5px solid var(--sep)">' +
+    homeIconBadge_(bg, svgPath) +
+    '<div style="flex:1;min-width:0">' +
+      '<div style="font-size:14px;font-weight:700">' + title + '</div>' +
+      '<div style="font-size:12px;color:var(--text2);margin-top:1px">' + subtitle + '</div>' +
+    '</div>' +
+    '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>' +
+  '</div>';
+}
+
+function renderHomeOverview(daily, maint, live, expiry, agents, debts) {
+  var box = document.getElementById('home-alerts');
+  var alerts = [];
+
+  if (maint && maint.ok && !maint.liveTriggerOn) {
+    alerts.push({ pri: 3, html: homeAlertCard_('#FF453A',
+      '<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',
+      'تحديث الفواتير متوقف', 'دوس عشان ترجّعه يشتغل فورًا',
+      "navigateTo('misc','list')") });
+  }
+
+  if (expiry && expiry.ok) {
+    var expiredCount = expiry.expired ? expiry.expired.count : 0;
+    var thisMonthCount = (expiry.months && expiry.months[0]) ? expiry.months[0].count : 0;
+    if (expiredCount > 0) {
+      alerts.push({ pri: 2, html: homeAlertCard_('#FF453A',
+        '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/>',
+        expiredCount + ' صنف منتهي الصلاحية', 'موجود في المخزون برصيد',
+        "navigateTo('inventory','aging')") });
+    }
+    if (thisMonthCount > 0) {
+      alerts.push({ pri: 1, html: homeAlertCard_('#FF9F0A',
+        '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+        thisMonthCount + ' صنف هينتهي الشهر ده', 'راجعهم قبل ما يفوتوا',
+        "navigateTo('inventory','aging')") });
+    }
+  }
+
+  if (debts && debts.ok && debts.total_net > 5000) {
+    alerts.push({ pri: 1, html: homeAlertCard_('#5E5CE6',
+      '<rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/>',
+      Math.round(debts.total_net).toLocaleString() + ' ج صافي ديون العملاء', 'راجع قائمة المدينين',
+      "navigateTo('debts','list')") });
+  }
+
+  if (agents && agents.ok && agents.agents && agents.agents.length) {
+    var totalDue = agents.agents.reduce(function(s, a){ return s + (a.balance > 0 ? a.balance : 0); }, 0);
+    if (totalDue > 0) {
+      alerts.push({ pri: 0, html: homeAlertCard_('#34C759',
+        '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>',
+        Math.round(totalDue).toLocaleString() + ' ج مستحقات مندوبين', 'جاهزين للتسوية',
+        "navigateTo('agents','list')") });
+    }
+  }
+
+  alerts.sort(function(a, b){ return b.pri - a.pri; });
+  var top = alerts.slice(0, 3);
+
+  var html = '<div style="padding:8px 2px 20px">' +
+    '<div style="font-size:24px;font-weight:800;letter-spacing:-0.4px">' + homeGreeting_() + '</div>' +
+    '<div style="font-size:13px;color:var(--text2);margin-top:3px">' + new Date().toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' }) + '</div>' +
+  '</div>';
+
+  if (top.length) {
+    html += top.map(function(a){ return a.html; }).join('');
+  } else {
+    html += '<div style="padding:20px 2px;font-size:14px;color:var(--text2)">مفيش حاجة محتاجة انتباهك دلوقتي — كل حاجة تمام ✅</div>';
+  }
+
+  box.innerHTML = html;
+}
 
 function loadExpiryByMonth() {
   fetch(SCRIPT_URL + '?action=getExpiryByMonth')
@@ -4395,14 +4512,12 @@ function renderInventoryAging(d){
 
   // Slow list
   var slowList = d.slow_dead_list;
-  document.getElementById('inv-slow-sub').textContent = 'إجمالي ' + d.slow_dead_count + ' صنف راكد بقيمة ' + invFmt(d.slow_dead_total_cost) + ' ج.م — كل الأصناف موضحة تحت';
-  document.getElementById('inv-slow-preview').innerHTML = slowList.slice(0,5).map(function(it,i){ return invSlowItemHtml(it,i); }).join('');
-  document.getElementById('inv-slow-rest').innerHTML = slowList.slice(5).map(function(it,i){ return invSlowItemHtml(it,i+5); }).join('');
+  document.getElementById('inv-slow-sub').textContent = 'إجمالي ' + d.slow_dead_count + ' صنف راكد بقيمة ' + invFmt(d.slow_dead_total_cost) + ' ج.م';
+  renderInfiniteInvList('inv-slow-preview', slowList, invSlowItemHtml, 8);
 
   // Near expiry list
   var expList = d.near_expiry_list;
-  document.getElementById('inv-exp-preview').innerHTML = expList.slice(0,5).map(function(it,i){ return invExpItemHtml(it,i); }).join('');
-  document.getElementById('inv-exp-rest').innerHTML = expList.slice(5).map(function(it,i){ return invExpItemHtml(it,i+5); }).join('');
+  renderInfiniteInvList('inv-exp-preview', expList, invExpItemHtml, 8);
 
   document.getElementById('inv-updated-date').textContent = d.generated_date;
   d._calc = { idealLow: idealLow, idealHigh: idealHigh, marginPct: (100-marginRatio*100).toFixed(0), slowPct: slowPct, dailyCogs: dailyCogs };
@@ -4602,11 +4717,33 @@ function renderInvExpiryDonut(d){
   document.getElementById('inv-expiry-legend').innerHTML = legendHtml;
 }
 
-function toggleInvList(which){
-  var body = document.getElementById('inv-' + which + '-rest');
-  var btn = document.getElementById('inv-' + which + '-btn');
-  var open = body.classList.toggle('open');
-  btn.textContent = open ? 'عرض أقل' : (which === 'slow' ? 'عرض كل الـ 30 صنف' : 'عرض كل الأصناف');
+// ===== تحميل تدريجي بالسكرول لأي قايمة (زي فيسبوك) =====
+function renderInfiniteInvList(containerId, items, itemHtmlFn, pageSize){
+  var container = document.getElementById(containerId);
+  container.innerHTML = '';
+  if (!items.length) { container.innerHTML = '<div style="font-size:12.5px;color:var(--text2);padding:12px 0">مفيش أصناف</div>'; return; }
+
+  var rendered = 0;
+  var sentinel = document.createElement('div');
+  sentinel.style.height = '1px';
+  container.appendChild(sentinel);
+
+  var observer = new IntersectionObserver(function(entries){
+    if (entries[0].isIntersecting) loadMoreInv_();
+  });
+
+  function loadMoreInv_(){
+    var next = items.slice(rendered, rendered + pageSize);
+    if (!next.length) return;
+    var wrap = document.createElement('div');
+    wrap.innerHTML = next.map(function(it, i){ return itemHtmlFn(it, rendered + i); }).join('');
+    while (wrap.firstChild) container.insertBefore(wrap.firstChild, sentinel);
+    rendered += next.length;
+    if (rendered >= items.length) observer.disconnect();
+  }
+
+  observer.observe(sentinel);
+  loadMoreInv_();
 }
 
 // ===== PULL TO REFRESH =====
@@ -4798,6 +4935,9 @@ function submitAgentPay() {
   .then(function(res){ closeAgentPay(); loadAgents(); })
   .catch(function(e){ alert('حصل خطأ في التسجيل'); });
 }
+
+navigateTo('staff', 'care');
+
 </script>
 </body>
 </html>

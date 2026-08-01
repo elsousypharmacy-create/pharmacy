@@ -892,6 +892,18 @@
     <button class="inv-show-more" onclick="toggleInvList('exp')" id="inv-exp-btn">عرض كل الأصناف</button>
   </div>
 
+  <div class="dash-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="dash-panel-title">📅 جدول الصلاحية الشهري</div>
+      <div style="display:flex;gap:6px">
+        <button onclick="exportExpiryMonthExcel()" style="padding:6px 12px;border:none;border-radius:16px;background:var(--fill);color:var(--accent);font-size:11.5px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ Excel</button>
+        <button onclick="exportExpiryMonthPDF()" style="padding:6px 12px;border:none;border-radius:16px;background:var(--fill);color:var(--accent);font-size:11.5px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ PDF</button>
+      </div>
+    </div>
+    <div style="font-size:11.5px;color:var(--text2);margin-bottom:10px">مقسّم شهر بشهر — راجع الشهر ده والجاي الأول، وسيب اللي بعيد</div>
+    <div id="inv-expmonth-list"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+
   <div style="text-align:center;font-size:10.5px;color:var(--text3);margin-top:8px;padding:0 8px;line-height:1.6">
     البيانات من شيت "STOCK LIVE" — آخر تحديث للتحليل: <span id="inv-updated-date"></span>. القيم بسعر الصيدلي (صافي التكلفة).
   </div>
@@ -2998,6 +3010,91 @@ function resumeLiveNow() {
 // ===================================================================
 // 👥 الحضور والانصراف — Connecteam
 // ===================================================================
+// ===================================================================
+// 📅 جدول الصلاحية الشهري
+// ===================================================================
+var expMonthData_ = null;
+
+function loadExpiryByMonth() {
+  fetch(SCRIPT_URL + '?action=getExpiryByMonth')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var box = document.getElementById('inv-expmonth-list');
+      if (!d || !d.ok) { box.innerHTML = '<div style="font-size:12.5px;color:#FF453A">' + ((d && d.error) || 'خطأ') + '</div>'; return; }
+      expMonthData_ = d;
+      renderExpiryByMonth(d);
+    })
+    .catch(function(){
+      var box = document.getElementById('inv-expmonth-list');
+      if (box) box.innerHTML = '<div style="font-size:12.5px;color:#FF453A">تعذّر الاتصال</div>';
+    });
+}
+
+function renderExpiryByMonth(d) {
+  var box = document.getElementById('inv-expmonth-list');
+  var sections = [];
+
+  if (d.expired.count > 0) {
+    sections.push(expMonthSectionHtml_('expired', '⛔ منتهي بالفعل', d.expired, '#FF453A'));
+  }
+  d.months.forEach(function(m, idx) {
+    var color = idx === 0 ? '#FF453A' : idx === 1 ? '#FF9F0A' : 'var(--text2)';
+    sections.push(expMonthSectionHtml_('m' + idx, m.label, m, color));
+  });
+
+  box.innerHTML = sections.join('');
+}
+
+function expMonthSectionHtml_(key, label, bucket, color) {
+  var itemsHtml = bucket.items.length
+    ? bucket.items.map(function(it){
+        return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:0.5px solid var(--sep);font-size:12px">' +
+          '<span>' + it.name + '</span>' +
+          '<span style="color:var(--text2)">' + it.stock + ' × ' + it.cost + 'ج · ' + it.expire + '</span>' +
+        '</div>';
+      }).join('')
+    : '<div style="font-size:12px;color:var(--text2);padding:6px 0">مفيش أصناف</div>';
+
+  return '<div style="margin-bottom:6px">' +
+    '<div onclick="toggleExpMonth(\'' + key + '\')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;cursor:pointer;border-top:0.5px solid var(--sep)">' +
+      '<span style="font-size:13.5px;font-weight:600;color:' + color + '">' + label + '</span>' +
+      '<span style="font-size:12px;color:var(--text2)">' + bucket.count + ' صنف · ' + bucket.totalCost + ' ج</span>' +
+    '</div>' +
+    '<div id="expmonth-' + key + '" style="display:none">' + itemsHtml + '</div>' +
+  '</div>';
+}
+
+function toggleExpMonth(key) {
+  var el = document.getElementById('expmonth-' + key);
+  if (el) el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+}
+
+function expMonthFlatRows_() {
+  if (!expMonthData_) return [];
+  var rows = [];
+  expMonthData_.expired.items.forEach(function(it){
+    rows.push({ 'الحالة': 'منتهي بالفعل', 'الصنف': it.name, 'الرصيد': it.stock, 'التكلفة': it.cost, 'تاريخ الانتهاء': it.expire });
+  });
+  expMonthData_.months.forEach(function(m){
+    m.items.forEach(function(it){
+      rows.push({ 'الحالة': m.label, 'الصنف': it.name, 'الرصيد': it.stock, 'التكلفة': it.cost, 'تاريخ الانتهاء': it.expire });
+    });
+  });
+  return rows;
+}
+
+function exportExpiryMonthExcel() {
+  var rows = expMonthFlatRows_();
+  if (!rows.length) { showToast('مفيش بيانات للتصدير'); return; }
+  exportRowsToExcel(rows, 'جدول_الصلاحية_' + (expMonthData_ ? expMonthData_.generated_date : ''));
+}
+
+function exportExpiryMonthPDF() {
+  var rows = expMonthFlatRows_();
+  if (!rows.length) { showToast('مفيش بيانات للتصدير'); return; }
+  exportRowsToPDF(rows, 'جدول الصلاحية الشهري');
+}
+
 function loadAttendance() {
   loadAttendanceLive();
   loadAttendanceHistory();
@@ -4170,6 +4267,7 @@ function loadInventoryAging(){
   if (hero && !_lastInvData) {
     hero.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري تحليل المخزون...</p></div>';
   }
+  loadExpiryByMonth();
   fetch(SCRIPT_URL + '?action=getInventoryAging')
     .then(function(r){ return r.json(); })
     .then(function(res){

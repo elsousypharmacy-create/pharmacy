@@ -787,6 +787,16 @@
   <div id="debts-content">
     <div class="loading"><div class="spinner"></div><p>جاري التحميل...</p></div>
   </div>
+
+  <div class="cust-card" style="padding:16px;margin-top:14px">
+    <div style="font-size:14.5px;font-weight:700;margin-bottom:12px">كل موظف طلّع دين بكام</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto">
+      <div class="day-pill active" id="dbe-r-month" onclick="setDebtsByEmpRange('month')">الشهر ده</div>
+      <div class="day-pill" id="dbe-r-lastMonth" onclick="setDebtsByEmpRange('lastMonth')">الشهر اللي فات</div>
+      <div class="day-pill" id="dbe-r-week" onclick="setDebtsByEmpRange('week')">آخر أسبوع</div>
+    </div>
+    <div id="debts-by-emp"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
 </div>
 
 <div id="sms-list-section" class="deliv-wrap" style="display:none">
@@ -1359,6 +1369,13 @@ function giftExpiry() {
   return dayName + ' ' + d.getDate() + '/' + (d.getMonth()+1) + ' الساعة ' + h12 + ':' + mm + ' ' + period;
 }
 
+// تاريخ صلاحية الكوبون بصيغة قابلة للحفظ في CRM (نفس مدة giftExpiry بالظبط: +3 أيام)
+function giftExpiryIso() {
+  var d = new Date();
+  d.setDate(d.getDate() + 3);
+  return d.toISOString();
+}
+
 function doWA(phone, name, coupon) {
   var msg = encodeURIComponent('السلام عليكم يا ' + name + '\nصيدلية د. احمد السوسي بتبعتلك هدية خاصة\nهدية بقيمة ' + coupon + ' جنيه على اول طلب توصيل\nصالحة لحد ' + giftExpiry() + '\n01143404023');
   window.open('https://wa.me/20' + phone + '?text=' + msg, '_blank');
@@ -1368,9 +1385,13 @@ function couponMessage_(name, coupon) {
   return 'صيدلية السوسي: يا ' + name + '، لأنك من عملائنا المميزين، ليك توصيل مجاني دائمًا + خصم ' + coupon + ' جنيه على طلبك القادم. العرض حتى ' + giftExpiry() + '. 01143404023';
 }
 function doSMS(phone, name, coupon, btn) {
+  var cust = allCustomers.filter(function(x){ return String(x.phone) === String(phone); })[0];
+  if (cust && cust.status === 'متابعة') {
+    if (!confirm('العميل ده أصلاً بعتنالوه كوبون ولسه مستني رد — تحب تبعت تاني؟')) return;
+  }
   var msg = couponMessage_(name, coupon);
   if (btn) { btn.disabled = true; btn.textContent = '… جاري'; btn.style.opacity = '0.6'; }
-  fetch(STAFF_SCRIPT_URL + '?action=sendCoupon&phone=' + encodeURIComponent(phone) + '&name=' + encodeURIComponent(name) + '&message=' + encodeURIComponent(msg))
+  fetch(STAFF_SCRIPT_URL + '?action=sendCoupon&phone=' + encodeURIComponent(phone) + '&name=' + encodeURIComponent(name) + '&message=' + encodeURIComponent(msg) + '&expiry=' + encodeURIComponent(giftExpiryIso()))
     .then(function(r){ return r.json(); })
     .then(function(d){
       if (btn) { btn.style.opacity = '1'; btn.textContent = (d && d.ok) ? '✓ اتبعتت' : '✕ فشلت'; }
@@ -1445,9 +1466,13 @@ function startBulkSend() {
     var phone = phones[i];
     var c = allCustomers.filter(function(x){ return String(x.phone) === String(phone); })[0];
     btn.textContent = 'جاري الإرسال ' + (i + 1) + ' / ' + phones.length;
+    if (c && c.status === 'متابعة') {
+      i++; setTimeout(sendNext, 50); // اتبعتله كوبون قبل كده ولسه مستني رد — تخطّاه
+      return;
+    }
     if (c) {
       var msg = couponMessage_(c.name, c.incentive);
-      fetch(STAFF_SCRIPT_URL + '?action=sendCoupon&phone=' + encodeURIComponent(phone) + '&name=' + encodeURIComponent(c.name) + '&message=' + encodeURIComponent(msg))
+      fetch(STAFF_SCRIPT_URL + '?action=sendCoupon&phone=' + encodeURIComponent(phone) + '&name=' + encodeURIComponent(c.name) + '&message=' + encodeURIComponent(msg) + '&expiry=' + encodeURIComponent(giftExpiryIso()))
         .then(function(){ addHistory(phone, c.name, 'sms', 'تم إرسال SMS (دفعة)', ''); })
         .catch(function(){})
         .finally(function(){ i++; setTimeout(sendNext, BULK_SEND_DELAY_MS); });
@@ -2687,6 +2712,7 @@ function applyDebtsRange() {
 
 // ===== الديون =====
 function loadDebts() {
+  loadDebtsByEmployee();
   var box = document.getElementById('debts-content');
   if (!staffReady()) {
     box.innerHTML = '<div class="loading"><p style="color:#E0727C">لازم تحط رابط ويب أب سكريبت الموظفين في STAFF_SCRIPT_URL</p></div>';
@@ -2704,6 +2730,56 @@ function loadDebts() {
       debtsLoaded = true; lastDebtsData_ = d; renderDebts(d);
     })
     .catch(function(){ box.innerHTML = '<div class="loading"><p style="color:#E0727C">خطأ في التحميل — اضغط 🔄</p></div>'; });
+}
+
+function debtStat_(value, label, color) {
+  return '<div style="flex:1;min-width:100px;padding:6px">' +
+    '<div style="font-size:19px;font-weight:800;letter-spacing:-0.3px;color:' + color + '">' + value + '</div>' +
+    '<div style="font-size:11px;color:var(--text2);margin-top:1px">' + label + '</div>' +
+  '</div>';
+}
+
+function debtDaysSince_(dateStr) {
+  var d = new Date((dateStr || '').replace(' ', 'T'));
+  if (isNaN(d.getTime())) return 0;
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+
+function debtorCardHtml_(c) {
+  var days = debtDaysSince_(c.lastActivity);
+  var overdue = days >= 30;
+  var badgeColor = days >= 30 ? '#FF453A' : days >= 15 ? '#FF9F0A' : 'var(--text2)';
+  var badgeBg = days >= 30 ? 'rgba(255,69,58,0.12)' : days >= 15 ? 'rgba(255,159,10,0.12)' : 'var(--fill)';
+  var telLink = c.phone && c.phone.length > 3 ? 'tel:+20' + c.phone.replace(/^0/, '') : null;
+  var safeName = String(c.name || '').replace(/'/g, '&#39;');
+
+  return '<div class="cust-card" style="padding:13px 14px;margin-bottom:8px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center">' +
+      '<span style="font-size:14px;font-weight:700">' + c.name + '</span>' +
+      '<span style="font-size:14px;font-weight:800;color:#FF453A">' + Math.round(c.net).toLocaleString() + ' ج</span>' +
+    '</div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">' +
+      '<span style="font-size:11.5px;color:var(--text2)">' + (telLink ? '<a href="' + telLink + '" style="color:var(--accent);text-decoration:none">📞 ' + c.phone + '</a>' : (c.phone || '—')) + '</span>' +
+      '<span style="font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:10px;background:' + badgeBg + ';color:' + badgeColor + '">' + (days === 0 ? 'النهاردة' : days + ' يوم') + '</span>' +
+    '</div>' +
+    '<div style="font-size:11px;color:var(--text2);margin-top:4px">إجمالي: ' + Math.round(c.owed).toLocaleString() + ' · مدفوع: ' + Math.round(c.paid).toLocaleString() + '</div>' +
+    (overdue && c.phone
+      ? '<button id="rmbtn-' + c.phone + '" onclick="sendDebtReminder(\'' + c.phone + '\',\'' + safeName + '\',' + c.net + ', this)" ' +
+          'style="width:100%;margin-top:10px;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:#FF453A;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer">تذكير بالسداد (SMS)</button>'
+      : '') +
+  '</div>';
+}
+
+function sendDebtReminder(phone, name, amount, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '… جاري الإرسال'; btn.style.opacity = '0.6'; }
+  fetch(STAFF_SCRIPT_URL + '?action=sendDebtReminder&phone=' + encodeURIComponent(phone) + '&name=' + encodeURIComponent(name) + '&amount=' + amount)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (btn) { btn.style.opacity = '1'; btn.textContent = (d && d.ok) ? '✓ اتبعت' : '✕ فشلت'; }
+    })
+    .catch(function(){
+      if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '✕ حاول تاني'; }
+    });
 }
 
 function renderDebts(d) {
@@ -2767,30 +2843,34 @@ function renderDebts(d) {
   html += '<div class="dash-card"><div class="dv" style="color:#5FB88A">' + Math.round(fTotalPaid).toLocaleString() + '</div><div class="dl">المدفوع (ج)</div></div>';
   var netVal = (debtsRange_ === 'all' && typeof d.systemTotalDebt === 'number') ? d.systemTotalDebt : fTotalNet;
   html += '<div class="dash-card"><div class="dv" style="color:#E0727C">' + Math.round(netVal).toLocaleString() + '</div><div class="dl">صافي المتبقي (ج)' + (debtsRange_ === 'all' && typeof d.systemTotalDebt === 'number' ? '<div class="ds2">رقم رسمي مضمون</div>' : '') + '</div></div>';
+  html += '<div class="cust-card" style="padding:16px;margin-bottom:12px">';
+  html += '<div style="font-size:14.5px;font-weight:700;margin-bottom:2px">إجمالي الديون</div>';
+  if (d.source_updated) {
+    html += '<div style="font-size:11px;color:var(--text2);margin-bottom:12px">آخر تحديث: ' + d.source_updated + '</div>';
+  }
+  html += '<div style="display:flex;flex-wrap:wrap;margin:0 -6px">';
+  html += debtStat_(filtered.length, 'مديون', '#FF453A');
+  html += debtStat_(Math.round(fTotalOwed).toLocaleString(), 'إجمالي الديون (ج)', 'var(--text)');
+  html += debtStat_(Math.round(fTotalPaid).toLocaleString(), 'المدفوع (ج)', '#34C759');
+  var netVal = (debtsRange_ === 'all' && typeof d.systemTotalDebt === 'number') ? d.systemTotalDebt : fTotalNet;
+  html += debtStat_(Math.round(netVal).toLocaleString(), 'صافي المتبقي (ج)', '#FF453A');
   html += '</div>';
-  html += '<button onclick="openDayDebits()" style="width:100%;margin-top:10px;background:var(--fill);border:none;color:var(--accent);border-radius:var(--r-md);padding:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">ديون اليوم لكل موظف (دوس للتفاصيل)</button>';
+  html += '<button onclick="openDayDebits()" style="width:100%;margin-top:12px;background:var(--fill);border:none;color:var(--accent);border-radius:var(--r-md);padding:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">ديون اليوم لكل موظف</button>';
   html += '</div>';
 
-  html += '<div class="dash-panel"><div class="dash-panel-title">👥 قائمة المديونين (الأعلى أولاً)</div>';
+  var overdueCount = filtered.filter(function(c){ return debtDaysSince_(c.lastActivity) >= 30; }).length;
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin:4px 2px 8px">' +
+    '<div style="font-size:14px;font-weight:700">قائمة المديونين</div>' +
+    (overdueCount ? '<span style="font-size:11px;color:#FF453A;font-weight:600">' + overdueCount + ' متأخر +30 يوم</span>' : '') +
+  '</div>';
+
   if (!filtered.length) {
-    html += '<div style="text-align:center;color:var(--text2);padding:20px">مفيش عملاء عليهم ديون في الفترة دي</div>';
+    html += '<div class="cust-card" style="padding:24px;text-align:center;font-size:13px;color:var(--text2)">مفيش عملاء عليهم ديون في الفترة دي</div>';
   } else {
     filtered.forEach(function(c){
-      var telLink = c.phone && c.phone.length > 3 ? 'tel:+20' + c.phone.replace(/^0/, '') : null;
-      html += '<div style="background:var(--card-bg2);border-radius:10px;padding:12px;margin-bottom:8px">';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-      html += '<span style="font-weight:800;color:var(--text)">👤 ' + c.name + '</span>';
-      html += '<span style="font-weight:800;color:#E0727C">' + Math.round(c.net).toLocaleString() + ' ج</span>';
-      html += '</div>';
-      html += '<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text2)">';
-      html += '<span>' + (telLink ? '<a href="' + telLink + '" style="color:#0A84FF">📞 ' + c.phone + '</a>' : c.phone) + '</span>';
-      html += '<span>إجمالي: ' + Math.round(c.owed).toLocaleString() + ' · مدفوع: ' + Math.round(c.paid).toLocaleString() + '</span>';
-      html += '</div>';
-      html += '<div style="font-size:10px;color:var(--text2);margin-top:4px">آخر نشاط: ' + c.lastActivity + '</div>';
-      html += '</div>';
+      html += debtorCardHtml_(c);
     });
   }
-  html += '</div>';
 
   box.innerHTML = html;
 }
@@ -3022,8 +3102,44 @@ function resumeLiveNow() {
 }
 
 // ===================================================================
-// 👥 الحضور والانصراف — Connecteam
+// كل موظف طلّع دين بكام
 // ===================================================================
+var dbeRange_ = 'month';
+
+function setDebtsByEmpRange(r) {
+  dbeRange_ = r;
+  ['month','lastMonth','week'].forEach(function(k){
+    document.getElementById('dbe-r-' + k).classList.toggle('active', k === r);
+  });
+  loadDebtsByEmployee();
+}
+
+function loadDebtsByEmployee() {
+  var box = document.getElementById('debts-by-emp');
+  box.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  fetch(STAFF_SCRIPT_URL + '?action=getDebtsByEmployee&range=' + dbeRange_)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d || !d.ok) { box.innerHTML = '<div style="font-size:12.5px;color:#FF453A">' + ((d && d.error) || 'خطأ') + '</div>'; return; }
+      if (!d.employees.length) { box.innerHTML = '<div style="font-size:13px;color:var(--text2);text-align:center;padding:12px 0">مفيش ديون اتسجلت في الفترة دي</div>'; return; }
+      var maxTotal = Math.max.apply(null, d.employees.map(function(e){ return e.total; }));
+      box.innerHTML = d.employees.map(function(e, i){
+        var pct = maxTotal > 0 ? Math.round(e.total / maxTotal * 100) : 0;
+        return '<div style="margin-bottom:10px">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+            '<span style="font-size:13px;font-weight:600">' + e.employee + '</span>' +
+            '<span style="font-size:12.5px;font-weight:700">' + e.total.toLocaleString() + ' ج <span style="color:var(--text2);font-weight:400">· ' + e.count + ' عملية</span></span>' +
+          '</div>' +
+          '<div style="height:6px;background:var(--card-bg2);border-radius:3px;overflow:hidden">' +
+            '<div style="height:100%;width:' + pct + '%;background:' + (i === 0 ? '#FF453A' : 'var(--accent)') + ';border-radius:3px"></div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    })
+    .catch(function(){ box.innerHTML = '<div style="font-size:12.5px;color:#FF453A">تعذّر الاتصال</div>'; });
+}
+
+
 // ===================================================================
 // 📅 جدول الصلاحية الشهري
 // ===================================================================
@@ -3576,17 +3692,30 @@ function renderSMS(d) {
       ';background:' + (sent ? 'rgba(52,199,89,0.12)' : failed ? 'rgba(255,69,58,0.12)' : waiting ? 'rgba(255,159,10,0.12)' : 'var(--fill)') +
       ';padding:4px 9px;border-radius:20px;white-space:nowrap">' + label + '</span>';
 
+    var typeLabel = m.type === 'coupon' ? '🎁 كوبون' : m.type === 'debt' ? '💳 تذكير دين' : '🧾 فاتورة';
+    var typeBadge = '<span style="font-size:10.5px;color:var(--text2);font-weight:600">' + typeLabel + '</span>';
+
+    var subLine = m.type === 'invoice'
+      ? m.phone + ' · ' + m.amount + ' جنيه · فاتورة ' + m.invoiceid
+      : m.phone + (m.amount ? ' · ' + m.amount + ' جنيه' : '');
+
+    var actions = (m.type === 'invoice')
+      ? '<button onclick="doRetrySMS(\'' + m.invoiceid + '\', this)" ' +
+          'style="width:100%;margin-top:2px;padding:11px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .2s">' +
+          'إعادة إرسال</button>' +
+        (failed ? '<button class="btn-block" onclick="doDismissSMS(\'' + m.invoiceid + '\')">تجاهل</button>' : '')
+      : '';
+
     return '<div class="cust-card"><div class="card-head" style="flex-direction:column;align-items:stretch;gap:8px">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
         '<span class="cust-name">' + (m.customername || 'عميل') + '</span>' + chip +
       '</div>' +
-      '<div class="cust-sub">' + m.phone + ' · ' + m.amount + ' جنيه · فاتورة ' + m.invoiceid + '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center">' +
+        '<span class="cust-sub">' + subLine + '</span>' + typeBadge +
+      '</div>' +
       '<div class="cust-sub" style="font-size:11.5px;opacity:.75">' + m.message + '</div>' +
       '<div style="margin-top:4px">' + renderPipeline(statusToStates(m.status)) + '</div>' +
-      '<button onclick="doRetrySMS(\'' + m.invoiceid + '\', this)" ' +
-        'style="width:100%;margin-top:2px;padding:11px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .2s">' +
-        'إعادة إرسال</button>' +
-      (failed ? '<button class="btn-block" onclick="doDismissSMS(\'' + m.invoiceid + '\')">تجاهل</button>' : '') +
+      actions +
       '</div></div>';
   }).join('');
 }

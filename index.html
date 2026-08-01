@@ -1386,7 +1386,7 @@ function couponMessage_(name, coupon) {
 }
 function doSMS(phone, name, coupon, btn) {
   var cust = allCustomers.filter(function(x){ return String(x.phone) === String(phone); })[0];
-  if (cust && cust.status === 'متابعة') {
+  if (cust && cust.status === 'تمت المتابعة - في الانتظار') {
     if (!confirm('العميل ده أصلاً بعتنالوه كوبون ولسه مستني رد — تحب تبعت تاني؟')) return;
   }
   var msg = couponMessage_(name, coupon);
@@ -1466,7 +1466,7 @@ function startBulkSend() {
     var phone = phones[i];
     var c = allCustomers.filter(function(x){ return String(x.phone) === String(phone); })[0];
     btn.textContent = 'جاري الإرسال ' + (i + 1) + ' / ' + phones.length;
-    if (c && c.status === 'متابعة') {
+    if (c && c.status === 'تمت المتابعة - في الانتظار') {
       i++; setTimeout(sendNext, 50); // اتبعتله كوبون قبل كده ولسه مستني رد — تخطّاه
       return;
     }

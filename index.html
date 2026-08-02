@@ -1130,6 +1130,18 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="inv-month-modal">
+  <div class="modal" style="max-width:440px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:10px">
+      <h3 id="inv-month-title" style="margin-bottom:0;flex:1">شهر</h3>
+      <button onclick="closeInvMonthModal()" style="background:var(--fill);border:none;color:var(--text2);width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;flex-shrink:0">✕</button>
+    </div>
+    <div id="inv-month-sub" style="font-size:12px;color:var(--text2);margin-bottom:10px"></div>
+    <div id="inv-month-export" style="display:flex;gap:6px;margin-bottom:10px"></div>
+    <div id="inv-month-list"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="inv-slow-cat-modal">
   <div class="modal" style="max-width:440px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:10px">
@@ -1137,6 +1149,7 @@
       <button onclick="closeInvSlowCatModal()" style="background:var(--fill);border:none;color:var(--text2);width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;flex-shrink:0">✕</button>
     </div>
     <div id="inv-slow-cat-sub" style="font-size:12px;color:var(--text2);margin-bottom:10px"></div>
+    <div id="inv-slow-cat-filters" style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto"></div>
     <div id="inv-slow-cat-export" style="display:flex;gap:6px;margin-bottom:10px"></div>
     <div id="inv-slow-cat-list"></div>
   </div>
@@ -3339,29 +3352,15 @@ function renderExpiryByMonth(d) {
 }
 
 function expMonthSectionHtml_(key, label, bucket, color, dot) {
-  var itemsHtml = bucket.items.length
-    ? bucket.items.map(function(it, i){
-        return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;' +
-            (i > 0 ? 'border-top:0.5px solid var(--sep)' : '') + '">' +
-          '<span style="font-size:12.5px;font-weight:500">' + it.name + '</span>' +
-          '<span style="font-size:11px;color:var(--text2);white-space:nowrap;margin-right:8px">' + it.stock + ' × ' + it.cost + 'ج</span>' +
-        '</div>';
-      }).join('')
-    : '<div style="font-size:12px;color:var(--text2);padding:10px 0;text-align:center">مفيش أصناف الشهر ده 🎉</div>';
-
-  var disabled = bucket.items.length ? '' : 'disabled style="opacity:.35"';
-
   return '<div class="cust-card" style="padding:0;margin-bottom:8px;overflow:hidden">' +
-    '<div style="display:flex;align-items:center;gap:8px;padding:12px 14px">' +
+    '<div onclick="openMonthModal(\'' + key + '\')" style="display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer">' +
       '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0"></span>' +
-      '<div onclick="toggleExpMonth(\'' + key + '\')" style="flex:1;cursor:pointer;display:flex;justify-content:space-between;align-items:center">' +
+      '<div style="flex:1;display:flex;justify-content:space-between;align-items:center">' +
         '<span style="font-size:13.5px;font-weight:700;color:' + color + '">' + label + '</span>' +
         '<span style="font-size:11.5px;color:var(--text2)">' + bucket.count + ' صنف · ' + bucket.totalCost + ' ج</span>' +
       '</div>' +
-      '<button onclick="copyMonthList(\'' + key + '\')" ' + disabled + ' title="نسخ للواتساب" style="background:var(--fill);border:none;border-radius:8px;width:30px;height:30px;font-size:14px;cursor:pointer;flex-shrink:0">📋</button>' +
-      '<button onclick="printMonthList(\'' + key + '\')" ' + disabled + ' title="طباعة/PDF" style="background:var(--fill);border:none;border-radius:8px;width:30px;height:30px;font-size:14px;cursor:pointer;flex-shrink:0">🖨️</button>' +
+      '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>' +
     '</div>' +
-    '<div id="expmonth-' + key + '" style="display:none;padding:0 14px 12px">' + itemsHtml + '</div>' +
   '</div>';
 }
 
@@ -3373,15 +3372,53 @@ function getMonthBucket_(key) {
   return m ? { label: m.label, bucket: m } : null;
 }
 
-function copyMonthList(key) {
+var invMonthCurrent_ = null;
+
+function openMonthModal(key) {
   var found = getMonthBucket_(key);
-  if (!found || !found.bucket.items.length) return;
-  var text = '📅 ' + found.label + ' — أصناف قرب الصلاحية\n' +
+  if (!found) return;
+  invMonthCurrent_ = { key: key, label: found.label, items: found.bucket.items };
+
+  document.getElementById('inv-month-title').textContent = '📅 ' + found.label;
+  document.getElementById('inv-month-sub').textContent = found.bucket.count + ' صنف بقيمة ' + found.bucket.totalCost + ' ج';
+
+  var hasItems = found.bucket.items.length > 0;
+  document.getElementById('inv-month-export').innerHTML = hasItems
+    ? '<button onclick="copyMonthList()" style="flex:1;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">📋 نسخ</button>' +
+      '<button onclick="printMonthList()" style="flex:1;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ PDF</button>' +
+      '<button onclick="exportMonthExcel()" style="flex:1;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ Excel</button>'
+    : '';
+
+  var listBox = document.getElementById('inv-month-list');
+  if (!hasItems) {
+    listBox.innerHTML = '<div style="font-size:12.5px;color:var(--text2);padding:16px 0;text-align:center">مفيش أصناف الشهر ده 🎉</div>';
+  } else {
+    renderInfiniteInvList('inv-month-list', found.bucket.items, invMonthItemHtml, 15);
+  }
+  document.getElementById('inv-month-modal').classList.add('show');
+}
+function closeInvMonthModal(){ document.getElementById('inv-month-modal').classList.remove('show'); }
+
+function invMonthItemHtml(it) {
+  var safe = it.name.replace(/'/g, "\\'");
+  return '<div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-top:0.5px solid var(--sep)">' +
+    '<button onclick="copyItemName(\'' + safe + '\')" style="background:var(--fill);border:none;border-radius:7px;width:26px;height:26px;font-size:12px;cursor:pointer;flex-shrink:0">📋</button>' +
+    '<div style="flex:1;min-width:0">' +
+      '<div style="font-size:12.5px;font-weight:600">' + it.name + '</div>' +
+      '<div style="font-size:11px;color:var(--text2);margin-top:1px">رصيد: ' + it.stock + ' &nbsp;·&nbsp; تنتهي ' + it.expire + '</div>' +
+    '</div>' +
+    '<div style="font-size:12px;font-weight:700;flex-shrink:0">' + it.cost + ' ج</div>' +
+  '</div>';
+}
+
+function copyMonthList() {
+  if (!invMonthCurrent_ || !invMonthCurrent_.items.length) return;
+  var text = '📅 ' + invMonthCurrent_.label + ' — أصناف قرب الصلاحية\n' +
     'صيدلية السوسي\n━━━━━━━━━━━━━━\n' +
-    found.bucket.items.map(function(it, i){
+    invMonthCurrent_.items.map(function(it, i){
       return (i + 1) + '. ' + it.name + ' — رصيد ' + it.stock + ' — تنتهي ' + it.expire;
     }).join('\n') +
-    '\n━━━━━━━━━━━━━━\nإجمالي: ' + found.bucket.count + ' صنف';
+    '\n━━━━━━━━━━━━━━\nإجمالي: ' + invMonthCurrent_.items.length + ' صنف';
 
   navigator.clipboard.writeText(text).then(function(){
     showToast('اتنسخت — الصقها في واتساب');
@@ -3390,19 +3427,20 @@ function copyMonthList(key) {
   });
 }
 
-function printMonthList(key) {
-  var found = getMonthBucket_(key);
-  if (!found || !found.bucket.items.length) return;
-  var rows = found.bucket.items.map(function(it){
+function invMonthRows_() {
+  return invMonthCurrent_.items.map(function(it){
     return { 'الصنف': it.name, 'الرصيد': it.stock, 'التكلفة': it.cost, 'تاريخ الانتهاء': it.expire };
   });
-  exportRowsToPDF(rows, found.label + ' — أصناف قرب الصلاحية');
+}
+function printMonthList() {
+  if (!invMonthCurrent_ || !invMonthCurrent_.items.length) return;
+  exportRowsToPDF(invMonthRows_(), invMonthCurrent_.label + ' — أصناف قرب الصلاحية');
+}
+function exportMonthExcel() {
+  if (!invMonthCurrent_ || !invMonthCurrent_.items.length) return;
+  exportRowsToExcel(invMonthRows_(), invMonthCurrent_.label.replace(/\s+/g, '_'));
 }
 
-function toggleExpMonth(key) {
-  var el = document.getElementById('expmonth-' + key);
-  if (el) el.style.display = (el.style.display === 'none') ? 'block' : 'none';
-}
 
 function expMonthFlatRows_() {
   if (!expMonthData_) return [];
@@ -5103,35 +5141,81 @@ function renderSlowCategories(categories) {
 
 var invSlowCatCurrent_ = null;
 
+var INV_SHELF_FILTERS = [
+  { key: 'all',     lbl: 'الكل' },
+  { key: 'lt3',     lbl: 'أقل من 3 شهور' },
+  { key: '3to12',   lbl: '3-12 شهر' },
+  { key: 'gte12',   lbl: 'سنة فأكتر' },
+  { key: 'none',    lbl: 'بدون تاريخ' }
+];
+var invSlowCatFilter_ = 'all';
+
+function invShelfMatch_(it, filterKey) {
+  var d = it.days_to_expire;
+  if (filterKey === 'all') return true;
+  if (filterKey === 'none') return d === null || d === undefined;
+  if (d === null || d === undefined) return false;
+  if (filterKey === 'lt3')   return d < 90;
+  if (filterKey === '3to12') return d >= 90 && d < 365;
+  if (filterKey === 'gte12') return d >= 365;
+  return true;
+}
+
 function openSlowCategory(category) {
   var all = (window.invAgingData_ && window.invAgingData_.slow_dead_list) || [];
   var items = all.filter(function(it){ return (it.category || 'غير مصنّف') === category; });
-  invSlowCatCurrent_ = { category: category, items: items };
+  invSlowCatCurrent_ = { category: category, allItems: items, items: items };
+  invSlowCatFilter_ = 'all';
 
   document.getElementById('inv-slow-cat-title').textContent = (INV_CATEGORY_ICONS[category] || '📦') + ' ' + category;
-  var totalCost = items.reduce(function(s, it){ return s + it.cost; }, 0);
-  document.getElementById('inv-slow-cat-sub').textContent = items.length + ' صنف راكد بقيمة ' + invFmt(totalCost) + ' ج';
-
-  var exportBox = document.getElementById('inv-slow-cat-export');
-  exportBox.innerHTML =
-    '<button onclick="exportSlowCatPDF()" style="flex:1;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ PDF</button>' +
-    '<button onclick="exportSlowCatExcel()" style="flex:1;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ Excel</button>';
-
-  var listBox = document.getElementById('inv-slow-cat-list');
-  renderInfiniteInvList('inv-slow-cat-list', items, invSlowCatItemHtml, 15);
+  renderSlowCatFilters();
+  applySlowCatFilter();
 
   document.getElementById('inv-slow-cat-modal').classList.add('show');
 }
 function closeInvSlowCatModal(){ document.getElementById('inv-slow-cat-modal').classList.remove('show'); }
 
+function renderSlowCatFilters() {
+  var box = document.getElementById('inv-slow-cat-filters');
+  box.innerHTML = INV_SHELF_FILTERS.map(function(f){
+    return '<div class="day-pill' + (f.key === invSlowCatFilter_ ? ' active' : '') + '" onclick="setSlowCatFilter(\'' + f.key + '\')" style="white-space:nowrap">' + f.lbl + '</div>';
+  }).join('');
+}
+function setSlowCatFilter(key) {
+  invSlowCatFilter_ = key;
+  renderSlowCatFilters();
+  applySlowCatFilter();
+}
+function applySlowCatFilter() {
+  var items = invSlowCatCurrent_.allItems.filter(function(it){ return invShelfMatch_(it, invSlowCatFilter_); });
+  invSlowCatCurrent_.items = items;
+
+  var totalCost = items.reduce(function(s, it){ return s + it.cost; }, 0);
+  document.getElementById('inv-slow-cat-sub').textContent = items.length + ' صنف راكد بقيمة ' + invFmt(totalCost) + ' ج';
+
+  var exportBox = document.getElementById('inv-slow-cat-export');
+  exportBox.innerHTML = items.length
+    ? '<button onclick="exportSlowCatPDF()" style="flex:1;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ PDF</button>' +
+      '<button onclick="exportSlowCatExcel()" style="flex:1;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ Excel</button>'
+    : '';
+
+  if (!items.length) {
+    document.getElementById('inv-slow-cat-list').innerHTML = '<div style="font-size:12.5px;color:var(--text2);padding:16px 0;text-align:center">مفيش أصناف بالفلتر ده</div>';
+  } else {
+    renderInfiniteInvList('inv-slow-cat-list', items, invSlowCatItemHtml, 15);
+  }
+}
+
 function invSlowCatItemHtml(it) {
   var daysLbl = (it.days === null || it.days === undefined) ? 'لم تُباع أبدًا' : 'راكد من ' + it.days + ' يوم';
+  var expLbl = it.expire ? ('صلاحية ' + it.expire) : 'بدون تاريخ صلاحية';
   var safe = it.name.replace(/'/g, "\\'");
   return '<div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-top:0.5px solid var(--sep)">' +
     '<button onclick="copyItemName(\'' + safe + '\')" style="background:var(--fill);border:none;border-radius:7px;width:26px;height:26px;font-size:12px;cursor:pointer;flex-shrink:0">📋</button>' +
     '<div style="flex:1;min-width:0">' +
       '<div style="font-size:12.5px;font-weight:600">' + it.name + '</div>' +
       '<div style="font-size:11px;color:var(--text2);margin-top:1px">الكمية: ' + it.stock + ' &nbsp;·&nbsp; ' + daysLbl + '</div>' +
+      '<div style="font-size:11px;color:var(--text2);margin-top:1px">' + expLbl + '</div>' +
     '</div>' +
     '<div style="font-size:12px;font-weight:700;flex-shrink:0">' + invFmt(it.cost) + ' ج</div>' +
   '</div>';
@@ -5149,7 +5233,8 @@ function invSlowCatRows_() {
   return invSlowCatCurrent_.items.map(function(it){
     return {
       'الصنف': it.name, 'الكمية': it.stock, 'التكلفة': it.cost,
-      'راكد من': (it.days === null || it.days === undefined) ? 'لم تُباع أبدًا' : (it.days + ' يوم')
+      'راكد من': (it.days === null || it.days === undefined) ? 'لم تُباع أبدًا' : (it.days + ' يوم'),
+      'تاريخ الانتهاء': it.expire || 'بدون تاريخ'
     };
   });
 }

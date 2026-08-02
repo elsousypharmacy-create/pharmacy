@@ -4739,15 +4739,35 @@ function renderInventoryAging(d){
   _lastInvData = d;
 }
 
+function invCopyBtn_(name) {
+  var safe = name.replace(/'/g, "\\'");
+  return '<button onclick="event.stopPropagation(); copyItemName(\'' + safe + '\')" ' +
+    'style="background:var(--fill);border:none;border-radius:8px;width:28px;height:28px;font-size:13px;cursor:pointer;flex-shrink:0;margin-left:6px">📋</button>';
+}
+
+function copyItemName(name) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(name).then(function(){
+      showToast('📋 اتنسخ "' + name + '"');
+    }).catch(function(){ showToast('تعذّر النسخ'); });
+  }
+}
+
 function invSlowItemHtml(it, idx){
   var daysLbl = (it.days === null || it.days === undefined) ? 'لم تُباع أبدًا' : it.days + ' يوم من آخر بيع';
-  return '<div class="inv-list-item" onclick="openInvItemDetail(\'slow\',' + idx + ')"><div class="inv-li-left"><div class="inv-li-name">' + it.name + '</div><div class="inv-li-sub">رصيد: ' + it.stock + ' &nbsp;·&nbsp; ' + daysLbl + '</div></div>' +
-    '<div class="inv-li-right"><div class="inv-li-cost">' + invFmt(it.cost) + '</div><div class="inv-li-badge inv-badge-red">راكد</div></div></div>';
+  return '<div class="inv-list-item" style="display:flex;align-items:center">' +
+    '<div style="flex:1;display:flex;cursor:pointer" onclick="openInvItemDetail(\'slow\',' + idx + ')"><div class="inv-li-left"><div class="inv-li-name">' + it.name + '</div><div class="inv-li-sub">رصيد: ' + it.stock + ' &nbsp;·&nbsp; ' + daysLbl + '</div></div>' +
+    '<div class="inv-li-right"><div class="inv-li-cost">' + invFmt(it.cost) + '</div><div class="inv-li-badge inv-badge-red">راكد</div></div></div>' +
+    invCopyBtn_(it.name) +
+  '</div>';
 }
 function invExpItemHtml(it, idx){
   var badge = it.days_to_expire <= 90 ? 'inv-badge-red' : 'inv-badge-amber';
-  return '<div class="inv-list-item" onclick="openInvItemDetail(\'exp\',' + idx + ')"><div class="inv-li-left"><div class="inv-li-name">' + it.name + '</div><div class="inv-li-sub">رصيد: ' + it.stock + ' &nbsp;·&nbsp; صلاحية ' + it.expire + '</div></div>' +
-    '<div class="inv-li-right"><div class="inv-li-cost">' + invFmt(it.cost) + '</div><div class="inv-li-badge ' + badge + '">' + it.days_to_expire + ' يوم</div></div></div>';
+  return '<div class="inv-list-item" style="display:flex;align-items:center">' +
+    '<div style="flex:1;display:flex;cursor:pointer" onclick="openInvItemDetail(\'exp\',' + idx + ')"><div class="inv-li-left"><div class="inv-li-name">' + it.name + '</div><div class="inv-li-sub">رصيد: ' + it.stock + ' &nbsp;·&nbsp; صلاحية ' + it.expire + '</div></div>' +
+    '<div class="inv-li-right"><div class="inv-li-cost">' + invFmt(it.cost) + '</div><div class="inv-li-badge ' + badge + '">' + it.days_to_expire + ' يوم</div></div></div>' +
+    invCopyBtn_(it.name) +
+  '</div>';
 }
 
 function openInvItemDetail(type, idx){

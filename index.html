@@ -4680,9 +4680,20 @@ function loadInventoryAging(){
     hero.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري تحليل المخزون...</p></div>';
   }
   loadExpiryByMonth();
+
+  var settled = false;
+  var timeoutId = setTimeout(function(){
+    if (settled || _lastInvData) return;
+    settled = true;
+    showInvError('الطلب بياخد وقت أطول من المتوقع — السيرفر لسه شغال، جرّب تاني بعد شوية');
+  }, 20000);
+
   fetch(SCRIPT_URL + '?action=getInventoryAging')
     .then(function(r){ return r.json(); })
     .then(function(res){
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
       if (res && res.ok) {
         renderInventoryAging(res);
       } else {
@@ -4690,6 +4701,9 @@ function loadInventoryAging(){
       }
     })
     .catch(function(){
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
       showInvError('تعذر الاتصال بالسيرفر');
     });
 }
@@ -4897,12 +4911,18 @@ function renderInventoryAging(d){
   var idealLow = Math.round(dailyCogs * 45);
   var idealHigh = Math.round(dailyCogs * 60);
 
-  var cur0 = d.total_cost_value;
-  var withinRange0 = cur0 >= idealLow && cur0 <= idealHigh;
-  var health = computeInventoryHealth(d, idealLow, idealHigh, withinRange0);
-  renderInvHealthHero(health);
-  renderInvExecSummary(d, health, idealLow, idealHigh, withinRange0);
-  renderInvActionCenter(d, health, idealLow, idealHigh, withinRange0);
+  try {
+    var cur0 = d.total_cost_value;
+    var withinRange0 = cur0 >= idealLow && cur0 <= idealHigh;
+    var health = computeInventoryHealth(d, idealLow, idealHigh, withinRange0);
+    renderInvHealthHero(health);
+    renderInvExecSummary(d, health, idealLow, idealHigh, withinRange0);
+    renderInvActionCenter(d, health, idealLow, idealHigh, withinRange0);
+  } catch (e) {
+    console.error('inv health section failed:', e);
+    var hh = document.getElementById('inv-health-hero');
+    if (hh) hh.innerHTML = '';
+  }
 
   // Hero
   var cur = d.total_cost_value;
@@ -4972,14 +4992,19 @@ function renderInventoryAging(d){
 }
 
 function invSlowItemHtml(it, idx){
-  var daysLbl = (it.days === null || it.days === undefined) ? 'لم تُباع أبدًا' : it.days + ' يوم من آخر بيع';
-  return '<div class="inv-list-item" onclick="openInvItemDetail(\'slow\',' + idx + ')"><div class="inv-li-left"><div class="inv-li-name">' + it.name + '</div><div class="inv-li-sub">رصيد: ' + it.stock + ' &nbsp;·&nbsp; ' + daysLbl + '</div></div>' +
-    '<div class="inv-li-right"><div class="inv-li-cost">' + invFmt(it.cost) + '</div><div class="inv-li-badge inv-badge-red">راكد</div></div></div>';
+  return '<div class="inv-list-item" onclick="openInvItemDetail(\'slow\',' + idx + ')" style="display:flex;align-items:center;gap:11px;padding:10px 0">' +
+    '<span style="width:30px;height:30px;border-radius:9px;background:rgba(224,114,124,0.14);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🐌</span>' +
+    '<div class="inv-li-name" style="flex:1;font-size:13px;font-weight:600">' + it.name + '</div>' +
+    '<div class="inv-li-cost" style="font-size:13px;font-weight:700">' + invFmt(it.cost) + '</div>' +
+  '</div>';
 }
 function invExpItemHtml(it, idx){
-  var badge = it.days_to_expire <= 90 ? 'inv-badge-red' : 'inv-badge-amber';
-  return '<div class="inv-list-item" onclick="openInvItemDetail(\'exp\',' + idx + ')"><div class="inv-li-left"><div class="inv-li-name">' + it.name + '</div><div class="inv-li-sub">رصيد: ' + it.stock + ' &nbsp;·&nbsp; صلاحية ' + it.expire + '</div></div>' +
-    '<div class="inv-li-right"><div class="inv-li-cost">' + invFmt(it.cost) + '</div><div class="inv-li-badge ' + badge + '">' + it.days_to_expire + ' يوم</div></div></div>';
+  var urgent = it.days_to_expire <= 90;
+  return '<div class="inv-list-item" onclick="openInvItemDetail(\'exp\',' + idx + ')" style="display:flex;align-items:center;gap:11px;padding:10px 0">' +
+    '<span style="width:30px;height:30px;border-radius:9px;background:' + (urgent ? 'rgba(224,114,124,0.14)' : 'rgba(255,159,10,0.14)') + ';display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">⏳</span>' +
+    '<div class="inv-li-name" style="flex:1;font-size:13px;font-weight:600">' + it.name + '</div>' +
+    '<div class="inv-li-cost" style="font-size:13px;font-weight:700">' + invFmt(it.cost) + '</div>' +
+  '</div>';
 }
 
 function openInvItemDetail(type, idx){

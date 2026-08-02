@@ -878,9 +878,6 @@
 </div>
 
 <div id="inventory-aging-section" class="dash-wrap" style="display:none">
-  <div id="inv-health-hero" style="margin-bottom:12px"></div>
-  <div id="inv-exec-summary" style="margin-bottom:12px"></div>
-  <div id="inv-action-center" style="margin-bottom:12px"></div>
   <div class="dash-card" style="background:linear-gradient(155deg, var(--card-bg) 0%, var(--card-bg2) 100%); margin-bottom:12px" id="inv-hero"></div>
   <div class="stats-row" id="inv-kpis" style="margin-bottom:12px"></div>
 
@@ -4921,18 +4918,6 @@ function renderInventoryAging(d){
   var idealLow = Math.round(dailyCogs * 45);
   var idealHigh = Math.round(dailyCogs * 60);
 
-  try {
-    var cur0 = d.total_cost_value;
-    var withinRange0 = cur0 >= idealLow && cur0 <= idealHigh;
-    var health = computeInventoryHealth(d, idealLow, idealHigh, withinRange0);
-    renderInvHealthHero(health);
-    renderInvExecSummary(d, health, idealLow, idealHigh, withinRange0);
-    renderInvActionCenter(d, health, idealLow, idealHigh, withinRange0);
-  } catch (e) {
-    console.error('inv health section failed:', e);
-    var hh = document.getElementById('inv-health-hero');
-    if (hh) hh.innerHTML = '';
-  }
 
   // Hero
   var cur = d.total_cost_value;

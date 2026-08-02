@@ -738,6 +738,7 @@
     <div class="day-pill active" id="scare-today" onclick="setStaffRange('today')">اليوم</div>
     <div class="day-pill" id="scare-yesterday" onclick="setStaffRange('yesterday')">أمس</div>
     <div class="day-pill" id="scare-month" onclick="setStaffRange('month')">الشهر</div>
+    <div class="day-pill" id="scare-lastMonth" onclick="setStaffRange('lastMonth')">الشهر اللي فات</div>
     <div class="day-pill" id="scare-range" onclick="toggleStaffRange()">فترة</div>
   </div>
   <div class="dash-range" id="staff-range-box" style="display:none">
@@ -962,9 +963,19 @@
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto">
+      <div class="day-pill" id="att-r-today" onclick="setAttRange('today')">اليوم</div>
       <div class="day-pill active" id="att-r-month" onclick="setAttRange('month')">الشهر ده</div>
       <div class="day-pill" id="att-r-lastMonth" onclick="setAttRange('lastMonth')">الشهر اللي فات</div>
       <div class="day-pill" id="att-r-week" onclick="setAttRange('week')">آخر أسبوع</div>
+      <div class="day-pill" id="att-r-range" onclick="toggleAttRange()">فترة</div>
+    </div>
+    <div class="dash-range" id="att-range-box" style="display:none">
+      <button onclick="applyAttRange()">تطبيق</button>
+      <div class="date-range-group">
+        <input type="date" dir="ltr" id="att-from">
+        <span>إلى</span>
+        <input type="date" dir="ltr" id="att-to">
+      </div>
     </div>
     <div id="att-history"></div>
   </div>
@@ -1130,7 +1141,7 @@ var logPhone = '', logName = '', currentView = 'mob';
 var currentMode = 'home', crmTab = 'customers', shortTab = 'list', delivTab = 'map', staffTab = 'care', dashLoaded = false, customersLoaded = false;
 var agentsTab = 'list', agentsData_ = null;
 var miscTab = 'list';
-var attendanceTab = 'list', attRange_ = 'month', attHistoryData_ = null;
+var attendanceTab = 'list', attRange_ = 'month', attHistoryData_ = null, attFrom_ = '', attTo_ = '';
 var homeTab = 'list';
 var staffRange_ = 'today', staffFrom_ = '', staffTo_ = '', staffLoaded = false;
 var lastStaffEmployees_ = [];
@@ -1964,8 +1975,12 @@ function markOrdered(code, name, btn) {
     body: JSON.stringify({action: 'markOrdered', code: code, name: name})
   }).catch(function(){});
 
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(name).catch(function(){});
+  }
+
   removeShortItemFromView(code, name, btn);
-  showToast('✅ "' + name + '" اتحطت في الطلبيات المعلقة');
+  showToast('📋 اتنسخ "' + name + '" — اتحط في الطلبيات المعلقة');
 }
 
 function markDiscontinuedBtn(btn) {
@@ -2635,7 +2650,7 @@ function toggleStaffBreakdown(metric, title) {
 
 function setStaffRange(kind) {
   staffRange_ = kind;
-  ['today','yesterday','month'].forEach(function(k){
+  ['today','yesterday','month','lastMonth'].forEach(function(k){
     document.getElementById('scare-' + k).classList.toggle('active', k === kind);
   });
   document.getElementById('scare-range').classList.remove('active');
@@ -2652,7 +2667,7 @@ function toggleStaffRange() {
   var box = document.getElementById('staff-range-box');
   var showing = box.style.display !== 'none';
   box.style.display = showing ? 'none' : 'flex';
-  ['today','yesterday','month'].forEach(function(k){ document.getElementById('scare-' + k).classList.remove('active'); });
+  ['today','yesterday','month','lastMonth'].forEach(function(k){ document.getElementById('scare-' + k).classList.remove('active'); });
   document.getElementById('scare-range').classList.toggle('active', !showing);
   if (!showing && !document.getElementById('staff-to').value) {
     var today = new Date();
@@ -3400,16 +3415,46 @@ function loadAttendanceLive() {
 
 function setAttRange(r) {
   attRange_ = r;
-  ['month','lastMonth','week'].forEach(function(k){
+  ['today','month','lastMonth','week'].forEach(function(k){
     document.getElementById('att-r-' + k).classList.toggle('active', k === r);
   });
+  document.getElementById('att-r-range').classList.remove('active');
+  document.getElementById('att-range-box').style.display = 'none';
+  loadAttendanceHistory();
+}
+
+function toggleAttRange() {
+  var box = document.getElementById('att-range-box');
+  var showing = box.style.display !== 'none';
+  box.style.display = showing ? 'none' : 'flex';
+  ['today','month','lastMonth','week'].forEach(function(k){ document.getElementById('att-r-' + k).classList.remove('active'); });
+  document.getElementById('att-r-range').classList.toggle('active', !showing);
+  if (!showing && !document.getElementById('att-to').value) {
+    var today = new Date();
+    var first = new Date(today.getFullYear(), today.getMonth(), 1);
+    document.getElementById('att-to').value = toLocalDateStr(today);
+    document.getElementById('att-from').value = toLocalDateStr(first);
+  }
+}
+
+function applyAttRange() {
+  attFrom_ = document.getElementById('att-from').value;
+  attTo_ = document.getElementById('att-to').value;
+  if (!attFrom_ || !attTo_) return;
+  attRange_ = 'range';
   loadAttendanceHistory();
 }
 
 function loadAttendanceHistory() {
   var box = document.getElementById('att-history');
   box.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  fetch(STAFF_SCRIPT_URL + '?action=getAttendanceHistory&range=' + attRange_)
+  var url = STAFF_SCRIPT_URL + '?action=getAttendanceHistory';
+  if (attRange_ === 'range' && attFrom_ && attTo_) {
+    url += '&from=' + attFrom_ + '&to=' + attTo_;
+  } else {
+    url += '&range=' + attRange_;
+  }
+  fetch(url)
     .then(function(r){ return r.json(); })
     .then(function(d){
       if (!d || !d.ok) { box.innerHTML = '<div style="font-size:12.5px;color:#FF453A">' + ((d && d.error) || 'خطأ') + '</div>'; return; }
@@ -3826,12 +3871,18 @@ function loadStaffCare(silent) {
     url += '&range=' + staffRange_;
   }
 
-  // 🎯 لو الفلتر "اليوم" — نجيب كمان الأرقام الرسمية المضمونة مباشرة من نظام الصيدلية
-  // (ملف Daily_Mini_Statics) عشان إجمالي الصيدلية يبقى مطابق 100% للنظام
+  // 🎯 لو الفلتر "اليوم" أو "أمس" — نجيب كمان الأرقام الرسمية المضمونة مباشرة من نظام الصيدلية
+  // (ملف Daily_Mini_Statics) عشان إجمالي الصيدلية يبقى مطابق 100% للنظام حتى لو شيت "الموظفين" ناقص
   var fetches = [fetch(url).then(function(r){ return r.json(); })];
-  if (staffRange_ === 'today') {
+  if (staffRange_ === 'today' || staffRange_ === 'yesterday') {
     fetches.push(
       fetch(STAFF_SCRIPT_URL + '?action=getSystemDailyTotals')
+        .then(function(r){ return r.json(); })
+        .catch(function(){ return null; })
+    );
+  } else if (staffRange_ === 'month' || staffRange_ === 'lastMonth') {
+    fetches.push(
+      fetch(STAFF_SCRIPT_URL + '?action=getMonthTotalsRaw&range=' + staffRange_)
         .then(function(r){ return r.json(); })
         .catch(function(){ return null; })
     );
@@ -3842,7 +3893,10 @@ function loadStaffCare(silent) {
   Promise.all(fetches)
     .then(function(res){
       var d = res[0];
-      if (res[1] && res[1].ok) d.systemTotals = res[1];
+      if (res[1] && res[1].ok) {
+        if (staffRange_ === 'month' || staffRange_ === 'lastMonth') d.monthTotals = res[1];
+        else d.systemTotals = res[1];
+      }
       staffLoaded = true;
       box.dataset.loaded = '1';
       renderStaffCare(d);
@@ -3887,16 +3941,30 @@ function renderStaffCare(d) {
   });
 
   // 🎯 لو متاح رقم رسمي من النظام مباشرة (Daily_Mini_Statics) نستخدمه بدل حسابنا الذاتي
-  // للمبيعات/الربح/الخصم — ده مضمون 100% مطابق للنظام
-  // 🔧 مهم: الرقم الرسمي "sales_today" أصلاً صافي بعد خصم المرتجع من مصدره،
+  // للمبيعات/الربح/الخصم — ده مضمون 100% مطابق للنظام، ومتاح لـ"اليوم" و"أمس" مع بعض
+  // 🔧 مهم: الرقم الرسمي "sales_today/yesterday" أصلاً صافي بعد خصم المرتجع من مصدره،
   // فمينفعش نخصم المرتجع منه تاني (كان ده بيسبب خصم مزدوج وبيطلع الرقم أقل من الصح)
   var usingSystemNumbers = false;
-  if (d.systemTotals) {
+  if (d.systemTotals && staffRange_ === 'today') {
     totSales = d.systemTotals.sales_today;
     totProfit = d.systemTotals.profit_today;
     totDiscount = d.systemTotals.discount_today;
     totNet = totSales; // صافي بالفعل - من غير خصم تاني
     usingSystemNumbers = true;
+  } else if (d.systemTotals && staffRange_ === 'yesterday') {
+    totSales = d.systemTotals.sales_yesterday;
+    totProfit = d.systemTotals.profit_yesterday;
+    totDiscount = d.systemTotals.discount_yesterday;
+    totNet = totSales;
+    usingSystemNumbers = true;
+  } else if (d.monthTotals && (staffRange_ === 'month' || staffRange_ === 'lastMonth')) {
+    totInv = d.monthTotals.invoices_total;
+    totSales = d.monthTotals.sales_total;
+    totProfit = d.monthTotals.profit_total;
+    totDiscount = d.monthTotals.discount_total;
+    totReturns = d.monthTotals.returns_total;
+    totReturnsVal = d.monthTotals.returns_value_total;
+    totNet = totSales - totReturnsVal;
   }
   lastStaffEmployees_ = emps; // نحفظها عشان نقدر نعرض تفصيل كل موظف لما حد يدوس على أي كارت
 
@@ -3924,7 +3992,9 @@ function renderStaffCare(d) {
   // مؤشرات تانية (مش مبيعات مباشرة) — عملاء جدد والديون مع بعض في الآخر
   html += '<div class="dash-card"><div class="dv" style="color:' + (totNewC > 0 ? '#5FB88A' : 'var(--text)') + '">' + totNewC + '</div><div class="dl">عملاء جدد</div></div>';
   if (usingSystemNumbers && d.systemTotals) {
-    html += '<div class="dash-card" style="cursor:pointer" onclick="openDayCollections()"><div class="dv" style="color:#5FB88A">' + Math.round(d.systemTotals.debt_paid_today).toLocaleString() + '</div><div class="dl">دين متحصّل اليوم (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+    var debtPaidVal = staffRange_ === 'yesterday' ? d.systemTotals.debt_paid_yesterday : d.systemTotals.debt_paid_today;
+    var debtPaidLabel = staffRange_ === 'yesterday' ? 'دين متحصّل أمس (ج)' : 'دين متحصّل اليوم (ج)';
+    html += '<div class="dash-card" style="cursor:pointer" onclick="openDayCollections()"><div class="dv" style="color:#5FB88A">' + Math.round(debtPaidVal).toLocaleString() + '</div><div class="dl">' + debtPaidLabel + '<div class="ds2">دوس للتفاصيل</div></div></div>';
     html += '<div class="dash-card" style="cursor:pointer" onclick="navigateTo(\'debts\',\'list\')"><div class="dv" style="color:#E0727C">' + Math.round(d.systemTotals.total_debt).toLocaleString() + '</div><div class="dl">صافي الدين الإجمالي (ج)<div class="ds2">دوس لعرض التفاصيل</div></div></div>';
   }
   html += '</div>';

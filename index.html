@@ -902,25 +902,35 @@
   </div>
 
   <div class="dash-panel">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div class="dash-panel-title">🐌 أكبر الأصناف الراكدة</div>
-      <div style="display:flex;gap:6px">
-        <button onclick="exportSlowStockExcel()" style="padding:6px 12px;border:none;border-radius:16px;background:var(--fill);color:var(--accent);font-size:11.5px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ Excel</button>
-        <button onclick="exportSlowStockPDF()" style="padding:6px 12px;border:none;border-radius:16px;background:var(--fill);color:var(--accent);font-size:11.5px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ PDF</button>
-      </div>
+    <div onclick="toggleSlowCategoriesPanel()" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+      <div class="dash-panel-title" style="margin-bottom:0">🐌 أكبر الأصناف الراكدة</div>
+      <svg id="inv-slow-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s"><path d="M6 9l6 6 6-6"/></svg>
     </div>
-    <div style="font-size:11.5px;color:var(--text2);margin-bottom:10px" id="inv-slow-sub"></div>
-    <div id="inv-slow-categories"></div>
-    <div class="action-box act-normal" style="margin-top:12px">
-      <div class="act-title">💡 توصية</div>
-      <div class="act-desc">راجع القايمة دي مع المورد — رجّع اللي ينفع يترجع، وخصّم الباقي عشان تفرّغ رأس المال ده لأصناف أسرع حركة.</div>
+    <div id="inv-slow-sub" style="font-size:11.5px;color:var(--text2);margin-top:4px"></div>
+    <div id="inv-slow-inner" style="max-height:0;overflow:hidden;transition:max-height .3s ease">
+      <div style="padding-top:10px">
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <button onclick="event.stopPropagation();exportSlowStockExcel()" style="flex:1;padding:8px;border:none;border-radius:14px;background:var(--fill);color:var(--accent);font-size:11.5px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ Excel (الكل)</button>
+          <button onclick="event.stopPropagation();exportSlowStockPDF()" style="flex:1;padding:8px;border:none;border-radius:14px;background:var(--fill);color:var(--accent);font-size:11.5px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ PDF (الكل)</button>
+        </div>
+        <div id="inv-slow-categories"></div>
+        <div class="action-box act-normal" style="margin-top:12px">
+          <div class="act-title">💡 توصية</div>
+          <div class="act-desc">راجع القايمة دي مع المورد — رجّع اللي ينفع يترجع، وخصّم الباقي عشان تفرّغ رأس المال ده لأصناف أسرع حركة.</div>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="dash-panel">
-    <div class="dash-panel-title">⚠️ أقرب أصناف للصلاحية</div>
-    <div style="font-size:11.5px;color:var(--text2);margin-bottom:10px">أصناف صلاحيتها أقل من ٦ شهور، مرتبة من الأقرب</div>
-    <div id="inv-exp-preview"></div>
+    <div onclick="toggleExpCategoriesPanel()" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+      <div class="dash-panel-title" style="margin-bottom:0">⚠️ أقرب أصناف للصلاحية</div>
+      <svg id="inv-exp-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div style="font-size:11.5px;color:var(--text2);margin-top:4px">أصناف صلاحيتها أقل من ٦ شهور، مرتبة من الأقرب</div>
+    <div id="inv-exp-inner" style="max-height:0;overflow:hidden;transition:max-height .3s ease">
+      <div style="padding-top:10px" id="inv-exp-categories"></div>
+    </div>
   </div>
 
   <div class="dash-panel">
@@ -1111,6 +1121,18 @@
 </div>
 
 <!-- INVENTORY BUCKET DRILL-DOWN MODAL -->
+<div class="modal-overlay" id="inv-exp-cat-modal">
+  <div class="modal" style="max-width:440px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:10px">
+      <h3 id="inv-exp-cat-title" style="margin-bottom:0;flex:1">فئة</h3>
+      <button onclick="closeInvExpCatModal()" style="background:var(--fill);border:none;color:var(--text2);width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;flex-shrink:0">✕</button>
+    </div>
+    <div id="inv-exp-cat-sub" style="font-size:12px;color:var(--text2);margin-bottom:10px"></div>
+    <div id="inv-exp-cat-export" style="display:flex;gap:6px;margin-bottom:10px"></div>
+    <div id="inv-exp-cat-list"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="inv-slow-cat-modal">
   <div class="modal" style="max-width:440px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:10px">
@@ -4664,10 +4686,10 @@ var INV_DAILY_SALES_RETAIL = 6000; // مبيعات الجمهور اليومية
 // تانية جوه منطق الحساب نفسه. عدّل هنا بس لو عايز تغيّر حساسية الدرجة.
 // ===================================================================
 var INV_HEALTH_CONFIG = {
-  weights: {           // لازم مجموعهم 100
+  weights: {           // النطاق (rangeCompliance) متعطّل عمدًا — موضّح بالتفصيل في كارت "إجمالي المخزون" تحت، مش هنا
     deadStock: 40,
     expiryRisk: 30,
-    rangeCompliance: 30
+    rangeCompliance: 0
   },
   deadStock: {
     goodBelowPct: 15,   // نسبة راكد أقل من كده = ممتاز
@@ -4761,17 +4783,10 @@ function computeInventoryHealth(d, idealLow, idealHigh, withinRange) {
   var expiryPct = invPct(expiryRiskValue, totalCost);
   var expiryFactor = invScaleFactor_(expiryPct, cfg.expiryRisk.goodBelowPct, cfg.expiryRisk.zeroAtPct);
 
-  var cur = d.total_cost_value;
-  var rangeFactor;
-  if (withinRange) {
-    rangeFactor = 100;
-  } else {
-    var dist = cur < idealLow ? (idealLow - cur) / idealLow : (cur - idealHigh) / idealHigh;
-    rangeFactor = Math.max(0, Math.round(100 - dist * 150));
-  }
-
+  // النطاق المستهدف موضّح بالتفصيل في كارت "إجمالي المخزون" تحت — مش محسوب هنا عشان منكررش نفس المعلومة
   var w = cfg.weights;
-  var score = Math.round((deadFactor * w.deadStock + expiryFactor * w.expiryRisk + rangeFactor * w.rangeCompliance) / 100);
+  var wTotal = w.deadStock + w.expiryRisk;
+  var score = Math.round((deadFactor * w.deadStock + expiryFactor * w.expiryRisk) / wTotal);
   score = Math.max(0, Math.min(100, score));
 
   var statusKey = score >= cfg.status.healthyAt ? 'healthy' : (score >= cfg.status.warningAt ? 'warning' : 'critical');
@@ -4782,13 +4797,13 @@ function computeInventoryHealth(d, idealLow, idealHigh, withinRange) {
   }[statusKey];
 
   var reasons = [];
-  reasons.push({ ok: withinRange, text: withinRange ? 'المخزون داخل النطاق المستهدف' : (cur < idealLow ? 'المخزون أقل من النطاق المستهدف' : 'المخزون أعلى من النطاق المستهدف') });
   reasons.push({ ok: deadPct <= cfg.deadStock.goodBelowPct, text: deadPct <= cfg.deadStock.goodBelowPct ? 'نسبة الراكد في الحدود الطبيعية' : 'نسبة الراكد أعلى من المطلوب (' + deadPct + '%)' });
   reasons.push({ ok: expiryPct <= cfg.expiryRisk.goodBelowPct, text: expiryPct <= cfg.expiryRisk.goodBelowPct ? 'لا توجد مشكلة كبيرة في الصلاحية' : 'قيمة معتبرة قرب الانتهاء (' + expiryPct + '%)' });
 
   return {
     score: score, statusKey: statusKey, statusLabel: statusMeta.label, statusColor: statusMeta.color,
-    reasons: reasons, deadPct: deadPct, expiryPct: expiryPct, expiryRiskValue: expiryRiskValue, withinRange: withinRange
+    reasons: reasons, deadPct: deadPct, expiryPct: expiryPct, expiryRiskValue: expiryRiskValue, withinRange: withinRange,
+    inventoryValue: d.total_cost_value
   };
 }
 
@@ -4809,10 +4824,11 @@ function renderInvHealthHero(health) {
         '<span style="font-size:13px;font-weight:700;color:var(--text2)">صحة المخزون</span>' +
         '<span style="font-size:16px;font-weight:800;color:' + health.statusColor + '">' + health.statusLabel + '</span>' +
       '</div>' +
-      '<div style="display:flex;align-items:baseline;gap:6px;margin:8px 0 12px">' +
+      '<div style="display:flex;align-items:baseline;gap:6px;margin:8px 0 4px">' +
         '<span style="font-size:42px;font-weight:800;letter-spacing:-1.2px;color:var(--text)">' + health.score + '</span>' +
         '<span style="font-size:15px;color:var(--text2);font-weight:600">/ 100</span>' +
       '</div>' +
+      '<div style="font-size:12.5px;color:var(--text2);font-weight:600;margin-bottom:12px">قيمة المخزون: ' + invFmt(health.inventoryValue) + ' ج.م</div>' +
       '<div style="height:14px;border-radius:8px;background:var(--card-bg2);overflow:hidden">' +
         '<div id="inv-health-bar" style="height:100%;width:0;border-radius:8px;background:' + health.statusColor + ';transition:width 1.1s cubic-bezier(.22,.9,.35,1)"></div>' +
       '</div>' +
@@ -4835,15 +4851,6 @@ function renderInvExecSummary(d, health, idealLow, idealHigh, withinRange) {
 
   if (health.expiryRiskValue > 0) {
     points.push('أصناف قرب الانتهاء أو منتهية بقيمة <b>' + invFmt(health.expiryRiskValue) + ' ج</b>');
-  }
-
-  if (!withinRange) {
-    var cur = d.total_cost_value;
-    points.push(cur < idealLow
-      ? 'المخزون أقل من النطاق المستهدف بـ <b>' + invFmt(idealLow - cur) + ' ج</b>'
-      : 'المخزون أعلى من النطاق المستهدف بـ <b>' + invFmt(cur - idealHigh) + ' ج</b>');
-  } else {
-    points.push('المخزون داخل النطاق المستهدف (' + invFmt(idealLow) + '-' + invFmt(idealHigh) + ' ج)');
   }
 
   var recommendation = health.statusKey === 'critical'
@@ -4870,7 +4877,7 @@ function renderInvActionCenter(d, health, idealLow, idealHigh, withinRange) {
       pri: health.deadPct > INV_HEALTH_CONFIG.deadStock.goodBelowPct ? 2 : 1,
       dot: '#FF453A', label: 'راجع الأصناف الراكدة',
       value: invFmt(d.slow_dead_total_cost) + ' ج في ' + d.slow_dead_count + ' صنف',
-      onClick: "document.getElementById('inv-slow-preview').scrollIntoView({behavior:'smooth'})"
+      onClick: "invJumpToPanel_('inv-slow-inner','inv-slow-chevron')"
     });
   }
   if (health.expiryRiskValue > 0) {
@@ -4878,16 +4885,7 @@ function renderInvActionCenter(d, health, idealLow, idealHigh, withinRange) {
       pri: health.expiryPct > INV_HEALTH_CONFIG.expiryRisk.goodBelowPct ? 2 : 1,
       dot: '#FF9F0A', label: 'راجع أصناف قرب الانتهاء',
       value: invFmt(health.expiryRiskValue) + ' ج معرّضة للفقد',
-      onClick: "document.getElementById('inv-exp-preview').scrollIntoView({behavior:'smooth'})"
-    });
-  }
-  if (!withinRange) {
-    var cur = d.total_cost_value;
-    var below = cur < idealLow;
-    actions.push({
-      pri: 1, dot: '#5E5CE6', label: below ? 'المخزون أقل من المطلوب — فكّر تزوّد الطلبيات' : 'المخزون أعلى من المطلوب — رأس مال واقف',
-      value: below ? ('ناقص ' + invFmt(idealLow - cur) + ' ج') : ('زيادة ' + invFmt(cur - idealHigh) + ' ج'),
-      onClick: "navigateTo('shortages','list')"
+      onClick: "invJumpToPanel_('inv-exp-inner','inv-exp-chevron')"
     });
   }
 
@@ -4994,9 +4992,9 @@ function renderInventoryAging(d){
   document.getElementById('inv-slow-sub').textContent = 'إجمالي ' + d.slow_dead_count + ' صنف راكد بقيمة ' + invFmt(d.slow_dead_total_cost) + ' ج.م';
   renderSlowCategories(d.slow_category_summary || []);
 
-  // Near expiry list
+  // Near expiry list — بقى بيتقسّم فئات
   var expList = d.near_expiry_list;
-  renderInfiniteInvList('inv-exp-preview', expList, invExpItemHtml, 8);
+  renderExpCategories(d.near_expiry_category_summary || []);
 
   document.getElementById('inv-updated-date').textContent = d.generated_date;
   d._calc = { idealLow: idealLow, idealHigh: idealHigh, marginPct: (100-marginRatio*100).toFixed(0), slowPct: slowPct, dailyCogs: dailyCogs };
@@ -5007,6 +5005,98 @@ function renderInventoryAging(d){
 // 🐌 الأصناف الراكدة — فئات (ويندو أولى) ← أصناف الفئة (ويندو تانية)
 // ===================================================================
 var INV_CATEGORY_ICONS = { 'الادوية': '💊', 'التجميل': '💄' };
+
+function invJumpToPanel_(innerId, chevId) {
+  var inner = document.getElementById(innerId);
+  var chev = document.getElementById(chevId);
+  if (inner && (!inner.style.maxHeight || inner.style.maxHeight === '0px')) {
+    inner.style.maxHeight = inner.scrollHeight + 'px';
+    if (chev) chev.style.transform = 'rotate(180deg)';
+  }
+  var panel = inner ? inner.closest('.dash-panel') : null;
+  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function toggleSlowCategoriesPanel() {
+  var inner = document.getElementById('inv-slow-inner');
+  var chev = document.getElementById('inv-slow-chevron');
+  var isOpen = inner.style.maxHeight && inner.style.maxHeight !== '0px';
+  inner.style.maxHeight = isOpen ? '0px' : inner.scrollHeight + 'px';
+  chev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+function toggleExpCategoriesPanel() {
+  var inner = document.getElementById('inv-exp-inner');
+  var chev = document.getElementById('inv-exp-chevron');
+  var isOpen = inner.style.maxHeight && inner.style.maxHeight !== '0px';
+  inner.style.maxHeight = isOpen ? '0px' : inner.scrollHeight + 'px';
+  chev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+
+function renderExpCategories(categories) {
+  var box = document.getElementById('inv-exp-categories');
+  if (!categories.length) { box.innerHTML = '<div style="font-size:12.5px;color:var(--text2);padding:10px 0">مفيش أصناف قرب الصلاحية</div>'; return; }
+  box.innerHTML = categories.map(function(c, i){
+    var icon = INV_CATEGORY_ICONS[c.category] || '📦';
+    return '<div onclick="openExpCategory(\'' + c.category.replace(/'/g, "\\'") + '\')" style="display:flex;align-items:center;gap:11px;padding:11px 0;cursor:pointer;' +
+        (i > 0 ? 'border-top:0.5px solid var(--sep)' : '') + '">' +
+      '<span style="width:32px;height:32px;border-radius:9px;background:var(--fill);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">' + icon + '</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:13.5px;font-weight:700">' + c.category + '</div>' +
+        '<div style="font-size:11.5px;color:var(--text2);margin-top:1px">' + c.count + ' صنف</div>' +
+      '</div>' +
+      '<div style="font-size:13px;font-weight:800">' + invFmt(c.cost) + ' ج</div>' +
+      '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>' +
+    '</div>';
+  }).join('');
+}
+
+var invExpCatCurrent_ = null;
+
+function openExpCategory(category) {
+  var all = (window.invAgingData_ && window.invAgingData_.near_expiry_list) || [];
+  var items = all.filter(function(it){ return (it.category || 'غير مصنّف') === category; });
+  invExpCatCurrent_ = { category: category, items: items };
+
+  document.getElementById('inv-exp-cat-title').textContent = (INV_CATEGORY_ICONS[category] || '📦') + ' ' + category;
+  var totalCost = items.reduce(function(s, it){ return s + it.cost; }, 0);
+  document.getElementById('inv-exp-cat-sub').textContent = items.length + ' صنف قرب الصلاحية بقيمة ' + invFmt(totalCost) + ' ج';
+
+  document.getElementById('inv-exp-cat-export').innerHTML =
+    '<button onclick="exportExpCatPDF()" style="flex:1;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ PDF</button>' +
+    '<button onclick="exportExpCatExcel()" style="flex:1;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ Excel</button>';
+
+  renderInfiniteInvList('inv-exp-cat-list', items, invExpCatItemHtml, 15);
+  document.getElementById('inv-exp-cat-modal').classList.add('show');
+}
+function closeInvExpCatModal(){ document.getElementById('inv-exp-cat-modal').classList.remove('show'); }
+
+function invExpCatItemHtml(it) {
+  var safe = it.name.replace(/'/g, "\\'");
+  var urgent = it.days_to_expire <= 90;
+  return '<div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-top:0.5px solid var(--sep)">' +
+    '<button onclick="copyItemName(\'' + safe + '\')" style="background:var(--fill);border:none;border-radius:7px;width:26px;height:26px;font-size:12px;cursor:pointer;flex-shrink:0">📋</button>' +
+    '<div style="flex:1;min-width:0">' +
+      '<div style="font-size:12.5px;font-weight:600">' + it.name + '</div>' +
+      '<div style="font-size:11px;color:' + (urgent ? '#FF453A' : 'var(--text2)') + ';margin-top:1px">الكمية: ' + it.stock + ' &nbsp;·&nbsp; صلاحية ' + it.expire + ' (' + it.days_to_expire + ' يوم)</div>' +
+    '</div>' +
+    '<div style="font-size:12px;font-weight:700;flex-shrink:0">' + invFmt(it.cost) + ' ج</div>' +
+  '</div>';
+}
+
+function invExpCatRows_() {
+  return invExpCatCurrent_.items.map(function(it){
+    return { 'الصنف': it.name, 'الكمية': it.stock, 'التكلفة': it.cost, 'تاريخ الانتهاء': it.expire, 'متبقي': it.days_to_expire + ' يوم' };
+  });
+}
+function exportExpCatPDF() {
+  if (!invExpCatCurrent_ || !invExpCatCurrent_.items.length) return;
+  exportRowsToPDF(invExpCatRows_(), invExpCatCurrent_.category + ' — قرب الصلاحية');
+}
+function exportExpCatExcel() {
+  if (!invExpCatCurrent_ || !invExpCatCurrent_.items.length) return;
+  exportRowsToExcel(invExpCatRows_(), invExpCatCurrent_.category.replace(/\s+/g, '_') + '_قرب_الصلاحية');
+}
+
 
 function renderSlowCategories(categories) {
   var box = document.getElementById('inv-slow-categories');
@@ -5292,10 +5382,10 @@ function openInvKpiInfo(key){
   } else if (key === 'healthScore') {
     var w = INV_HEALTH_CONFIG.weights;
     title = '🩺 إزاي بتتحسب الدرجة';
-    body = '<div class="act-desc" style="line-height:1.8">الدرجة من 100، بتتحسب من 3 عوامل بأوزان مختلفة:<br><br>' +
+    body = '<div class="act-desc" style="line-height:1.8">الدرجة من 100، بتتحسب من عاملين:<br><br>' +
       '• نسبة الراكد من المخزون — وزن <b>' + w.deadStock + '%</b><br>' +
-      '• قيمة قرب/منتهية الصلاحية — وزن <b>' + w.expiryRisk + '%</b><br>' +
-      '• هل الرصيد داخل النطاق المستهدف — وزن <b>' + w.rangeCompliance + '%</b><br><br>' +
+      '• قيمة قرب/منتهية الصلاحية — وزن <b>' + w.expiryRisk + '%</b><br><br>' +
+      'النطاق المستهدف للمخزون (تحت وفوق) موضّح بالتفصيل في كارت "إجمالي المخزون" تحت، مش داخل في حساب الدرجة عشان مننكررش نفس المعلومة مرتين.<br><br>' +
       '80+ = صحي، 55-79 = يحتاج انتباه، أقل من 55 = حرج.</div>';
   } else if (key === 'aging') {
     title = '📊 توزيع القيمة حسب آخر بيع';

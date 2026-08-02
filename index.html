@@ -3320,19 +3320,13 @@ function renderHomeOverview(daily, maint, live, expiry, agents, debts) {
   box.innerHTML = html;
 }
 
-function loadExpiryByMonth() {
-  fetch(SCRIPT_URL + '?action=getExpiryByMonth')
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      var box = document.getElementById('inv-expmonth-list');
-      if (!d || !d.ok) { box.innerHTML = '<div style="font-size:12.5px;color:#FF453A">' + ((d && d.error) || 'خطأ') + '</div>'; return; }
-      expMonthData_ = d;
-      renderExpiryByMonth(d);
-    })
-    .catch(function(){
-      var box = document.getElementById('inv-expmonth-list');
-      if (box) box.innerHTML = '<div style="font-size:12.5px;color:#FF453A">تعذّر الاتصال</div>';
-    });
+// بقت بتاخد البيانات من نفس نتيجة getInventoryAging (خلاص محمّلة) بدل ما تعمل طلب شبكة منفصل
+function renderExpiryByMonthFromInv(invData) {
+  var box = document.getElementById('inv-expmonth-list');
+  if (!invData || !invData.expiry_by_month) { box.innerHTML = '<div style="font-size:12.5px;color:#FF453A">خطأ</div>'; return; }
+  var d = { ok: true, generated_date: invData.generated_date, expired: invData.expiry_by_month.expired, months: invData.expiry_by_month.months };
+  expMonthData_ = d;
+  renderExpiryByMonth(d);
 }
 
 function renderExpiryByMonth(d) {
@@ -4748,14 +4742,13 @@ function loadInventoryAging(){
   if (hero && !_lastInvData) {
     hero.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري تحليل المخزون...</p></div>';
   }
-  loadExpiryByMonth();
 
   var settled = false;
   var timeoutId = setTimeout(function(){
     if (settled || _lastInvData) return;
     settled = true;
     showInvError('الطلب بياخد وقت أطول من المتوقع — السيرفر لسه شغال، جرّب تاني بعد شوية');
-  }, 20000);
+  }, 40000);
 
   fetch(SCRIPT_URL + '?action=getInventoryAging')
     .then(function(r){ return r.json(); })
@@ -4950,6 +4943,7 @@ function renderInvActionCenter(d, health, idealLow, idealHigh, withinRange) {
 
 function renderInventoryAging(d){
   window.invAgingData_ = d;
+  renderExpiryByMonthFromInv(d);
   var marginRatio = d.total_cost_value / d.total_retail_value;
   var monthlyRetail = INV_DAILY_SALES_RETAIL * 30;
   var dailyCogs = (monthlyRetail * marginRatio) / 30;

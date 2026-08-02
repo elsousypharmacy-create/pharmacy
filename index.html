@@ -1107,6 +1107,7 @@
     </div>
     <div id="inv-bucket-stats"></div>
     <div id="inv-bucket-note"></div>
+    <div id="inv-bucket-export" style="display:flex;gap:6px;margin-top:10px"></div>
     <div id="inv-bucket-list" style="margin-top:12px"></div>
     <div class="modal-btns" style="margin-top:14px">
       <button class="btn-save" onclick="closeInvBucketDetail()">تمام</button>
@@ -4739,35 +4740,15 @@ function renderInventoryAging(d){
   _lastInvData = d;
 }
 
-function invCopyBtn_(name) {
-  var safe = name.replace(/'/g, "\\'");
-  return '<button onclick="event.stopPropagation(); copyItemName(\'' + safe + '\')" ' +
-    'style="background:var(--fill);border:none;border-radius:8px;width:28px;height:28px;font-size:13px;cursor:pointer;flex-shrink:0;margin-left:6px">📋</button>';
-}
-
-function copyItemName(name) {
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(name).then(function(){
-      showToast('📋 اتنسخ "' + name + '"');
-    }).catch(function(){ showToast('تعذّر النسخ'); });
-  }
-}
-
 function invSlowItemHtml(it, idx){
   var daysLbl = (it.days === null || it.days === undefined) ? 'لم تُباع أبدًا' : it.days + ' يوم من آخر بيع';
-  return '<div class="inv-list-item" style="display:flex;align-items:center">' +
-    '<div style="flex:1;display:flex;cursor:pointer" onclick="openInvItemDetail(\'slow\',' + idx + ')"><div class="inv-li-left"><div class="inv-li-name">' + it.name + '</div><div class="inv-li-sub">رصيد: ' + it.stock + ' &nbsp;·&nbsp; ' + daysLbl + '</div></div>' +
-    '<div class="inv-li-right"><div class="inv-li-cost">' + invFmt(it.cost) + '</div><div class="inv-li-badge inv-badge-red">راكد</div></div></div>' +
-    invCopyBtn_(it.name) +
-  '</div>';
+  return '<div class="inv-list-item" onclick="openInvItemDetail(\'slow\',' + idx + ')"><div class="inv-li-left"><div class="inv-li-name">' + it.name + '</div><div class="inv-li-sub">رصيد: ' + it.stock + ' &nbsp;·&nbsp; ' + daysLbl + '</div></div>' +
+    '<div class="inv-li-right"><div class="inv-li-cost">' + invFmt(it.cost) + '</div><div class="inv-li-badge inv-badge-red">راكد</div></div></div>';
 }
 function invExpItemHtml(it, idx){
   var badge = it.days_to_expire <= 90 ? 'inv-badge-red' : 'inv-badge-amber';
-  return '<div class="inv-list-item" style="display:flex;align-items:center">' +
-    '<div style="flex:1;display:flex;cursor:pointer" onclick="openInvItemDetail(\'exp\',' + idx + ')"><div class="inv-li-left"><div class="inv-li-name">' + it.name + '</div><div class="inv-li-sub">رصيد: ' + it.stock + ' &nbsp;·&nbsp; صلاحية ' + it.expire + '</div></div>' +
-    '<div class="inv-li-right"><div class="inv-li-cost">' + invFmt(it.cost) + '</div><div class="inv-li-badge ' + badge + '">' + it.days_to_expire + ' يوم</div></div></div>' +
-    invCopyBtn_(it.name) +
-  '</div>';
+  return '<div class="inv-list-item" onclick="openInvItemDetail(\'exp\',' + idx + ')"><div class="inv-li-left"><div class="inv-li-name">' + it.name + '</div><div class="inv-li-sub">رصيد: ' + it.stock + ' &nbsp;·&nbsp; صلاحية ' + it.expire + '</div></div>' +
+    '<div class="inv-li-right"><div class="inv-li-cost">' + invFmt(it.cost) + '</div><div class="inv-li-badge ' + badge + '">' + it.days_to_expire + ' يوم</div></div></div>';
 }
 
 function openInvItemDetail(type, idx){
@@ -4870,9 +4851,58 @@ function openInvBucketDetail(kind, key){
   }
   document.getElementById('inv-bucket-list').innerHTML = listHtml;
 
+  invBucketCurrent_ = { kind: kind, key: key, label: meta.lbl, items: items || [] };
+  var exportBox = document.getElementById('inv-bucket-export');
+  if (items && items.length) {
+    exportBox.innerHTML =
+      '<button onclick="copyInvBucketList()" style="flex:1;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">📋 نسخ القائمة</button>' +
+      '<button onclick="exportInvBucketPDF()" style="flex:1;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ PDF</button>' +
+      '<button onclick="exportInvBucketExcel()" style="flex:1;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ Excel</button>';
+  } else {
+    exportBox.innerHTML = '';
+  }
+
   document.getElementById('inv-bucket-modal').classList.add('show');
 }
 function closeInvBucketDetail(){ document.getElementById('inv-bucket-modal').classList.remove('show'); }
+
+var invBucketCurrent_ = null;
+
+function copyInvBucketList() {
+  if (!invBucketCurrent_ || !invBucketCurrent_.items.length) return;
+  var b = invBucketCurrent_;
+  var text = '📦 ' + b.label + ' — صيدلية السوسي\n━━━━━━━━━━━━━━\n' +
+    b.items.map(function(it, i){
+      var sub = b.kind === 'aging'
+        ? ((it.days === null || it.days === undefined) ? 'لم تُباع أبدًا' : it.days + ' يوم')
+        : ('صلاحية ' + (it.expire || '—'));
+      return (i + 1) + '. ' + it.name + ' — رصيد ' + it.stock + ' — ' + sub;
+    }).join('\n') +
+    '\n━━━━━━━━━━━━━━\nإجمالي: ' + b.items.length + ' صنف';
+  navigator.clipboard.writeText(text).then(function(){
+    showToast('اتنسخت — الصقها في واتساب');
+  }).catch(function(){ showToast('تعذّر النسخ'); });
+}
+
+function invBucketRows_() {
+  var b = invBucketCurrent_;
+  return b.items.map(function(it){
+    var row = { 'الصنف': it.name, 'الرصيد': it.stock, 'التكلفة': it.cost };
+    if (b.kind === 'aging') row['من آخر بيع'] = (it.days === null || it.days === undefined) ? 'لم تُباع أبدًا' : (it.days + ' يوم');
+    else row['تاريخ الانتهاء'] = it.expire || '—';
+    return row;
+  });
+}
+
+function exportInvBucketPDF() {
+  if (!invBucketCurrent_ || !invBucketCurrent_.items.length) return;
+  exportRowsToPDF(invBucketRows_(), invBucketCurrent_.label);
+}
+
+function exportInvBucketExcel() {
+  if (!invBucketCurrent_ || !invBucketCurrent_.items.length) return;
+  exportRowsToExcel(invBucketRows_(), invBucketCurrent_.label.replace(/\s+/g, '_'));
+}
 
 function openInvKpiInfo(key){
   var d = _lastInvData;

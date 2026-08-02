@@ -3796,7 +3796,7 @@ function loadSMS() {
     if (!lastSmsData_) box.innerHTML = '<div class="loading"><p style="color:#E0727C">خطأ في التحميل — <span style="text-decoration:underline;cursor:pointer" onclick="loadSMS()">حاول تاني</span></p></div>';
   }, 10000);
   setPipeline(['idle','idle','idle','idle','idle','idle']);
-  fetch(STAFF_SCRIPT_URL + '?action=getSMSLog')
+  fetch(STAFF_SCRIPT_URL + '?action=getSMSLog&_ts=' + Date.now(), { cache: 'no-store' })
     .then(function(r){ return r.json(); })
     .then(function(d){ clearTimeout(smsTimeout_); smsRefreshLocked_ = false; smsLoaded = true; lastSmsData_ = d; renderSMS(d); })
     .catch(function(){ clearTimeout(smsTimeout_); smsRefreshLocked_ = false; if (!lastSmsData_) box.innerHTML = '<div class="loading"><p style="color:#E0727C">خطأ في التحميل — <span style="text-decoration:underline;cursor:pointer" onclick="loadSMS()">حاول تاني</span></p></div>'; });

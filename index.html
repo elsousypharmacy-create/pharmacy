@@ -4768,8 +4768,6 @@ function computeInventoryHealth(d, idealLow, idealHigh, withinRange) {
 
 function renderInvHealthHero(health) {
   var box = document.getElementById('inv-health-hero');
-  var r = 52, c = 2 * Math.PI * r;
-  var offset = c - (health.score / 100) * c;
 
   var reasonsHtml = health.reasons.map(function(rs){
     return '<div style="display:flex;align-items:center;gap:7px;font-size:12.5px;padding:4px 0">' +
@@ -4779,24 +4777,26 @@ function renderInvHealthHero(health) {
   }).join('');
 
   box.innerHTML =
-    '<div class="cust-card" style="padding:22px 18px;text-align:center;position:relative">' +
+    '<div class="cust-card" style="padding:22px 18px;position:relative">' +
       invInfoBtn_('healthScore', 'position:absolute;top:14px;left:14px') +
-      '<svg width="130" height="130" viewBox="0 0 130 130" style="margin:0 auto;display:block">' +
-        '<circle cx="65" cy="65" r="' + r + '" fill="none" stroke="var(--card-bg2)" stroke-width="11"/>' +
-        '<circle id="inv-health-ring" cx="65" cy="65" r="' + r + '" fill="none" stroke="' + health.statusColor + '" stroke-width="11" ' +
-          'stroke-linecap="round" stroke-dasharray="' + c + '" stroke-dashoffset="' + c + '" transform="rotate(-90 65 65)" ' +
-          'style="transition:stroke-dashoffset 1.1s cubic-bezier(.22,.9,.35,1)"/>' +
-        '<text x="65" y="60" text-anchor="middle" font-size="30" font-weight="800" fill="var(--text)">' + health.score + '</text>' +
-        '<text x="65" y="80" text-anchor="middle" font-size="11" fill="var(--text2)">من 100</text>' +
-      '</svg>' +
-      '<div style="font-size:16px;font-weight:800;color:' + health.statusColor + ';margin-top:10px">' + health.statusLabel + '</div>' +
-      '<div style="margin-top:14px;text-align:right;border-top:0.5px solid var(--sep);padding-top:12px">' + reasonsHtml + '</div>' +
+      '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px">' +
+        '<span style="font-size:13px;font-weight:700;color:var(--text2)">صحة المخزون</span>' +
+        '<span style="font-size:16px;font-weight:800;color:' + health.statusColor + '">' + health.statusLabel + '</span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:baseline;gap:6px;margin:8px 0 12px">' +
+        '<span style="font-size:42px;font-weight:800;letter-spacing:-1.2px;color:var(--text)">' + health.score + '</span>' +
+        '<span style="font-size:15px;color:var(--text2);font-weight:600">/ 100</span>' +
+      '</div>' +
+      '<div style="height:14px;border-radius:8px;background:var(--card-bg2);overflow:hidden">' +
+        '<div id="inv-health-bar" style="height:100%;width:0;border-radius:8px;background:' + health.statusColor + ';transition:width 1.1s cubic-bezier(.22,.9,.35,1)"></div>' +
+      '</div>' +
+      '<div style="margin-top:16px;text-align:right;border-top:0.5px solid var(--sep);padding-top:12px">' + reasonsHtml + '</div>' +
     '</div>';
 
   requestAnimationFrame(function(){
     requestAnimationFrame(function(){
-      var ring = document.getElementById('inv-health-ring');
-      if (ring) ring.style.strokeDashoffset = offset;
+      var bar = document.getElementById('inv-health-bar');
+      if (bar) bar.style.width = health.score + '%';
     });
   });
 }

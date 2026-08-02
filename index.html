@@ -910,7 +910,7 @@
       </div>
     </div>
     <div style="font-size:11.5px;color:var(--text2);margin-bottom:10px" id="inv-slow-sub"></div>
-    <div id="inv-slow-preview"></div>
+    <div id="inv-slow-categories"></div>
     <div class="action-box act-normal" style="margin-top:12px">
       <div class="act-title">💡 توصية</div>
       <div class="act-desc">راجع القايمة دي مع المورد — رجّع اللي ينفع يترجع، وخصّم الباقي عشان تفرّغ رأس المال ده لأصناف أسرع حركة.</div>
@@ -1111,6 +1111,18 @@
 </div>
 
 <!-- INVENTORY BUCKET DRILL-DOWN MODAL -->
+<div class="modal-overlay" id="inv-slow-cat-modal">
+  <div class="modal" style="max-width:440px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:10px">
+      <h3 id="inv-slow-cat-title" style="margin-bottom:0;flex:1">فئة</h3>
+      <button onclick="closeInvSlowCatModal()" style="background:var(--fill);border:none;color:var(--text2);width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;flex-shrink:0">✕</button>
+    </div>
+    <div id="inv-slow-cat-sub" style="font-size:12px;color:var(--text2);margin-bottom:10px"></div>
+    <div id="inv-slow-cat-export" style="display:flex;gap:6px;margin-bottom:10px"></div>
+    <div id="inv-slow-cat-list"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="inv-bucket-modal">
   <div class="modal" style="max-width:440px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px">
@@ -4977,10 +4989,10 @@ function renderInventoryAging(d){
   // Expiry donut
   renderInvExpiryDonut(d);
 
-  // Slow list
+  // Slow list — بقى بيتقسّم فئات
   var slowList = d.slow_dead_list;
   document.getElementById('inv-slow-sub').textContent = 'إجمالي ' + d.slow_dead_count + ' صنف راكد بقيمة ' + invFmt(d.slow_dead_total_cost) + ' ج.م';
-  renderInfiniteInvList('inv-slow-preview', slowList, invSlowItemHtml, 8);
+  renderSlowCategories(d.slow_category_summary || []);
 
   // Near expiry list
   var expList = d.near_expiry_list;
@@ -4990,6 +5002,91 @@ function renderInventoryAging(d){
   d._calc = { idealLow: idealLow, idealHigh: idealHigh, marginPct: (100-marginRatio*100).toFixed(0), slowPct: slowPct, dailyCogs: dailyCogs };
   _lastInvData = d;
 }
+
+// ===================================================================
+// 🐌 الأصناف الراكدة — فئات (ويندو أولى) ← أصناف الفئة (ويندو تانية)
+// ===================================================================
+var INV_CATEGORY_ICONS = { 'الادوية': '💊', 'التجميل': '💄' };
+
+function renderSlowCategories(categories) {
+  var box = document.getElementById('inv-slow-categories');
+  if (!categories.length) { box.innerHTML = '<div style="font-size:12.5px;color:var(--text2);padding:10px 0">مفيش أصناف راكدة</div>'; return; }
+  box.innerHTML = categories.map(function(c, i){
+    var icon = INV_CATEGORY_ICONS[c.category] || '📦';
+    return '<div onclick="openSlowCategory(\'' + c.category.replace(/'/g, "\\'") + '\')" style="display:flex;align-items:center;gap:11px;padding:11px 0;cursor:pointer;' +
+        (i > 0 ? 'border-top:0.5px solid var(--sep)' : '') + '">' +
+      '<span style="width:32px;height:32px;border-radius:9px;background:var(--fill);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">' + icon + '</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:13.5px;font-weight:700">' + c.category + '</div>' +
+        '<div style="font-size:11.5px;color:var(--text2);margin-top:1px">' + c.count + ' صنف</div>' +
+      '</div>' +
+      '<div style="font-size:13px;font-weight:800">' + invFmt(c.cost) + ' ج</div>' +
+      '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>' +
+    '</div>';
+  }).join('');
+}
+
+var invSlowCatCurrent_ = null;
+
+function openSlowCategory(category) {
+  var all = (window.invAgingData_ && window.invAgingData_.slow_dead_list) || [];
+  var items = all.filter(function(it){ return (it.category || 'غير مصنّف') === category; });
+  invSlowCatCurrent_ = { category: category, items: items };
+
+  document.getElementById('inv-slow-cat-title').textContent = (INV_CATEGORY_ICONS[category] || '📦') + ' ' + category;
+  var totalCost = items.reduce(function(s, it){ return s + it.cost; }, 0);
+  document.getElementById('inv-slow-cat-sub').textContent = items.length + ' صنف راكد بقيمة ' + invFmt(totalCost) + ' ج';
+
+  var exportBox = document.getElementById('inv-slow-cat-export');
+  exportBox.innerHTML =
+    '<button onclick="exportSlowCatPDF()" style="flex:1;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ PDF</button>' +
+    '<button onclick="exportSlowCatExcel()" style="flex:1;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">⬇︎ Excel</button>';
+
+  var listBox = document.getElementById('inv-slow-cat-list');
+  renderInfiniteInvList('inv-slow-cat-list', items, invSlowCatItemHtml, 15);
+
+  document.getElementById('inv-slow-cat-modal').classList.add('show');
+}
+function closeInvSlowCatModal(){ document.getElementById('inv-slow-cat-modal').classList.remove('show'); }
+
+function invSlowCatItemHtml(it) {
+  var daysLbl = (it.days === null || it.days === undefined) ? 'لم تُباع أبدًا' : 'راكد من ' + it.days + ' يوم';
+  var safe = it.name.replace(/'/g, "\\'");
+  return '<div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-top:0.5px solid var(--sep)">' +
+    '<button onclick="copyItemName(\'' + safe + '\')" style="background:var(--fill);border:none;border-radius:7px;width:26px;height:26px;font-size:12px;cursor:pointer;flex-shrink:0">📋</button>' +
+    '<div style="flex:1;min-width:0">' +
+      '<div style="font-size:12.5px;font-weight:600">' + it.name + '</div>' +
+      '<div style="font-size:11px;color:var(--text2);margin-top:1px">الكمية: ' + it.stock + ' &nbsp;·&nbsp; ' + daysLbl + '</div>' +
+    '</div>' +
+    '<div style="font-size:12px;font-weight:700;flex-shrink:0">' + invFmt(it.cost) + ' ج</div>' +
+  '</div>';
+}
+
+function copyItemName(name) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(name).then(function(){
+      showToast('📋 اتنسخ "' + name + '"');
+    }).catch(function(){ showToast('تعذّر النسخ'); });
+  }
+}
+
+function invSlowCatRows_() {
+  return invSlowCatCurrent_.items.map(function(it){
+    return {
+      'الصنف': it.name, 'الكمية': it.stock, 'التكلفة': it.cost,
+      'راكد من': (it.days === null || it.days === undefined) ? 'لم تُباع أبدًا' : (it.days + ' يوم')
+    };
+  });
+}
+function exportSlowCatPDF() {
+  if (!invSlowCatCurrent_ || !invSlowCatCurrent_.items.length) return;
+  exportRowsToPDF(invSlowCatRows_(), invSlowCatCurrent_.category + ' — أصناف راكدة');
+}
+function exportSlowCatExcel() {
+  if (!invSlowCatCurrent_ || !invSlowCatCurrent_.items.length) return;
+  exportRowsToExcel(invSlowCatRows_(), invSlowCatCurrent_.category.replace(/\s+/g, '_') + '_راكد');
+}
+
 
 function invSlowItemHtml(it, idx){
   return '<div class="inv-list-item" onclick="openInvItemDetail(\'slow\',' + idx + ')" style="display:flex;align-items:center;gap:11px;padding:10px 0">' +

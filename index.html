@@ -885,12 +885,16 @@
   <div class="stats-row" id="inv-kpis" style="margin-bottom:12px"></div>
 
   <div class="dash-panel">
-    <div class="dash-panel-title">📊 توزيع القيمة حسب آخر بيع (Aging)</div>
+    <div class="dash-panel-title" style="justify-content:space-between">📊 توزيع القيمة حسب آخر بيع (Aging)
+      <button onclick="openInvKpiInfo('aging')" style="width:20px;height:20px;border-radius:50%;border:1.3px solid var(--text3);background:transparent;color:var(--text3);font-size:11px;font-weight:700;font-family:Georgia,serif;font-style:italic;cursor:pointer;line-height:1;flex-shrink:0">i</button>
+    </div>
     <div id="inv-aging-bars"></div>
   </div>
 
   <div class="dash-panel">
-    <div class="dash-panel-title">⏳ توزيع القيمة حسب الصلاحية</div>
+    <div class="dash-panel-title" style="justify-content:space-between">⏳ توزيع القيمة حسب الصلاحية
+      <button onclick="openInvKpiInfo('expiryDist')" style="width:20px;height:20px;border-radius:50%;border:1.3px solid var(--text3);background:transparent;color:var(--text3);font-size:11px;font-weight:700;font-family:Georgia,serif;font-style:italic;cursor:pointer;line-height:1;flex-shrink:0">i</button>
+    </div>
     <div style="display:flex;align-items:center;gap:18px">
       <svg width="110" height="110" viewBox="0 0 120 120" id="inv-expiry-donut"></svg>
       <div style="flex:1;display:flex;flex-direction:column;gap:9px" id="inv-expiry-legend"></div>
@@ -4708,6 +4712,12 @@ function showInvError(msg){
 // 🩺 درجة صحة المخزون — محسوبة من نفس بيانات getInventoryAging،
 // من غير أي منطق أو حساب جديد، بس تجميع وعرض
 // ===================================================================
+// أي حاجة قابلة للدوس عشان تشرح نفسها، لازم يبقى معاها أيقونة ⓘ واضحة —
+// مش النص لوحده يبقى هو المؤشر إن فيه تفاصيل تانية
+function invInfoLbl_(text) {
+  return text + ' <span style="display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;border-radius:50%;background:var(--fill);color:var(--accent);font-size:8.5px;font-weight:800;margin-right:2px;vertical-align:1px">i</span>';
+}
+
 function invScaleFactor_(pct, goodBelow, zeroAt) {
   if (pct <= goodBelow) return 100;
   if (pct >= zeroAt) return 0;
@@ -4769,18 +4779,26 @@ function renderInvHealthHero(health) {
   }).join('');
 
   box.innerHTML =
-    '<div class="cust-card" style="padding:22px 18px;text-align:center">' +
+    '<div class="cust-card" style="padding:22px 18px;text-align:center;position:relative">' +
+      invInfoBtn_('healthScore', 'position:absolute;top:14px;left:14px') +
       '<svg width="130" height="130" viewBox="0 0 130 130" style="margin:0 auto;display:block">' +
         '<circle cx="65" cy="65" r="' + r + '" fill="none" stroke="var(--card-bg2)" stroke-width="11"/>' +
-        '<circle cx="65" cy="65" r="' + r + '" fill="none" stroke="' + health.statusColor + '" stroke-width="11" ' +
-          'stroke-linecap="round" stroke-dasharray="' + c + '" stroke-dashoffset="' + offset + '" transform="rotate(-90 65 65)" ' +
-          'style="transition:stroke-dashoffset 1s ease"/>' +
+        '<circle id="inv-health-ring" cx="65" cy="65" r="' + r + '" fill="none" stroke="' + health.statusColor + '" stroke-width="11" ' +
+          'stroke-linecap="round" stroke-dasharray="' + c + '" stroke-dashoffset="' + c + '" transform="rotate(-90 65 65)" ' +
+          'style="transition:stroke-dashoffset 1.1s cubic-bezier(.22,.9,.35,1)"/>' +
         '<text x="65" y="60" text-anchor="middle" font-size="30" font-weight="800" fill="var(--text)">' + health.score + '</text>' +
         '<text x="65" y="80" text-anchor="middle" font-size="11" fill="var(--text2)">من 100</text>' +
       '</svg>' +
       '<div style="font-size:16px;font-weight:800;color:' + health.statusColor + ';margin-top:10px">' + health.statusLabel + '</div>' +
       '<div style="margin-top:14px;text-align:right;border-top:0.5px solid var(--sep);padding-top:12px">' + reasonsHtml + '</div>' +
     '</div>';
+
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      var ring = document.getElementById('inv-health-ring');
+      if (ring) ring.style.strokeDashoffset = offset;
+    });
+  });
 }
 
 function renderInvExecSummary(d, health, idealLow, idealHigh, withinRange) {
@@ -4903,10 +4921,10 @@ function renderInventoryAging(d){
   // KPIs
   var slowPct = invPct(d.slow_dead_total_cost, d.stock_positive_cost_total);
   document.getElementById('inv-kpis').innerHTML =
-    '<div class="stat-cell" style="cursor:pointer" onclick="openInvKpiInfo(\'range\')"><div class="stat-v">' + invFmt(idealLow) + '-' + invFmt(idealHigh) + '</div><div class="stat-l">النطاق المطلوب</div></div>' +
-    '<div class="stat-cell" style="cursor:pointer" onclick="openInvKpiInfo(\'margin\')"><div class="stat-v" style="color:#5FB88A">' + (100-marginRatio*100).toFixed(0) + '%</div><div class="stat-l">هامش الربح</div></div>' +
-    '<div class="stat-cell" style="cursor:pointer" onclick="openInvKpiInfo(\'dead\')"><div class="stat-v" style="color:#E0727C">' + invFmt(d.slow_dead_total_cost) + '</div><div class="stat-l">قيمة الراكد</div></div>' +
-    '<div class="stat-cell" style="cursor:pointer" onclick="openInvKpiInfo(\'deadpct\')"><div class="stat-v" style="color:#FF9F0A">' + slowPct + '%</div><div class="stat-l">نسبة الركود</div></div>';
+    '<div class="stat-cell" style="cursor:pointer" onclick="openInvKpiInfo(\'range\')"><div class="stat-v">' + invFmt(idealLow) + '-' + invFmt(idealHigh) + '</div><div class="stat-l">' + invInfoLbl_('النطاق المطلوب') + '</div></div>' +
+    '<div class="stat-cell" style="cursor:pointer" onclick="openInvKpiInfo(\'margin\')"><div class="stat-v" style="color:#5FB88A">' + (100-marginRatio*100).toFixed(0) + '%</div><div class="stat-l">' + invInfoLbl_('هامش الربح') + '</div></div>' +
+    '<div class="stat-cell" style="cursor:pointer" onclick="openInvKpiInfo(\'dead\')"><div class="stat-v" style="color:#E0727C">' + invFmt(d.slow_dead_total_cost) + '</div><div class="stat-l">' + invInfoLbl_('قيمة الراكد') + '</div></div>' +
+    '<div class="stat-cell" style="cursor:pointer" onclick="openInvKpiInfo(\'deadpct\')"><div class="stat-v" style="color:#FF9F0A">' + slowPct + '%</div><div class="stat-l">' + invInfoLbl_('نسبة الركود') + '</div></div>';
 
   // Aging bars
   var order = [
@@ -5149,6 +5167,22 @@ function openInvKpiInfo(key){
     body = '<div class="act-desc" style="line-height:1.8">نسبة قيمة المخزون الراكد من إجمالي قيمة المخزون اللي عنده رصيد.<br><br>' +
       '• النسبة الحالية: <b>' + c.slowPct + '%</b><br><br>' +
       'المستوى الصحي عادة أقل من ١٥٪. لو النسبة أعلى من كده، ده مؤشر إن في خلل في قرارات الشراء — بتطلب أصناف مش بتتحرك.</div>';
+  } else if (key === 'healthScore') {
+    var w = INV_HEALTH_CONFIG.weights;
+    title = '🩺 إزاي بتتحسب الدرجة';
+    body = '<div class="act-desc" style="line-height:1.8">الدرجة من 100، بتتحسب من 3 عوامل بأوزان مختلفة:<br><br>' +
+      '• نسبة الراكد من المخزون — وزن <b>' + w.deadStock + '%</b><br>' +
+      '• قيمة قرب/منتهية الصلاحية — وزن <b>' + w.expiryRisk + '%</b><br>' +
+      '• هل الرصيد داخل النطاق المستهدف — وزن <b>' + w.rangeCompliance + '%</b><br><br>' +
+      '80+ = صحي، 55-79 = يحتاج انتباه، أقل من 55 = حرج.</div>';
+  } else if (key === 'aging') {
+    title = '📊 توزيع القيمة حسب آخر بيع';
+    body = '<div class="act-desc" style="line-height:1.8">كل الأصناف مقسّمة حسب آخر مرة اتباعت فيها، عشان تفرّق بسرعة بين اللي بيتحرك واللي راكد.<br><br>' +
+      'دوس على أي شريحة تشوف كل الأصناف اللي جواها بالتفصيل، ومعاها زرار نسخ/تصدير خاص بيها.</div>';
+  } else if (key === 'expiryDist') {
+    title = '⏳ توزيع القيمة حسب الصلاحية';
+    body = '<div class="act-desc" style="line-height:1.8">كل الأصناف مقسّمة حسب المدة المتبقية لانتهاء صلاحيتها.<br><br>' +
+      'دوس على أي شريحة في الدونات أو الليجند تشوف الأصناف اللي جواها.</div>';
   }
 
   document.getElementById('inv-kpi-title').textContent = title;
@@ -5156,6 +5190,12 @@ function openInvKpiInfo(key){
   document.getElementById('inv-kpi-modal').classList.add('show');
 }
 function closeInvKpiInfo(){ document.getElementById('inv-kpi-modal').classList.remove('show'); }
+
+// زرار (i) قابل لإعادة الاستخدام — يفتح نفس نافذة الشرح بأي مفتاح
+function invInfoBtn_(key, extraStyle) {
+  return '<button onclick="event.stopPropagation(); openInvKpiInfo(\'' + key + '\')" ' +
+    'style="width:20px;height:20px;border-radius:50%;border:1.3px solid var(--text3);background:transparent;color:var(--text3);font-size:11px;font-weight:700;font-family:Georgia,serif;font-style:italic;cursor:pointer;line-height:1;flex-shrink:0;' + (extraStyle || '') + '">i</button>';
+}
 
 var _lastInvData = null;
 function renderInvExpiryDonut(d){

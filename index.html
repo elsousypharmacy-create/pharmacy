@@ -1100,6 +1100,12 @@ try {
     <div style="font-size:13px;color:var(--text2);margin-bottom:14px">استخدمها لو شيت "الموظفين" فيه صفوف مكررة أو بيانات ناقصة</div>
     <div id="maint-steps"></div>
   </div>
+  <div class="cust-card" style="padding:16px;margin-top:12px">
+    <div style="font-size:15px;font-weight:700;letter-spacing:-0.2px;margin-bottom:2px">فحص شامل</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:14px">بيجرّب كل الاتصالات — البصمة والشيتات وملفات المبيعات والرسايل — ويقولك إيه اللي واقف بالظبط</div>
+    <button onclick="runFullDiagnosis()" style="width:100%;padding:12px;border:none;border-radius:var(--r-md);background:var(--accent);color:#fff;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer">ابدأ الفحص</button>
+    <div id="diag-result" style="margin-top:12px"></div>
+  </div>
 </div>
 
 <div id="attendance-list-section" class="deliv-wrap" style="display:none">
@@ -1362,7 +1368,7 @@ function toggleExpenseCategory(idx) {
     items.forEach(function(it){
       html += '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--sep);font-size:11px">';
       html += '<span style="color:var(--text2)">' + it.desc + '<br><span style="color:var(--text2)">' + it.date + '</span></span>';
-      html += '<span style="color:var(--t-rose);font-weight:700;white-space:nowrap">' + Math.round(it.amount).toLocaleString() + ' ج</span>';
+      html += '<span style="color:var(--t-rose);font-weight:700;white-space:nowrap">' + Math.round(it.amount).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</span>';
       html += '</div>';
     });
   }
@@ -1538,7 +1544,7 @@ function detailHTML(c) {
     '</div>' +
     '<div class="stats-row">' +
       '<div class="stat-cell"><div class="stat-v" style="color:var(--t-blue)">' + c.monthly_visits + '</div><div class="stat-l">زيارات/شهر</div></div>' +
-      '<div class="stat-cell"><div class="stat-v" style="color:var(--t-gold)">' + Number(c.monthly_spend||0).toLocaleString() + '</div><div class="stat-l">إنفاق/شهر</div></div>' +
+      '<div class="stat-cell"><div class="stat-v" style="color:var(--t-gold)">' + Number(c.monthly_spend||0).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="stat-l">إنفاق/شهر</div></div>' +
       '<div class="stat-cell"><div class="stat-v" style="color:' + (c.isAlert?'var(--c-rose)':'var(--c-mint)') + '">' + c.days_since + ' يوم</div><div class="stat-l">آخر زيارة</div></div>' +
       '<div class="stat-cell"><div class="stat-v" style="color:var(--t-mint)">' + c.incentive + ' ج</div><div class="stat-l">قيمة الهدية</div></div>' +
     '</div>' +
@@ -2607,7 +2613,7 @@ function renderMapPins(list) {
     if (!c.lat || !c.lng) return;
     var distKm = c.distance ? (c.distance/1000).toFixed(1) + ' كم' : '—';
     var inRange = c.inRange5km !== undefined ? c.inRange5km : (c.distance ? c.distance <= DELIVERY_RADIUS_KM*1000 : false);
-    var valLine = c.value ? ' · 💰 ' + Number(c.value).toLocaleString() + ' ج' : '';
+    var valLine = c.value ? ' · 💰 ' + Number(c.value).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج' : '';
     var timeLine = c.time ? '<div class="map-pop-sub">🕐 ' + fmtDate(c.time) + '</div>' : '';
     var popup = '<div class="map-pop-name">👤 ' + (c.name||'عميل') + '</div>' +
       '<div class="map-pop-sub">📞 ' + c.phone + ' · 📍 ' + distKm + valLine + '</div>' +
@@ -2698,7 +2704,7 @@ function renderDeliveryActive(list) {
         '<div class="deliv-active-name">👤 ' + o.customername + '</div>' +
         '<div class="deliv-active-time" style="color:' + timeColor + '">⏱️ ' + mins + ' دقيقة</div>' +
       '</div>' +
-      '<div class="deliv-active-sub"><span>💰 ' + Number(o.grandtotal||0).toLocaleString() + ' ج</span><span>' + (o.hasLocation ? '📍 موقعه محفوظ' : '📍 موقع غير محفوظ') + '</span></div>' +
+      '<div class="deliv-active-sub"><span>💰 ' + Number(o.grandtotal||0).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</span><span>' + (o.hasLocation ? '📍 موقعه محفوظ' : '📍 موقع غير محفوظ') + '</span></div>' +
       '<div class="deliv-active-btns"><button onclick="window.open(\'tel:0' + o.customerphone + '\')">📞 اتصال بالعميل</button></div>' +
     '</div>';
   }).join('');
@@ -2768,7 +2774,7 @@ function renderDeliveryKPI(d) {
   html += '<div class="dash-panel"><div class="dash-panel-title">📦 نظرة عامة — ' + (d.label||'') + '</div>';
   html += '<div class="dash-grid">';
   html += '<div class="dash-card"><div class="dv">' + d.total + '</div><div class="dl">إجمالي الطلبيات</div></div>';
-  html += '<div class="dash-card"><div class="dv">' + d.totalValue.toLocaleString() + ' ج</div><div class="dl">إجمالي القيمة</div></div>';
+  html += '<div class="dash-card"><div class="dv">' + d.totalValue.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</div><div class="dl">إجمالي القيمة</div></div>';
   html += '<div class="dash-card"><div class="dv">' + d.avgDuration + ' د</div><div class="dl">متوسط مدة التوصيل</div></div>';
   html += '<div class="dash-card"><div class="dv">' + d.inRangePct + '%</div><div class="dl">دقة الموقع<div class="ds2">' + d.inRange + ' في النطاق / ' + d.outRange + ' خارجه</div></div></div>';
   html += '</div></div>';
@@ -2788,7 +2794,7 @@ function renderDeliveryKPI(d) {
   if (d.top10 && d.top10.length) {
     html += '<div class="dash-panel"><div class="dash-panel-title">🏆 Top 10 عملاء</div>';
     d.top10.forEach(function(c, i){
-      html += '<div class="dash-comm-row"><span>' + (i+1) + '. ' + c.name + '</span><span>' + c.count + ' مرات — ' + Math.round(c.value).toLocaleString() + ' ج</span></div>';
+      html += '<div class="dash-comm-row"><span>' + (i+1) + '. ' + c.name + '</span><span>' + c.count + ' مرات — ' + Math.round(c.value).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</span></div>';
     });
     html += '</div>';
   }
@@ -2830,7 +2836,7 @@ function toggleStaffBreakdown(metric, title) {
   var html = '';
   list.forEach(function(s){
     var v = getVal(s);
-    var vStr = (metric === 'invoices' || metric === 'returns') ? v : Math.round(v).toLocaleString() + ' ج';
+    var vStr = (metric === 'invoices' || metric === 'returns') ? v : Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج';
     html += '<div class="hist-item">';
     html += '<div class="hist-icon">👤</div>';
     html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + s.name + '</div></div>';
@@ -2963,13 +2969,13 @@ function debtorCardHtml_(c) {
   return '<div class="cust-card" style="padding:13px 14px;margin-bottom:8px">' +
     '<div style="display:flex;justify-content:space-between;align-items:center">' +
       '<span style="font-size:14px;font-weight:700">' + c.name + '</span>' +
-      '<span style="font-size:14px;font-weight:800;color:var(--t-red)">' + Math.round(c.net).toLocaleString() + ' ج</span>' +
+      '<span style="font-size:14px;font-weight:800;color:var(--t-red)">' + Math.round(c.net).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</span>' +
     '</div>' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">' +
       '<span style="font-size:12px;color:var(--text2)">' + (telLink ? '<a href="' + telLink + '" style="color:var(--accent);text-decoration:none">📞 ' + c.phone + '</a>' : (c.phone || '—')) + '</span>' +
       '<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px;background:' + badgeBg + ';color:' + badgeColor + '">' + (days === 0 ? 'النهاردة' : days + ' يوم') + '</span>' +
     '</div>' +
-    '<div style="font-size:11px;color:var(--text2);margin-top:4px">إجمالي: ' + Math.round(c.owed).toLocaleString() + ' · مدفوع: ' + Math.round(c.paid).toLocaleString() + '</div>' +
+    '<div style="font-size:11px;color:var(--text2);margin-top:4px">إجمالي: ' + Math.round(c.owed).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' · مدفوع: ' + Math.round(c.paid).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div>' +
     (overdue && c.phone
       ? '<button id="rmbtn-' + c.phone + '" onclick="sendDebtReminder(\'' + c.phone + '\',\'' + safeName + '\',' + c.net + ', this)" ' +
           'style="width:100%;margin-top:10px;padding:9px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--t-red);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">تذكير بالسداد (SMS)</button>'
@@ -3030,9 +3036,9 @@ function renderDebts(d) {
       var deficitColor = ms.deficit > 0 ? 'var(--c-rose)' : 'var(--c-mint)';
       html += '<div class="dash-panel"><div class="dash-panel-title">📊 تحليل دين الشهر (من ' + ms.days_with_data + ' يوم بيانات)</div>';
       html += '<div class="dash-grid">';
-      html += '<div class="dash-card"><div class="dv" style="color:var(--t-rose)">' + ms.total_new_debt.toLocaleString() + '</div><div class="dl">دين جديد اتسجل (ج)</div></div>';
-      html += '<div class="dash-card"><div class="dv" style="color:var(--t-mint)">' + ms.total_collected.toLocaleString() + '</div><div class="dl">اتحصّل فعليًا (ج)</div></div>';
-      html += '<div class="dash-card" style="grid-column:1/-1"><div class="dv" style="color:' + deficitColor + '">' + (ms.deficit > 0 ? '−' : '+') + Math.abs(ms.deficit).toLocaleString() + '</div><div class="dl">' + (ms.deficit > 0 ? 'العجز (دين أكتر من التحصيل)' : 'فايض (تحصيل أكتر من الدين الجديد)') + '</div></div>';
+      html += '<div class="dash-card"><div class="dv" style="color:var(--t-rose)">' + ms.total_new_debt.toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">دين جديد اتسجل (ج)</div></div>';
+      html += '<div class="dash-card"><div class="dv" style="color:var(--t-mint)">' + ms.total_collected.toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">اتحصّل فعليًا (ج)</div></div>';
+      html += '<div class="dash-card" style="grid-column:1/-1"><div class="dv" style="color:' + deficitColor + '">' + (ms.deficit > 0 ? '−' : '+') + Math.abs(ms.deficit).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">' + (ms.deficit > 0 ? 'العجز (دين أكتر من التحصيل)' : 'فايض (تحصيل أكتر من الدين الجديد)') + '</div></div>';
       html += '</div></div>';
     }
   }
@@ -3046,10 +3052,10 @@ function renderDebts(d) {
   }
   html += '<div class="dash-grid">';
   html += '<div class="dash-card"><div class="dv" style="color:var(--t-rose)">' + filtered.length + '</div><div class="dl">عدد المديونين</div></div>';
-  html += '<div class="dash-card"><div class="dv">' + Math.round(fTotalOwed).toLocaleString() + '</div><div class="dl">إجمالي الديون (ج)</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:var(--t-mint)">' + Math.round(fTotalPaid).toLocaleString() + '</div><div class="dl">المدفوع (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv">' + Math.round(fTotalOwed).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">إجمالي الديون (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:var(--t-mint)">' + Math.round(fTotalPaid).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">المدفوع (ج)</div></div>';
   var netVal = (debtsRange_ === 'all' && typeof d.systemTotalDebt === 'number') ? d.systemTotalDebt : fTotalNet;
-  html += '<div class="dash-card"><div class="dv" style="color:var(--t-rose)">' + Math.round(netVal).toLocaleString() + '</div><div class="dl">صافي المتبقي (ج)' + (debtsRange_ === 'all' && typeof d.systemTotalDebt === 'number' ? '<div class="ds2">رقم رسمي مضمون</div>' : '') + '</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:var(--t-rose)">' + Math.round(netVal).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">صافي المتبقي (ج)' + (debtsRange_ === 'all' && typeof d.systemTotalDebt === 'number' ? '<div class="ds2">رقم رسمي مضمون</div>' : '') + '</div></div>';
   html += '<div class="cust-card" style="padding:16px;margin-bottom:12px">';
   html += '<div style="font-size:14px;font-weight:700;margin-bottom:2px">إجمالي الديون</div>';
   if (d.source_updated) {
@@ -3057,10 +3063,10 @@ function renderDebts(d) {
   }
   html += '<div style="display:flex;flex-wrap:wrap;margin:0 -6px">';
   html += debtStat_(filtered.length, 'مديون', 'var(--c-red)');
-  html += debtStat_(Math.round(fTotalOwed).toLocaleString(), 'إجمالي الديون (ج)', 'var(--text)');
-  html += debtStat_(Math.round(fTotalPaid).toLocaleString(), 'المدفوع (ج)', 'var(--c-green)');
+  html += debtStat_(Math.round(fTotalOwed).toLocaleString('en-US', { maximumFractionDigits: 2 }), 'إجمالي الديون (ج)', 'var(--text)');
+  html += debtStat_(Math.round(fTotalPaid).toLocaleString('en-US', { maximumFractionDigits: 2 }), 'المدفوع (ج)', 'var(--c-green)');
   var netVal = (debtsRange_ === 'all' && typeof d.systemTotalDebt === 'number') ? d.systemTotalDebt : fTotalNet;
-  html += debtStat_(Math.round(netVal).toLocaleString(), 'صافي المتبقي (ج)', 'var(--c-red)');
+  html += debtStat_(Math.round(netVal).toLocaleString('en-US', { maximumFractionDigits: 2 }), 'صافي المتبقي (ج)', 'var(--c-red)');
   html += '</div>';
   html += '<button onclick="openDayDebits()" style="width:100%;margin-top:12px;background:var(--fill);border:none;color:var(--accent);border-radius:var(--r-md);padding:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">ديون اليوم لكل موظف</button>';
   html += '</div>';
@@ -3135,27 +3141,27 @@ function renderProfitLoss(d, nw) {
     html += '<div class="dash-panel-title">🏦 صافي الأصول (منذ ' + nw.starting_date + ')</div>';
     html += '<div style="text-align:center;padding:10px 0 16px">';
     html += '<div style="font-size:11px;color:var(--text2);margin-bottom:4px">التغيير في صافي الأصول</div>';
-    html += '<div style="font-size:26px;font-weight:900;color:' + changeColor + '">' + changeSign + nw.change_since_start.toLocaleString() + ' ج</div>';
-    html += '<div style="font-size:11px;color:var(--text2);margin-top:4px">من ' + nw.starting_total.toLocaleString() + ' ج → تقريباً ' + nw.estimated_total_now.toLocaleString() + ' ج</div>';
+    html += '<div style="font-size:26px;font-weight:900;color:' + changeColor + '">' + changeSign + nw.change_since_start.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</div>';
+    html += '<div style="font-size:11px;color:var(--text2);margin-top:4px">من ' + nw.starting_total.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج → تقريباً ' + nw.estimated_total_now.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</div>';
     html += '</div>';
     html += '<div class="dash-grid">';
-    html += '<div class="dash-card"><div class="dv">' + nw.starting_cash.toLocaleString() + '</div><div class="dl">كاش البداية (ج)</div></div>';
-    html += '<div class="dash-card"><div class="dv">' + Math.round(nw.starting_inventory).toLocaleString() + '</div><div class="dl">مخزون البداية (ج)</div></div>';
-    html += '<div class="dash-card"><div class="dv" style="color:var(--t-amber)">' + nw.total_purchases_since_start.toLocaleString() + '</div><div class="dl">مشتروات (تحويل لمخزون)<div class="ds2">مش خسارة</div></div></div>';
-    html += '<div class="dash-card"><div class="dv" style="color:var(--t-violet)">' + Math.round(nw.current_inventory_actual).toLocaleString() + '</div><div class="dl">المخزون الفعلي دلوقتي (ج)</div></div>';
+    html += '<div class="dash-card"><div class="dv">' + nw.starting_cash.toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">كاش البداية (ج)</div></div>';
+    html += '<div class="dash-card"><div class="dv">' + Math.round(nw.starting_inventory).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">مخزون البداية (ج)</div></div>';
+    html += '<div class="dash-card"><div class="dv" style="color:var(--t-amber)">' + nw.total_purchases_since_start.toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">مشتروات (تحويل لمخزون)<div class="ds2">مش خسارة</div></div></div>';
+    html += '<div class="dash-card"><div class="dv" style="color:var(--t-violet)">' + Math.round(nw.current_inventory_actual).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">المخزون الفعلي دلوقتي (ج)</div></div>';
     html += '</div></div>';
   }
 
   html += '<div class="dash-panel">';
   html += '<div style="text-align:center;padding:16px 0">';
   html += '<div style="font-size:12px;color:var(--text2);margin-bottom:6px">' + netLabel + '</div>';
-  html += '<div style="font-size:32px;font-weight:900;color:' + netColor + '">' + Math.abs(d.net_profit).toLocaleString() + ' ج</div>';
+  html += '<div style="font-size:32px;font-weight:900;color:' + netColor + '">' + Math.abs(d.net_profit).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</div>';
   html += '</div>';
   html += '<div class="dash-grid">';
-  html += '<div class="dash-card"><div class="dv">' + Math.round(d.total_sales).toLocaleString() + '</div><div class="dl">مبيعات الشهر (ج)</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:var(--t-violet)">' + Math.round(d.total_profit).toLocaleString() + '</div><div class="dl">ربح الشهر (ج)</div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:var(--t-rose)">' + Math.round(d.total_expenses).toLocaleString() + '</div><div class="dl">مصروفات الشهر (ج)<div class="ds2">بدون المشتروات</div></div></div>';
-  html += '<div class="dash-card"><div class="dv" style="color:var(--t-amber)">' + Math.round(d.total_salaries_so_far).toLocaleString() + '</div><div class="dl">مرتبات (حتى دلوقتي)<div class="ds2">' + Math.round(d.daily_salary).toLocaleString() + ' ج/يوم</div></div></div>';
+  html += '<div class="dash-card"><div class="dv">' + Math.round(d.total_sales).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">مبيعات الشهر (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:var(--t-violet)">' + Math.round(d.total_profit).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">ربح الشهر (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:var(--t-rose)">' + Math.round(d.total_expenses).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">مصروفات الشهر (ج)<div class="ds2">بدون المشتروات</div></div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:var(--t-amber)">' + Math.round(d.total_salaries_so_far).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">مرتبات (حتى دلوقتي)<div class="ds2">' + Math.round(d.daily_salary).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج/يوم</div></div></div>';
   html += '</div></div>';
 
   html += '<div class="dash-panel"><div class="dash-panel-title">📅 تفصيل كل يوم</div>';
@@ -3167,10 +3173,10 @@ function renderProfitLoss(d, nw) {
       html += '<div style="background:var(--card-bg2);border-radius:10px;padding:10px 12px;margin-bottom:6px">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center">';
       html += '<span style="font-weight:800;color:var(--text);font-size:13px">' + day.date + '</span>';
-      html += '<span style="font-weight:800;color:' + dayNet + '">' + day.net.toLocaleString() + ' ج</span>';
+      html += '<span style="font-weight:800;color:' + dayNet + '">' + day.net.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</span>';
       html += '</div>';
       html += '<div style="font-size:11px;color:var(--text2);margin-top:4px">';
-      html += 'مبيعات ' + day.sales.toLocaleString() + ' · ربح ' + day.profit.toLocaleString() + ' · مصروفات ' + day.expenses.toLocaleString() + ' · مرتبات ' + day.salary_share.toLocaleString();
+      html += 'مبيعات ' + day.sales.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' · ربح ' + day.profit.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' · مصروفات ' + day.expenses.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' · مرتبات ' + day.salary_share.toLocaleString('en-US', { maximumFractionDigits: 2 });
       html += '</div>';
       html += '</div>';
     });
@@ -3295,6 +3301,32 @@ function startSysStatusPolling() {
 function stopSysStatusPolling() {
   if (sysStatusTimer_) { clearInterval(sysStatusTimer_); sysStatusTimer_ = null; }
 }
+function runFullDiagnosis() {
+  var box = document.getElementById('diag-result');
+  box.innerHTML = '<div class="loading"><div class="spinner"></div><p>بيفحص... ممكن ياخد نص دقيقة</p></div>';
+  fetch(STAFF_SCRIPT_URL + '?action=diagnoseAll&_ts=' + Date.now(), { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d || !d.checks) { box.innerHTML = '<div style="font-size:13px;color:var(--t-rose)">الرد مش مفهوم — على الأرجح Fixes.gs مش متركب أو محتاج Deploy</div>'; return; }
+      var head = d.failed === 0
+        ? '<div style="font-size:14px;font-weight:700;color:var(--t-green);margin-bottom:10px">كل حاجة شغالة</div>'
+        : '<div style="font-size:14px;font-weight:700;color:var(--t-rose);margin-bottom:10px">' + d.failed + ' حاجة واقفة</div>';
+      box.innerHTML = head + d.checks.map(function(c){
+        return '<div style="padding:9px 0;border-bottom:0.5px solid var(--sep)">' +
+          '<div style="display:flex;align-items:center;gap:7px">' +
+            '<span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:' + (c.ok ? 'var(--c-green)' : 'var(--c-red)') + '"></span>' +
+            '<span style="font-size:13px;font-weight:600">' + c.name + '</span>' +
+          '</div>' +
+          '<div style="font-size:11px;color:var(--text2);margin-top:3px;word-break:break-word">' + c.detail + '</div>' +
+        '</div>';
+      }).join('');
+    })
+    .catch(function(err){
+      logQuietError_(err);
+      box.innerHTML = '<div style="font-size:13px;color:var(--t-rose)">مقدرتش أوصل للسيرفر — اتأكد إنك عملت Deploy بعد ما ضفت Fixes.gs</div>';
+    });
+}
+
 function fetchSysStatus() {
   fetch(STAFF_SCRIPT_URL + '?action=maintenanceStatus')
     .then(function(r){ return r.json(); })
@@ -3335,7 +3367,7 @@ function loadDebtsByEmployee() {
         return '<div style="margin-bottom:10px">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
             '<span style="font-size:13px;font-weight:600">' + e.employee + '</span>' +
-            '<span style="font-size:13px;font-weight:700">' + e.total.toLocaleString() + ' ج <span style="color:var(--text2);font-weight:400">· ' + e.count + ' عملية</span></span>' +
+            '<span style="font-size:13px;font-weight:700">' + e.total.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج <span style="color:var(--text2);font-weight:400">· ' + e.count + ' عملية</span></span>' +
           '</div>' +
           '<div style="height:6px;background:var(--card-bg2);border-radius:3px;overflow:hidden">' +
             '<div style="height:100%;width:' + pct + '%;background:' + (i === 0 ? 'var(--c-red)' : 'var(--accent)') + ';border-radius:3px"></div>' +
@@ -3359,16 +3391,16 @@ function loadHomeOverview() {
   var box = document.getElementById('home-alerts');
   box.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
-  Promise.all([
-    fetch(SCRIPT_URL + '?action=getSystemDailyTotals').then(function(r){ return r.json(); }).catch(function(){ return null; }),
-    fetch(SCRIPT_URL + '?action=maintenanceStatus').then(function(r){ return r.json(); }).catch(function(){ return null; }),
-    fetch(SCRIPT_URL + '?action=getAttendanceLive').then(function(r){ return r.json(); }).catch(function(){ return null; }),
-    fetch(SCRIPT_URL + '?action=getExpiryByMonth').then(function(r){ return r.json(); }).catch(function(){ return null; }),
-    fetch(SCRIPT_URL + '?action=getAgents').then(function(r){ return r.json(); }).catch(function(){ return null; }),
-    fetch(SCRIPT_URL + '?action=getDebtsData').then(function(r){ return r.json(); }).catch(function(){ return null; })
-  ]).then(function(results){
-    renderHomeOverview(results[0], results[1], results[2], results[3], results[4], results[5]);
-  });
+  fetch(SCRIPT_URL + '?action=getHomeBundle&_ts=' + Date.now(), { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(b){
+      if (!b || !b.ok) throw new Error((b && b.error) || 'رد فاضي');
+      renderHomeOverview(b.daily, b.maintenance, b.attendance, b.expiry, b.agents, b.debts);
+    })
+    .catch(function(err){
+      logQuietError_(err);
+      box.innerHTML = '<div class="loading"><p style="color:var(--t-rose)">خطأ في التحميل — <span style="text-decoration:underline;cursor:pointer" onclick="loadHomeOverview()">حاول تاني</span></p></div>';
+    });
 }
 
 function homeIconBadge_(bg, svgPath) {
@@ -3424,7 +3456,7 @@ function renderHomeOverview(daily, maint, live, expiry, agents, debts) {
   if (debts && debts.ok && debts.total_net > 5000) {
     alerts.push({ pri: 1, html: homeAlertCard_('var(--c-indigo)',
       '<rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/>',
-      Math.round(debts.total_net).toLocaleString() + ' ج صافي ديون العملاء', 'راجع قائمة المدينين',
+      Math.round(debts.total_net).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج صافي ديون العملاء', 'راجع قائمة المدينين',
       "navigateTo('debts','list')") });
   }
 
@@ -3433,7 +3465,7 @@ function renderHomeOverview(daily, maint, live, expiry, agents, debts) {
     if (totalDue > 0) {
       alerts.push({ pri: 0, html: homeAlertCard_('var(--c-green)',
         '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>',
-        Math.round(totalDue).toLocaleString() + ' ج مستحقات مندوبين', 'جاهزين للتسوية',
+        Math.round(totalDue).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج مستحقات مندوبين', 'جاهزين للتسوية',
         "navigateTo('agents','list')") });
     }
   }
@@ -3605,7 +3637,7 @@ function loadAttendance() {
 function loadAttendanceLive() {
   var box = document.getElementById('att-live');
   box.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  fetch(STAFF_SCRIPT_URL + '?action=getAttendanceLive')
+  fetch(STAFF_SCRIPT_URL + '?action=getAttendanceLiveV2')
     .then(function(r){ return r.json(); })
     .then(function(d){
       if (!d || !d.ok) { box.innerHTML = '<div style="font-size:13px;color:var(--t-red)">' + ((d && d.error) || 'خطأ') + '</div>'; return; }
@@ -3659,7 +3691,7 @@ function applyAttRange() {
 function loadAttendanceHistory() {
   var box = document.getElementById('att-history');
   box.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  var url = STAFF_SCRIPT_URL + '?action=getAttendanceHistory';
+  var url = STAFF_SCRIPT_URL + '?action=getAttendanceHistoryV2';
   if (attRange_ === 'range' && attFrom_ && attTo_) {
     url += '&from=' + attFrom_ + '&to=' + attTo_;
   } else {
@@ -3929,9 +3961,9 @@ function loadSMS() {
   var smsTimeout_ = setTimeout(function(){
     smsRefreshLocked_ = false;
     if (!lastSmsData_) box.innerHTML = '<div class="loading"><p style="color:var(--t-rose)">خطأ في التحميل — <span style="text-decoration:underline;cursor:pointer" onclick="loadSMS()">حاول تاني</span></p></div>';
-  }, 40000);
+  }, 90000);
   setPipeline(['idle','idle','idle','idle','idle','idle']);
-  fetch(STAFF_SCRIPT_URL + '?action=getSMSLog&_ts=' + Date.now(), { cache: 'no-store' })
+  fetch(STAFF_SCRIPT_URL + '?action=getSMSLogFast&days=30&_ts=' + Date.now(), { cache: 'no-store' })
     .then(function(r){ return r.json(); })
     .then(function(d){ clearTimeout(smsTimeout_); smsRefreshLocked_ = false; smsLoaded = true; lastSmsData_ = d; renderSMS(d); })
     .catch(function(){ clearTimeout(smsTimeout_); smsRefreshLocked_ = false; if (!lastSmsData_) box.innerHTML = '<div class="loading"><p style="color:var(--t-rose)">خطأ في التحميل — <span style="text-decoration:underline;cursor:pointer" onclick="loadSMS()">حاول تاني</span></p></div>'; });
@@ -4043,7 +4075,7 @@ function renderExpenses(d) {
   var html = '';
   html += '<div class="dash-panel"><div class="dash-panel-title">💸 إجمالي المصروفات</div>';
   html += '<div class="dash-grid">';
-  html += '<div class="dash-card"><div class="dv" style="color:var(--t-rose)">' + Math.round(d.total).toLocaleString() + '</div><div class="dl">إجمالي المصروفات (ج)</div></div>';
+  html += '<div class="dash-card"><div class="dv" style="color:var(--t-rose)">' + Math.round(d.total).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">إجمالي المصروفات (ج)</div></div>';
   html += '<div class="dash-card"><div class="dv">' + d.count + '</div><div class="dl">عدد العمليات</div></div>';
   html += '</div></div>';
 
@@ -4061,7 +4093,7 @@ function renderExpenses(d) {
       html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">';
       html += '<span style="width:30px;height:30px;border-radius:8px;background:' + color + '22;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">📁</span>';
       html += '<div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--text);font-size:13px">' + c.category + '</div><div style="font-size:11px;color:var(--text2);margin-top:1px">' + c.count + ' عملية · ' + sharePct + '% من الإجمالي</div></div>';
-      html += '<span style="font-weight:700;color:' + color + ';font-size:15px;white-space:nowrap">' + Math.round(c.total).toLocaleString() + ' ج</span>';
+      html += '<span style="font-weight:700;color:' + color + ';font-size:15px;white-space:nowrap">' + Math.round(c.total).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</span>';
       html += '</div>';
       html += '<div style="background:var(--fill);border-radius:5px;height:8px;overflow:hidden">';
       html += '<div style="background:' + color + ';height:100%;width:' + pct + '%;border-radius:5px"></div>';
@@ -4200,10 +4232,10 @@ function renderStaffCare(d) {
   html += '<div class="dash-grid">';
   // القصة المالية بالترتيب الطبيعي
   html += '<div class="dash-card" style="cursor:pointer" onclick="openDayInvoices()"><div class="dv">' + totInv + '</div><div class="dl">إجمالي الفواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'sales\',\'البيع لكل موظف\')"><div class="dv" style="color:var(--t-mint)">' + totNet.toLocaleString() + '</div><div class="dl">صافي البيع (ج)<div class="ds2">بعد خصم المرتجع · دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'returns\',\'المرتجع لكل موظف\')"><div class="dv" style="color:var(--t-rose)">' + totReturns + '</div><div class="dl">إجمالي المرتجع<div class="ds2">' + totReturnsVal.toLocaleString() + ' ج · دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'profit\',\'الربح لكل موظف\')"><div class="dv" style="color:var(--t-mint)">' + totProfit.toLocaleString() + ' <span style="font-size:13px;font-weight:600;color:var(--t-mint);opacity:0.75">(' + (totSales>0 ? (totProfit/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">الربح الصافي (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
-  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'discount\',\'الخصم لكل موظف\')"><div class="dv" style="color:var(--t-slate)">' + totDiscount.toLocaleString() + ' <span style="font-size:13px;font-weight:600;color:var(--t-slate);opacity:0.75">(' + (totSales>0 ? (totDiscount/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">إجمالي الخصم (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'sales\',\'البيع لكل موظف\')"><div class="dv" style="color:var(--t-mint)">' + totNet.toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">صافي البيع (ج)<div class="ds2">بعد خصم المرتجع · دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'returns\',\'المرتجع لكل موظف\')"><div class="dv" style="color:var(--t-rose)">' + totReturns + '</div><div class="dl">إجمالي المرتجع<div class="ds2">' + totReturnsVal.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج · دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'profit\',\'الربح لكل موظف\')"><div class="dv" style="color:var(--t-mint)">' + totProfit.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' <span style="font-size:13px;font-weight:600;color:var(--t-mint);opacity:0.75">(' + (totSales>0 ? (totProfit/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">الربح الصافي (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+  html += '<div class="dash-card" style="cursor:pointer" onclick="toggleStaffBreakdown(\'discount\',\'الخصم لكل موظف\')"><div class="dv" style="color:var(--t-slate)">' + totDiscount.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' <span style="font-size:13px;font-weight:600;color:var(--t-slate);opacity:0.75">(' + (totSales>0 ? (totDiscount/totSales*100).toFixed(1) : '0.0') + '%)</span></div><div class="dl">إجمالي الخصم (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
 
   // 🆕 المتوسط اليومي ومتوسط العملاء — بنحسبهم من البيانات اليومية (متاحين لأي فترة أكتر من يوم واحد)
   var dailyList = Array.isArray(d.daily) ? d.daily : [];
@@ -4212,7 +4244,7 @@ function renderStaffCare(d) {
     dailyList.forEach(function(x){ sumDailySales += (x.sales||0); sumDailyCust += (x.total_cust||0); });
     var avgDailySales = Math.round(sumDailySales / dailyList.length);
     var avgDailyCust = Math.round(sumDailyCust / dailyList.length);
-    html += '<div class="dash-card"><div class="dv">' + avgDailySales.toLocaleString() + '</div><div class="dl">متوسط المبيعات اليومي (ج)<div class="ds2">على ' + dailyList.length + ' يوم</div></div></div>';
+    html += '<div class="dash-card"><div class="dv">' + avgDailySales.toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">متوسط المبيعات اليومي (ج)<div class="ds2">على ' + dailyList.length + ' يوم</div></div></div>';
     html += '<div class="dash-card"><div class="dv">' + avgDailyCust + '</div><div class="dl">متوسط العملاء اليومي<div class="ds2">على ' + dailyList.length + ' يوم</div></div></div>';
   }
 
@@ -4221,8 +4253,8 @@ function renderStaffCare(d) {
   if (usingSystemNumbers && d.systemTotals) {
     var debtPaidVal = staffRange_ === 'yesterday' ? d.systemTotals.debt_paid_yesterday : d.systemTotals.debt_paid_today;
     var debtPaidLabel = staffRange_ === 'yesterday' ? 'دين متحصّل أمس (ج)' : 'دين متحصّل اليوم (ج)';
-    html += '<div class="dash-card" style="cursor:pointer" onclick="openDayCollections()"><div class="dv" style="color:var(--t-mint)">' + Math.round(debtPaidVal).toLocaleString() + '</div><div class="dl">' + debtPaidLabel + '<div class="ds2">دوس للتفاصيل</div></div></div>';
-    html += '<div class="dash-card" style="cursor:pointer" onclick="navigateTo(\'debts\',\'list\')"><div class="dv" style="color:var(--t-rose)">' + Math.round(d.systemTotals.total_debt).toLocaleString() + '</div><div class="dl">صافي الدين الإجمالي (ج)<div class="ds2">دوس لعرض التفاصيل</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick="openDayCollections()"><div class="dv" style="color:var(--t-mint)">' + Math.round(debtPaidVal).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">' + debtPaidLabel + '<div class="ds2">دوس للتفاصيل</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick="navigateTo(\'debts\',\'list\')"><div class="dv" style="color:var(--t-rose)">' + Math.round(d.systemTotals.total_debt).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">صافي الدين الإجمالي (ج)<div class="ds2">دوس لعرض التفاصيل</div></div></div>';
   }
   html += '</div>';
   html += '<div id="staff-breakdown-box" style="display:none;margin-top:12px"></div>';
@@ -4274,12 +4306,12 @@ function renderStaffCare(d) {
     html += '<div class="dash-grid">';
     html += '<div class="dash-card" style="cursor:pointer" onclick=\'showNewCustomersFor(' + JSON.stringify(s.name) + ',' + JSON.stringify('newcust-' + empSafeId) + ')\'><div class="dv" style="color:' + newcCol + '">' + s.new_c + '</div><div class="dl">عملاء جدد<div class="ds2">دوس للأسماء</div></div></div>';
     html += '<div class="dash-card" style="cursor:pointer" onclick=\'openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')\'><div class="dv">' + s.invoices + '</div><div class="dl">فواتير<div class="ds2">دوس للتفاصيل</div></div></div>';
-    html += '<div class="dash-card" style="cursor:pointer" onclick=\'openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')\'><div class="dv">' + s.sales.toLocaleString() + '</div><div class="dl">مبيعات (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
-    html += '<div class="dash-card" style="cursor:pointer" onclick=\'openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')\'><div class="dv" style="color:var(--t-rose)">' + s.returns + '</div><div class="dl">مرتجعات<div class="ds2">' + s.returns_val.toLocaleString() + ' ج · دوس للتفاصيل</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick=\'openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')\'><div class="dv">' + s.sales.toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">مبيعات (ج)<div class="ds2">دوس للتفاصيل</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick=\'openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')\'><div class="dv" style="color:var(--t-rose)">' + s.returns + '</div><div class="dl">مرتجعات<div class="ds2">' + s.returns_val.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج · دوس للتفاصيل</div></div></div>';
     html += '<div class="dash-card"><div class="dv">' + s.avg_inv + '</div><div class="dl">متوسط الفاتورة</div></div>';
     html += '<div class="dash-card"><div class="dv" style="color:var(--t-slate)">' + s.days + '</div><div class="dl">أيام عمل</div></div>';
-    html += '<div class="dash-card" style="cursor:pointer" onclick=\'openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')\'><div class="dv" style="color:var(--t-mint)">' + (s.profit||0).toLocaleString() + '</div><div class="dl">الربح الصافي (ج)<div class="ds2">' + (s.sales>0 ? ((s.profit||0)/s.sales*100).toFixed(1) : '0.0') + '% هامش · دوس للتفاصيل</div></div></div>';
-    html += '<div class="dash-card" style="cursor:pointer" onclick=\'openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')\'><div class="dv" style="color:var(--t-slate)">' + (s.discount||0).toLocaleString() + '</div><div class="dl">الخصم (ج)<div class="ds2">' + (s.sales>0 ? ((s.discount||0)/s.sales*100).toFixed(1) : '0.0') + '% من البيع · دوس للتفاصيل</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick=\'openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')\'><div class="dv" style="color:var(--t-mint)">' + (s.profit||0).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">الربح الصافي (ج)<div class="ds2">' + (s.sales>0 ? ((s.profit||0)/s.sales*100).toFixed(1) : '0.0') + '% هامش · دوس للتفاصيل</div></div></div>';
+    html += '<div class="dash-card" style="cursor:pointer" onclick=\'openEmployeeInvoicesDirect(' + JSON.stringify(s.name) + ')\'><div class="dv" style="color:var(--t-slate)">' + (s.discount||0).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '</div><div class="dl">الخصم (ج)<div class="ds2">' + (s.sales>0 ? ((s.discount||0)/s.sales*100).toFixed(1) : '0.0') + '% من البيع · دوس للتفاصيل</div></div></div>';
     html += '</div>';
     html += '<div id="newcust-' + empSafeId + '" style="display:none;margin-top:10px"></div>';
     html += '</div>';
@@ -4323,7 +4355,7 @@ function toggleEmployeeInvoicesInline(empName, boxId) {
         html += '<div class="hist-item" style="cursor:pointer" onclick=\'openInvoiceDetailModal(' + JSON.stringify(empName) + ',' + JSON.stringify(inv.invoiceid) + ')\'>';
         html += '<div class="hist-icon">🧾</div>';
         html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + inv.custname + '</div><div class="hist-text">فاتورة #' + inv.invoiceid + ' · ' + inv.itemCount + ' صنف</div></div>';
-        html += '<div style="font-weight:700;color:var(--text)">' + Math.round(inv.total).toLocaleString() + ' ج</div>';
+        html += '<div style="font-weight:700;color:var(--text)">' + Math.round(inv.total).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</div>';
         html += '</div>';
       });
       html += '</div>';
@@ -4451,8 +4483,8 @@ function openDayCollections() {
       res.collections.forEach(function(c){
         html += '<div class="hist-item">';
         html += '<div class="hist-icon">💰</div>';
-        html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + c.custname + '</div><div class="hist-text">كان عليه ' + Math.round(c.before).toLocaleString() + ' ج، بقى ' + Math.round(c.after).toLocaleString() + ' ج</div></div>';
-        html += '<div style="font-weight:700;color:var(--t-mint)">' + Math.round(c.amount).toLocaleString() + ' ج</div>';
+        html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + c.custname + '</div><div class="hist-text">كان عليه ' + Math.round(c.before).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج، بقى ' + Math.round(c.after).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</div></div>';
+        html += '<div style="font-weight:700;color:var(--t-mint)">' + Math.round(c.amount).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</div>';
         html += '</div>';
       });
       document.getElementById('dinv-content').innerHTML = html;
@@ -4511,7 +4543,7 @@ function renderDbtEmployeeList() {
     html += '<div class="hist-item" style="cursor:pointer;padding:12px 4px" onclick=\'renderDbtDetailList(' + JSON.stringify(r.name) + ')\'>';
     html += '<div class="hist-icon">👤</div>';
     html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + r.name + '</div><div class="hist-text">' + r.count + ' دين مسجّل</div></div>';
-    html += '<div style="font-weight:700;color:var(--t-rose);font-size:14px">' + Math.round(r.total).toLocaleString() + ' ج</div>';
+    html += '<div style="font-weight:700;color:var(--t-rose);font-size:14px">' + Math.round(r.total).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</div>';
     html += '</div>';
   });
   document.getElementById('dinv-content').innerHTML = html;
@@ -4528,7 +4560,7 @@ function renderDbtDetailList(empName) {
     html += '<div class="hist-item" style="padding:12px 4px">';
     html += '<div class="hist-icon">💳</div>';
     html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + it.custname + '</div><div class="hist-text">' + it.time + (it.phone ? ' · ' + it.phone : '') + '</div></div>';
-    html += '<div style="font-weight:700;color:var(--t-rose)">' + Math.round(it.amount).toLocaleString() + ' ج</div>';
+    html += '<div style="font-weight:700;color:var(--t-rose)">' + Math.round(it.amount).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</div>';
     html += '</div>';
   });
   document.getElementById('dinv-content').innerHTML = html;
@@ -4640,7 +4672,7 @@ function renderDinvEmployeeList() {
     html += '<div class="hist-item" style="cursor:pointer;padding:12px 4px" onclick=\'renderDinvInvoiceList(' + JSON.stringify(r.name) + ')\'>';
     html += '<div class="hist-icon">👤</div>';
     html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + r.name + '</div><div class="hist-text">' + r.count + ' فاتورة</div></div>';
-    html += '<div style="font-weight:700;color:var(--accent);font-size:14px">' + Math.round(r.total).toLocaleString() + ' ج</div>';
+    html += '<div style="font-weight:700;color:var(--accent);font-size:14px">' + Math.round(r.total).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</div>';
     html += '</div>';
   });
   document.getElementById('dinv-content').innerHTML = html;
@@ -4657,7 +4689,7 @@ function renderDinvInvoiceList(empName) {
     html += '<div class="hist-item" style="cursor:pointer;padding:12px 4px" onclick=\'renderDinvInvoiceDetail(' + JSON.stringify(empName) + ',' + JSON.stringify(inv.invoiceid) + ')\'>';
     html += '<div class="hist-icon">🧾</div>';
     html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + inv.custname + '</div><div class="hist-text">فاتورة #' + inv.invoiceid + ' · ' + inv.itemCount + ' صنف</div></div>';
-    html += '<div style="font-weight:700;color:var(--text)">' + Math.round(inv.total).toLocaleString() + ' ج</div>';
+    html += '<div style="font-weight:700;color:var(--text)">' + Math.round(inv.total).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</div>';
     html += '</div>';
   });
   document.getElementById('dinv-content').innerHTML = html;
@@ -4675,8 +4707,8 @@ function renderDinvInvoiceDetail(empName, invoiceid) {
   html += '<div class="dash-comm-row"><span>العميل</span><span>' + inv.custname + '</span></div>';
   if (inv.phone) html += '<div class="dash-comm-row"><span>الموبايل</span><span dir="ltr">' + inv.phone + '</span></div>';
   html += '<div class="dash-comm-row"><span>الموظف</span><span>' + empName + '</span></div>';
-  html += '<div class="dash-comm-row"><span>الخصم</span><span>' + Math.round(inv.discount).toLocaleString() + ' ج</span></div>';
-  html += '<div class="dash-comm-row"><span>الإجمالي المدفوع</span><span style="color:var(--t-mint);font-weight:700">' + Math.round(inv.total).toLocaleString() + ' ج</span></div>';
+  html += '<div class="dash-comm-row"><span>الخصم</span><span>' + Math.round(inv.discount).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</span></div>';
+  html += '<div class="dash-comm-row"><span>الإجمالي المدفوع</span><span style="color:var(--t-mint);font-weight:700">' + Math.round(inv.total).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</span></div>';
   html += '</div>';
 
   if (inv.items && inv.items.length) {
@@ -4684,8 +4716,8 @@ function renderDinvInvoiceDetail(empName, invoiceid) {
     html += '<div style="background:var(--fill);border-radius:var(--r-md);padding:4px 14px">';
     inv.items.forEach(function(it, idx){
       html += '<div class="hist-item"' + (idx === inv.items.length-1 ? ' style="border-bottom:none"' : '') + '>';
-      html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + it.name + '</div><div class="hist-text">الكمية: ' + it.qty + ' × ' + it.price.toLocaleString() + ' ج</div></div>';
-      html += '<div style="font-weight:600;color:var(--text)">' + Math.round(it.qty * it.price).toLocaleString() + ' ج</div>';
+      html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + it.name + '</div><div class="hist-text">الكمية: ' + it.qty + ' × ' + it.price.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</div></div>';
+      html += '<div style="font-weight:600;color:var(--text)">' + Math.round(it.qty * it.price).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج</div>';
       html += '</div>';
     });
     html += '</div>';
@@ -4883,7 +4915,7 @@ function loadInventoryAging(){
     if (settled || _lastInvData) return;
     settled = true;
     showInvError('الطلب بياخد وقت أطول من المتوقع — السيرفر لسه شغال، جرّب تاني بعد شوية');
-  }, 40000);
+  }, 90000);
 
   fetch(SCRIPT_URL + '?action=getInventoryAging')
     .then(function(r){ return r.json(); })

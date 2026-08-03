@@ -485,6 +485,21 @@ window.logQuietError_ = function (err) {
     }
   } catch (e) { logQuietError_(e); }
 };
+window.ltr_ = function (t) {
+  return '<span dir="ltr" style="unicode-bidi:isolate;display:inline-block">' + t + '</span>';
+};
+window.cleanName_ = function (n) {
+  return String(n || '').replace(/[.\s]+$/, '').replace(/^[.\s]+/, '').trim() || 'غير معروف';
+};
+window.dur_ = function (mins) {
+  if (mins === null || mins === undefined) return null;
+  var h = Math.floor(mins / 60), m = mins % 60;
+  return (h ? h + 'س ' : '') + m + 'د';
+};
+window.markSynced_ = function () {
+  var el = document.getElementById('last-sync');
+  if (el) el.textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+};
 window.showErrorLog_ = function () {
   var list = window.__appErrors;
   var ov = document.createElement('div');
@@ -3396,6 +3411,7 @@ function loadHomeOverview() {
     .then(function(b){
       if (!b || !b.ok) throw new Error((b && b.error) || 'رد فاضي');
       renderHomeOverview(b.daily, b.maintenance, b.attendance, b.expiry, b.agents, b.debts);
+      markSynced_();
     })
     .catch(function(err){
       logQuietError_(err);
@@ -3644,12 +3660,12 @@ function loadAttendanceLive() {
       if (!d.live.length) { box.innerHTML = '<div style="font-size:13px;color:var(--text2)">محدش شغال دلوقتي</div>'; return; }
       box.innerHTML = d.live.map(function(p){
         var h = Math.floor(p.elapsedMinutes / 60), m = p.elapsedMinutes % 60;
-        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid var(--sep)">' +
-          '<div style="display:flex;align-items:center;gap:8px">' +
-            '<span style="width:8px;height:8px;border-radius:50%;background:var(--c-green);display:inline-block"></span>' +
-            '<span style="font-size:13px;font-weight:600">' + p.name + '</span>' +
+        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--sep)">' +
+          '<div style="display:flex;align-items:center;gap:8px;min-width:0">' +
+            '<span style="width:8px;height:8px;border-radius:50%;background:var(--c-green);display:inline-block;flex-shrink:0"></span>' +
+            '<span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + cleanName_(p.name) + '</span>' +
           '</div>' +
-          '<span style="font-size:12px;color:var(--text2)">' + h + 'س ' + m + 'د</span>' +
+          '<span style="font-size:12px;color:var(--text2);white-space:nowrap">' + ltr_((h ? h + 'س ' : '') + m + 'د') + '</span>' +
         '</div>';
       }).join('');
     })
@@ -3703,15 +3719,32 @@ function loadAttendanceHistory() {
       if (!d || !d.ok) { box.innerHTML = '<div style="font-size:13px;color:var(--t-red)">' + ((d && d.error) || 'خطأ') + '</div>'; return; }
       attHistoryData_ = d;
       if (!d.rows.length) { box.innerHTML = '<div style="font-size:13px;color:var(--text2)">مفيش سجلات في الفترة دي</div>'; return; }
-      box.innerHTML = d.rows.map(function(row){
-        var dur = row.durationMin === null ? '<span style="color:var(--t-orange)">مفتوح</span>' :
-          Math.floor(row.durationMin/60) + 'س ' + (row.durationMin%60) + 'د';
-        return '<div style="padding:8px 0;border-bottom:0.5px solid var(--sep)">' +
-          '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600">' +
-            '<span>' + row.name + '</span><span style="color:var(--text2);font-weight:400">' + row.date + '</span>' +
-          '</div>' +
-          '<div style="font-size:12px;color:var(--text2);margin-top:2px">دخل ' + row.checkIn + ' — خرج ' + row.checkOut + ' · ' + dur + '</div>' +
-        '</div>';
+      markSynced_();
+      var byDay = {}, order = [];
+      d.rows.forEach(function(row){
+        if (!byDay[row.date]) { byDay[row.date] = []; order.push(row.date); }
+        byDay[row.date].push(row);
+      });
+      box.innerHTML = order.map(function(day){
+        var items = byDay[day].map(function(row){
+          var dur = dur_(row.durationMin);
+          var badge = dur
+            ? '<span style="font-size:11px;font-weight:600;color:var(--text2);background:var(--fill);padding:3px 8px;border-radius:999px;white-space:nowrap">' + ltr_(dur) + '</span>'
+            : '<span style="font-size:11px;font-weight:600;color:var(--t-orange);background:var(--fill);padding:3px 8px;border-radius:999px;white-space:nowrap">لسه شغال</span>';
+          var times = row.checkOut === 'مفتوح'
+            ? ltr_(row.checkIn) + ' <span style="color:var(--text3)">→</span> <span style="color:var(--t-orange)">—</span>'
+            : ltr_(row.checkIn) + ' <span style="color:var(--text3)">→</span> ' + ltr_(row.checkOut);
+          return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--sep)">' +
+              '<div style="min-width:0">' +
+                '<div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + cleanName_(row.name) + '</div>' +
+                '<div style="font-size:12px;color:var(--text2);margin-top:3px;direction:ltr;text-align:right">' + times + '</div>' +
+              '</div>' + badge +
+            '</div>';
+        }).join('');
+        return '<div style="margin-top:14px">' +
+            '<div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:0.3px;padding-bottom:4px">' + ltr_(day) + '</div>' +
+            items +
+          '</div>';
       }).join('');
     })
     .catch(function(){ box.innerHTML = '<div style="font-size:13px;color:var(--t-red)">تعذّر الاتصال</div>'; });

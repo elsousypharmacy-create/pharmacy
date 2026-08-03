@@ -1121,6 +1121,15 @@ try {
     <button onclick="runFullDiagnosis()" style="width:100%;padding:12px;border:none;border-radius:var(--r-md);background:var(--accent);color:#fff;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer">ابدأ الفحص</button>
     <div id="diag-result" style="margin-top:12px"></div>
   </div>
+  <div class="cust-card" style="padding:16px;margin-top:12px">
+    <div style="font-size:15px;font-weight:700;letter-spacing:-0.2px;margin-bottom:2px">التحديث التلقائي</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:14px">بيحسب الديون والمخزون والمندوبين في الخلفية كل ساعة، عشان الصفحات تفتح فورًا بدل ما تستنى الحساب</div>
+    <div id="snap-status" style="margin-bottom:12px"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="snapRefresh()" style="flex:1;padding:11px;border:none;border-radius:var(--r-md);background:var(--fill);color:var(--text);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">حدّث دلوقتي</button>
+      <button onclick="snapEnable()" id="snap-enable-btn" style="flex:1;padding:11px;border:none;border-radius:var(--r-md);background:var(--accent);color:#fff;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">شغّل التلقائي</button>
+    </div>
+  </div>
 </div>
 
 <div id="attendance-list-section" class="deliv-wrap" style="display:none">
@@ -3312,10 +3321,50 @@ function startSysStatusPolling() {
   stopSysStatusPolling();
   fetchSysStatus();
   sysStatusTimer_ = setInterval(fetchSysStatus, 10000);
+  snapLoadStatus();
 }
 function stopSysStatusPolling() {
   if (sysStatusTimer_) { clearInterval(sysStatusTimer_); sysStatusTimer_ = null; }
 }
+function renderSnapStatus_(d) {
+  var box = document.getElementById('snap-status');
+  if (!box) return;
+  if (!d || !d.ok) { box.innerHTML = '<div style="font-size:12px;color:var(--t-rose)">مقدرتش أجيب الحالة — محتاج Deploy</div>'; return; }
+  var btn = document.getElementById('snap-enable-btn');
+  if (btn) { btn.textContent = d.triggerOn ? 'شغّال ✓' : 'شغّل التلقائي'; btn.disabled = !!d.triggerOn; btn.style.opacity = d.triggerOn ? '0.5' : '1'; }
+  var ar = { debts: 'الديون', inventory: 'المخزون', agents: 'المندوبين' };
+  box.innerHTML =
+    '<div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;margin-bottom:8px">' +
+      '<span style="width:8px;height:8px;border-radius:50%;background:' + (d.triggerOn ? 'var(--c-green)' : 'var(--c-orange)') + '"></span>' +
+      (d.triggerOn ? 'بيحدّث نفسه كل ساعة' : 'التحديث التلقائي مقفول') +
+    '</div>' +
+    d.files.map(function(f){
+      return '<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:0.5px solid var(--sep);font-size:12px">' +
+        '<span style="color:var(--text2)">' + (ar[f.name] || f.name) + '</span>' +
+        '<span style="color:' + (f.ready ? 'var(--text2)' : 'var(--t-orange)') + ';white-space:nowrap">' +
+          (f.ready ? ltr_(f.builtAt) : 'لسه ماتحسبتش') + '</span></div>';
+    }).join('');
+}
+
+function snapLoadStatus() {
+  fetch(STAFF_SCRIPT_URL + '?action=snapshotStatus&_ts=' + Date.now(), { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(renderSnapStatus_)
+    .catch(function(err){ logQuietError_(err); renderSnapStatus_(null); });
+}
+
+function snapCall_(action, msg) {
+  var box = document.getElementById('snap-status');
+  if (box) box.innerHTML = '<div class="loading"><div class="spinner"></div><p>' + msg + ' — ممكن ياخد دقيقة</p></div>';
+  fetch(STAFF_SCRIPT_URL + '?action=' + action + '&_ts=' + Date.now(), { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ renderSnapStatus_(d); showToast('اتحدّث ✓'); })
+    .catch(function(err){ logQuietError_(err); renderSnapStatus_(null); });
+}
+
+function snapRefresh() { snapCall_('snapshotRefresh', 'بيحسب من الأول'); }
+function snapEnable() { snapCall_('snapshotEnable', 'بيشغّل التحديث التلقائي'); }
+
 function runFullDiagnosis() {
   var box = document.getElementById('diag-result');
   box.innerHTML = '<div class="loading"><div class="spinner"></div><p>بيفحص... ممكن ياخد نص دقيقة</p></div>';

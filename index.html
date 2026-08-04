@@ -7,81 +7,88 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap');
   :root {
-    --r-lg: 16px;   /* كروت وكارتات كبيرة */
-    --r-md: 12px;   /* أزرار وحقول إدخال */
-    --r-sm: 9px;    /* شيبس وبادچات صغيرة */
+    --r-lg: 18px;
+    --r-md: 12px;
+    --r-sm: 8px;
 
-    /* ===== ألوان آبل الرسمية - دارك مود (Dark Mode System Colors) ===== */
-    --bg: #000000;                        /* systemGroupedBackground - dark */
-    --card-bg: #1C1C1E;                   /* secondarySystemGroupedBackground - dark */
-    --card-bg2: #2C2C2E;                  /* tertiarySystemGroupedBackground - dark */
-    --text: #FFFFFF;                      /* label - dark */
-    --text2: rgba(235,235,245,0.6);       /* secondaryLabel - dark */
-    --text3: rgba(235,235,245,0.3);       /* tertiaryLabel - dark */
-    --sep: rgba(255,255,255,0.1);         /* separator - dark */
-    --accent: #0A84FF;                    /* systemBlue - dark */
-    --header-bg: rgba(0,0,0,0.75);
-    --card-shadow: 0 1px 3px rgba(0,0,0,0.35), 0 0 0 0.5px rgba(255,255,255,0.04);
-    --fill: rgba(255,255,255,0.09);       /* حقول إدخال/أزرار ثانوية */
-    --overlay: rgba(0,0,0,0.55);
+    /* ===== الأسطح — دارك ===== */
+    --bg: #0A0B0D;
+    --card-bg: #141619;
+    --card-bg2: #1C1F24;
+    --text: #F2F4F7;
+    --text2: #9BA3AF;
+    --text3: #5F6670;
+    --sep: #25292F;
+    --accent: #1B92D4;                    /* أزرق اللوجو بالظبط */
+    --header-bg: rgba(10,11,13,0.86);
+    --card-shadow: 0 0 0 1px #25292F;
+    --fill: rgba(255,255,255,0.07);
+    --overlay: rgba(0,0,0,0.6);
 
-    /* لوحة الألوان الموحّدة — دارك.  --c-* = لون ممتلئ | --t-* = لون نص */
-    --c-rose: #E0727C;  --t-rose: #E0727C;
-    --c-mint: #5FB88A;  --t-mint: #5FB88A;
-    --c-red: #FF453A;  --t-red: #FF453A;
-    --c-orange: #FF9F0A;  --t-orange: #FF9F0A;
-    --c-blue: #0A84FF;  --t-blue: #0A84FF;
-    --c-gold: #D9A441;  --t-gold: #D9A441;
-    --c-green: #34C759;  --t-green: #34C759;
-    --c-slate: #94A3B8;  --t-slate: #94A3B8;
-    --c-indigo: #5E5CE6;  --t-indigo: #5E5CE6;
-    --c-sky: #7DD3FC;  --t-sky: #7DD3FC;
-    --c-cyan: #64D2FF;  --t-cyan: #64D2FF;
-    --c-magenta: #BF5AF2;  --t-magenta: #BF5AF2;
-    --c-violet: #A78BFA;  --t-violet: #A78BFA;
-    --c-amber: #FB923C;  --t-amber: #FB923C;
-    --c-pink: #FF375F;  --t-pink: #FF375F;
-    --c-yellow: #FFD60A;  --t-yellow: #FFD60A;
-    --c-gray: #8E8E93;  --t-gray: #8E8E93;
-    --c-slate2: #64748B;  --t-slate2: #64748B;
-    --c-paper: #E2E8F0;  --t-paper: #E2E8F0;
+    /* ===== 3 معاني بس: تمام / تحذير / مشكلة ===== */
+    --ok:   #3DBE8B;
+    --warn: #E8A33D;
+    --bad:  #E5646E;
+
+    --c-mint: #3DBE8B;      --t-mint: #3DBE8B;
+    --c-green: #3DBE8B;     --t-green: #3DBE8B;
+    --c-rose: #E5646E;      --t-rose: #E5646E;
+    --c-red: #E5646E;       --t-red: #E5646E;
+    --c-pink: #E5646E;      --t-pink: #E5646E;
+    --c-orange: #E8A33D;    --t-orange: #E8A33D;
+    --c-gold: #E8A33D;      --t-gold: #E8A33D;
+    --c-amber: #E8A33D;     --t-amber: #E8A33D;
+    --c-yellow: #E8A33D;    --t-yellow: #E8A33D;
+    --c-blue: #1B92D4;      --t-blue: #1B92D4;
+    --c-sky: #1B92D4;       --t-sky: #1B92D4;
+    --c-cyan: #1B92D4;      --t-cyan: #1B92D4;
+    --c-indigo: #7C7AF0;    --t-indigo: #7C7AF0;
+    --c-magenta: #B27CE8;   --t-magenta: #B27CE8;
+    --c-violet: #B27CE8;    --t-violet: #B27CE8;
+    --c-slate: #9BA3AF;     --t-slate: #9BA3AF;
+    --c-slate2: #9BA3AF;    --t-slate2: #9BA3AF;
+    --c-gray: #5F6670;      --t-gray: #5F6670;
+    --c-paper: #F2F4F7;     --t-paper: #F2F4F7;
   }
 
   body.light {
-    /* ===== ألوان آبل الرسمية - لايت مود (Light Mode System Colors) ===== */
-    --bg: #F2F2F7;                        /* systemGroupedBackground - light */
-    --card-bg: #FFFFFF;                   /* secondarySystemGroupedBackground - light */
-    --card-bg2: #F2F2F7;                  /* tertiarySystemGroupedBackground - light */
-    --text: #000000;                      /* label - light */
-    --text2: rgba(60,60,67,0.6);          /* secondaryLabel - light */
-    --text3: rgba(60,60,67,0.3);          /* tertiaryLabel - light */
-    --sep: rgba(60,60,67,0.29);           /* separator - light */
-    --accent: #007AFF;                    /* systemBlue - light */
-    --header-bg: rgba(242,242,247,0.8);
-    --card-shadow: 0 1px 2px rgba(60,60,67,0.08), 0 0 0 0.5px rgba(60,60,67,0.06);
-    --fill: rgba(60,60,67,0.06);
-    --overlay: rgba(0,0,0,0.35);
+    /* ===== الأسطح — لايت ===== */
+    --bg: #F4F5F7;
+    --card-bg: #FFFFFF;
+    --card-bg2: #EDEFF2;
+    --text: #14171A;
+    --text2: #5A626C;
+    --text3: #8B939D;
+    --sep: #E1E4E9;
+    --accent: #1272A6;
+    --header-bg: rgba(244,245,247,0.86);
+    --card-shadow: 0 1px 2px rgba(20,23,26,0.06), 0 0 0 1px #E1E4E9;
+    --fill: rgba(20,23,26,0.05);
+    --overlay: rgba(0,0,0,0.4);
 
-    /* لوحة الألوان الموحّدة — لايت (ألوان النص أغمق عشان تفضل مقروءة) */
-    --c-rose: #E0727C;  --t-rose: #B3383F;
-    --c-mint: #5FB88A;  --t-mint: #1F7A54;
-    --c-red: #FF3B30;  --t-red: #D70015;
-    --c-orange: #FF9500;  --t-orange: #A85D00;
-    --c-blue: #007AFF;  --t-blue: #0062CC;
-    --c-gold: #D9A441;  --t-gold: #8A6511;
-    --c-green: #34C759;  --t-green: #248A3D;
-    --c-slate: #94A3B8;  --t-slate: #5B6B7F;
-    --c-indigo: #5856D6;  --t-indigo: #3634A3;
-    --c-sky: #7DD3FC;  --t-sky: #0369A1;
-    --c-cyan: #32ADE6;  --t-cyan: #006E9C;
-    --c-magenta: #AF52DE;  --t-magenta: #8944AB;
-    --c-violet: #A78BFA;  --t-violet: #6D28D9;
-    --c-amber: #FB923C;  --t-amber: #B4530A;
-    --c-pink: #FF2D55;  --t-pink: #C9184A;
-    --c-yellow: #FFCC00;  --t-yellow: #7A5C00;
-    --c-gray: #8E8E93;  --t-gray: #6B6B70;
-    --c-slate2: #64748B;  --t-slate2: #475569;
-    --c-paper: #E2E8F0;  --t-paper: #1C1C1E;
+    --ok:   #1E8A5F;
+    --warn: #9A6410;
+    --bad:  #C33B47;
+
+    --c-mint: #3DBE8B;      --t-mint: #1E8A5F;
+    --c-green: #3DBE8B;     --t-green: #1E8A5F;
+    --c-rose: #E5646E;      --t-rose: #C33B47;
+    --c-red: #E5646E;       --t-red: #C33B47;
+    --c-pink: #E5646E;      --t-pink: #C33B47;
+    --c-orange: #E8A33D;    --t-orange: #9A6410;
+    --c-gold: #E8A33D;      --t-gold: #9A6410;
+    --c-amber: #E8A33D;     --t-amber: #9A6410;
+    --c-yellow: #E8A33D;    --t-yellow: #9A6410;
+    --c-blue: #1272A6;      --t-blue: #1272A6;
+    --c-sky: #1272A6;       --t-sky: #1272A6;
+    --c-cyan: #1272A6;      --t-cyan: #1272A6;
+    --c-indigo: #4B49C4;    --t-indigo: #4B49C4;
+    --c-magenta: #7E43B8;   --t-magenta: #7E43B8;
+    --c-violet: #7E43B8;    --t-violet: #7E43B8;
+    --c-slate: #9BA3AF;     --t-slate: #5A626C;
+    --c-slate2: #9BA3AF;    --t-slate2: #5A626C;
+    --c-gray: #8B939D;      --t-gray: #8B939D;
+    --c-paper: #E2E8F0;     --t-paper: #14171A;
   }
 
 
@@ -452,6 +459,32 @@
   background: var(--card-bg); box-shadow: 0 4px 14px rgba(0,0,0,.3);
   display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
+
+  /* ═══ شريط الأقسام (تحت الشاشة) ═══ */
+  .secnav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 900;
+    background: var(--header-bg); backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px); border-top: 1px solid var(--sep);
+    display: grid; grid-template-columns: repeat(6, 1fr);
+    padding: 6px 2px calc(6px + env(safe-area-inset-bottom)); }
+  .secnav button { background: none; border: 0; font-family: inherit; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    color: var(--text3); font-size: 10px; font-weight: 600; padding: 4px 0; }
+  .secnav button svg { width: 21px; height: 21px; stroke: currentColor; fill: none;
+    stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .secnav button.on { color: var(--accent); }
+  body { padding-bottom: 80px !important; }
+
+  /* ═══ تبويبات القسم ═══ */
+  .subtabs { display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px;
+    border-bottom: 1px solid var(--sep); background: var(--bg);
+    scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .subtabs::-webkit-scrollbar { display: none; }
+  .subtabs button { flex-shrink: 0; background: var(--fill); border: 0; color: var(--text2);
+    font-family: inherit; font-size: 13px; font-weight: 600; padding: 7px 13px;
+    border-radius: 99px; cursor: pointer; white-space: nowrap; }
+  .subtabs button.on { background: var(--accent); color: #fff; }
+  .subtabs.hide { display: none; }
+
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -550,6 +583,7 @@ try {
 <div class="pull-indicator" id="pull-indicator"><div class="pull-spinner"></div></div>
 
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<div class="subtabs hide" id="subtabs"></div>
 <button id="print-fab" onclick="window.print()" title="طباعة / حفظ PDF" style="display:none">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
 </button>
@@ -1889,7 +1923,65 @@ function closeSidebar() {
   document.getElementById('sidebar-overlay').classList.remove('show');
 }
 
+
+/* ═══════════ الأقسام الستة ═══════════
+   كل قسم بيجمّع الصفحات اللي بتجاوب على نفس السؤال. */
+var SECTIONS = {
+  home:  [['home','list','نظرة عامة']],
+  sales: [['staff','care','المبيعات'], ['shortages','kpi','كفاءة الطلبات']],
+  money: [['pl','list','الربح والخسارة'], ['expenses','list','المصروفات'], ['debts','list','الديون']],
+  hr:    [['attendance','list','الحضور'], ['staff','care','أداء الموظفين']],
+  stock: [['inventory','aging','تحليل المخزون'], ['shortages','list','النواقص'],
+          ['shortages','discontinued','أصناف مقطوعة'], ['shortages','orders','طلبيات معلقة']],
+  cust:  [['crm','customers','العملاء'], ['crm','dashboard','لوحة العملاء'],
+          ['sms','list','الرسايل'], ['agents','list','المندوبين']]
+};
+var CUR_SECTION = 'home';
+
+function goSection(key, idx) {
+  var pages = SECTIONS[key];
+  if (!pages) return;
+  CUR_SECTION = key;
+  idx = idx || 0;
+  var p = pages[idx];
+  document.querySelectorAll('.secnav button').forEach(function(b){
+    b.classList.toggle('on', b.dataset.sec === key);
+  });
+  renderSubtabs(key, idx);
+  navigateTo(p[0], p[1]);
+  window.scrollTo(0, 0);
+}
+
+function renderSubtabs(key, idx) {
+  var box = document.getElementById('subtabs');
+  if (!box) return;
+  var pages = SECTIONS[key] || [];
+  if (pages.length < 2) { box.className = 'subtabs hide'; box.innerHTML = ''; return; }
+  box.className = 'subtabs';
+  box.innerHTML = pages.map(function(p, i){
+    return '<button class="' + (i === idx ? 'on' : '') + '" onclick="goSection(\'' + key + '\',' + i + ')">' +
+           p[2] + '</button>';
+  }).join('');
+}
+
+
+/* لو المستخدم دخل صفحة من القائمة الجانبية، نظبّط شريط الأقسام تحت */
+function syncSectionBar_(mode, tab) {
+  var found = null, fi = 0;
+  Object.keys(SECTIONS).forEach(function(k){
+    SECTIONS[k].forEach(function(p, i){
+      if (found === null && p[0] === mode && p[1] === tab) { found = k; fi = i; }
+    });
+  });
+  document.querySelectorAll('.secnav button').forEach(function(b){
+    b.classList.toggle('on', found !== null && b.dataset.sec === found);
+  });
+  if (found !== null) { CUR_SECTION = found; renderSubtabs(found, fi); }
+  else { var box = document.getElementById('subtabs'); if (box) { box.className = 'subtabs hide'; box.innerHTML = ''; } }
+}
+
 function navigateTo(mode, tab) {
+  syncSectionBar_(mode, tab);
   currentMode = mode;
   if (mode === 'crm') { crmTab = tab; }
   else if (mode === 'shortages') { shortTab = tab; }
@@ -5873,8 +5965,9 @@ function submitAgentPay() {
   .catch(function(e){ alert('حصل خطأ في التسجيل'); });
 }
 
-navigateTo('staff', 'care');
+goSection('home');
 
 </script>
+<nav class="secnav" id="secnav"><button data-sec="home" onclick="goSection('home')"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg><span data-t="nav_home">عامة</span></button><button data-sec="sales" onclick="goSection('sales')"><svg viewBox="0 0 24 24"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19H2"/></svg><span data-t="nav_sales">مبيعات</span></button><button data-sec="money" onclick="goSection('money')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2.5"/><circle cx="12" cy="12.5" r="2.6"/></svg><span data-t="nav_money">مالية</span></button><button data-sec="hr" onclick="goSection('hr')"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.4 2.7-5.6 6-5.6s6 2.2 6 5.6"/><path d="M17 11.2a3 3 0 1 0-2-5.3"/><path d="M18 20c0-2.6-1-4.4-2.6-5.4"/></svg><span data-t="nav_hr">موظفين</span></button><button data-sec="stock" onclick="goSection('stock')"><svg viewBox="0 0 24 24"><path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5"/><path d="M12 13v7"/></svg><span data-t="nav_stock">مخزون</span></button><button data-sec="cust" onclick="goSection('cust')"><svg viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-11.6 7.1L4 20l1.5-5A8 8 0 1 1 21 11.5z"/></svg><span data-t="nav_cust">عملاء</span></button></nav>
 </body>
 </html>

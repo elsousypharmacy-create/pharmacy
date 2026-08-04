@@ -161,6 +161,31 @@ button{font-family:inherit}
 @keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.screen.on{animation:none}.spin{animation-duration:1.4s}}
 
+
+/* ── شبكة الموظفين ── */
+.staff-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s2)}
+.staff{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);
+  padding:var(--s3);cursor:pointer;min-width:0;border-top:2px solid var(--tone,var(--brand))}
+.staff-top{display:flex;align-items:center;gap:6px;margin-bottom:8px;min-width:0}
+.staff-top b{font-size:var(--t-body);font-weight:650;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;min-width:0}
+.staff-dot{width:7px;height:7px;border-radius:99px;background:var(--ok);flex-shrink:0}
+.staff-score{font-size:24px;font-weight:700;letter-spacing:-.8px;line-height:1;
+  color:var(--tone,var(--brand));direction:ltr;unicode-bidi:isolate;display:block}
+.staff-score span{font-size:11px;font-weight:600;color:var(--ink-3);margin-inline-start:4px}
+.staff-meta{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;
+  font-size:var(--t-micro);color:var(--ink-2)}
+.staff-meta span{white-space:nowrap}
+.staff-shift{font-size:10px;color:var(--ok);margin-top:6px;direction:ltr;unicode-bidi:isolate;display:block}
+
+/* ── مقاييس داخل النافذة ── */
+.mini-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s2);margin-bottom:var(--s3)}
+.mini{background:var(--surface-2);border-radius:var(--r1);padding:10px;text-align:center}
+.mini small{display:block;font-size:10px;color:var(--ink-2);margin-bottom:4px}
+.mini b{display:block;font-size:18px;font-weight:700;direction:ltr;unicode-bidi:isolate}
+.bar{height:5px;border-radius:99px;background:var(--surface-2);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--tone,var(--brand))}
+
 /* ── نافذة منبثقة ── */
 .sheet{position:fixed;inset:0;z-index:200;background:color-mix(in srgb,#000 55%,transparent);
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
@@ -260,7 +285,13 @@ var T = {
   skus:['صنف','SKUs'], cached:['محفوظ','cached'], refreshing:['بيحدّث…','refreshing…'],
   refresh:['حدّث','Refresh'], target:['الهدف','Target'], checkStaff:['شوف الموظفين','See staff'],
   belowTarget:['تحت الهدف','Below target'], weakest:['أضعف مؤشر','Weakest metric'],
-  margin:['هامش','margin'],   live:['لحظي','live'], hourly:['كل ساعة','hourly'], minutely:['كل دقيقة','every minute'],
+  margin:['هامش','margin'],
+  staffToday:['الموظفين','Staff'], details:['التفاصيل','Details'],
+  sales:['مبيعات','Sales'], shifts:['الشيفتات','Shifts'], noShift:['مسجّلش دخول','Not clocked in'],
+  scoreParts:['من إيه اتركّبت الدرجة','Score breakdown'],
+  pNew:['عملاء جدد','New customers'], pReg:['التسجيل','Registration'],
+  pRepeat:['المتكررين','Repeat'], pReturn:['قلة المرتجعات','Low returns'],
+  totalHours:['إجمالي الساعات','Total hours'], shiftsCount:['شيفتات','shifts'],   live:['لحظي','live'], hourly:['كل ساعة','hourly'], minutely:['كل دقيقة','every minute'],
   srcSales:['من نظام البيع','from POS'], srcInv:['من سجل الفواتير','from invoice log'],
   srcSnap:['من اللقطة','from snapshot'], justNow:['دلوقتي','just now'],
   collected:['سُدّد','collected'], customersToday:['عملاء','Customers'],
@@ -545,7 +576,7 @@ var SECTIONS = {
   sales: [['month', function(){ return tr('salesPerf'); }]],
   money: [['pl',    function(){ return tr('pl'); }], ['exp', function(){ return tr('expenses'); }],
           ['debt',  function(){ return tr('debts'); }]],
-  hr:    [['att',   function(){ return tr('attendance'); }], ['perf', function(){ return tr('staffRank'); }]],
+  hr:    [['perf',  function(){ return tr('staffToday'); }]],
   stock: [['aging', function(){ return tr('invAging'); }], ['short', function(){ return tr('shortages'); }]],
   cust:  [['msgs',  function(){ return tr('messages'); }], ['list', function(){ return tr('customers'); }],
           ['agents',function(){ return tr('agents'); }]]
@@ -576,7 +607,7 @@ function renderTabs(sec, tab){
 function render(sec, tab){
   var key = SECTIONS[sec][tab][0];
   ({ home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts,
-     att:pgAttendance, perf:pgStaff, aging:pgAging, short:pgShort,
+     perf:pgStaffHub, aging:pgAging, short:pgShort,
      msgs:pgMessages, list:pgCustomers, agents:pgAgents })[key](key);
 }
 
@@ -894,79 +925,143 @@ function remind(btn, phone, name, amount){
     .catch(function(e){ logErr(e); btn.textContent = tr('msgFailed'); });
 }
 
-/* ─────── موظفين: الحضور ─────── */
-function setAttRange(v){ setRange('att', v, pgAttendance); }
-function pgAttendance(){
+/* ─────── موظفين: الحضور + الأداء في مكان واحد ─────── */
+var HR = { live: null, hist: null, kpi: null };
+
+function setHrRange(v){ setRange('perf', v, pgStaffHub); }
+
+function pgStaffHub(){
   var box = document.getElementById('p-hr'); busy(box);
-  Promise.all([ api('getAttendanceLiveV2'), api('getAttendanceHistoryV2', rangeParams('att')) ])
-  .then(function(r){
-    var live = r[0] || {}, hist = r[1] || {};
-    markSync();
-    var rows = hist.rows || [];
-    var totalMin = rows.reduce(function(s, x){ return s + (x.durationMin || 0); }, 0);
-    var names = {}; rows.forEach(function(x){ names[x.name] = 1; });
-
-    var html = rangeBar('att', RANGE_OPTS, 'setAttRange') + vitals(tr('attendance'), hist.label || '', [
-      { value: num((live.live || []).length), label: tr('onShiftNow'), tone: 'ok' },
-      { value: num(Object.keys(names).length), label: tr('staffRank'), tone: 'brand' },
-      { value: num(Math.round(totalMin / 60)), label: LANG === 'ar' ? 'ساعة' : 'hours', tone: 'brand' }
-    ]);
-
-    html += card(tr('onShiftNow'), null, (live.live || []).length
-      ? live.live.map(function(p){ return row(p.name, null, badge(ltr(dur(p.elapsedMinutes)), 'ok')); }).join('')
-      : (live.ok === false
-          ? '<div class="state err">' + esc(live.error) + '</div>'
-          : '<div class="state">' + tr('nobodyIn') + '</div>'));
-
-    /* السجل مجمّع باليوم — التاريخ عنوان مش تكرار في كل سطر */
-    var byDay = {}, order = [];
-    rows.slice().reverse().forEach(function(x){
-      if (!byDay[x.date]) { byDay[x.date] = []; order.push(x.date); }
-      byDay[x.date].push(x);
-    });
-    html += card(tr('history'), hist.label || '', order.length ? order.map(function(day){
-      return '<div class="group-title">' + ltr(day) + '</div>' + byDay[day].map(function(x){
-        var d = dur(x.durationMin);
-        return row(x.name,
-          ltr(x.checkIn) + ' <span style="color:var(--ink-3)">→</span> ' +
-            (x.checkOut === 'مفتوح' ? '<span style="color:var(--warn)">—</span>' : ltr(x.checkOut)),
-          d ? badge(ltr(d), 'ok') : badge(tr('stillIn'), 'warn'));
-      }).join('');
-    }).join('') : emptyState());
-
-    box.innerHTML = html;
-  }).catch(function(e){ logErr(e); oops(box, "pgAttendance()"); });
+  Promise.all([
+    api('getAttendanceLiveV2'),
+    api('getAttendanceHistoryV2', rangeParams('perf')),
+    api('getStaffKPI', rangeParams('perf'))
+  ]).then(function(r){
+    HR.live = r[0] || {}; HR.hist = r[1] || {}; HR.kpi = r[2] || {};
+    markSync(); drawStaffHub();
+  }).catch(function(e){ logErr(e); oops(box, "pgStaffHub()"); });
 }
 
-/* ─────── موظفين: الأداء ─────── */
-function setPerfRange(v){ setRange('perf', v, pgStaff); }
-function pgStaff(){
-  var box = document.getElementById('p-hr'); busy(box);
-  api('getStaffKPI', rangeParams('perf')).then(function(d){
-    var list = d.employees || [];
-    markSync();
-    var best = list[0];
-    var totReg = list.reduce(function(s,x){ return s + x.registered; }, 0);
-    var totCust = list.reduce(function(s,x){ return s + x.total_cust; }, 0);
+/* بيلزق الحضور بالأداء — الاسم في Connecteam ممكن يختلف عن اسم نظام البيع،
+   فبنطابق بأول كلمة مشتركة */
+function matchShifts(name){
+  var rows = (HR.hist.rows || []);
+  var key = String(name || '').replace(/^(دكتور|دكتورة|استاذ|د\.|أستاذ)\s*/, '').trim().split(/\s+/)[0];
+  if (!key) return [];
+  return rows.filter(function(x){
+    return String(x.name || '').toLowerCase().indexOf(key.toLowerCase()) !== -1 ||
+           key.toLowerCase().indexOf(String(x.name || '').split(/\s+/)[0].toLowerCase()) !== -1;
+  });
+}
+function liveFor(name){
+  var key = String(name || '').replace(/^(دكتور|دكتورة|استاذ|د\.|أستاذ)\s*/, '').trim().split(/\s+/)[0];
+  return (HR.live.live || []).filter(function(p){
+    return String(p.name || '').toLowerCase().indexOf(key.toLowerCase()) !== -1 ||
+           key.toLowerCase().indexOf(String(p.name || '').split(/\s+/)[0].toLowerCase()) !== -1;
+  })[0];
+}
 
-    var html = rangeBar('perf', RANGE_OPTS, 'setPerfRange') + vitals(tr('staffRank'), d.label || '', [
-      { value: num(best ? best.care_score : 0), label: tr('careScore'), tone: 'brand',
-        note: best ? esc(best.name) : '' },
-      { value: ltr(pct(totReg, totCust) + '%').replace(/<[^>]+>/g,''), label: tr('regRate'),
-        tone: pct(totReg, totCust) >= 75 ? 'ok' : 'warn', note: ltr('75%') },
-      { value: num(list.reduce(function(s,x){ return s + x.new_c; }, 0)), label: tr('newCust'), tone: 'ok' }
-    ]);
+function drawStaffHub(){
+  var box = document.getElementById('p-hr');
+  var list = (HR.kpi.employees || []);
+  var live = HR.live.live || [];
 
-    html += card(tr('staffRank'), tr('careScore'), list.length ? list.map(function(s){
-      var tone = s.care_score >= 70 ? 'ok' : s.care_score >= 50 ? 'warn' : 'bad';
-      return row(s.name,
-        ltr(num(s.sales)) + ' · ' + ltr(s.reg_pct + '%') + ' ' + tr('regRate') +
-        ' · ' + ltr(s.new_c) + ' ' + tr('newCust'),
-        '<span style="color:var(--' + tone + ')">' + ltr(s.care_score) + '</span>');
-    }).join('') : emptyState());
+  var totReg  = list.reduce(function(a,x){ return a + x.registered; }, 0);
+  var totCust = list.reduce(function(a,x){ return a + x.total_cust; }, 0);
+  var totNew  = list.reduce(function(a,x){ return a + x.new_c; }, 0);
 
-    box.innerHTML = html;
-  }).catch(function(e){ logErr(e); oops(box, "pgStaff()"); });
+  var html = rangeBar('perf', RANGE_OPTS, 'setHrRange');
+
+  html += vitals(tr('staffToday'), HR.kpi.label || '', [
+    { value: num(live.length), label: tr('onShiftNow'), tone: live.length ? 'ok' : 'warn',
+      note: num(list.length), sub: tr('staffToday') },
+    { value: pct(totReg, totCust) + '%', label: tr('regRate'),
+      tone: pct(totReg, totCust) >= 75 ? 'ok' : 'warn', note: '75%', sub: tr('target') },
+    { value: num(totNew), label: tr('newCust'), tone: 'brand' }
+  ]);
+
+  /* مربع لكل موظف */
+  html += list.length ? '<div class="staff-grid">' + list.map(function(e, i){
+    var tone = e.care_score >= 70 ? 'ok' : e.care_score >= 50 ? 'warn' : 'bad';
+    var lv = liveFor(e.name);
+    return '<div class="staff" style="--tone:var(--' + tone + ')" onclick="staffSheet(' + i + ')">' +
+      '<div class="staff-top">' + (lv ? '<span class="staff-dot"></span>' : '') +
+        '<b>' + esc(e.name) + '</b></div>' +
+      '<span class="staff-score">' + LRI + e.care_score + PDI +
+        '<span>' + esc(tr('careScore')) + '</span></span>' +
+      '<div class="staff-meta">' +
+        '<span>' + ltr(e.invoices) + ' ' + tr('invoices') + '</span>' +
+        '<span>' + ltr(e.reg_pct + '%') + ' ' + tr('pReg') + '</span>' +
+      '</div>' +
+      (lv ? '<span class="staff-shift">' + LRI + dur(lv.elapsedMinutes) + PDI + '</span>' : '') +
+      '</div>';
+  }).join('') + '</div>' : '<div class="card">' + emptyState() + '</div>';
+
+  /* موجودين دلوقتي — بس لو فيه حد مش متطابق مع القائمة فوق */
+  if (HR.live.ok === false) html += card(tr('onShiftNow'), null,
+    '<div class="state err">' + esc(HR.live.error) + '</div>');
+
+  box.innerHTML = html;
+}
+
+/* نافذة تفاصيل الموظف */
+function staffSheet(i){
+  var e = (HR.kpi.employees || [])[i]; if (!e) return;
+  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  document.getElementById('sheet').classList.add('on');
+  t.textContent = e.name;
+
+  var shifts = matchShifts(e.name);
+  var mins = shifts.reduce(function(a,x){ return a + (x.durationMin || 0); }, 0);
+  var lv = liveFor(e.name);
+
+  function mini(label, val, tone){
+    return '<div class="mini"><small>' + esc(label) + '</small>' +
+      '<b style="color:var(--' + (tone || 'ink') + ')">' + LRI + val + PDI + '</b></div>';
+  }
+  function part(label, val){
+    return '<div style="padding:8px 0"><div style="display:flex;justify-content:space-between;' +
+      'font-size:var(--t-small)"><span style="color:var(--ink-2)">' + esc(label) + '</span>' +
+      '<span dir="ltr" class="n" style="font-weight:650">' + val + '%</span></div>' +
+      '<div class="bar" style="--tone:var(--' + (val >= 70 ? 'ok' : val >= 50 ? 'warn' : 'bad') +
+      ')"><i style="width:' + Math.min(100, val) + '%"></i></div></div>';
+  }
+
+  b.innerHTML =
+    (lv ? '<div class="alert" style="--tone:var(--ok);margin-bottom:12px"><span class="dot"></span>' +
+      '<div><b>' + tr('onShiftNow') + '</b><small>' + ltr(dur(lv.elapsedMinutes)) + '</small></div></div>' : '') +
+
+    '<div class="mini-grid">' +
+      mini(tr('sales'), num(e.sales)) +
+      mini(tr('profit'), num(e.profit), 'ok') +
+      mini(tr('invoices'), num(e.invoices)) +
+      mini(tr('avgTicket'), num(e.avg_inv), e.avg_inv >= 150 ? 'ok' : 'warn') +
+    '</div>' +
+
+    '<div class="group-title">' + tr('customers') + '</div>' +
+    rowLite(tr('regRate'), tr('target') + ' 75%',
+      '<span dir="ltr" class="n" style="color:var(--' + (e.reg_pct >= 75 ? 'ok' : 'warn') + ')">' +
+      e.reg_pct + '%</span>') +
+    rowLite(tr('newCust'), null, ltr(num(e.new_c))) +
+    rowLite(tr('pRepeat'), null, ltr(num(e.repeat_c))) +
+    rowLite(tr('notReg'), null, ltr(num(e.not_reg))) +
+    rowLite(tr('discount'), ltr(e.disc_pct + '%'), ltr(num(e.discount))) +
+    (e.returns ? rowLite(tr('returns'), ltr(e.return_pct + '%'), ltr(num(e.returns))) : '') +
+
+    '<div class="group-title">' + tr('scoreParts') + '</div>' +
+    part(tr('pNew'), e.care_new) + part(tr('pReg'), e.care_reg) +
+    part(tr('pRepeat'), e.care_repeat) + part(tr('pReturn'), e.care_return) +
+
+    '<div class="group-title">' + tr('shifts') + '</div>' +
+    (shifts.length
+      ? rowLite(tr('totalHours'), ltr(shifts.length) + ' ' + tr('shiftsCount'),
+          ltr(Math.round(mins / 60) + 'h')) +
+        shifts.slice().reverse().slice(0, 14).map(function(x){
+          return rowLite(x.date,
+            ltr(x.checkIn) + ' → ' + (x.checkOut === 'مفتوح' ? '—' : ltr(x.checkOut)),
+            x.durationMin ? ltr(dur(x.durationMin)) : badge(tr('stillIn'), 'warn'));
+        }).join('')
+      : '<div class="state">' + tr('noShift') + '</div>');
 }
 
 /* ─────── مخزون: التحليل ─────── */

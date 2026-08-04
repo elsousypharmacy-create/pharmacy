@@ -163,20 +163,29 @@ button{font-family:inherit}
 
 
 /* ── شبكة الموظفين ── */
-.staff-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s2)}
+/* الموظفين تحت بعض — صف كامل لكل واحد */
+.staff-grid{display:block}
 .staff{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);
-  padding:var(--s3);cursor:pointer;min-width:0;border-top:2px solid var(--tone,var(--brand))}
-.staff-top{display:flex;align-items:center;gap:6px;margin-bottom:8px;min-width:0}
+  padding:var(--s3) var(--s4);cursor:pointer;margin-bottom:var(--s2);
+  border-inline-start:3px solid var(--tone,var(--brand));
+  display:flex;align-items:center;gap:var(--s3)}
+.staff-body{flex:1;min-width:0}
+.staff-top{display:flex;align-items:center;gap:6px;min-width:0}
 .staff-top b{font-size:var(--t-body);font-weight:650;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;min-width:0}
 .staff-dot{width:7px;height:7px;border-radius:99px;background:var(--ok);flex-shrink:0}
-.staff-score{font-size:24px;font-weight:700;letter-spacing:-.8px;line-height:1;
-  color:var(--tone,var(--brand));direction:ltr;unicode-bidi:isolate;display:block}
-.staff-score span{font-size:11px;font-weight:600;color:var(--ink-3);margin-inline-start:4px}
-.staff-meta{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;
+.staff-meta{display:flex;flex-wrap:wrap;gap:2px 10px;margin-top:5px;
   font-size:var(--t-micro);color:var(--ink-2)}
 .staff-meta span{white-space:nowrap}
-.staff-shift{font-size:10px;color:var(--ok);margin-top:6px;direction:ltr;unicode-bidi:isolate;display:block}
+.staff-right{text-align:center;flex-shrink:0;min-width:78px}
+.staff-sales{display:block;font-size:17px;font-weight:700;letter-spacing:-.4px;
+  direction:ltr;unicode-bidi:isolate}
+.staff-sales u{display:block;text-decoration:none;font-size:9px;color:var(--ink-3);
+  font-weight:600;margin-top:1px}
+.staff-score{display:inline-block;margin-top:5px;font-size:11px;font-weight:700;
+  padding:2px 8px;border-radius:99px;direction:ltr;unicode-bidi:isolate;
+  background:color-mix(in srgb,var(--tone) 16%,transparent);color:var(--tone)}
+.staff-shift{font-size:10px;color:var(--ok);direction:ltr;unicode-bidi:isolate}
 
 /* ── مقاييس داخل النافذة ── */
 .mini-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s2);margin-bottom:var(--s3)}
@@ -272,7 +281,7 @@ var T = {
 
   /* عامة */
   today:['النهاردة','Today'],
-  rToday:['اليوم','Today'], rYesterday:['أمس','Yesterday'], rMonth:['الشهر','Month'],
+  rWeek:['الأسبوع','Week'], rToday:['اليوم','Today'], rYesterday:['أمس','Yesterday'], rMonth:['الشهر','Month'],
   rLastMonth:['الشهر اللي فات','Last month'], rCustom:['فترة','Custom'],
   from:['من','From'], to:['إلى','To'], apply:['طبّق','Apply'],
   days7:['٧ أيام','7 days'], days14:['١٤ يوم','14 days'], days30:['٣٠ يوم','30 days'],
@@ -991,20 +1000,31 @@ function drawStaffHub(isOld){
   ]);
 
   /* مربع لكل موظف */
-  html += list.length ? '<div class="staff-grid">' + list.map(function(e, i){
+  /* مرتّبين بالمبيعات — الأعلى فوق */
+  var sorted = list.slice().sort(function(a,b){ return b.sales - a.sales; });
+  html += sorted.length ? '<div class="staff-grid">' + sorted.map(function(e){
+    var i = list.indexOf(e);
     var tone = e.care_score >= 70 ? 'ok' : e.care_score >= 50 ? 'warn' : 'bad';
     var lv = liveFor(e.name);
     return '<div class="staff" style="--tone:var(--' + tone + ')" onclick="staffSheet(' + i + ')">' +
-      '<div class="staff-top">' + (lv ? '<span class="staff-dot"></span>' : '') +
-        '<b>' + esc(e.name) + '</b></div>' +
-      '<span class="staff-score">' + LRI + e.care_score + PDI +
-        '<span>' + esc(tr('careScore')) + '</span></span>' +
-      '<div class="staff-meta">' +
-        '<span>' + ltr(e.invoices) + ' ' + tr('invoices') + '</span>' +
-        '<span>' + ltr(e.reg_pct + '%') + ' ' + tr('pReg') + '</span>' +
+      '<div class="staff-body">' +
+        '<div class="staff-top">' + (lv ? '<span class="staff-dot"></span>' : '') +
+          '<b>' + esc(e.name) + '</b>' +
+          (lv ? '<span class="staff-shift">' + LRI + dur(lv.elapsedMinutes) + PDI + '</span>' : '') +
+        '</div>' +
+        '<div class="staff-meta">' +
+          '<span>' + ltr(e.invoices) + ' ' + tr('invoices') + '</span>' +
+          '<span>' + ltr(num(e.avg_inv)) + ' ' + tr('avgTicket') + '</span>' +
+          '<span>' + ltr(e.reg_pct + '%') + ' ' + tr('pReg') + '</span>' +
+          '<span>' + ltr(e.new_c) + ' ' + tr('pNew') + '</span>' +
+        '</div>' +
       '</div>' +
-      (lv ? '<span class="staff-shift">' + LRI + dur(lv.elapsedMinutes) + PDI + '</span>' : '') +
-      '</div>';
+      '<div class="staff-right">' +
+        '<span class="staff-sales">' + LRI + num(e.sales) + PDI +
+          '<u>' + esc(tr('sales')) + '</u></span>' +
+        '<span class="staff-score" style="--tone:var(--' + tone + ')">' +
+          LRI + e.care_score + PDI + '</span>' +
+      '</div></div>';
   }).join('') + '</div>' : '<div class="card">' + emptyState() + '</div>';
 
   /* موجودين دلوقتي — بس لو فيه حد مش متطابق مع القائمة فوق */

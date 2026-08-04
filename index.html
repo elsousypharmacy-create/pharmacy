@@ -242,6 +242,17 @@ var T = {
 
   /* عامة */
   today:['النهاردة','Today'],
+  rToday:['اليوم','Today'], rYesterday:['أمس','Yesterday'], rMonth:['الشهر','Month'],
+  rLastMonth:['الشهر اللي فات','Last month'], rCustom:['فترة','Custom'],
+  from:['من','From'], to:['إلى','To'], apply:['طبّق','Apply'],
+  days7:['٧ أيام','7 days'], days14:['١٤ يوم','14 days'], days30:['٣٠ يوم','30 days'],
+  beforeDisc:['قبل الخصم','Before discount'], afterDisc:['بعد الخصم','After discount'],
+  needed:['المطلوب','Needed'], markOrdered:['اتطلب','Ordered'], markDiscont:['مقطوع','Discontinued'],
+  supplier:['مورّد','suppliers'], byEmployee:['كل موظف طلّع دين','Debt raised per employee'],
+  agingTitle:['حسب آخر بيع','By last sale'], never:['ما اتباعش','Never sold'],
+  d0_30:['أقل من شهر','Under 30d'], d31_60:['١-٢ شهر','1-2 months'], d61_90:['٢-٣ شهور','2-3 months'],
+  d91_180:['٣-٦ شهور','3-6 months'], d181_365:['٦-١٢ شهر','6-12 months'], d365:['أكتر من سنة','Over a year'],
+  skus:['صنف','SKUs'],
   collected:['سُدّد','collected'], customersToday:['عملاء','Customers'],
   registered:['مسجّلين','Registered'], notReg:['غير مسجّل','Unregistered'],
   repeat:['متكررين','Repeat'], todayNumbers:['أرقام اليوم','Today in numbers'],
@@ -409,10 +420,53 @@ function alertBox(tone, title, sub, jump){
 }
 function emptyState(){ return '<div class="state">' + tr('empty') + '</div>'; }
 
+
+/* ═══ منتقي الفترة — نفس الشكل في كل الصفحات ═══ */
+var RANGE = { sales:'month', exp:'month', att:'month', perf:'month', debt:'month', short:'7' };
+var CUSTOM = {};
+
+function rangeBar(key, opts, cb){
+  return '<div class="subtabs" style="position:static;border:0;padding:0 0 12px">' +
+    opts.map(function(o){
+      return '<button class="' + (RANGE[key] === o[0] ? 'on' : '') + '" onclick="' + cb + '(\'' + o[0] + '\')">' +
+        tr(o[1]) + '</button>';
+    }).join('') + '</div>';
+}
+function rangeParams(key){
+  var v = RANGE[key];
+  if (v === 'custom' && CUSTOM[key]) return { from: CUSTOM[key].from, to: CUSTOM[key].to };
+  return { range: v };
+}
+function setRange(key, v, redraw){
+  if (v === 'custom'){ askDates(key, redraw); return; }
+  RANGE[key] = v; redraw();
+}
+function askDates(key, redraw){
+  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  document.getElementById('sheet').classList.add('on');
+  t.textContent = tr('rCustom');
+  var today = new Date().toISOString().slice(0,10);
+  b.innerHTML =
+    '<div class="group-title">' + tr('from') + '</div>' +
+    '<input id="dFrom" type="date" value="' + today + '" style="width:100%;padding:11px;border-radius:12px;' +
+      'border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-family:inherit;font-size:14px">' +
+    '<div class="group-title">' + tr('to') + '</div>' +
+    '<input id="dTo" type="date" value="' + today + '" style="width:100%;padding:11px;border-radius:12px;' +
+      'border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-family:inherit;font-size:14px">' +
+    '<div style="height:16px"></div>' +
+    '<button class="btn btn-primary" id="dGo">' + tr('apply') + '</button>';
+  document.getElementById('dGo').onclick = function(){
+    CUSTOM[key] = { from: document.getElementById('dFrom').value, to: document.getElementById('dTo').value };
+    RANGE[key] = 'custom'; closeSheet(); redraw();
+  };
+}
+var RANGE_OPTS = [['today','rToday'],['yesterday','rYesterday'],['month','rMonth'],
+                  ['lastMonth','rLastMonth'],['custom','rCustom']];
+
 /* ═══════════ ٤) الأقسام ═══════════ */
 var SECTIONS = {
   home:  [['home',  function(){ return tr('today'); }]],
-  sales: [['month', function(){ return tr('thisMonth'); }], ['last', function(){ return tr('lastMonth'); }]],
+  sales: [['month', function(){ return tr('salesPerf'); }]],
   money: [['pl',    function(){ return tr('pl'); }], ['exp', function(){ return tr('expenses'); }],
           ['debt',  function(){ return tr('debts'); }]],
   hr:    [['att',   function(){ return tr('attendance'); }], ['perf', function(){ return tr('staffRank'); }]],
@@ -445,7 +499,7 @@ function renderTabs(sec, tab){
 }
 function render(sec, tab){
   var key = SECTIONS[sec][tab][0];
-  ({ home:pgHome, month:pgSales, last:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts,
+  ({ home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts,
      att:pgAttendance, perf:pgStaff, aging:pgAging, short:pgShort,
      msgs:pgMessages, list:pgCustomers, agents:pgAgents })[key](key);
 }
@@ -611,17 +665,20 @@ function loadTrends(){
 }
 
 /* ─────── مبيعات ─────── */
-function pgSales(key){
+function setSalesRange(v){ setRange('sales', v, pgSales); }
+function pgSales(){
   var box = document.getElementById('p-sales'); busy(box);
-  var range = (key === 'last') ? 'lastMonth' : 'month';
-  Promise.all([ api('getMonthTotalsRaw', { range: range }), api('getStaffKPI', { range: range }) ])
+  var p = rangeParams('sales');
+  var range = (RANGE.sales === 'lastMonth') ? 'lastMonth' : 'month';
+  Promise.all([ api('getMonthTotalsRaw', { range: range }), api('getStaffKPI', p) ])
   .then(function(r){
     var m = r[0] || {}, k = r[1] || {};
     if (!m.ok) throw new Error('sales');
     markSync();
     var avg = m.invoices_total ? Math.round(m.sales_total / m.invoices_total) : 0;
 
-    var html = vitals(tr('salesPerf'), m.label, [
+    var html = rangeBar('sales', RANGE_OPTS, 'setSalesRange') +
+      vitals(tr('salesPerf'), k.label || m.label, [
       { value: num(m.sales_total), label: tr('netSales'), tone: 'ok' },
       { value: num(avg), label: tr('avgTicket'), tone: avg >= 150 ? 'ok' : 'warn', note: ltr('150') },
       { value: num(m.invoices_total), label: tr('invoices'), tone: 'brand' }
@@ -638,7 +695,7 @@ function pgSales(key){
     }).join('') : emptyState());
 
     box.innerHTML = html;
-  }).catch(function(e){ logErr(e); oops(box, "pgSales('" + key + "')"); });
+  }).catch(function(e){ logErr(e); oops(box, "pgSales()"); });
 }
 
 /* ─────── مالية: الربح والخسارة ─────── */
@@ -665,13 +722,14 @@ function pgPL(){
 }
 
 /* ─────── مالية: المصروفات ─────── */
+function setExpRange(v){ setRange('exp', v, pgExpenses); }
 function pgExpenses(){
   var box = document.getElementById('p-money'); busy(box);
-  api('getExpensesData', { range: 'month' }).then(function(d){
+  api('getExpensesData', rangeParams('exp')).then(function(d){
     if (!d || !d.ok) throw new Error('exp');
     markSync();
     var top = (d.byCategory || [])[0];
-    var html = vitals(tr('expenses'), tr('thisMonth'), [
+    var html = rangeBar('exp', RANGE_OPTS, 'setExpRange') + vitals(tr('expenses'), null, [
       { value: num(d.total), label: tr('totalExpenses'), tone: 'warn' },
       { value: num(d.count), label: tr('items'), tone: 'brand' },
       { value: num(top ? top.total : 0), label: top ? top.category : '—', tone: 'bad' }
@@ -711,7 +769,15 @@ function pgDebts(){
         'onclick="remind(this,\'' + c.phone + '\',\'' + esc(c.name).replace(/'/g,"") + '\',' + Math.round(c.net) + ')">' +
         tr('sendReminder') + '</button></div></div>';
     }).join('') : emptyState());
+    html += '<div id="debtEmp"></div>';
     box.innerHTML = html;
+    api('getDebtsByEmployee', rangeParams('debt')).then(function(x){
+      var eb = document.getElementById('debtEmp'); if (!eb || !x || !x.ok) return;
+      eb.innerHTML = card(tr('byEmployee'), x.label, (x.employees || []).length
+        ? x.employees.map(function(e){
+            return row(e.employee, ltr(e.count) + ' ' + tr('invoices'), ltr(num(e.total)));
+          }).join('') : emptyState());
+    }).catch(logErr);
   }).catch(function(e){ logErr(e); oops(box, "pgDebts()"); });
 }
 function remind(btn, phone, name, amount){
@@ -722,9 +788,10 @@ function remind(btn, phone, name, amount){
 }
 
 /* ─────── موظفين: الحضور ─────── */
+function setAttRange(v){ setRange('att', v, pgAttendance); }
 function pgAttendance(){
   var box = document.getElementById('p-hr'); busy(box);
-  Promise.all([ api('getAttendanceLiveV2'), api('getAttendanceHistoryV2', { range: 'month' }) ])
+  Promise.all([ api('getAttendanceLiveV2'), api('getAttendanceHistoryV2', rangeParams('att')) ])
   .then(function(r){
     var live = r[0] || {}, hist = r[1] || {};
     markSync();
@@ -732,7 +799,7 @@ function pgAttendance(){
     var totalMin = rows.reduce(function(s, x){ return s + (x.durationMin || 0); }, 0);
     var names = {}; rows.forEach(function(x){ names[x.name] = 1; });
 
-    var html = vitals(tr('attendance'), hist.label || '', [
+    var html = rangeBar('att', RANGE_OPTS, 'setAttRange') + vitals(tr('attendance'), hist.label || '', [
       { value: num((live.live || []).length), label: tr('onShiftNow'), tone: 'ok' },
       { value: num(Object.keys(names).length), label: tr('staffRank'), tone: 'brand' },
       { value: num(Math.round(totalMin / 60)), label: LANG === 'ar' ? 'ساعة' : 'hours', tone: 'brand' }
@@ -765,16 +832,17 @@ function pgAttendance(){
 }
 
 /* ─────── موظفين: الأداء ─────── */
+function setPerfRange(v){ setRange('perf', v, pgStaff); }
 function pgStaff(){
   var box = document.getElementById('p-hr'); busy(box);
-  api('getStaffKPI', { range: 'month' }).then(function(d){
+  api('getStaffKPI', rangeParams('perf')).then(function(d){
     var list = d.employees || [];
     markSync();
     var best = list[0];
     var totReg = list.reduce(function(s,x){ return s + x.registered; }, 0);
     var totCust = list.reduce(function(s,x){ return s + x.total_cust; }, 0);
 
-    var html = vitals(tr('staffRank'), d.label || '', [
+    var html = rangeBar('perf', RANGE_OPTS, 'setPerfRange') + vitals(tr('staffRank'), d.label || '', [
       { value: num(best ? best.care_score : 0), label: tr('careScore'), tone: 'brand',
         note: best ? esc(best.name) : '' },
       { value: ltr(pct(totReg, totCust) + '%').replace(/<[^>]+>/g,''), label: tr('regRate'),
@@ -816,6 +884,16 @@ function pgAging(){
         return row(m.label, ltr(m.count) + ' ' + tr('items'), ltr(num(m.totalCost)));
       }).join('') || emptyState());
 
+    var AG = [['never','never'],['b0_30','d0_30'],['b31_60','d31_60'],['b61_90','d61_90'],
+              ['b91_180','d91_180'],['b181_365','d181_365'],['b365plus','d365']];
+    html += card(tr('agingTitle'), null, AG.map(function(a){
+      var x = (d.aging || {})[a[0]]; if (!x || !x.skus) return '';
+      var tone = (a[0] === 'never' || a[0] === 'b365plus' || a[0] === 'b181_365') ? 'bad'
+               : (a[0] === 'b91_180') ? 'warn' : 'ok';
+      return row(tr(a[1]), ltr(x.skus) + ' ' + tr('skus'),
+        '<span style="color:var(--' + tone + ')">' + ltr(num(x.cost)) + '</span>');
+    }).join('') || emptyState());
+
     html += card(tr('deadStock'), null, (d.slow_category_summary || []).length
       ? d.slow_category_summary.slice(0, 12).map(function(c){
           return row(c.category, ltr(c.count) + ' ' + tr('items'), ltr(num(c.cost)));
@@ -827,44 +905,89 @@ function pgAging(){
 }
 
 /* ─────── مخزون: النواقص ─────── */
+var SHORT_DATA = null, SHORT_SEC = 'zero', SHORT_OPEN = {};
+
+function setShortDays(v){ RANGE.short = v; SHORT_DATA = null; pgShort(); }
+function setShortSec(v){ SHORT_SEC = v; drawShort(); }
+function toggleCat(id){ SHORT_OPEN[id] = !SHORT_OPEN[id]; drawShort(); }
+
 function pgShort(){
   var box = document.getElementById('p-stock'); busy(box);
-  api('getShortages', { days: 7 }, SHORTAGE_URL).then(function(d){
+  api('getShortages', { days: RANGE.short }, SHORTAGE_URL).then(function(d){
     if (!d || d.error) throw new Error(d && d.msg);
-    markSync();
-    function flat(sec){
-      var out = [], cats = (d[sec] && d[sec].categories) || {};
-      Object.keys(cats).forEach(function(c){
-        Object.keys(cats[c]).forEach(function(comp){
-          cats[c][comp].forEach(function(it){ out.push({ name: it.name, comp: comp }); });
-        });
-      });
-      return out;
-    }
-    var zero = flat('zero'), low = flat('low');
-    var html = vitals(tr('shortages'), null, [
-      { value: num(zero.length), label: tr('outOfStock'), tone: 'bad' },
-      { value: num(low.length), label: tr('lowStock'), tone: 'warn' },
-      { value: num(zero.length + low.length), label: tr('items'), tone: 'brand' }
-    ]);
-    function block(title, arr, tone){
-      return card(title, null, arr.length ? arr.slice(0, 80).map(function(it){
-        return '<div class="row"><div class="row-main"><b>' + esc(it.name) + '</b>' +
-          '<small>' + esc(it.comp) + '</small></div>' +
-          '<button class="badge" style="--tone:var(--' + tone + ');border:0;cursor:pointer" ' +
-          'onclick="copyTxt(this,\'' + esc(it.name).replace(/'/g,"") + '\')">' + tr('copyName') + '</button></div>';
-      }).join('') : emptyState());
-    }
-    html += block(tr('outOfStock'), zero, 'bad') + block(tr('lowStock'), low, 'warn');
-    box.innerHTML = html;
+    SHORT_DATA = d; markSync(); drawShort();
   }).catch(function(e){ logErr(e); oops(box, "pgShort()"); });
 }
-function copyTxt(btn, t){
-  try{
-    navigator.clipboard.writeText(t);
-    var old = btn.textContent; btn.textContent = tr('copied');
-    setTimeout(function(){ btn.textContent = old; }, 1400);
-  }catch(e){ logErr(e); }
+
+function drawShort(){
+  var box = document.getElementById('p-stock'), d = SHORT_DATA;
+  if (!d) return;
+  var zero = d.zero || { categories:{}, summary:{} }, low = d.low || { categories:{}, summary:{} };
+  var sec = (SHORT_SEC === 'zero') ? zero : low;
+  var sum = sec.summary || {};
+
+  var html = rangeBar('short', [['7','days7'],['14','days14'],['30','days30']], 'setShortDays');
+
+  html += vitals(tr('shortages'), d.generatedAt || '', [
+    { value: num((zero.summary||{}).total || 0), label: tr('outOfStock'), tone: 'bad' },
+    { value: num((low.summary||{}).total || 0),  label: tr('lowStock'),   tone: 'warn' },
+    { value: num(sum.totalAfter || 0), label: tr('afterDisc'), tone: 'brand' }
+  ]);
+
+  /* تبديل: خلص خالص / قرب يخلص */
+  html += '<div class="subtabs" style="position:static;border:0;padding:0 0 12px">' +
+    '<button class="' + (SHORT_SEC === 'zero' ? 'on' : '') + '" onclick="setShortSec(\'zero\')">' +
+      tr('outOfStock') + ' ' + ltr((zero.summary||{}).total || 0) + '</button>' +
+    '<button class="' + (SHORT_SEC === 'low' ? 'on' : '') + '" onclick="setShortSec(\'low\')">' +
+      tr('lowStock') + ' ' + ltr((low.summary||{}).total || 0) + '</button></div>';
+
+  var cats = Object.keys(sec.categories || {}).sort();
+  if (!cats.length){ box.innerHTML = html + '<div class="card">' + emptyState() + '</div>'; return; }
+
+  html += cats.map(function(cat, ci){
+    var comps = sec.categories[cat], names = Object.keys(comps).sort();
+    var count = names.reduce(function(a,c){ return a + comps[c].length; }, 0);
+    var id = SHORT_SEC + '-' + ci, open = !!SHORT_OPEN[id];
+
+    var body = open ? names.map(function(comp){
+      return '<div class="group-title">' + esc(comp) + '</div>' + comps[comp].map(function(it){
+        var code = esc(it.code || '').replace(/'/g, '');
+        var nm   = esc(it.name || '').replace(/'/g, '');
+        return '<div class="row"><div class="row-main"><b style="white-space:normal">' + esc(it.name) + '</b>' +
+          '<small>' + tr('needed') + ' ' + ltr(it.shortage) + '</small></div>' +
+          '<div style="display:flex;gap:6px">' +
+          '<button class="badge" style="--tone:var(--ok);border:0;cursor:pointer" ' +
+            'onclick="shortAct(this,\'markOrdered\',\'' + code + '\',\'' + nm + '\')">' + tr('markOrdered') + '</button>' +
+          '<button class="badge" style="--tone:var(--bad);border:0;cursor:pointer" ' +
+            'onclick="shortAct(this,\'markDiscontinued\',\'' + code + '\',\'' + nm + '\')">' + tr('markDiscont') + '</button>' +
+          '</div></div>';
+      }).join('');
+    }).join('') : '';
+
+    return '<div class="card" style="padding:0;overflow:hidden">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;' +
+        'padding:14px 16px;cursor:pointer" onclick="toggleCat(\'' + id + '\')">' +
+        '<div><b style="font-size:var(--t-title);font-weight:650">' + esc(cat) + '</b>' +
+        '<small style="display:block;font-size:var(--t-small);color:var(--ink-2);margin-top:2px">' +
+          ltr(count) + ' ' + tr('items') + ' · ' + ltr(names.length) + ' ' + tr('supplier') + '</small></div>' +
+        '<span style="color:var(--ink-3);font-size:15px">' + (open ? '⌄' : '›') + '</span></div>' +
+      (open ? '<div style="padding:0 16px 14px">' + body + '</div>' : '') + '</div>';
+  }).join('');
+
+  box.innerHTML = html;
+}
+
+function shortAct(btn, action, code, name){
+  btn.disabled = true; btn.textContent = '…';
+  fetch(SHORTAGE_URL, { method:'post', mode:'no-cors',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ action: action, code: code, name: name }) }).catch(logErr);
+  if (action === 'markOrdered'){
+    try{ navigator.clipboard.writeText(name); }catch(e){}
+    toast(tr('copied'));
+  }
+  var r = btn.closest('.row'); if (r) r.style.opacity = '.35';
+  btn.textContent = '✓';
 }
 
 /* ─────── عملاء: الرسايل ─────── */

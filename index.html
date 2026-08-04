@@ -245,7 +245,12 @@ var T = {
   collected:['سُدّد','collected'], customersToday:['عملاء','Customers'],
   registered:['مسجّلين','Registered'], notReg:['غير مسجّل','Unregistered'],
   repeat:['متكررين','Repeat'], todayNumbers:['أرقام اليوم','Today in numbers'],
-  perEmployee:['كل موظف','By employee'], noSalesYet:['لسه مفيش مبيعات النهاردة','No sales yet today'], needsAction:['محتاج تصرّف','Needs action'],
+  perEmployee:['كل موظف','By employee'],
+  ofYesterday:['من مبيعات أمس','of yesterday'], fullDay:['اليوم كامل','full day'],
+  whatChanged:['اللي اتغيّر','What changed'], last7vs:['آخر ٧ أيام مقابل اللي قبلهم','Last 7 days vs previous 7'],
+  trendUp:['صاعد','Rising'], trendDown:['نازل','Falling'], trendFlat:['ثابت','Steady'],
+  noTrend:['لسه البيانات مش كفاية للمقارنة','Not enough data to compare yet'],
+  avgDaily:['متوسط يومي','Daily average'], tapToOpen:['دوس عشان تفتح','Tap to open'], noSalesYet:['لسه مفيش مبيعات النهاردة','No sales yet today'], needsAction:['محتاج تصرّف','Needs action'],
   allGood:['كل حاجة تمام','All clear'], sections:['الأقسام','Sections'],
   salesToday:['مبيعات اليوم','Sales today'], profitToday:['ربح اليوم','Profit today'],
   debtToday:['دين اليوم','Debt today'], vsYesterday:['عن أمس','vs yesterday'],
@@ -394,9 +399,13 @@ function row(name, sub, val){
     (val ? '<span class="row-val">' + val + '</span>' : '') + '</div>';
 }
 function badge(text, tone){ return '<span class="badge" style="--tone:var(--' + tone + ')">' + text + '</span>'; }
-function alertBox(tone, title, sub){
-  return '<div class="alert" style="--tone:var(--' + tone + ')"><span class="dot"></span>' +
-    '<div><b>' + esc(title) + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</div></div>';
+function alertBox(tone, title, sub, jump){
+  return '<div class="alert" style="--tone:var(--' + tone + ')' + (jump ? ';cursor:pointer' : '') + '"' +
+    (jump ? ' onclick="' + jump + '"' : '') + '><span class="dot"></span>' +
+    '<div style="flex:1;min-width:0"><b>' + esc(title) + '</b>' +
+    (sub ? '<small>' + sub + '</small>' : '') + '</div>' +
+    (jump ? '<span style="color:var(--ink-3);font-size:16px;align-self:center">' +
+      (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span>' : '') + '</div>';
 }
 function emptyState(){ return '<div class="state">' + tr('empty') + '</div>'; }
 
@@ -453,11 +462,17 @@ function pgHome(){
         ex = b.expiry || {}, ag = b.agents || {};
 
     var salesT = d.sales_today || 0, salesY = d.sales_yesterday || 0;
+    /* قبل ٦ المسا المقارنة بأمس مضلّلة (اليوم لسه مكملش)، فنعرض التقدّم بدل الفرق */
+    var lateDay = new Date().getHours() >= 18;
     var delta = salesY > 0 ? Math.round((salesT - salesY) / salesY * 100) : 0;
+    var progress = salesY > 0 ? Math.round(salesT / salesY * 100) : 0;
+    var salesNote = lateDay
+      ? { tone: delta >= 0 ? 'ok' : 'bad',
+          text: ltr((delta >= 0 ? '+' : '') + delta + '%') + ' ' + tr('vsYesterday') }
+      : { tone: 'brand', text: ltr(progress + '%') + ' ' + tr('ofYesterday') };
 
     var html = vitals(tr('today'), new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), [
-      { value: num(salesT), label: tr('salesToday'), tone: delta >= 0 ? 'ok' : 'bad',
-        note: ltr((delta >= 0 ? '+' : '') + delta + '%') + ' ' + tr('vsYesterday') },
+      { value: num(salesT), label: tr('salesToday'), tone: salesNote.tone, note: salesNote.text },
       { value: num(d.profit_today), label: tr('profitToday'), tone: 'brand',
         note: ltr(pct(d.profit_today, salesT) + '%') },
       { value: num(d.debt_today), label: tr('debtToday'), tone: (d.debt_today > 0 ? 'warn' : 'ok'),
@@ -501,18 +516,21 @@ function pgHome(){
       return (new Date() - new Date(c.lastActivity)) / 86400000 > 30 && c.net > 0;
     });
     if (overdue.length) acts.push(alertBox('bad', tr('overdueDebt'),
-      ltr(overdue.length) + ' · ' + ltr(num(overdue.reduce(function(a,c){return a+c.net;},0))) + ' ' + tr('egp')));
+      ltr(overdue.length) + ' · ' + ltr(num(overdue.reduce(function(a,c){return a+c.net;},0))) + ' ' + tr('egp'),
+      "go('money',2)"));
 
     var expMonths = ex.months || [];
     var soon = expMonths.length ? expMonths[0] : null;
     if (soon && soon.count) acts.push(alertBox('warn', tr('expiringSoon'),
-      ltr(soon.count) + ' ' + tr('items') + ' · ' + ltr(num(soon.totalCost)) + ' ' + tr('egp')));
+      ltr(soon.count) + ' ' + tr('items') + ' · ' + ltr(num(soon.totalCost)) + ' ' + tr('egp'),
+      "go('stock',0)"));
     if (ex.expired && ex.expired.count) acts.push(alertBox('bad', tr('expiredNow'),
-      ltr(ex.expired.count) + ' ' + tr('items')));
+      ltr(ex.expired.count) + ' ' + tr('items'), "go('stock',0)"));
 
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
     if (dueAgents.length) acts.push(alertBox('warn', tr('agentsDue'),
-      ltr(dueAgents.length) + ' · ' + ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0)))));
+      ltr(dueAgents.length) + ' · ' + ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0))),
+      "go('cust',2)"));
 
     html += card(tr('needsAction'), null,
       acts.length ? acts.join('') : '<div class="state">' + tr('allGood') + '</div>');
@@ -523,8 +541,73 @@ function pgHome(){
       ? live.map(function(p){ return row(p.name, null, badge(ltr(dur(p.elapsedMinutes)), 'ok')); }).join('')
       : '<div class="state">' + tr('nobodyIn') + '</div>');
 
+    html += '<div id="trends"></div>';
     box.innerHTML = html;
+    loadTrends();
   }).catch(function(e){ logErr(e); oops(box, "pgHome()"); });
+}
+
+/* بيقارن آخر ٧ أيام باللي قبلهم ويقول إيه اللي اتحرّك.
+   بيتنادى بعد ما الشاشة تظهر، فمش بيأخّر التحميل. */
+function loadTrends(){
+  api('getStaffKPI', { range: 'month' }).then(function(k){
+    var box = document.getElementById('trends'); if (!box) return;
+    var d = (k.daily || []).slice();
+    if (d.length < 6){ box.innerHTML = ''; return; }
+
+    var recent = d.slice(-7), prior = d.slice(-14, -7);
+    if (!prior.length) prior = d.slice(0, Math.max(1, d.length - 7));
+
+    function avg(arr, f){ return arr.length ? arr.reduce(function(s,x){ return s + (f(x) || 0); }, 0) / arr.length : 0; }
+    function pctChange(a, b){ return b > 0 ? Math.round((a - b) / b * 100) : 0; }
+
+    var items = [];
+
+    var sNow = avg(recent, function(x){ return x.sales; }),
+        sOld = avg(prior,  function(x){ return x.sales; }),
+        sCh  = pctChange(sNow, sOld);
+    if (Math.abs(sCh) >= 5) items.push({
+      tone: sCh > 0 ? 'ok' : 'bad', ic: sCh > 0 ? '↑' : '↓',
+      title: tr('salesPerf') + ' ' + (sCh > 0 ? tr('trendUp') : tr('trendDown')) + ' ' + ltr(Math.abs(sCh) + '%'),
+      sub: tr('avgDaily') + ' ' + ltr(num(sNow)) + ' ' + tr('egp') +
+           ' <span style="color:var(--ink-3)">(' + ltr(num(sOld)) + ')</span>'
+    });
+
+    var rNow = pct(recent.reduce(function(s,x){ return s + x.registered; }, 0),
+                   recent.reduce(function(s,x){ return s + x.total_cust; }, 0)),
+        rOld = pct(prior.reduce(function(s,x){ return s + x.registered; }, 0),
+                   prior.reduce(function(s,x){ return s + x.total_cust; }, 0));
+    if (Math.abs(rNow - rOld) >= 4) items.push({
+      tone: rNow > rOld ? 'ok' : 'bad', ic: rNow > rOld ? '↑' : '↓',
+      title: tr('regRate') + ' ' + (rNow > rOld ? tr('trendUp') : tr('trendDown')),
+      sub: ltr(rOld + '%') + ' <span style="color:var(--ink-3)">→</span> ' + ltr(rNow + '%') +
+           ' · ' + tr('regRate') + ' ' + ltr('75%'),
+      jump: "go('hr',1)"
+    });
+
+    var nNow = avg(recent, function(x){ return x.new_c; }),
+        nOld = avg(prior,  function(x){ return x.new_c; }),
+        nCh  = pctChange(nNow, nOld);
+    if (Math.abs(nCh) >= 15) items.push({
+      tone: nCh > 0 ? 'ok' : 'warn', ic: nCh > 0 ? '↑' : '↓',
+      title: tr('newCust') + ' ' + (nCh > 0 ? tr('trendUp') : tr('trendDown')) + ' ' + ltr(Math.abs(nCh) + '%'),
+      sub: tr('avgDaily') + ' ' + ltr(nNow.toFixed(1)) +
+           ' <span style="color:var(--ink-3)">(' + ltr(nOld.toFixed(1)) + ')</span>',
+      jump: "go('cust',1)"
+    });
+
+    box.innerHTML = card(tr('whatChanged'), tr('last7vs'), items.length
+      ? items.map(function(i){
+          return '<div class="row"' + (i.jump ? ' style="cursor:pointer" onclick="' + i.jump + '"' : '') + '>' +
+            '<div style="display:flex;gap:12px;align-items:flex-start;min-width:0">' +
+            '<span style="width:30px;height:30px;border-radius:9px;flex-shrink:0;display:grid;place-items:center;' +
+            'background:color-mix(in srgb,var(--' + i.tone + ') 15%,transparent);color:var(--' + i.tone + ');' +
+            'font-size:15px;font-weight:800">' + i.ic + '</span>' +
+            '<div class="row-main"><b style="white-space:normal">' + i.title + '</b><small>' + i.sub + '</small></div>' +
+            '</div></div>';
+        }).join('')
+      : '<div class="state">' + tr('trendFlat') + '</div>');
+  }).catch(function(e){ logErr(e); });
 }
 
 /* ─────── مبيعات ─────── */

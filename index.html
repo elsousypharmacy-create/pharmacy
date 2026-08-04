@@ -255,6 +255,9 @@ var T = {
   skus:['صنف','SKUs'], cached:['محفوظ','cached'], refreshing:['بيحدّث…','refreshing…'],
   refresh:['حدّث','Refresh'], target:['الهدف','Target'], checkStaff:['شوف الموظفين','See staff'],
   belowTarget:['تحت الهدف','Below target'], weakest:['أضعف مؤشر','Weakest metric'],
+  margin:['هامش','margin'],   live:['لحظي','live'], hourly:['كل ساعة','hourly'], minutely:['كل دقيقة','every minute'],
+  srcSales:['من نظام البيع','from POS'], srcInv:['من سجل الفواتير','from invoice log'],
+  srcSnap:['من اللقطة','from snapshot'], justNow:['دلوقتي','just now'],
   collected:['سُدّد','collected'], customersToday:['عملاء','Customers'],
   registered:['مسجّلين','Registered'], notReg:['غير مسجّل','Unregistered'],
   repeat:['متكررين','Repeat'], todayNumbers:['أرقام اليوم','Today in numbers'],
@@ -364,7 +367,7 @@ function toggleTheme(){
 }
 function markSync(){
   document.getElementById('sync').textContent =
-    tr('updated') + ' ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
 }
 
 /* سجل الأخطاء — أي فشل بيتسجّل بدل ما يضيع في صمت */
@@ -395,21 +398,29 @@ function oops(box, again){
 }
 
 /* لبنات جاهزة — كل الصفحات بتستخدمها فمفيش شكلين لنفس الحاجة */
-function vitals(title, sub, list){
+function vitals(title, sub, list, foot){
   return '<div class="vitals"><div class="vitals-head"><h2>' + esc(title) + '</h2>' +
     '<span>' + esc(sub || '') + '</span></div><div class="vitals-row">' +
     list.map(function(v){
       return '<div class="vital" style="--tone:var(--' + (v.tone || 'brand') + ')">' +
         '<b class="n">' + v.value + '</b><small>' + esc(v.label) + '</small>' +
         (v.note ? '<i>' + v.note + '</i>' : '') + '</div>';
-    }).join('') + '</div></div>';
+    }).join('') + '</div>' + (foot || '') + '</div>';
 }
-function card(title, sub, body, right){
+function card(title, sub, body, right, foot){
   return '<div class="card"><div class="card-head"><div><h3>' + esc(title) + '</h3>' +
-    (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div>' + (right || '') + '</div>' + body + '</div>';
+    (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div>' + (right || '') + '</div>' +
+    body + (foot || '') + '</div>';
 }
 function row(name, sub, val){
   return '<div class="row"><div class="row-main"><b>' + esc(name) + '</b>' +
+    (sub ? '<small>' + sub + '</small>' : '') + '</div>' +
+    (val ? '<span class="row-val">' + val + '</span>' : '') + '</div>';
+}
+/* سطر مضغوط: للأرقام الثانوية — أخف وزنًا ومسافة أقل */
+function rowLite(name, sub, val){
+  return '<div class="row" style="padding:9px 0"><div class="row-main">' +
+    '<b style="font-weight:500;color:var(--ink-2)">' + esc(name) + '</b>' +
     (sub ? '<small>' + sub + '</small>' : '') + '</div>' +
     (val ? '<span class="row-val">' + val + '</span>' : '') + '</div>';
 }
@@ -417,18 +428,26 @@ function badge(text, tone){ return '<span class="badge" style="--tone:var(--' + 
 function alertBox(tone, title, sub, jump){
   return '<div class="alert" style="--tone:var(--' + tone + ')' + (jump ? ';cursor:pointer' : '') + '"' +
     (jump ? ' onclick="' + jump + '"' : '') + '><span class="dot"></span>' +
-    '<div style="flex:1;min-width:0"><b>' + esc(title) + '</b>' +
+    '<div style="flex:1;min-width:0"><b style="white-space:normal">' + title + '</b>' +
     (sub ? '<small>' + sub + '</small>' : '') + '</div>' +
     (jump ? '<span style="color:var(--ink-3);font-size:16px;align-self:center">' +
       (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span>' : '') + '</div>';
 }
-function goal(value, target, invert){
+function goal(value, target, suffix){
   var p = target > 0 ? Math.min(100, Math.round(value / target * 100)) : 0;
-  var ok = invert ? (value <= target) : (value >= target);
-  return '<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">' +
-    '<span style="width:44px;height:4px;border-radius:99px;background:var(--surface-2);overflow:hidden;display:block">' +
+  var ok = value >= target;
+  return '<div style="display:flex;align-items:center;gap:8px">' +
+    '<span style="width:44px;height:4px;border-radius:99px;background:var(--surface-2);' +
+      'overflow:hidden;display:block;direction:ltr">' +
       '<span style="display:block;height:100%;width:' + p + '%;background:var(--' + (ok?'ok':'warn') + ')"></span>' +
-    '</span><span class="row-val" style="color:var(--' + (ok?'ok':'warn') + ')">' + ltr(value) + '</span></div>';
+    '</span><span class="row-val" style="color:var(--' + (ok?'ok':'warn') + ')">' +
+      ltr(value + (suffix || '')) + '</span></div>';
+}
+function stamp(label, when, freq){
+  return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:var(--t-micro);' +
+    'color:var(--ink-3);padding-top:10px;margin-top:12px;border-top:1px solid var(--line)">' +
+    '<span>' + esc(label) + '</span><span>' + (when ? ltr(when) : tr('justNow')) +
+    (freq ? ' · ' + freq : '') + '</span></div>';
 }
 function emptyState(){ return '<div class="state">' + tr('empty') + '</div>'; }
 
@@ -593,13 +612,7 @@ function drawHome(b, kpi, isOld){
     var html = (isOld ? '<div class="state" style="padding:0 0 10px">' +
       tr('cached') + ' · <u onclick="pgHome()">' + tr('refresh') + '</u></div>' : '');
 
-    html += vitals(tr('today'), new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), [
-      { value: num(salesT), label: tr('salesToday'), tone: salesNote.tone, note: salesNote.text },
-      { value: num(d.profit_today), label: tr('profitToday'), tone: 'brand',
-        note: ltr(pct(d.profit_today, salesT) + '%') },
-      { value: num(d.debt_today), label: tr('debtToday'), tone: (d.debt_today > 0 ? 'warn' : 'ok'),
-        note: tr('collected') + ' ' + ltr(num(d.debt_paid_today)) }
-    ]);
+
 
     /* حساب أرقام اليوم — محتاجينها للتنبيهات كمان */
     var emps = kpi.employees || [];
@@ -613,20 +626,29 @@ function drawHome(b, kpi, isOld){
     var avgInv  = tot.inv ? Math.round(salesT / tot.inv) : 0;
     var regPct  = pct(tot.reg, totCust);
 
+    /* ── ١) المؤشرات: مبيعات · ربح · فواتير ── */
+    html += vitals(tr('today'), new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), [
+      { value: num(salesT), label: tr('salesToday'), tone: salesNote.tone, note: salesNote.text },
+      { value: num(d.profit_today), label: tr('profitToday'), tone: 'brand',
+        note: ltr(pct(d.profit_today, salesT) + '%') + ' ' + tr('margin') },
+      { value: num(tot.inv), label: tr('invoices'), tone: avgInv >= 150 ? 'ok' : 'warn',
+        note: ltr(num(avgInv)) + ' ' + tr('avgTicket') }
+    ], stamp(tr('srcSales'), (String(d.updated_at || '')).slice(-8) || null, tr('live')));
+
     /* ── ٢) محتاج تصرّف — فوق، مش تحت ── */
     var acts = [];
     var overdue = (dt.debtors || []).filter(function(c){
       return (new Date() - new Date(c.lastActivity)) / 86400000 > 30 && c.net > 0;
     });
-    if (overdue.length) acts.push(alertBox('bad', tr('overdueDebt'),
+    if (overdue.length) acts.push(alertBox('bad', esc(tr('overdueDebt')),
       ltr(overdue.length) + ' · ' + ltr(num(overdue.reduce(function(a,c){return a+c.net;},0))) + ' ' + tr('egp'),
       "go('money',2)"));
 
-    if (ex.expired && ex.expired.count) acts.push(alertBox('bad', tr('expiredNow'),
+    if (ex.expired && ex.expired.count) acts.push(alertBox('bad', esc(tr('expiredNow')),
       ltr(ex.expired.count) + ' ' + tr('items'), "go('stock',0)"));
 
     var months = ex.months || [], soon = months.length ? months[0] : null;
-    if (soon && soon.count) acts.push(alertBox('warn', tr('expiringSoon'),
+    if (soon && soon.count) acts.push(alertBox('warn', esc(tr('expiringSoon')),
       ltr(soon.count) + ' ' + tr('items') + ' · ' + ltr(num(soon.totalCost)) + ' ' + tr('egp'),
       "go('stock',0)"));
 
@@ -634,31 +656,37 @@ function drawHome(b, kpi, isOld){
     var weak = emps.filter(function(e){ return e.invoices >= 3; })
                    .sort(function(a,b){ return a.reg_pct - b.reg_pct; })[0];
     if (weak && weak.reg_pct < 50) acts.push(alertBox('warn',
-      weak.name + ' — ' + tr('regRate') + ' ' + ltr(weak.reg_pct + '%'),
+      esc(weak.name) + ' — ' + tr('regRate') + ' ' + weak.reg_pct + '%',
       tr('target') + ' ' + ltr('75%') + ' · ' + ltr(weak.invoices) + ' ' + tr('invoices'),
       "go('hr',1)"));
 
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
-    if (dueAgents.length) acts.push(alertBox('warn', tr('agentsDue'),
+    if (dueAgents.length) acts.push(alertBox('warn', esc(tr('agentsDue')),
       ltr(dueAgents.length) + ' · ' + ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0))),
       "go('cust',2)"));
 
+    var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
     html += card(tr('needsAction'), null,
-      acts.length ? acts.join('') : '<div class="state">' + tr('allGood') + '</div>');
+      acts.length ? acts.join('') : '<div class="state">' + tr('allGood') + '</div>',
+      null, stamp(tr('srcSnap'), snapAt || null, tr('hourly')));
 
     /* ── ٣) اللي اتغيّر (بيتحمّل بعدين) ── */
     html += '<div id="trends"></div>';
 
     /* ── ٤) أرقام اليوم — من غير تكرار، والأهداف بشريط ── */
     html += card(tr('todayNumbers'), null, tot.inv ? (
-      row(tr('invoices'), ltr(totCust) + ' ' + tr('customersToday') +
-        ' · ' + ltr(tot.reg) + ' ' + tr('registered'), ltr(num(tot.inv))) +
-      row(tr('newCust'), ltr(tot.rep) + ' ' + tr('repeat'), ltr(num(tot.newc))) +
       row(tr('avgTicket'), tr('target') + ' ' + ltr('150'), goal(avgInv, 150)) +
-      row(tr('regRate'), tr('target') + ' ' + ltr('75%'), goal(regPct, 75)) +
-      (tot.disc ? row(tr('discount'), null, ltr(num(tot.disc))) : '') +
-      (tot.ret ? row(tr('returns'), null, ltr(num(tot.ret))) : '')
-    ) : '<div class="state">' + tr('noSalesYet') + '</div>');
+      row(tr('regRate'), tr('target') + ' ' + ltr('75%'), goal(regPct + '%', '75%', regPct >= 75)) +
+      rowLite(tr('customersToday'),
+        ltr(tot.reg) + ' ' + tr('registered') + ' · ' + ltr(tot.nreg) + ' ' + tr('notReg'),
+        ltr(num(totCust))) +
+      rowLite(tr('newCust'), ltr(tot.rep) + ' ' + tr('repeat'), ltr(num(tot.newc))) +
+      rowLite(tr('debtToday'), tr('collected') + ' ' + ltr(num(d.debt_paid_today)),
+        ltr(num(d.debt_today))) +
+      (tot.disc ? rowLite(tr('discount'), null, ltr(num(tot.disc))) : '') +
+      (tot.ret ? rowLite(tr('returns'), null, ltr(num(tot.ret))) : '')
+    ) : '<div class="state">' + tr('noSalesYet') + '</div>',
+      null, stamp(tr('srcInv'), null, tr('minutely')));
 
     /* ── ٥) موجودين دلوقتي — الكارت يظهر بس لو فيه حد ── */
     var live = at.live || [];

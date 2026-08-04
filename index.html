@@ -285,7 +285,10 @@ var T = {
   bucketFresh:['أقل من شهر','Under a month'], bucket1_3:['١-٣ شهور','1-3 months'],
   bucket3_6:['٣-٦ شهور','3-6 months'], bucket6:['أكتر من ٦ شهور','Over 6 months'],
   sortBy:['ترتيب','Sort'], byAmount:['بالمبلغ','By amount'], byAge:['بالمدة','By age'],
-  lastMove:['آخر حركة','Last activity'], noteLastMove:['«آخر حركة» = آخر شراء أو سداد','"Last activity" = last purchase or payment'], rToday:['اليوم','Today'], rYesterday:['أمس','Yesterday'], rMonth:['الشهر','Month'],
+  lastMove:['آخر حركة','Last activity'], lastPaid:['آخر سداد','Last payment'],
+  noPayRec:['مفيش سداد مسجّل','No payment on record'],
+  bucketNone:['مفيش سداد مسجّل في آخر سنة','No payment recorded in the past year'],
+  soldBy:['البايع','Sold by'], checkFirst:['راجع حسابه في نظام البيع قبل ما تكلمه','Check their account in the POS first'], noteLastMove:['«آخر حركة» = آخر شراء أو سداد','"Last activity" = last purchase or payment'], rToday:['اليوم','Today'], rYesterday:['أمس','Yesterday'], rMonth:['الشهر','Month'],
   rLastMonth:['الشهر اللي فات','Last month'], rCustom:['فترة','Custom'],
   from:['من','From'], to:['إلى','To'], apply:['طبّق','Apply'],
   days7:['٧ أيام','7 days'], days14:['١٤ يوم','14 days'], days30:['٣٠ يوم','30 days'],
@@ -921,7 +924,9 @@ var DEBT_BUCKETS = [
   { key:'fresh', max:30,   label:'bucketFresh', tone:'ok'    },
   { key:'b1_3',  max:90,   label:'bucket1_3',   tone:'warn'  },
   { key:'b3_6',  max:180,  label:'bucket3_6',   tone:'bad'   },
-  { key:'b6',    max:1e9,  label:'bucket6',     tone:'bad'   }
+  { key:'b6',    max:1e9,  label:'bucket6',     tone:'bad'   },
+  /* مفيش تاريخ سداد أصلاً — رمادي، لأن دي معلومة ناقصة مش حكم على العميل */
+  { key:'none',  max:null, label:'bucketNone',  tone:'slate' }
 ];
 
 function drawDebts(isOld){
@@ -929,20 +934,22 @@ function drawDebts(isOld){
   if (!d) return;
   var now = new Date();
   var list = (d.debtors || []).map(function(c){
-    c._days = Math.floor((now - new Date(c.lastActivity)) / 86400000);
+    c._days = (c.daysSincePaid === null || c.daysSincePaid === undefined) ? null : c.daysSincePaid;
     return c;
   });
 
-  /* توزيع على النطاقات */
+  /* التوزيع حسب آخر سداد — اللي مفيش ليه تاريخ يروح لنطاق رمادي منفصل */
   var groups = {};
   DEBT_BUCKETS.forEach(function(b){ groups[b.key] = []; });
   list.forEach(function(c){
+    if (c._days === null){ groups.none.push(c); return; }
     for (var i = 0; i < DEBT_BUCKETS.length; i++){
-      if (c._days <= DEBT_BUCKETS[i].max){ groups[DEBT_BUCKETS[i].key].push(c); break; }
+      var b = DEBT_BUCKETS[i];
+      if (b.max !== null && c._days <= b.max){ groups[b.key].push(c); break; }
     }
   });
 
-  var stale = list.filter(function(c){ return c._days > 30; });
+  var stale = list.filter(function(c){ return c._days === null || c._days > 30; });
 
   var html = (isOld ? '<div class="state" style="padding:0 0 8px">' + tr('cached') + '</div>' : '');
 
@@ -972,8 +979,12 @@ function drawDebts(isOld){
       : function(x,y){ return y.net - x.net; });
 
     var body = open ? g.slice(0, 80).map(function(c){
+      var sub = (c._days === null)
+        ? tr('noPayRec')
+        : tr('lastPaid') + ' ' + ltr(c.lastPaid) + ' · ' + ltr(c._days) + ' ' + tr('daysAgo');
+      if (c.seller && c.seller !== 'غير محدد') sub += ' · ' + tr('soldBy') + ' ' + esc(c.seller);
       return '<div class="row"><div class="row-main"><b>' + esc(c.name) + '</b>' +
-        '<small>' + tr('lastMove') + ' ' + ltr(c._days) + ' ' + tr('daysAgo') + '</small></div>' +
+        '<small>' + sub + '</small></div>' +
         '<div style="display:flex;align-items:center;gap:8px">' +
         '<span class="row-val" style="color:var(--' + b.tone + ')">' + ltr(num(c.net)) + '</span>' +
         '<button class="badge" style="--tone:var(--brand);border:0;cursor:pointer" ' +
@@ -997,16 +1008,14 @@ function drawDebts(isOld){
   }).join('');
 
   html += '<div class="state" style="padding:4px 0 12px;font-size:11px">' + tr('noteLastMove') + '</div>';
-  html += '<div id="debtEmp"></div>';
-  box.innerHTML = html;
+  /* البايع الحقيقي — جاي مع نفس النداء، مفيش طلب زيادة */
+  if ((d.by_seller || []).length) html += card(tr('byEmployee'), null,
+    d.by_seller.map(function(e){
+      return row(e.employee, null, ltr(num(e.total)));
+    }).join(''));
 
-  api('getDebtsByEmployee', rangeParams('debt')).then(function(x){
-    var eb = document.getElementById('debtEmp'); if (!eb || !x || !x.ok) return;
-    eb.innerHTML = card(tr('byEmployee'), x.label, (x.employees || []).length
-      ? x.employees.map(function(e){
-          return row(e.employee, ltr(e.count) + ' ' + tr('invoices'), ltr(num(e.total)));
-        }).join('') : emptyState());
-  }).catch(logErr);
+  html += '<div class="state" style="padding:2px 0 12px;font-size:11px">' + tr('checkFirst') + '</div>';
+  box.innerHTML = html;
 }
 
 function remind(btn, phone, name, amount){

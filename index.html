@@ -253,7 +253,8 @@ var T = {
   d0_30:['أقل من شهر','Under 30d'], d31_60:['١-٢ شهر','1-2 months'], d61_90:['٢-٣ شهور','2-3 months'],
   d91_180:['٣-٦ شهور','3-6 months'], d181_365:['٦-١٢ شهر','6-12 months'], d365:['أكتر من سنة','Over a year'],
   skus:['صنف','SKUs'], cached:['محفوظ','cached'], refreshing:['بيحدّث…','refreshing…'],
-  refresh:['حدّث','Refresh'],
+  refresh:['حدّث','Refresh'], target:['الهدف','Target'], checkStaff:['شوف الموظفين','See staff'],
+  belowTarget:['تحت الهدف','Below target'], weakest:['أضعف مؤشر','Weakest metric'],
   collected:['سُدّد','collected'], customersToday:['عملاء','Customers'],
   registered:['مسجّلين','Registered'], notReg:['غير مسجّل','Unregistered'],
   repeat:['متكررين','Repeat'], todayNumbers:['أرقام اليوم','Today in numbers'],
@@ -421,6 +422,14 @@ function alertBox(tone, title, sub, jump){
     (jump ? '<span style="color:var(--ink-3);font-size:16px;align-self:center">' +
       (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span>' : '') + '</div>';
 }
+function goal(value, target, invert){
+  var p = target > 0 ? Math.min(100, Math.round(value / target * 100)) : 0;
+  var ok = invert ? (value <= target) : (value >= target);
+  return '<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">' +
+    '<span style="width:44px;height:4px;border-radius:99px;background:var(--surface-2);overflow:hidden;display:block">' +
+      '<span style="display:block;height:100%;width:' + p + '%;background:var(--' + (ok?'ok':'warn') + ')"></span>' +
+    '</span><span class="row-val" style="color:var(--' + (ok?'ok':'warn') + ')">' + ltr(value) + '</span></div>';
+}
 function emptyState(){ return '<div class="state">' + tr('empty') + '</div>'; }
 
 
@@ -566,6 +575,7 @@ function drawHome(b, kpi, isOld){
     kpi = kpi || {};
     if (!b || !b.ok) throw new Error('bundle');
     if (!isOld) markSync();
+
     var d = b.daily || {}, at = b.attendance || {}, dt = b.debts || {},
         ex = b.expiry || {}, ag = b.agents || {};
 
@@ -579,7 +589,11 @@ function drawHome(b, kpi, isOld){
           text: ltr((delta >= 0 ? '+' : '') + delta + '%') + ' ' + tr('vsYesterday') }
       : { tone: 'brand', text: ltr(progress + '%') + ' ' + tr('ofYesterday') };
 
-    var html = vitals(tr('today'), new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), [
+    /* ── ١) المؤشرات ── */
+    var html = (isOld ? '<div class="state" style="padding:0 0 10px">' +
+      tr('cached') + ' · <u onclick="pgHome()">' + tr('refresh') + '</u></div>' : '');
+
+    html += vitals(tr('today'), new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), [
       { value: num(salesT), label: tr('salesToday'), tone: salesNote.tone, note: salesNote.text },
       { value: num(d.profit_today), label: tr('profitToday'), tone: 'brand',
         note: ltr(pct(d.profit_today, salesT) + '%') },
@@ -587,7 +601,7 @@ function drawHome(b, kpi, isOld){
         note: tr('collected') + ' ' + ltr(num(d.debt_paid_today)) }
     ]);
 
-    /* أرقام اليوم — عملاء وفواتير وتسجيل */
+    /* حساب أرقام اليوم — محتاجينها للتنبيهات كمان */
     var emps = kpi.employees || [];
     var tot = { inv:0, reg:0, nreg:0, newc:0, rep:0, disc:0, ret:0 };
     emps.forEach(function(e){
@@ -596,29 +610,10 @@ function drawHome(b, kpi, isOld){
       tot.ret += e.returns;
     });
     var totCust = tot.reg + tot.nreg;
-    var avgInv = tot.inv ? Math.round(salesT / tot.inv) : 0;
+    var avgInv  = tot.inv ? Math.round(salesT / tot.inv) : 0;
+    var regPct  = pct(tot.reg, totCust);
 
-    html += card(tr('todayNumbers'), null, tot.inv ? (
-      row(tr('invoices'), null, ltr(num(tot.inv))) +
-      row(tr('customersToday'),
-          ltr(tot.reg) + ' ' + tr('registered') + ' · ' + ltr(tot.nreg) + ' ' + tr('notReg'),
-          ltr(num(totCust))) +
-      row(tr('newCust'), ltr(tot.rep) + ' ' + tr('repeat'), ltr(num(tot.newc))) +
-      row(tr('avgTicket'), ltr('150'), '<span style="color:var(--' + (avgInv >= 150 ? 'ok' : 'warn') + ')">' + ltr(num(avgInv)) + '</span>') +
-      row(tr('regRate'), ltr('75%'), '<span style="color:var(--' + (pct(tot.reg, totCust) >= 75 ? 'ok' : 'warn') + ')">' + ltr(pct(tot.reg, totCust) + '%') + '</span>') +
-      row(tr('discount'), null, ltr(num(tot.disc))) +
-      (tot.ret ? row(tr('returns'), null, ltr(num(tot.ret))) : '')
-    ) : '<div class="state">' + tr('noSalesYet') + '</div>');
-
-    if (emps.length) html += card(tr('perEmployee'), null, emps.map(function(e){
-      var tone = e.care_score >= 70 ? 'ok' : e.care_score >= 50 ? 'warn' : 'bad';
-      return row(e.name,
-        ltr(e.invoices) + ' ' + tr('invoices') + ' · ' + ltr(e.reg_pct + '%') + ' ' + tr('regRate') +
-        ' · ' + ltr(e.new_c) + ' ' + tr('newCust'),
-        '<span style="color:var(--' + tone + ')">' + ltr(num(e.sales)) + '</span>');
-    }).join(''));
-
-    /* محتاج تصرّف */
+    /* ── ٢) محتاج تصرّف — فوق، مش تحت ── */
     var acts = [];
     var overdue = (dt.debtors || []).filter(function(c){
       return (new Date() - new Date(c.lastActivity)) / 86400000 > 30 && c.net > 0;
@@ -627,13 +622,21 @@ function drawHome(b, kpi, isOld){
       ltr(overdue.length) + ' · ' + ltr(num(overdue.reduce(function(a,c){return a+c.net;},0))) + ' ' + tr('egp'),
       "go('money',2)"));
 
-    var expMonths = ex.months || [];
-    var soon = expMonths.length ? expMonths[0] : null;
+    if (ex.expired && ex.expired.count) acts.push(alertBox('bad', tr('expiredNow'),
+      ltr(ex.expired.count) + ' ' + tr('items'), "go('stock',0)"));
+
+    var months = ex.months || [], soon = months.length ? months[0] : null;
     if (soon && soon.count) acts.push(alertBox('warn', tr('expiringSoon'),
       ltr(soon.count) + ' ' + tr('items') + ' · ' + ltr(num(soon.totalCost)) + ' ' + tr('egp'),
       "go('stock',0)"));
-    if (ex.expired && ex.expired.count) acts.push(alertBox('bad', tr('expiredNow'),
-      ltr(ex.expired.count) + ' ' + tr('items'), "go('stock',0)"));
+
+    /* أضعف موظف في التسجيل — تنبيه بدل جدول كامل */
+    var weak = emps.filter(function(e){ return e.invoices >= 3; })
+                   .sort(function(a,b){ return a.reg_pct - b.reg_pct; })[0];
+    if (weak && weak.reg_pct < 50) acts.push(alertBox('warn',
+      weak.name + ' — ' + tr('regRate') + ' ' + ltr(weak.reg_pct + '%'),
+      tr('target') + ' ' + ltr('75%') + ' · ' + ltr(weak.invoices) + ' ' + tr('invoices'),
+      "go('hr',1)"));
 
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
     if (dueAgents.length) acts.push(alertBox('warn', tr('agentsDue'),
@@ -643,15 +646,25 @@ function drawHome(b, kpi, isOld){
     html += card(tr('needsAction'), null,
       acts.length ? acts.join('') : '<div class="state">' + tr('allGood') + '</div>');
 
-    /* مين موجود */
-    var live = at.live || [];
-    html += card(tr('onShiftNow'), null, live.length
-      ? live.map(function(p){ return row(p.name, null, badge(ltr(dur(p.elapsedMinutes)), 'ok')); }).join('')
-      : '<div class="state">' + tr('nobodyIn') + '</div>');
-
-    html = (isOld ? '<div class="state" style="padding:0 0 10px">' +
-      tr('cached') + ' · <u onclick="pgHome()">' + tr('refresh') + '</u></div>' : '') + html;
+    /* ── ٣) اللي اتغيّر (بيتحمّل بعدين) ── */
     html += '<div id="trends"></div>';
+
+    /* ── ٤) أرقام اليوم — من غير تكرار، والأهداف بشريط ── */
+    html += card(tr('todayNumbers'), null, tot.inv ? (
+      row(tr('invoices'), ltr(totCust) + ' ' + tr('customersToday') +
+        ' · ' + ltr(tot.reg) + ' ' + tr('registered'), ltr(num(tot.inv))) +
+      row(tr('newCust'), ltr(tot.rep) + ' ' + tr('repeat'), ltr(num(tot.newc))) +
+      row(tr('avgTicket'), tr('target') + ' ' + ltr('150'), goal(avgInv, 150)) +
+      row(tr('regRate'), tr('target') + ' ' + ltr('75%'), goal(regPct, 75)) +
+      (tot.disc ? row(tr('discount'), null, ltr(num(tot.disc))) : '') +
+      (tot.ret ? row(tr('returns'), null, ltr(num(tot.ret))) : '')
+    ) : '<div class="state">' + tr('noSalesYet') + '</div>');
+
+    /* ── ٥) موجودين دلوقتي — الكارت يظهر بس لو فيه حد ── */
+    var live = at.live || [];
+    if (live.length) html += card(tr('onShiftNow'), null,
+      live.map(function(p){ return row(p.name, null, badge(ltr(dur(p.elapsedMinutes)), 'ok')); }).join(''));
+
     box.innerHTML = html;
     if (!isOld) loadTrends();
   }catch(e){ logErr(e); if (!isOld) oops(box, "pgHome()"); }

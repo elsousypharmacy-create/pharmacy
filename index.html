@@ -89,14 +89,19 @@ button{font-family:inherit}
 .vitals-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s4)}
 .vitals-head h2{font-size:var(--t-head);font-weight:700;letter-spacing:-.5px}
 .vitals-head span{font-size:var(--t-micro);color:var(--ink-3);white-space:nowrap}
-.vitals-row{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s3)}
-.vital{position:relative;padding-top:var(--s3);min-width:0}
-.vital::before{content:'';position:absolute;top:0;inset-inline-start:0;width:26px;height:2px;
-  border-radius:2px;background:var(--tone,var(--brand))}
-.vital b{display:block;font-size:var(--t-vital);font-weight:700;letter-spacing:-1px;line-height:1.1}
-.vital small{display:block;font-size:var(--t-micro);color:var(--ink-2);margin-top:var(--s1);
+/* كل مؤشر في مربع مستقل — الرقم في سطر والكلام في سطر،
+   فمفيش خلط اتجاهات في نفس السطر أصلاً */
+.vitals-row{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
+.vital{background:var(--surface-2);border-radius:var(--r2);padding:12px 10px;
+  min-width:0;text-align:center;border-top:2px solid var(--tone,var(--brand))}
+.vital small{display:block;font-size:var(--t-micro);color:var(--ink-2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px}
+.vital b{display:block;font-size:22px;font-weight:700;letter-spacing:-.8px;line-height:1.15;
+  direction:ltr;unicode-bidi:isolate}
+.vital i{display:block;font-style:normal;font-size:var(--t-micro);font-weight:700;
+  color:var(--tone,var(--brand));margin-top:6px;direction:ltr;unicode-bidi:isolate}
+.vital u{display:block;text-decoration:none;font-size:10px;color:var(--ink-3);margin-top:2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.vital i{font-style:normal;font-size:var(--t-micro);font-weight:600;color:var(--tone,var(--brand))}
 
 /* ── السطر ── */
 .row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);
@@ -404,8 +409,10 @@ function vitals(title, sub, list, foot){
     '<span>' + esc(sub || '') + '</span></div><div class="vitals-row">' +
     list.map(function(v){
       return '<div class="vital" style="--tone:var(--' + (v.tone || 'brand') + ')">' +
-        '<b dir="ltr" class="n">' + LRI + v.value + PDI + '</b><small>' + esc(v.label) + '</small>' +
-        (v.note ? '<i>' + v.note + '</i>' : '') + '</div>';
+        '<small>' + esc(v.label) + '</small>' +
+        '<b dir="ltr">' + LRI + v.value + PDI + '</b>' +
+        (v.note ? '<i dir="ltr">' + LRI + v.note + PDI + '</i>' : '') +
+        (v.sub ? '<u>' + esc(v.sub) + '</u>' : '') + '</div>';
     }).join('') + '</div>' + (foot || '') + '</div>';
 }
 function card(title, sub, body, right, foot){
@@ -606,8 +613,8 @@ function drawHome(b, kpi, isOld){
     var progress = salesY > 0 ? Math.round(salesT / salesY * 100) : 0;
     var salesNote = lateDay
       ? { tone: delta >= 0 ? 'ok' : 'bad',
-          text: ltr((delta >= 0 ? '+' : '') + delta + '%') + ' ' + tr('vsYesterday') }
-      : { tone: 'brand', text: ltr(progress + '%') + ' ' + tr('ofYesterday') };
+          num: (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(delta) + '%', word: tr('vsYesterday') }
+      : { tone: 'brand', num: progress + '%', word: tr('ofYesterday') };
 
     /* ── ١) المؤشرات ── */
     var html = '';
@@ -630,11 +637,12 @@ function drawHome(b, kpi, isOld){
 
     /* ── ١) المؤشرات: مبيعات · ربح · فواتير ── */
     html += vitals(tr('today'), new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), [
-      { value: num(salesT), label: tr('salesToday'), tone: salesNote.tone, note: salesNote.text },
+      { value: num(salesT), label: tr('salesToday'), tone: salesNote.tone,
+        note: salesNote.num, sub: salesNote.word },
       { value: num(d.profit_today), label: tr('profitToday'), tone: 'brand',
-        note: ltr(pct(d.profit_today, salesT) + '%') + ' ' + tr('margin') },
+        note: pct(d.profit_today, salesT) + '%', sub: tr('margin') },
       { value: num(tot.inv), label: tr('invoices'), tone: 'brand',
-        note: ltr(num(totCust)) + ' ' + tr('customersToday') }
+        note: num(totCust), sub: tr('customersToday') }
     ], stamp(tr('srcSales'), (String(d.updated_at || '')).slice(-8) || null, tr('live')));
 
     /* ── ٢) محتاج تصرّف — فوق، مش تحت ── */

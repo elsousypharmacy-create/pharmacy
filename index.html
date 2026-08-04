@@ -931,15 +931,22 @@ var HR = { live: null, hist: null, kpi: null };
 function setHrRange(v){ setRange('perf', v, pgStaffHub); }
 
 function pgStaffHub(){
-  var box = document.getElementById('p-hr'); busy(box);
-  Promise.all([
-    api('getAttendanceLiveV2'),
-    api('getAttendanceHistoryV2', rangeParams('perf')),
-    api('getStaffKPI', rangeParams('perf'))
-  ]).then(function(r){
-    HR.live = r[0] || {}; HR.hist = r[1] || {}; HR.kpi = r[2] || {};
-    markSync(); drawStaffHub();
-  }).catch(function(e){ logErr(e); oops(box, "pgStaffHub()"); });
+  var box = document.getElementById('p-hr');
+  var p = rangeParams('perf');
+  var seed = cacheGet('hub', p);
+  if (seed) { setHub(seed); drawStaffHub(true); } else busy(box);
+
+  /* نداء واحد بيجيب الأداء والحضور مع بعض — بدل تلاتة */
+  api('getStaffHub', p).then(function(d){
+    if (!d || !d.ok) throw new Error(d && d.error);
+    cacheSet('hub', p, d);
+    setHub(d); markSync(); drawStaffHub(false);
+  }).catch(function(e){ logErr(e); if (!seed) oops(box, "pgStaffHub()"); });
+}
+function setHub(d){
+  HR.kpi  = { employees: d.employees, daily: d.daily, label: d.label };
+  HR.hist = { rows: d.rows, label: d.label };
+  HR.live = { ok: !d.attendanceError, live: d.live, error: d.attendanceError };
 }
 
 /* بيلزق الحضور بالأداء — الاسم في Connecteam ممكن يختلف عن اسم نظام البيع،
@@ -961,7 +968,7 @@ function liveFor(name){
   })[0];
 }
 
-function drawStaffHub(){
+function drawStaffHub(isOld){
   var box = document.getElementById('p-hr');
   var list = (HR.kpi.employees || []);
   var live = HR.live.live || [];
@@ -971,6 +978,7 @@ function drawStaffHub(){
   var totNew  = list.reduce(function(a,x){ return a + x.new_c; }, 0);
 
   var html = rangeBar('perf', RANGE_OPTS, 'setHrRange');
+  if (isOld) html = '<div class="state" style="padding:0 0 8px">' + tr('cached') + '</div>' + html;
 
   html += vitals(tr('staffToday'), HR.kpi.label || '', [
     { value: num(live.length), label: tr('onShiftNow'), tone: live.length ? 'ok' : 'warn',

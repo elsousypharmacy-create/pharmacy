@@ -252,7 +252,8 @@ var T = {
   agingTitle:['حسب آخر بيع','By last sale'], never:['ما اتباعش','Never sold'],
   d0_30:['أقل من شهر','Under 30d'], d31_60:['١-٢ شهر','1-2 months'], d61_90:['٢-٣ شهور','2-3 months'],
   d91_180:['٣-٦ شهور','3-6 months'], d181_365:['٦-١٢ شهر','6-12 months'], d365:['أكتر من سنة','Over a year'],
-  skus:['صنف','SKUs'],
+  skus:['صنف','SKUs'], cached:['محفوظ','cached'], refreshing:['بيحدّث…','refreshing…'],
+  refresh:['حدّث','Refresh'],
   collected:['سُدّد','collected'], customersToday:['عملاء','Customers'],
   registered:['مسجّلين','Registered'], notReg:['غير مسجّل','Unregistered'],
   repeat:['متكررين','Repeat'], todayNumbers:['أرقام اليوم','Today in numbers'],
@@ -357,6 +358,8 @@ function toast(msg){
 function toggleTheme(){
   var on = document.body.classList.toggle('light');
   try{ localStorage.setItem('theme', on ? 'light' : 'dark'); }catch(e){}
+  var meta = document.querySelector('meta[name=theme-color]');
+  if (meta) meta.setAttribute('content', on ? '#F4F5F7' : '#0A0B0D');
 }
 function markSync(){
   document.getElementById('sync').textContent =
@@ -420,6 +423,43 @@ function alertBox(tone, title, sub, jump){
 }
 function emptyState(){ return '<div class="state">' + tr('empty') + '</div>'; }
 
+
+
+/* ═══ الكاش المحلي ═══
+   سفاري بيقفل الصفحة لما تسيبها في الخلفية ويعيد تحميلها لما ترجع.
+   بنحفظ آخر رد ناجح، فأول ما تفتح بيظهر على طول والتحديث بيحصل ورا. */
+function cacheKey(a, p){ return 'c:' + a + ':' + JSON.stringify(p || {}); }
+function cacheGet(a, p){
+  try{
+    var raw = localStorage.getItem(cacheKey(a, p)); if (!raw) return null;
+    var o = JSON.parse(raw);
+    if (Date.now() - o.t > 86400000) return null;   /* أقدم من يوم = نتجاهله */
+    return o.d;
+  }catch(e){ return null; }
+}
+function cacheSet(a, p, d){
+  try{ localStorage.setItem(cacheKey(a, p), JSON.stringify({ t: Date.now(), d: d })); }
+  catch(e){ /* المساحة اتملت — مش مشكلة */ }
+}
+
+/* بيرجّع المحفوظ فورًا (لو موجود) وبعدين الجديد */
+function apiFresh(action, params, base){
+  return api(action, params, base).then(function(d){ cacheSet(action, params, d); return d; });
+}
+function apiCached(action, params, onData, base){
+  var old = cacheGet(action, params);
+  if (old) { try{ onData(old, true); }catch(e){ logErr(e); } }
+  return apiFresh(action, params, base).then(function(d){ onData(d, false); return d; });
+}
+
+/* لما ترجع للصفحة بعد غياب — نحدّث بس لو عدّت ٣ دقايق */
+var LAST_LOAD = Date.now();
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState !== 'visible') return;
+  if (Date.now() - LAST_LOAD < 180000) return;
+  LAST_LOAD = Date.now();
+  render(CUR, TAB);
+});
 
 /* ═══ منتقي الفترة — نفس الشكل في كل الصفحات ═══ */
 var RANGE = { sales:'month', exp:'month', att:'month', perf:'month', debt:'month', short:'7' };
@@ -506,12 +546,26 @@ function render(sec, tab){
 
 /* ─────── عامة ─────── */
 function pgHome(){
-  var box = document.getElementById('p-home'); busy(box);
+  var box = document.getElementById('p-home');
+  var seed = cacheGet('home', {});
+  if (seed) drawHome(seed.b, seed.kpi, true); else busy(box);
+
   Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }) ])
   .then(function(res){
-    var b = res[0], kpi = res[1] || {};
+    cacheSet('home', {}, { b: res[0], kpi: res[1] });
+    drawHome(res[0], res[1], false);
+  }).catch(function(e){
+    logErr(e);
+    if (!seed) oops(box, "pgHome()");
+  });
+}
+
+function drawHome(b, kpi, isOld){
+  var box = document.getElementById('p-home');
+  try{
+    kpi = kpi || {};
     if (!b || !b.ok) throw new Error('bundle');
-    markSync();
+    if (!isOld) markSync();
     var d = b.daily || {}, at = b.attendance || {}, dt = b.debts || {},
         ex = b.expiry || {}, ag = b.agents || {};
 
@@ -595,10 +649,12 @@ function pgHome(){
       ? live.map(function(p){ return row(p.name, null, badge(ltr(dur(p.elapsedMinutes)), 'ok')); }).join('')
       : '<div class="state">' + tr('nobodyIn') + '</div>');
 
+    html = (isOld ? '<div class="state" style="padding:0 0 10px">' +
+      tr('cached') + ' · <u onclick="pgHome()">' + tr('refresh') + '</u></div>' : '') + html;
     html += '<div id="trends"></div>';
     box.innerHTML = html;
-    loadTrends();
-  }).catch(function(e){ logErr(e); oops(box, "pgHome()"); });
+    if (!isOld) loadTrends();
+  }catch(e){ logErr(e); if (!isOld) oops(box, "pgHome()"); }
 }
 
 /* بيقارن آخر ٧ أيام باللي قبلهم ويقول إيه اللي اتحرّك.
@@ -1127,7 +1183,13 @@ function runDiag(){
 }
 
 /* ═══════════ ٥) التشغيل ═══════════ */
-try{ if (localStorage.getItem('theme') === 'light') document.body.classList.add('light'); }catch(e){}
+try{
+  /* الدارك هو الافتراضي — الفاتح بيتفعّل بس لو اخترته بنفسك */
+  if (localStorage.getItem('theme') === 'light') document.body.classList.add('light');
+  var meta = document.querySelector('meta[name=theme-color]');
+  if (meta) meta.setAttribute('content',
+    document.body.classList.contains('light') ? '#F4F5F7' : '#0A0B0D');
+}catch(e){}
 try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 go('home');
 

@@ -343,7 +343,8 @@ function num(v, d){
   if (isNaN(x)) return '—';
   return x.toLocaleString('en-US', { maximumFractionDigits: (d === undefined ? 0 : d) });
 }
-function ltr(t){ return '<span dir="ltr" class="n">' + t + '</span>'; }
+var LRI = '\u2066', PDI = '\u2069';
+function ltr(t){ return '<span dir="ltr" class="n">' + LRI + t + PDI + '</span>'; }
 function esc(t){
   return String(t == null ? '' : t)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -403,7 +404,7 @@ function vitals(title, sub, list, foot){
     '<span>' + esc(sub || '') + '</span></div><div class="vitals-row">' +
     list.map(function(v){
       return '<div class="vital" style="--tone:var(--' + (v.tone || 'brand') + ')">' +
-        '<b dir="ltr" class="n">' + v.value + '</b><small>' + esc(v.label) + '</small>' +
+        '<b dir="ltr" class="n">' + LRI + v.value + PDI + '</b><small>' + esc(v.label) + '</small>' +
         (v.note ? '<i>' + v.note + '</i>' : '') + '</div>';
     }).join('') + '</div>' + (foot || '') + '</div>';
 }
@@ -610,10 +611,8 @@ function drawHome(b, kpi, isOld){
 
     /* ── ١) المؤشرات ── */
     var html = '';
-    var sy = document.getElementById('sync');
-    if (sy) sy.innerHTML = isOld
-      ? '<span style="color:var(--warn)">' + tr('cached') + '</span> · <u style="cursor:pointer" onclick="pgHome()">' + tr('refresh') + '</u>'
-      : new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    markSync();
+    if (isOld) toast(tr('cached') + ' · ' + tr('refreshing'));
 
 
 

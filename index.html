@@ -529,7 +529,9 @@ document.addEventListener('visibilitychange', function(){
 });
 
 /* ═══ منتقي الفترة — نفس الشكل في كل الصفحات ═══ */
-var RANGE = { sales:'month', exp:'month', att:'month', perf:'month', debt:'month', short:'7' };
+/* الافتتاح على "اليوم" — ده اللي بتدوّر عليه أول ما تفتح.
+   الفترات الأطول باختيارك. */
+var RANGE = { sales:'today', exp:'month', att:'today', perf:'today', debt:'month', short:'7' };
 var CUSTOM = {};
 
 function rangeBar(key, opts, cb){
@@ -567,8 +569,8 @@ function askDates(key, redraw){
     RANGE[key] = 'custom'; closeSheet(); redraw();
   };
 }
-var RANGE_OPTS = [['today','rToday'],['yesterday','rYesterday'],['month','rMonth'],
-                  ['lastMonth','rLastMonth'],['custom','rCustom']];
+var RANGE_OPTS = [['today','rToday'],['yesterday','rYesterday'],['week','rWeek'],
+                  ['month','rMonth'],['lastMonth','rLastMonth'],['custom','rCustom']];
 
 /* ═══════════ ٤) الأقسام ═══════════ */
 var SECTIONS = {

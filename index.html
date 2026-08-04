@@ -281,7 +281,11 @@ var T = {
 
   /* عامة */
   today:['النهاردة','Today'],
-  rWeek:['الأسبوع','Week'], rToday:['اليوم','Today'], rYesterday:['أمس','Yesterday'], rMonth:['الشهر','Month'],
+  rWeek:['الأسبوع','Week'],
+  bucketFresh:['أقل من شهر','Under a month'], bucket1_3:['١-٣ شهور','1-3 months'],
+  bucket3_6:['٣-٦ شهور','3-6 months'], bucket6:['أكتر من ٦ شهور','Over 6 months'],
+  sortBy:['ترتيب','Sort'], byAmount:['بالمبلغ','By amount'], byAge:['بالمدة','By age'],
+  lastMove:['آخر حركة','Last activity'], noteLastMove:['«آخر حركة» = آخر شراء أو سداد','"Last activity" = last purchase or payment'], rToday:['اليوم','Today'], rYesterday:['أمس','Yesterday'], rMonth:['الشهر','Month'],
   rLastMonth:['الشهر اللي فات','Last month'], rCustom:['فترة','Custom'],
   from:['من','From'], to:['إلى','To'], apply:['طبّق','Apply'],
   days7:['٧ أيام','7 days'], days14:['١٤ يوم','14 days'], days30:['٣٠ يوم','30 days'],
@@ -895,40 +899,116 @@ function pgExpenses(){
 }
 
 /* ─────── مالية: الديون ─────── */
+var DEBT = { data: null, sort: 'amount', open: {} };
+
+function setDebtSort(v){ DEBT.sort = v; drawDebts(); }
+function toggleBucket(k){ DEBT.open[k] = !DEBT.open[k]; drawDebts(); }
+
 function pgDebts(){
-  var box = document.getElementById('p-money'); busy(box);
+  var box = document.getElementById('p-money');
+  var seed = cacheGet('debts', {});
+  if (seed) { DEBT.data = seed; drawDebts(true); } else busy(box);
+
   api('getDebtsData').then(function(d){
     if (!d || !d.ok) throw new Error('debt');
-    markSync();
-    var list = d.debtors || [];
-    var late = list.filter(function(c){ return (new Date() - new Date(c.lastActivity)) / 86400000 > 30; });
-    var html = vitals(tr('debts'), null, [
-      { value: num(d.total_net), label: tr('totalDebt'), tone: 'bad' },
-      { value: num(list.length), label: tr('debtors'), tone: 'brand' },
-      { value: num(late.length), label: tr('overdueDebt'), tone: 'warn' }
-    ]);
-    html += card(tr('debtors'), null, list.length ? list.slice(0, 60).map(function(c){
-      var days = Math.floor((new Date() - new Date(c.lastActivity)) / 86400000);
-      var tone = days > 30 ? 'bad' : 'ok';
-      return '<div class="row"><div class="row-main"><b>' + esc(c.name) + '</b>' +
-        '<small>' + tr('lastActivity') + ' ' + ltr(days) + ' ' + tr('daysAgo') + '</small></div>' +
-        '<div style="display:flex;align-items:center;gap:8px">' +
-        '<span class="row-val" style="color:var(--' + tone + ')">' + ltr(num(c.net)) + '</span>' +
-        '<button class="badge" style="--tone:var(--brand);border:0;cursor:pointer" ' +
-        'onclick="remind(this,\'' + c.phone + '\',\'' + esc(c.name).replace(/'/g,"") + '\',' + Math.round(c.net) + ')">' +
-        tr('sendReminder') + '</button></div></div>';
-    }).join('') : emptyState());
-    html += '<div id="debtEmp"></div>';
-    box.innerHTML = html;
-    api('getDebtsByEmployee', rangeParams('debt')).then(function(x){
-      var eb = document.getElementById('debtEmp'); if (!eb || !x || !x.ok) return;
-      eb.innerHTML = card(tr('byEmployee'), x.label, (x.employees || []).length
-        ? x.employees.map(function(e){
-            return row(e.employee, ltr(e.count) + ' ' + tr('invoices'), ltr(num(e.total)));
-          }).join('') : emptyState());
-    }).catch(logErr);
-  }).catch(function(e){ logErr(e); oops(box, "pgDebts()"); });
+    cacheSet('debts', {}, d);
+    DEBT.data = d; markSync(); drawDebts(false);
+  }).catch(function(e){ logErr(e); if (!seed) oops(box, "pgDebts()"); });
 }
+
+/* النطاقات حسب مدة السكوت — من الأحدث للأقدم */
+var DEBT_BUCKETS = [
+  { key:'fresh', max:30,   label:'bucketFresh', tone:'ok'    },
+  { key:'b1_3',  max:90,   label:'bucket1_3',   tone:'warn'  },
+  { key:'b3_6',  max:180,  label:'bucket3_6',   tone:'bad'   },
+  { key:'b6',    max:1e9,  label:'bucket6',     tone:'bad'   }
+];
+
+function drawDebts(isOld){
+  var box = document.getElementById('p-money'), d = DEBT.data;
+  if (!d) return;
+  var now = new Date();
+  var list = (d.debtors || []).map(function(c){
+    c._days = Math.floor((now - new Date(c.lastActivity)) / 86400000);
+    return c;
+  });
+
+  /* توزيع على النطاقات */
+  var groups = {};
+  DEBT_BUCKETS.forEach(function(b){ groups[b.key] = []; });
+  list.forEach(function(c){
+    for (var i = 0; i < DEBT_BUCKETS.length; i++){
+      if (c._days <= DEBT_BUCKETS[i].max){ groups[DEBT_BUCKETS[i].key].push(c); break; }
+    }
+  });
+
+  var stale = list.filter(function(c){ return c._days > 30; });
+
+  var html = (isOld ? '<div class="state" style="padding:0 0 8px">' + tr('cached') + '</div>' : '');
+
+  html += vitals(tr('debts'), null, [
+    { value: num(d.total_net), label: tr('totalDebt'), tone: 'bad',
+      note: num(list.length), sub: tr('debtors') },
+    { value: num(stale.reduce(function(a,c){ return a + c.net; }, 0)), label: tr('overdueDebt'),
+      tone: 'warn', note: num(stale.length), sub: tr('customers') },
+    { value: num(d.total_paid), label: tr('collected'), tone: 'ok' }
+  ]);
+
+  /* ترتيب */
+  html += '<div class="subtabs" style="position:static;border:0;padding:0 0 12px">' +
+    '<button class="' + (DEBT.sort === 'amount' ? 'on' : '') + '" onclick="setDebtSort(\'amount\')">' +
+      tr('byAmount') + '</button>' +
+    '<button class="' + (DEBT.sort === 'age' ? 'on' : '') + '" onclick="setDebtSort(\'age\')">' +
+      tr('byAge') + '</button></div>';
+
+  html += DEBT_BUCKETS.map(function(b){
+    var g = groups[b.key];
+    if (!g.length) return '';
+    var total = g.reduce(function(a,c){ return a + c.net; }, 0);
+    var open = !!DEBT.open[b.key];
+
+    g.sort(DEBT.sort === 'age'
+      ? function(x,y){ return y._days - x._days; }
+      : function(x,y){ return y.net - x.net; });
+
+    var body = open ? g.slice(0, 80).map(function(c){
+      return '<div class="row"><div class="row-main"><b>' + esc(c.name) + '</b>' +
+        '<small>' + tr('lastMove') + ' ' + ltr(c._days) + ' ' + tr('daysAgo') + '</small></div>' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="row-val" style="color:var(--' + b.tone + ')">' + ltr(num(c.net)) + '</span>' +
+        '<button class="badge" style="--tone:var(--brand);border:0;cursor:pointer" ' +
+        'onclick="event.stopPropagation();remind(this,\'' + c.phone + '\',\'' +
+          esc(c.name).replace(/'/g,"") + '\',' + Math.round(c.net) + ')">' +
+        tr('sendReminder') + '</button></div></div>';
+    }).join('') : '';
+
+    return '<div class="card" style="padding:0;overflow:hidden;border-inline-start:3px solid var(--' + b.tone + ')">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;' +
+        'padding:14px 16px;cursor:pointer" onclick="toggleBucket(\'' + b.key + '\')">' +
+        '<div><b style="font-size:var(--t-title);font-weight:650">' + tr(b.label) + '</b>' +
+        '<small style="display:block;font-size:var(--t-small);color:var(--ink-2);margin-top:2px">' +
+          ltr(g.length) + ' ' + tr('debtors') + '</small></div>' +
+        '<div style="display:flex;align-items:center;gap:10px">' +
+          '<span style="font-size:16px;font-weight:700;color:var(--' + b.tone + ');' +
+            'direction:ltr;unicode-bidi:isolate">' + LRI + num(total) + PDI + '</span>' +
+          '<span style="color:var(--ink-3);font-size:15px">' + (open ? '⌄' : '›') + '</span>' +
+        '</div></div>' +
+      (open ? '<div style="padding:0 16px 14px">' + body + '</div>' : '') + '</div>';
+  }).join('');
+
+  html += '<div class="state" style="padding:4px 0 12px;font-size:11px">' + tr('noteLastMove') + '</div>';
+  html += '<div id="debtEmp"></div>';
+  box.innerHTML = html;
+
+  api('getDebtsByEmployee', rangeParams('debt')).then(function(x){
+    var eb = document.getElementById('debtEmp'); if (!eb || !x || !x.ok) return;
+    eb.innerHTML = card(tr('byEmployee'), x.label, (x.employees || []).length
+      ? x.employees.map(function(e){
+          return row(e.employee, ltr(e.count) + ' ' + tr('invoices'), ltr(num(e.total)));
+        }).join('') : emptyState());
+  }).catch(logErr);
+}
+
 function remind(btn, phone, name, amount){
   btn.disabled = true; btn.textContent = '…';
   api('sendDebtReminder', { phone: phone, name: name, amount: amount })

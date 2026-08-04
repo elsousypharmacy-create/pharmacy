@@ -241,7 +241,11 @@ var T = {
   nav_hr:['موظفين','People'], nav_stock:['مخزون','Stock'], nav_cust:['عملاء','Customers'],
 
   /* عامة */
-  today:['النهاردة','Today'], needsAction:['محتاج تصرّف','Needs action'],
+  today:['النهاردة','Today'],
+  collected:['سُدّد','collected'], customersToday:['عملاء','Customers'],
+  registered:['مسجّلين','Registered'], notReg:['غير مسجّل','Unregistered'],
+  repeat:['متكررين','Repeat'], todayNumbers:['أرقام اليوم','Today in numbers'],
+  perEmployee:['كل موظف','By employee'], noSalesYet:['لسه مفيش مبيعات النهاردة','No sales yet today'], needsAction:['محتاج تصرّف','Needs action'],
   allGood:['كل حاجة تمام','All clear'], sections:['الأقسام','Sections'],
   salesToday:['مبيعات اليوم','Sales today'], profitToday:['ربح اليوم','Profit today'],
   debtToday:['دين اليوم','Debt today'], vsYesterday:['عن أمس','vs yesterday'],
@@ -440,7 +444,9 @@ function render(sec, tab){
 /* ─────── عامة ─────── */
 function pgHome(){
   var box = document.getElementById('p-home'); busy(box);
-  api('getHomeBundle').then(function(b){
+  Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }) ])
+  .then(function(res){
+    var b = res[0], kpi = res[1] || {};
     if (!b || !b.ok) throw new Error('bundle');
     markSync();
     var d = b.daily || {}, at = b.attendance || {}, dt = b.debts || {},
@@ -455,8 +461,39 @@ function pgHome(){
       { value: num(d.profit_today), label: tr('profitToday'), tone: 'brand',
         note: ltr(pct(d.profit_today, salesT) + '%') },
       { value: num(d.debt_today), label: tr('debtToday'), tone: (d.debt_today > 0 ? 'warn' : 'ok'),
-        note: tr('sent') + ' ' + ltr(num(d.debt_paid_today)) }
+        note: tr('collected') + ' ' + ltr(num(d.debt_paid_today)) }
     ]);
+
+    /* أرقام اليوم — عملاء وفواتير وتسجيل */
+    var emps = kpi.employees || [];
+    var tot = { inv:0, reg:0, nreg:0, newc:0, rep:0, disc:0, ret:0 };
+    emps.forEach(function(e){
+      tot.inv += e.invoices; tot.reg += e.registered; tot.nreg += e.not_reg;
+      tot.newc += e.new_c;   tot.rep += e.repeat_c;   tot.disc += e.discount;
+      tot.ret += e.returns;
+    });
+    var totCust = tot.reg + tot.nreg;
+    var avgInv = tot.inv ? Math.round(salesT / tot.inv) : 0;
+
+    html += card(tr('todayNumbers'), null, tot.inv ? (
+      row(tr('invoices'), null, ltr(num(tot.inv))) +
+      row(tr('customersToday'),
+          ltr(tot.reg) + ' ' + tr('registered') + ' · ' + ltr(tot.nreg) + ' ' + tr('notReg'),
+          ltr(num(totCust))) +
+      row(tr('newCust'), ltr(tot.rep) + ' ' + tr('repeat'), ltr(num(tot.newc))) +
+      row(tr('avgTicket'), ltr('150'), '<span style="color:var(--' + (avgInv >= 150 ? 'ok' : 'warn') + ')">' + ltr(num(avgInv)) + '</span>') +
+      row(tr('regRate'), ltr('75%'), '<span style="color:var(--' + (pct(tot.reg, totCust) >= 75 ? 'ok' : 'warn') + ')">' + ltr(pct(tot.reg, totCust) + '%') + '</span>') +
+      row(tr('discount'), null, ltr(num(tot.disc))) +
+      (tot.ret ? row(tr('returns'), null, ltr(num(tot.ret))) : '')
+    ) : '<div class="state">' + tr('noSalesYet') + '</div>');
+
+    if (emps.length) html += card(tr('perEmployee'), null, emps.map(function(e){
+      var tone = e.care_score >= 70 ? 'ok' : e.care_score >= 50 ? 'warn' : 'bad';
+      return row(e.name,
+        ltr(e.invoices) + ' ' + tr('invoices') + ' · ' + ltr(e.reg_pct + '%') + ' ' + tr('regRate') +
+        ' · ' + ltr(e.new_c) + ' ' + tr('newCust'),
+        '<span style="color:var(--' + tone + ')">' + ltr(num(e.sales)) + '</span>');
+    }).join(''));
 
     /* محتاج تصرّف */
     var acts = [];

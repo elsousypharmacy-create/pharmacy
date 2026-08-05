@@ -139,6 +139,33 @@ button{font-family:inherit}
 .exp-btns button{background:var(--surface-2);border:0;color:var(--ink-2);font-family:inherit;
   font-size:var(--t-micro);font-weight:650;padding:5px 10px;border-radius:99px;cursor:pointer}
 
+
+/* ── سطر التحكّم: قاعدة واحدة لكل الصفحات ──
+   الفلتر الأساسي شمال · زرار ⋯ يمين بيفتح الباقي */
+.ctl{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s3)}
+.ctl-main{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.ctl-main::-webkit-scrollbar{display:none}
+.ctl-main button{flex-shrink:0;background:var(--surface-2);border:0;color:var(--ink-2);
+  font-family:inherit;font-size:13px;font-weight:600;padding:7px 13px;border-radius:99px;
+  cursor:pointer;white-space:nowrap}
+.ctl-main button.on{background:var(--brand);color:#fff}
+.ctl-more{flex-shrink:0;width:34px;height:34px;border-radius:99px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink-2);font-size:17px;line-height:1;cursor:pointer;
+  font-family:inherit;display:grid;place-items:center}
+.ctl-more.dot{position:relative}
+.ctl-more.dot::after{content:'';position:absolute;top:6px;inset-inline-end:6px;
+  width:6px;height:6px;border-radius:99px;background:var(--brand)}
+
+/* قايمة ⋯ */
+.menu-row{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) 0;
+  border-bottom:1px solid var(--line);cursor:pointer}
+.menu-row:last-child{border-bottom:0}
+.menu-row b{font-size:var(--t-body);font-weight:600}
+.menu-row small{display:block;font-size:var(--t-small);color:var(--ink-2);margin-top:1px}
+.menu-ic{width:32px;height:32px;border-radius:9px;flex-shrink:0;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--tone,var(--brand)) 15%,transparent);color:var(--tone,var(--brand));
+  font-size:15px}
+
 /* ── الحالات ── */
 .state{padding:var(--s6) var(--s4);text-align:center;color:var(--ink-2);font-size:var(--t-small)}
 .spin{width:22px;height:22px;border:2px solid var(--line);border-top-color:var(--brand);
@@ -323,7 +350,13 @@ var T = {
   qty:['رصيد','Qty'], daysIdle:['ساكن','Idle'], expiresOn:['ينتهي','Expires'],
   healthGood:['كويسة','Good'], healthMid:['متوسطة','Fair'], healthBad:['محتاجة تدخّل','Needs work'],
   retailValue:['بسعر الجمهور','At retail'], exportX:['Excel','Excel'], exportP:['PDF','PDF'],
-  noExport:['مفيش بيانات للتصدير','Nothing to export'], turnover:['نسبة الراكد','Dead ratio'], cached:['محفوظ','cached'], refreshing:['بيحدّث…','refreshing…'],
+  noExport:['مفيش بيانات للتصدير','Nothing to export'],
+  more:['المزيد','More'], filters:['فلاتر','Filters'], actions:['إجراءات','Actions'],
+  testSMS:['رسالة تجريبية','Test message'], testSMSSub:['اتأكد إن الإرسال شغال','Check sending works'],
+  send:['ابعت','Send'], exportXSub:['ملف تقدر تفتحه وتفلتره','A file you can open and filter'],
+  exportPSub:['نسخة جاهزة للطباعة','Ready to print'],
+  couponSub:['خصم للعملاء اللي بعدوا','Discount for lapsed customers'],
+  pointsSub:['اكتب رقم وشوف رصيده','Enter a number to see the balance'], turnover:['نسبة الراكد','Dead ratio'], cached:['محفوظ','cached'], refreshing:['بيحدّث…','refreshing…'],
   refresh:['حدّث','Refresh'], target:['الهدف','Target'], checkStaff:['شوف الموظفين','See staff'],
   belowTarget:['تحت الهدف','Below target'], weakest:['أضعف مؤشر','Weakest metric'],
   margin:['هامش','margin'],
@@ -613,6 +646,34 @@ function askDates(key, redraw){
 var RANGE_OPTS = [['today','rToday'],['yesterday','rYesterday'],['week','rWeek'],
                   ['month','rMonth'],['lastMonth','rLastMonth'],['custom','rCustom']];
 
+
+
+/* ═══ سطر التحكّم — قاعدة واحدة لكل الصفحات ═══
+   الفلتر الأساسي ظاهر · الباقي جوه ⋯ */
+function ctlBar(mainButtons, moreFn, hasActive){
+  return '<div class="ctl"><div class="ctl-main">' + mainButtons + '</div>' +
+    '<button class="ctl-more' + (hasActive ? ' dot' : '') + '" onclick="' + moreFn + '">⋯</button></div>';
+}
+function ctlBtn(label, on, action){
+  return '<button class="' + (on ? 'on' : '') + '" onclick="' + action + '">' + label + '</button>';
+}
+function menuRow(icon, tone, title, sub, action){
+  return '<div class="menu-row" onclick="' + action + '">' +
+    '<span class="menu-ic" style="--tone:var(--' + tone + ')">' + icon + '</span>' +
+    '<div style="flex:1;min-width:0"><b>' + esc(title) + '</b>' +
+    (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div>' +
+    '<span style="color:var(--ink-3)">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></div>';
+}
+function openMenu(title, body){
+  document.getElementById('sheet-title').textContent = title;
+  document.getElementById('sheet-body').innerHTML = body;
+  document.getElementById('sheet').classList.add('on');
+}
+/* أزرار التصدير جوه القايمة — مكان واحد بدل ما تتكرر */
+function exportRows(fn){
+  return menuRow('⤓', 'ok', tr('exportX'), tr('exportXSub'), "closeSheet();" + fn + "('x')") +
+         menuRow('⎙', 'brand', tr('exportP'), tr('exportPSub'), "closeSheet();" + fn + "('p')");
+}
 
 /* ═══ التصدير: Excel و PDF ═══
    نفس اللبنة في كل الصفحات — بتاخد صفوف جاهزة وبتطلّع ملف. */
@@ -1579,19 +1640,15 @@ function drawMessages(isOld){
     { value: num(all.length), label: tr('messages'), tone: 'brand' }
   ]);
 
-  /* فلتر النوع */
+  /* سطر تحكّم واحد: النوع ظاهر · الباقي جوه ⋯ */
   var TYPES = [['all','typeAll'],['invoice','typeInvoice'],['coupon','typeCoupon'],['debt','typeDebt']];
-  html += '<div class="subtabs" style="position:static;border:0;padding:0 0 10px">' +
+  html += ctlBar(
     TYPES.map(function(t){
-      return '<button class="' + (MSG.type === t[0] ? 'on' : '') + '" onclick="setMsgType(\'' + t[0] + '\')">' +
-        tr(t[1]) + ' ' + ltr(counts[t[0]]) + '</button>';
-    }).join('') +
-    '<button class="' + (MSG.failedOnly ? 'on' : '') + '" onclick="toggleFailed()">' +
-      tr('onlyFailed') + '</button></div>';
-
-  html += '<div class="btn-row" style="margin-bottom:12px">' +
-    '<button class="btn btn-primary" onclick="couponSheet()">' + tr('sendCoupon') + '</button>' +
-    '<button class="btn btn-quiet" onclick="pointsSheet()">' + tr('pointsBal') + '</button></div>';
+      return ctlBtn(tr(t[1]) + ' ' + ltr(counts[t[0]]), MSG.type === t[0], "setMsgType('" + t[0] + "')");
+    }).join(''),
+    'msgMenu()',
+    MSG.failedOnly
+  );
 
   var shown = all.filter(function(m){
     if (MSG.failedOnly && !isFail(m)) return false;
@@ -1612,7 +1669,7 @@ function drawMessages(isOld){
           '<small>' + ltr(m.phone) + ' · ' + ltr(m.date) + ' · ' + tr(TYPE_LBL[m.type] || 'typeAll') +
           '</small></div><div style="display:flex;gap:6px">' + actions + '</div></div>';
       }).join('')
-    : emptyState(), expBtns('expMsgs'));
+    : emptyState());
 
   box.innerHTML = html;
 }
@@ -1622,6 +1679,48 @@ function smsAction(btn, action, id){
   post({ action: action, invoiceid: id })
     .then(function(){ btn.textContent = '✓'; })
     .catch(function(e){ logErr(e); btn.textContent = '✗'; });
+}
+
+
+function msgMenu(){
+  openMenu(tr('more'),
+    '<div class="group-title">' + tr('filters') + '</div>' +
+    menuRow(MSG.failedOnly ? '✓' : '○', MSG.failedOnly ? 'bad' : 'slate',
+      tr('onlyFailed'), null, "closeSheet();toggleFailed()") +
+    '<div class="group-title">' + tr('actions') + '</div>' +
+    menuRow('%', 'brand', tr('sendCoupon'), tr('couponSub'), "couponSheet()") +
+    menuRow('★', 'ok', tr('pointsBal'), tr('pointsSub'), "pointsSheet()") +
+    menuRow('✉', 'warn', tr('testSMS'), tr('testSMSSub'), "testSheet()") +
+    '<div class="group-title">' + tr('exportX') + ' / ' + tr('exportP') + '</div>' +
+    exportRows('expMsgs'));
+}
+
+/* رسالة تجريبية — تتأكد إن مسار الإرسال شغال */
+function testSheet(){
+  openMenu(tr('testSMS'),
+    '<div class="state" style="padding:0 0 12px;text-align:start">' + tr('testSMSSub') + '</div>' +
+    '<input id="tsPhone" type="tel" inputmode="numeric" placeholder="01xxxxxxxxx" ' +
+      'style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);' +
+      'background:var(--surface-2);color:var(--ink);font-family:inherit;font-size:15px;direction:ltr">' +
+    '<div style="height:12px"></div>' +
+    '<button class="btn btn-primary" id="tsGo" onclick="sendTest()">' + tr('send') + '</button>' +
+    '<div id="tsOut"></div>');
+}
+function sendTest(){
+  var ph = (document.getElementById('tsPhone').value || '').trim();
+  var out = document.getElementById('tsOut'), btn = document.getElementById('tsGo');
+  if (!ph) return;
+  btn.disabled = true; btn.textContent = tr('sending');
+  post({ action: 'testSMS', phone: ph }).then(function(r){
+    var ok = r && r.ok;
+    out.innerHTML = '<div class="state' + (ok ? '' : ' err') + '" style="padding:14px 0">' +
+      (ok ? '✓ ' + tr('sent') : '✗ ' + tr('msgFailed')) + '</div>';
+    btn.disabled = false; btn.textContent = tr('send');
+  }).catch(function(e){
+    logErr(e);
+    out.innerHTML = '<div class="state err" style="padding:14px 0">' + tr('failed') + '</div>';
+    btn.disabled = false; btn.textContent = tr('send');
+  });
 }
 
 /* ── رصيد نقاط عميل ── */

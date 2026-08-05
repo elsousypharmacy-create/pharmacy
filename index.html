@@ -351,7 +351,7 @@ var T = {
   healthGood:['كويسة','Good'], healthMid:['متوسطة','Fair'], healthBad:['محتاجة تدخّل','Needs work'],
   retailValue:['بسعر الجمهور','At retail'], exportX:['Excel','Excel'], exportP:['PDF','PDF'],
   noExport:['مفيش بيانات للتصدير','Nothing to export'],
-  more:['المزيد','More'], filters:['فلاتر','Filters'], actions:['إجراءات','Actions'],
+  more:['المزيد','More'], category:['الفئة','Category'], topItems:['أعلى الأصناف قيمة','Highest value'], filters:['فلاتر','Filters'], actions:['إجراءات','Actions'],
   testSMS:['رسالة تجريبية','Test message'], testSMSSub:['اتأكد إن الإرسال شغال','Check sending works'],
   send:['ابعت','Send'], exportXSub:['ملف تقدر تفتحه وتفلتره','A file you can open and filter'],
   exportPSub:['نسخة جاهزة للطباعة','Ready to print'],
@@ -520,9 +520,11 @@ function vitals(title, sub, list, foot){
         (v.sub ? '<u>' + esc(v.sub) + '</u>' : '') + '</div>';
     }).join('') + '</div>' + (foot || '') + '</div>';
 }
+/* sub بيتحط زي ما هو (ممكن يبقى فيه أرقام معزولة)،
+   فأي نص جاي من بيانات لازم يتهرّب قبل ما يتبعت */
 function card(title, sub, body, right, foot){
   return '<div class="card"><div class="card-head"><div><h3>' + esc(title) + '</h3>' +
-    (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div>' + (right || '') + '</div>' +
+    (sub ? '<p>' + sub + '</p>' : '') + '</div>' + (right || '') + '</div>' +
     body + (foot || '') + '</div>';
 }
 function row(name, sub, val){
@@ -769,6 +771,50 @@ function expExpenses(k){
   k === 'x' ? toExcel(rows, 'expenses') : toPDF(rows, tr('expenses'));
 }
 var EXP_ITEMS = [];
+
+
+/* قوايم ⋯ لباقي الصفحات — نفس القاعدة */
+function rangeMenuRows(key, setter){
+  return RANGE_OPTS.map(function(o){
+    var on = RANGE[key] === o[0];
+    return menuRow(on ? '✓' : '○', on ? 'brand' : 'slate', tr(o[1]), null,
+      (o[0] === 'custom' ? "closeSheet();" : "closeSheet();") + setter + "('" + o[0] + "')");
+  }).join('');
+}
+function debtMenu(){
+  openMenu(tr('more'),
+    '<div class="group-title">' + tr('exportX') + ' / ' + tr('exportP') + '</div>' +
+    exportRows('expDebts'));
+}
+function hrMenu(){
+  openMenu(tr('more'),
+    '<div class="group-title">' + tr('rCustom') + '</div>' + rangeMenuRows('perf', 'setHrRange') +
+    '<div class="group-title">' + tr('exportX') + ' / ' + tr('exportP') + '</div>' +
+    menuRow('⤓', 'ok', tr('staffToday') + ' — Excel', null, "closeSheet();expStaff('x')") +
+    menuRow('⎙', 'brand', tr('staffToday') + ' — PDF', null, "closeSheet();expStaff('p')") +
+    menuRow('⤓', 'ok', tr('attendance') + ' — Excel', null, "closeSheet();expAtt('x')") +
+    menuRow('⎙', 'brand', tr('attendance') + ' — PDF', null, "closeSheet();expAtt('p')"));
+}
+function expMenu(){
+  openMenu(tr('more'),
+    '<div class="group-title">' + tr('rCustom') + '</div>' + rangeMenuRows('exp', 'setExpRange') +
+    '<div class="group-title">' + tr('exportX') + ' / ' + tr('exportP') + '</div>' +
+    exportRows('expExpenses'));
+}
+function salesMenu(){
+  openMenu(tr('more'),
+    '<div class="group-title">' + tr('rCustom') + '</div>' + rangeMenuRows('sales', 'setSalesRange'));
+}
+function shortMenu(){
+  var D = [['7','days7'],['14','days14'],['30','days30']];
+  openMenu(tr('more'),
+    '<div class="group-title">' + tr('shelfLife') + '</div>' +
+    D.map(function(x){
+      var on = RANGE.short === x[0];
+      return menuRow(on ? '✓' : '○', on ? 'brand' : 'slate', tr(x[1]), null,
+        "closeSheet();setShortDays('" + x[0] + "')");
+    }).join(''));
+}
 
 /* ═══════════ ٤) الأقسام ═══════════ */
 var SECTIONS = {
@@ -1029,7 +1075,12 @@ function pgSales(){
     markSync();
     var avg = m.invoices_total ? Math.round(m.sales_total / m.invoices_total) : 0;
 
-    var html = rangeBar('sales', RANGE_OPTS, 'setSalesRange') +
+    var html = ctlBar(
+      RANGE_OPTS.slice(0, 4).map(function(o){
+        return ctlBtn(tr(o[1]), RANGE.sales === o[0], "setSalesRange('" + o[0] + "')");
+      }).join(''),
+      'salesMenu()',
+      RANGE.sales === 'custom' || RANGE.sales === 'lastMonth') +
       vitals(tr('salesPerf'), k.label || m.label, [
       { value: num(m.sales_total), label: tr('netSales'), tone: 'ok' },
       { value: num(avg), label: tr('avgTicket'), tone: avg >= 150 ? 'ok' : 'warn', note: ltr('150') },
@@ -1081,7 +1132,13 @@ function pgExpenses(){
     if (!d || !d.ok) throw new Error('exp');
     markSync();
     var top = (d.byCategory || [])[0];
-    var html = rangeBar('exp', RANGE_OPTS, 'setExpRange') + vitals(tr('expenses'), null, [
+    var html = ctlBar(
+      RANGE_OPTS.slice(0, 4).map(function(o){
+        return ctlBtn(tr(o[1]), RANGE.exp === o[0], "setExpRange('" + o[0] + "')");
+      }).join(''),
+      'expMenu()',
+      RANGE.exp === 'custom' || RANGE.exp === 'lastMonth') +
+      vitals(tr('expenses'), null, [
       { value: num(d.total), label: tr('totalExpenses'), tone: 'warn' },
       { value: num(d.count), label: tr('items'), tone: 'brand' },
       { value: num(top ? top.total : 0), label: top ? top.category : '—', tone: 'bad' }
@@ -1093,7 +1150,7 @@ function pgExpenses(){
     var items = (d.items || []).slice(0, 60);
     if (items.length) html += card(tr('history'), null, items.map(function(i){
       return row(i.category, esc(i.desc) + ' · ' + ltr(i.date), ltr(num(i.amount)));
-    }).join(''), expBtns('expExpenses'));
+    }).join(''));
     box.innerHTML = html;
   }).catch(function(e){ logErr(e); oops(box, "pgExpenses()"); });
 }
@@ -1158,15 +1215,11 @@ function drawDebts(isOld){
     { value: num(d.total_paid), label: tr('collected'), tone: 'ok' }
   ]);
 
-  /* ترتيب */
-  html += '<div class="subtabs" style="position:static;border:0;padding:0 0 12px">' +
-    '<button class="' + (DEBT.sort === 'amount' ? 'on' : '') + '" onclick="setDebtSort(\'amount\')">' +
-      tr('byAmount') + '</button>' +
-    '<button class="' + (DEBT.sort === 'age' ? 'on' : '') + '" onclick="setDebtSort(\'age\')">' +
-      tr('byAge') + '</button></div>';
-
-  html += '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">' +
-    expBtns('expDebts') + '</div>';
+  /* سطر تحكّم واحد */
+  html += ctlBar(
+    ctlBtn(tr('byAmount'), DEBT.sort === 'amount', "setDebtSort('amount')") +
+    ctlBtn(tr('byAge'), DEBT.sort === 'age', "setDebtSort('age')"),
+    'debtMenu()', false);
 
   html += DEBT_BUCKETS.map(function(b){
     var g = groups[b.key];
@@ -1277,8 +1330,13 @@ function drawStaffHub(isOld){
   var totCust = list.reduce(function(a,x){ return a + x.total_cust; }, 0);
   var totNew  = list.reduce(function(a,x){ return a + x.new_c; }, 0);
 
-  var html = rangeBar('perf', RANGE_OPTS, 'setHrRange');
-  if (isOld) html = '<div class="state" style="padding:0 0 8px">' + tr('cached') + '</div>' + html;
+  var html = (isOld ? '<div class="state" style="padding:0 0 8px">' + tr('cached') + '</div>' : '');
+  html += ctlBar(
+    RANGE_OPTS.slice(0, 4).map(function(o){
+      return ctlBtn(tr(o[1]), RANGE.perf === o[0], "setHrRange('" + o[0] + "')");
+    }).join(''),
+    'hrMenu()',
+    RANGE.perf === 'custom' || RANGE.perf === 'lastMonth');
 
   html += vitals(tr('staffToday'), HR.kpi.label || '', [
     { value: num(live.length), label: tr('onShiftNow'), tone: live.length ? 'ok' : 'warn',
@@ -1287,9 +1345,6 @@ function drawStaffHub(isOld){
       tone: pct(totReg, totCust) >= 75 ? 'ok' : 'warn', note: '75%', sub: tr('target') },
     { value: num(totNew), label: tr('newCust'), tone: 'brand' }
   ]);
-
-  html += '<div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px">' +
-    expBtns('expStaff') + expBtns('expAtt') + '</div>';
 
   /* صف لكل موظف */
   /* مرتّبين بالمبيعات — الأعلى فوق */
@@ -1409,12 +1464,11 @@ function drawAging(isOld){
   if (!d) return;
 
   var deadPct = pct(d.slow_dead_total_cost, d.total_cost_value);
-  /* درجة صحة بسيطة: كل ما الراكد وقرب الانتهاء أقل، الدرجة أعلى */
   var expCost = (d.near_expiry_list || []).reduce(function(a, x){ return a + x.cost; }, 0);
-  var expPct = pct(expCost, d.total_cost_value);
-  var score = Math.max(0, Math.min(100, 100 - deadPct * 1.6 - expPct * 2));
-  var hTone = score >= 70 ? 'ok' : score >= 45 ? 'warn' : 'bad';
-  var hLabel = score >= 70 ? tr('healthGood') : score >= 45 ? tr('healthMid') : tr('healthBad');
+  var expPct  = pct(expCost, d.total_cost_value);
+  var score   = Math.max(0, Math.min(100, 100 - deadPct * 1.6 - expPct * 2));
+  var hTone   = score >= 70 ? 'ok' : score >= 45 ? 'warn' : 'bad';
+  var hLabel  = score >= 70 ? tr('healthGood') : score >= 45 ? tr('healthMid') : tr('healthBad');
 
   var html = (isOld ? '<div class="state" style="padding:0 0 8px">' + tr('cached') + '</div>' : '');
 
@@ -1426,19 +1480,15 @@ function drawAging(isOld){
     { value: Math.round(score), label: tr('health'), tone: hTone, note: null, sub: hLabel }
   ]);
 
-  /* شرايح الركود */
-  var AG = [['never','never'],['b0_30','d0_30'],['b31_60','d31_60'],['b61_90','d61_90'],
-            ['b91_180','d91_180'],['b181_365','d181_365'],['b365plus','d365']];
-  html += card(tr('agingTitle'), null, AG.map(function(a){
-    var x = (d.aging || {})[a[0]]; if (!x || !x.skus) return '';
-    var tone = (a[0] === 'never' || a[0] === 'b365plus' || a[0] === 'b181_365') ? 'bad'
-             : (a[0] === 'b91_180') ? 'warn' : 'ok';
-    return row(tr(a[1]), ltr(x.skus) + ' ' + tr('skus'),
-      '<span style="color:var(--' + tone + ')">' + ltr(num(x.cost)) + '</span>');
-  }).join('') || emptyState());
+  /* سطر تحكّم واحد */
+  html += ctlBar(
+    ctlBtn(tr('invAging'), true, "void 0"),
+    'invMenu()',
+    (INV.cat || INV.shelf !== 'all')
+  );
 
-  /* الصلاحية شهر بشهر */
-  var months = (d.expiry_by_month && d.expiry_by_month.months) || [];
+  /* ── كارت: الصلاحية شهر بشهر — كل شهر سطر يفتح نافذة ── */
+  var months  = (d.expiry_by_month && d.expiry_by_month.months) || [];
   var expired = d.expiry_by_month && d.expiry_by_month.expired;
   html += card(tr('expByMonth'), null,
     ((expired && expired.count)
@@ -1454,25 +1504,71 @@ function drawAging(isOld){
         '<span class="row-val">' + ltr(num(m.totalCost)) + '</span></div>';
     }).join('') || emptyState());
 
-  /* الراكد: فئات + فلتر مدة الصلاحية + قائمة */
+  /* ── كارت: الركود حسب آخر بيع — كل شريحة تفتح نافذة ── */
+  var AG = [['never','never'],['b0_30','d0_30'],['b31_60','d31_60'],['b61_90','d61_90'],
+            ['b91_180','d91_180'],['b181_365','d181_365'],['b365plus','d365']];
+  html += card(tr('agingTitle'), null, AG.map(function(x){
+    var g = (d.aging || {})[x[0]]; if (!g || !g.skus) return '';
+    var tone = (x[0] === 'never' || x[0] === 'b365plus' || x[0] === 'b181_365') ? 'bad'
+             : (x[0] === 'b91_180') ? 'warn' : 'ok';
+    return '<div class="row" style="cursor:pointer" onclick="agingSheet(\'' + x[0] + '\',\'' + x[1] + '\')">' +
+      '<div class="row-main"><b>' + tr(x[1]) + '</b>' +
+      '<small>' + ltr(g.skus) + ' ' + tr('skus') + '</small></div>' +
+      '<span class="row-val" style="color:var(--' + tone + ')">' + ltr(num(g.cost)) + '</span></div>';
+  }).join('') || emptyState());
+
+  /* ── كارت: الراكد حسب الفئة — كل فئة تفتح نافذة ── */
   var cats = d.slow_category_summary || [];
-  html += '<div class="subtabs" style="position:static;border:0;padding:0 0 10px">' +
-    '<button class="' + (INV.cat === '' ? 'on' : '') + '" onclick="setInvCat(\'\')">' +
-      tr('allCats') + '</button>' +
-    cats.slice(0, 10).map(function(c){
-      return '<button class="' + (INV.cat === c.category ? 'on' : '') + '" onclick="setInvCat(\'' +
-        esc(c.category).replace(/'/g, '') + '\')">' + esc(c.category) + ' ' + ltr(c.count) + '</button>';
-    }).join('') + '</div>';
+  html += card(tr('deadStock'),
+    ltr(d.slow_dead_count) + ' ' + tr('items') + ' · ' + ltr(num(d.slow_dead_total_cost)),
+    cats.length ? cats.slice(0, 12).map(function(c){
+      return '<div class="row" style="cursor:pointer" onclick="catSheet(\'' +
+        esc(c.category).replace(/'/g, '') + '\')">' +
+        '<div class="row-main"><b>' + esc(c.category) + '</b>' +
+        '<small>' + ltr(c.count) + ' ' + tr('items') + '</small></div>' +
+        '<span class="row-val" style="color:var(--bad)">' + ltr(num(c.cost)) + '</span></div>';
+    }).join('') : emptyState());
 
-  var SHELF = [['all','allCats'],['u3','under3'],['3_6','m3_6'],['o6','over6'],['none','noExp']];
-  html += '<div class="subtabs" style="position:static;border:0;padding:0 0 10px">' +
+  box.innerHTML = html;
+}
+
+/* قايمة ⋯ للمخزون: الفلاتر والتصدير */
+function invMenu(){
+  var SHELF = [['all','typeAll'],['u3','under3'],['3_6','m3_6'],['o6','over6'],['none','noExp']];
+  var cats = ((INV.data || {}).slow_category_summary || []).slice(0, 12);
+  openMenu(tr('more'),
+    '<div class="group-title">' + tr('shelfLife') + '</div>' +
     SHELF.map(function(x){
-      return '<button class="' + (INV.shelf === x[0] ? 'on' : '') + '" onclick="setInvShelf(\'' + x[0] + '\')">' +
-        (x[0] === 'all' ? tr('shelfLife') + ': ' + tr('typeAll') : tr(x[1])) + '</button>';
-    }).join('') + '</div>';
+      return menuRow(INV.shelf === x[0] ? '✓' : '○', INV.shelf === x[0] ? 'brand' : 'slate',
+        tr(x[1]), null, "closeSheet();setInvShelf('" + x[0] + "')");
+    }).join('') +
+    '<div class="group-title">' + tr('category') + '</div>' +
+    menuRow(INV.cat === '' ? '✓' : '○', INV.cat === '' ? 'brand' : 'slate',
+      tr('allCats'), null, "closeSheet();setInvCat('')") +
+    cats.map(function(c){
+      var on = INV.cat === c.category;
+      return menuRow(on ? '✓' : '○', on ? 'brand' : 'slate', c.category,
+        c.count + ' ' + tr('items'), "closeSheet();setInvCat('" + esc(c.category).replace(/'/g,'') + "')");
+    }).join('') +
+    '<div class="group-title">' + tr('exportX') + ' / ' + tr('exportP') + '</div>' +
+    exportRows('expInv'));
+}
 
+/* نافذة: أصناف شريحة ركود */
+function agingSheet(key, labelKey){
+  var d = INV.data; if (!d) return;
+  var items = ((d.aging_items || {})[key] || []);
+  openMenu(tr(labelKey), sheetItems(items, function(it){
+    return ltr(it.stock) + ' ' + tr('qty') +
+      (it.days !== null ? ' · ' + tr('daysIdle') + ' ' + ltr(it.days) + ' ' + tr('daysAgo') : '');
+  }));
+}
+
+/* نافذة: أصناف راكدة لفئة */
+function catSheet(cat){
+  var d = INV.data; if (!d) return;
   var items = (d.slow_dead_list || []).filter(function(it){
-    if (INV.cat && it.category !== INV.cat) return false;
+    if (it.category !== cat) return false;
     var e = it.days_to_expire;
     if (INV.shelf === 'u3')   return e !== null && e < 90;
     if (INV.shelf === '3_6')  return e !== null && e >= 90 && e < 180;
@@ -1480,20 +1576,27 @@ function drawAging(isOld){
     if (INV.shelf === 'none') return e === null;
     return true;
   });
-  var itemsCost = items.reduce(function(a, x){ return a + x.cost; }, 0);
+  openMenu(cat, sheetItems(items, function(it){
+    return ltr(it.stock) + ' ' + tr('qty') +
+      (it.days !== null ? ' · ' + tr('daysIdle') + ' ' + ltr(it.days) + ' ' + tr('daysAgo') : '') +
+      (it.expire ? ' · ' + tr('expiresOn') + ' ' + ltr(it.expire) : '');
+  }));
+}
 
-  html += card(tr('deadList'),
-    ltr(items.length) + ' ' + tr('items') + ' · ' + ltr(num(itemsCost)) + ' ' + tr('egp'),
-    items.length ? items.slice(0, 100).map(function(it){
-      var sub = ltr(it.stock) + ' ' + tr('qty') +
-        (it.days !== null ? ' · ' + tr('daysIdle') + ' ' + ltr(it.days) + ' ' + tr('daysAgo') : '') +
-        (it.expire ? ' · ' + tr('expiresOn') + ' ' + ltr(it.expire) : '');
+/* محتوى موحّد لنوافذ الأصناف */
+function sheetItems(items, subFn){
+  if (!items.length) return emptyState();
+  var total = items.reduce(function(a, x){ return a + x.cost; }, 0);
+  return '<div class="mini-grid"><div class="mini"><small>' + tr('items') + '</small><b>' +
+      LRI + num(items.length) + PDI + '</b></div>' +
+    '<div class="mini"><small>' + tr('stockValue') + '</small><b style="color:var(--bad)">' +
+      LRI + num(total) + PDI + '</b></div></div>' +
+    '<div class="group-title">' + tr('topItems') + '</div>' +
+    items.slice(0, 120).map(function(it){
       return '<div class="row"><div class="row-main"><b style="white-space:normal">' + esc(it.name) + '</b>' +
-        '<small>' + sub + '</small></div>' +
+        '<small>' + subFn(it) + '</small></div>' +
         '<span class="row-val" style="color:var(--bad)">' + ltr(num(it.cost)) + '</span></div>';
-    }).join('') : emptyState(), expBtns('expInv'));
-
-  box.innerHTML = html;
+    }).join('');
 }
 
 /* نافذة أصناف شهر معيّن */
@@ -1539,20 +1642,16 @@ function drawShort(){
   var sec = (SHORT_SEC === 'zero') ? zero : low;
   var sum = sec.summary || {};
 
-  var html = rangeBar('short', [['7','days7'],['14','days14'],['30','days30']], 'setShortDays');
+  var html = ctlBar(
+    ctlBtn(tr('outOfStock') + ' ' + ltr((zero.summary||{}).total || 0), SHORT_SEC === 'zero', "setShortSec('zero')") +
+    ctlBtn(tr('lowStock') + ' ' + ltr((low.summary||{}).total || 0), SHORT_SEC === 'low', "setShortSec('low')"),
+    'shortMenu()', RANGE.short !== '7');
 
   html += vitals(tr('shortages'), d.generatedAt || '', [
     { value: num((zero.summary||{}).total || 0), label: tr('outOfStock'), tone: 'bad' },
     { value: num((low.summary||{}).total || 0),  label: tr('lowStock'),   tone: 'warn' },
     { value: num(sum.totalAfter || 0), label: tr('afterDisc'), tone: 'brand' }
   ]);
-
-  /* تبديل: خلص خالص / قرب يخلص */
-  html += '<div class="subtabs" style="position:static;border:0;padding:0 0 12px">' +
-    '<button class="' + (SHORT_SEC === 'zero' ? 'on' : '') + '" onclick="setShortSec(\'zero\')">' +
-      tr('outOfStock') + ' ' + ltr((zero.summary||{}).total || 0) + '</button>' +
-    '<button class="' + (SHORT_SEC === 'low' ? 'on' : '') + '" onclick="setShortSec(\'low\')">' +
-      tr('lowStock') + ' ' + ltr((low.summary||{}).total || 0) + '</button></div>';
 
   var cats = Object.keys(sec.categories || {}).sort();
   if (!cats.length){ box.innerHTML = html + '<div class="card">' + emptyState() + '</div>'; return; }

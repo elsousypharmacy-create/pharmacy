@@ -135,6 +135,9 @@ button{font-family:inherit}
 .btn-quiet{background:var(--surface-2);color:var(--ink)}
 .btn-row{display:flex;gap:var(--s2)}
 .btn-row .btn{margin-bottom:0}
+.exp-btns{display:flex;gap:6px}
+.exp-btns button{background:var(--surface-2);border:0;color:var(--ink-2);font-family:inherit;
+  font-size:var(--t-micro);font-weight:650;padding:5px 10px;border-radius:99px;cursor:pointer}
 
 /* ── الحالات ── */
 .state{padding:var(--s6) var(--s4);text-align:center;color:var(--ink-2);font-size:var(--t-small)}
@@ -213,6 +216,7 @@ button{font-family:inherit}
   z-index:300;opacity:0;pointer-events:none;transition:.22s;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -287,8 +291,21 @@ var T = {
   sortBy:['ترتيب','Sort'], byAmount:['بالمبلغ','By amount'], byAge:['بالمدة','By age'],
   lastMove:['آخر حركة','Last activity'], lastPaid:['آخر سداد','Last payment'],
   noPayRec:['مفيش سداد مسجّل','No payment on record'],
+  bucketNone:['مفيش سداد مسجّل','No payment on record'],
+  yesterdayNums:['أرقام أمس','Yesterday\u2019s numbers'],
+  notResetYet:['نظام البيع لسه مصفّرش عداد اليوم','POS has not rolled over to today yet'], lastPaid:['آخر سداد','Last payment'],
+  noPayRec:['مفيش سداد مسجّل','No payment on record'],
   bucketNone:['مفيش سداد مسجّل في آخر سنة','No payment recorded in the past year'],
-  soldBy:['البايع','Sold by'], checkFirst:['راجع حسابه في نظام البيع قبل ما تكلمه','Check their account in the POS first'], noteLastMove:['«آخر حركة» = آخر شراء أو سداد','"Last activity" = last purchase or payment'], rToday:['اليوم','Today'], rYesterday:['أمس','Yesterday'], rMonth:['الشهر','Month'],
+  soldBy:['البايع','Sold by'],
+  typeAll:['الكل','All'], typeInvoice:['فواتير','Invoices'], typeCoupon:['كوبونات','Coupons'],
+  typeDebt:['تذكير ديون','Debt reminders'], onlyFailed:['اللي فشلت','Failed only'],
+  points:['النقاط','Points'], pointsBal:['رصيد النقاط','Points balance'],
+  sendCoupon:['ابعت كوبون','Send coupon'], couponText:['نص الرسالة','Message'],
+  expiry:['صلاحية الكوبون','Coupon expiry'], selectAll:['اختار الكل','Select all'],
+  clearSel:['إلغاء','Clear'], selected:['متحدد','selected'], sendToSel:['ابعت للمحددين','Send to selected'],
+  sending:['بيبعت…','Sending…'], sentCount:['اتبعت','Sent'],
+  couponDefault:['صيدلية السوسي: خصم خاص ليك على طلبك الجاي - اطلب دلوقتي 01143404023',
+                 'El Sousy Pharmacy: a special discount on your next order - order now 01143404023'], checkFirst:['راجع حسابه في نظام البيع قبل ما تكلمه','Check their account in the POS first'], noteLastMove:['«آخر حركة» = آخر شراء أو سداد','"Last activity" = last purchase or payment'], rToday:['اليوم','Today'], rYesterday:['أمس','Yesterday'], rMonth:['الشهر','Month'],
   rLastMonth:['الشهر اللي فات','Last month'], rCustom:['فترة','Custom'],
   from:['من','From'], to:['إلى','To'], apply:['طبّق','Apply'],
   days7:['٧ أيام','7 days'], days14:['١٤ يوم','14 days'], days30:['٣٠ يوم','30 days'],
@@ -298,7 +315,15 @@ var T = {
   agingTitle:['حسب آخر بيع','By last sale'], never:['ما اتباعش','Never sold'],
   d0_30:['أقل من شهر','Under 30d'], d31_60:['١-٢ شهر','1-2 months'], d61_90:['٢-٣ شهور','2-3 months'],
   d91_180:['٣-٦ شهور','3-6 months'], d181_365:['٦-١٢ شهر','6-12 months'], d365:['أكتر من سنة','Over a year'],
-  skus:['صنف','SKUs'], cached:['محفوظ','cached'], refreshing:['بيحدّث…','refreshing…'],
+  skus:['صنف','SKUs'], health:['صحة المخزون','Stock health'],
+  expByMonth:['الصلاحية شهر بشهر','Expiry by month'], deadList:['الأصناف الراكدة','Dead stock items'],
+  allCats:['كل الفئات','All categories'], shelfLife:['مدة الصلاحية','Shelf life'],
+  under3:['أقل من ٣ شهور','Under 3 months'], m3_6:['٣-٦ شهور','3-6 months'],
+  over6:['أكتر من ٦ شهور','Over 6 months'], noExp:['بدون تاريخ','No date'],
+  qty:['رصيد','Qty'], daysIdle:['ساكن','Idle'], expiresOn:['ينتهي','Expires'],
+  healthGood:['كويسة','Good'], healthMid:['متوسطة','Fair'], healthBad:['محتاجة تدخّل','Needs work'],
+  retailValue:['بسعر الجمهور','At retail'], exportX:['Excel','Excel'], exportP:['PDF','PDF'],
+  noExport:['مفيش بيانات للتصدير','Nothing to export'], turnover:['نسبة الراكد','Dead ratio'], cached:['محفوظ','cached'], refreshing:['بيحدّث…','refreshing…'],
   refresh:['حدّث','Refresh'], target:['الهدف','Target'], checkStaff:['شوف الموظفين','See staff'],
   belowTarget:['تحت الهدف','Below target'], weakest:['أضعف مؤشر','Weakest metric'],
   margin:['هامش','margin'],
@@ -588,6 +613,102 @@ function askDates(key, redraw){
 var RANGE_OPTS = [['today','rToday'],['yesterday','rYesterday'],['week','rWeek'],
                   ['month','rMonth'],['lastMonth','rLastMonth'],['custom','rCustom']];
 
+
+/* ═══ التصدير: Excel و PDF ═══
+   نفس اللبنة في كل الصفحات — بتاخد صفوف جاهزة وبتطلّع ملف. */
+function expBtns(fn){
+  return '<div class="exp-btns">' +
+    '<button onclick="' + fn + '(\'x\')">' + tr('exportX') + ' ↓</button>' +
+    '<button onclick="' + fn + '(\'p\')">' + tr('exportP') + ' ↓</button></div>';
+}
+function toExcel(rows, name){
+  if (!rows || !rows.length) { toast(tr('noExport')); return; }
+  try{
+    var ws = XLSX.utils.json_to_sheet(rows);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+    XLSX.writeFile(wb, name + '_' + new Date().toISOString().slice(0,10) + '.xlsx');
+  }catch(e){ logErr(e); toast(tr('failed')); }
+}
+function toPDF(rows, title){
+  if (!rows || !rows.length) { toast(tr('noExport')); return; }
+  var cols = Object.keys(rows[0]);
+  var w = window.open('', '_blank');
+  if (!w) { toast(tr('failed')); return; }
+  var head = cols.map(function(c){ return '<th>' + c + '</th>'; }).join('');
+  var body = rows.map(function(r){
+    return '<tr>' + cols.map(function(c){
+      var v = r[c] == null ? '' : String(r[c]);
+      var isNum = /^[\d.,\-%\s]+$/.test(v);
+      return '<td' + (isNum ? ' dir="ltr" class="n"' : '') + '>' + v + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+  w.document.write(
+    '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>' + title + '</title>' +
+    '<style>@page{margin:14mm}' +
+    'body{font-family:-apple-system,"Segoe UI",Tahoma,sans-serif;color:#111;font-size:12px}' +
+    'h1{font-size:17px;margin:0 0 2px}' +
+    '.sub{color:#666;font-size:11px;margin-bottom:14px}' +
+    'table{width:100%;border-collapse:collapse}' +
+    'th{background:#f2f4f7;text-align:right;font-size:11px;padding:7px 8px;border-bottom:2px solid #ccc}' +
+    'td{padding:6px 8px;border-bottom:1px solid #eee}' +
+    '.n{direction:ltr;unicode-bidi:isolate}' +
+    'tr:nth-child(even) td{background:#fafbfc}' +
+    '</style></head><body>' +
+    '<h1>' + title + ' — صيدلية السوسي</h1>' +
+    '<div class="sub">' + new Date().toLocaleString('en-GB') + ' · ' + rows.length + ' سطر</div>' +
+    '<table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table>' +
+    '<script>window.onload=function(){setTimeout(function(){window.print();},350);};<\/script>' +
+    '</body></html>');
+  w.document.close();
+}
+
+/* مصادر التصدير لكل صفحة */
+function expDebts(k){
+  var rows = ((DEBT.data || {}).debtors || []).map(function(c){
+    return { 'الاسم': c.name, 'التليفون': c.phone, 'الدين': Math.round(c.net),
+             'آخر سداد': c.lastPaid || '—', 'من كام يوم': c._days === null ? '—' : c._days };
+  });
+  k === 'x' ? toExcel(rows, 'debts') : toPDF(rows, tr('debts'));
+}
+function expStaff(k){
+  var rows = ((HR.kpi || {}).employees || []).map(function(e){
+    return { 'الموظف': e.name, 'مبيعات': e.sales, 'ربح': e.profit, 'فواتير': e.invoices,
+             'متوسط الفاتورة': e.avg_inv, 'نسبة التسجيل': e.reg_pct + '%',
+             'عملاء جدد': e.new_c, 'متكررين': e.repeat_c, 'درجة الرعاية': e.care_score };
+  });
+  k === 'x' ? toExcel(rows, 'staff') : toPDF(rows, tr('staffToday'));
+}
+function expInv(k){
+  var rows = ((INV.data || {}).slow_dead_list || []).map(function(it){
+    return { 'الصنف': it.name, 'الفئة': it.category, 'الرصيد': it.stock,
+             'التكلفة': it.cost, 'ساكن (يوم)': it.days === null ? '—' : it.days,
+             'ينتهي': it.expire || '—' };
+  });
+  k === 'x' ? toExcel(rows, 'dead_stock') : toPDF(rows, tr('deadList'));
+}
+function expMsgs(k){
+  var rows = ((MSG.data || {}).messages || []).map(function(m){
+    return { 'التاريخ': m.date, 'الاسم': m.customername, 'التليفون': m.phone,
+             'النوع': m.type, 'الحالة': m.status, 'الرسالة': m.message };
+  });
+  k === 'x' ? toExcel(rows, 'messages') : toPDF(rows, tr('messages'));
+}
+function expAtt(k){
+  var rows = ((HR.hist || {}).rows || []).map(function(x){
+    return { 'التاريخ': x.date, 'الموظف': x.name, 'دخول': x.checkIn,
+             'خروج': x.checkOut, 'المدة (دقيقة)': x.durationMin === null ? 'مفتوح' : x.durationMin };
+  });
+  k === 'x' ? toExcel(rows, 'attendance') : toPDF(rows, tr('attendance'));
+}
+function expExpenses(k){
+  var rows = (EXP_ITEMS || []).map(function(i){
+    return { 'التاريخ': i.date, 'الفئة': i.category, 'الوصف': i.desc, 'المبلغ': i.amount };
+  });
+  k === 'x' ? toExcel(rows, 'expenses') : toPDF(rows, tr('expenses'));
+}
+var EXP_ITEMS = [];
+
 /* ═══════════ ٤) الأقسام ═══════════ */
 var SECTIONS = {
   home:  [['home',  function(){ return tr('today'); }]],
@@ -684,15 +805,29 @@ function drawHome(b, kpi, isOld){
     var avgInv  = tot.inv ? Math.round(salesT / tot.inv) : 0;
     var regPct  = pct(tot.reg, totCust);
 
-    /* ── ١) المؤشرات: مبيعات · ربح · فواتير ── */
-    html += vitals(tr('today'), new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), [
-      { value: num(salesT), label: tr('salesToday'), tone: salesNote.tone,
-        note: salesNote.num, sub: salesNote.word },
-      { value: num(d.profit_today), label: tr('profitToday'), tone: 'brand',
+    /* ── ١) المؤشرات ──
+       نظام البيع بيصفّر عداد اليوم عند فتح الصيدلية، مش نص الليل.
+       فلو آخر تحديث ليه من يوم فات، الأرقام دي بتاعت أمس مش النهاردة. */
+    var upd = String(d.updated_at || '');
+    var updDay = (upd.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
+    var todayStr = new Date().toLocaleDateString('en-CA');
+    var isStaleDay = updDay && updDay < todayStr;
+
+    html += vitals(isStaleDay ? tr('yesterdayNums') : tr('today'),
+      new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), [
+      { value: num(salesT), label: tr('salesToday'),
+        tone: isStaleDay ? 'slate' : salesNote.tone,
+        note: isStaleDay ? null : salesNote.num, sub: isStaleDay ? null : salesNote.word },
+      { value: num(d.profit_today), label: tr('profitToday'),
+        tone: isStaleDay ? 'slate' : 'brand',
         note: pct(d.profit_today, salesT) + '%', sub: tr('margin') },
       { value: num(tot.inv), label: tr('invoices'), tone: 'brand',
         note: num(totCust), sub: tr('customersToday') }
-    ], stamp(tr('srcSales'), (String(d.updated_at || '')).slice(-8) || null, tr('live')));
+    ], (isStaleDay
+        ? '<div class="state" style="padding:10px 0 0;font-size:11px;color:var(--warn)">' +
+            tr('notResetYet') + '</div>'
+        : '') +
+       stamp(tr('srcSales'), upd.slice(-8) || null, tr('live')));
 
     /* ── ٢) محتاج تصرّف — فوق، مش تحت ── */
     var acts = [];
@@ -893,10 +1028,11 @@ function pgExpenses(){
     html += card(tr('expenses'), null, (d.byCategory || []).length
       ? d.byCategory.map(function(c){ return row(c.category, ltr(c.count), ltr(num(c.total))); }).join('')
       : emptyState());
-    var items = (d.items || []).slice(0, 40);
+    EXP_ITEMS = d.items || [];
+    var items = (d.items || []).slice(0, 60);
     if (items.length) html += card(tr('history'), null, items.map(function(i){
       return row(i.category, esc(i.desc) + ' · ' + ltr(i.date), ltr(num(i.amount)));
-    }).join(''));
+    }).join(''), expBtns('expExpenses'));
     box.innerHTML = html;
   }).catch(function(e){ logErr(e); oops(box, "pgExpenses()"); });
 }
@@ -967,6 +1103,9 @@ function drawDebts(isOld){
       tr('byAmount') + '</button>' +
     '<button class="' + (DEBT.sort === 'age' ? 'on' : '') + '" onclick="setDebtSort(\'age\')">' +
       tr('byAge') + '</button></div>';
+
+  html += '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">' +
+    expBtns('expDebts') + '</div>';
 
   html += DEBT_BUCKETS.map(function(b){
     var g = groups[b.key];
@@ -1088,7 +1227,10 @@ function drawStaffHub(isOld){
     { value: num(totNew), label: tr('newCust'), tone: 'brand' }
   ]);
 
-  /* مربع لكل موظف */
+  html += '<div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px">' +
+    expBtns('expStaff') + expBtns('expAtt') + '</div>';
+
+  /* صف لكل موظف */
   /* مرتّبين بالمبيعات — الأعلى فوق */
   var sorted = list.slice().sort(function(a,b){ return b.sales - a.sales; });
   html += sorted.length ? '<div class="staff-grid">' + sorted.map(function(e){
@@ -1184,45 +1326,134 @@ function staffSheet(i){
 }
 
 /* ─────── مخزون: التحليل ─────── */
+var INV = { data: null, cat: '', shelf: 'all' };
+
+function setInvCat(c){ INV.cat = c; drawAging(); }
+function setInvShelf(v){ INV.shelf = v; drawAging(); }
+
 function pgAging(){
-  var box = document.getElementById('p-stock'); busy(box);
+  var box = document.getElementById('p-stock');
+  var seed = cacheGet('inv', {});
+  if (seed) { INV.data = seed; drawAging(true); } else busy(box);
+
   api('getInventoryAging').then(function(d){
     if (!d || !d.ok) throw new Error(d && d.error);
-    markSync();
-    var html = vitals(tr('invAging'), d.snapshot_at || d.generated_date, [
-      { value: num(d.total_cost_value), label: tr('stockValue'), tone: 'brand', note: tr('atCost') },
-      { value: num(d.slow_dead_total_cost), label: tr('deadStock'), tone: 'bad',
-        note: ltr(pct(d.slow_dead_total_cost, d.total_cost_value) + '%') },
-      { value: num((d.near_expiry_list || []).length), label: tr('nearExpiry'), tone: 'warn' }
-    ]);
+    cacheSet('inv', {}, d);
+    INV.data = d; markSync(); drawAging(false);
+  }).catch(function(e){ logErr(e); if (!seed) oops(box, "pgAging()"); });
+}
 
-    var months = (d.expiry_by_month && d.expiry_by_month.months) || [];
-    var expired = d.expiry_by_month && d.expiry_by_month.expired;
-    html += card(tr('nearExpiry'), null,
-      ((expired && expired.count) ? row(tr('expiredNow'), null,
-        badge(ltr(expired.count) + ' · ' + ltr(num(expired.totalCost)), 'bad')) : '') +
-      months.filter(function(m){ return m.count; }).map(function(m){
-        return row(m.label, ltr(m.count) + ' ' + tr('items'), ltr(num(m.totalCost)));
-      }).join('') || emptyState());
+function drawAging(isOld){
+  var box = document.getElementById('p-stock'), d = INV.data;
+  if (!d) return;
 
-    var AG = [['never','never'],['b0_30','d0_30'],['b31_60','d31_60'],['b61_90','d61_90'],
-              ['b91_180','d91_180'],['b181_365','d181_365'],['b365plus','d365']];
-    html += card(tr('agingTitle'), null, AG.map(function(a){
-      var x = (d.aging || {})[a[0]]; if (!x || !x.skus) return '';
-      var tone = (a[0] === 'never' || a[0] === 'b365plus' || a[0] === 'b181_365') ? 'bad'
-               : (a[0] === 'b91_180') ? 'warn' : 'ok';
-      return row(tr(a[1]), ltr(x.skus) + ' ' + tr('skus'),
-        '<span style="color:var(--' + tone + ')">' + ltr(num(x.cost)) + '</span>');
+  var deadPct = pct(d.slow_dead_total_cost, d.total_cost_value);
+  /* درجة صحة بسيطة: كل ما الراكد وقرب الانتهاء أقل، الدرجة أعلى */
+  var expCost = (d.near_expiry_list || []).reduce(function(a, x){ return a + x.cost; }, 0);
+  var expPct = pct(expCost, d.total_cost_value);
+  var score = Math.max(0, Math.min(100, 100 - deadPct * 1.6 - expPct * 2));
+  var hTone = score >= 70 ? 'ok' : score >= 45 ? 'warn' : 'bad';
+  var hLabel = score >= 70 ? tr('healthGood') : score >= 45 ? tr('healthMid') : tr('healthBad');
+
+  var html = (isOld ? '<div class="state" style="padding:0 0 8px">' + tr('cached') + '</div>' : '');
+
+  html += vitals(tr('invAging'), d.snapshot_at || d.generated_date, [
+    { value: num(d.total_cost_value), label: tr('stockValue'), tone: 'brand',
+      note: num(d.total_retail_value), sub: tr('retailValue') },
+    { value: num(d.slow_dead_total_cost), label: tr('deadStock'), tone: 'bad',
+      note: deadPct + '%', sub: tr('turnover') },
+    { value: Math.round(score), label: tr('health'), tone: hTone, note: null, sub: hLabel }
+  ]);
+
+  /* شرايح الركود */
+  var AG = [['never','never'],['b0_30','d0_30'],['b31_60','d31_60'],['b61_90','d61_90'],
+            ['b91_180','d91_180'],['b181_365','d181_365'],['b365plus','d365']];
+  html += card(tr('agingTitle'), null, AG.map(function(a){
+    var x = (d.aging || {})[a[0]]; if (!x || !x.skus) return '';
+    var tone = (a[0] === 'never' || a[0] === 'b365plus' || a[0] === 'b181_365') ? 'bad'
+             : (a[0] === 'b91_180') ? 'warn' : 'ok';
+    return row(tr(a[1]), ltr(x.skus) + ' ' + tr('skus'),
+      '<span style="color:var(--' + tone + ')">' + ltr(num(x.cost)) + '</span>');
+  }).join('') || emptyState());
+
+  /* الصلاحية شهر بشهر */
+  var months = (d.expiry_by_month && d.expiry_by_month.months) || [];
+  var expired = d.expiry_by_month && d.expiry_by_month.expired;
+  html += card(tr('expByMonth'), null,
+    ((expired && expired.count)
+      ? '<div class="row" style="cursor:pointer" onclick="expSheet(\'expired\')">' +
+          '<div class="row-main"><b style="color:var(--bad)">' + tr('expiredNow') + '</b>' +
+          '<small>' + ltr(expired.count) + ' ' + tr('items') + '</small></div>' +
+          '<span class="row-val" style="color:var(--bad)">' + ltr(num(expired.totalCost)) + '</span></div>'
+      : '') +
+    months.filter(function(m){ return m.count; }).map(function(m, i){
+      return '<div class="row" style="cursor:pointer" onclick="expSheet(' + i + ')">' +
+        '<div class="row-main"><b>' + esc(m.label) + '</b>' +
+        '<small>' + ltr(m.count) + ' ' + tr('items') + '</small></div>' +
+        '<span class="row-val">' + ltr(num(m.totalCost)) + '</span></div>';
     }).join('') || emptyState());
 
-    html += card(tr('deadStock'), null, (d.slow_category_summary || []).length
-      ? d.slow_category_summary.slice(0, 12).map(function(c){
-          return row(c.category, ltr(c.count) + ' ' + tr('items'), ltr(num(c.cost)));
-        }).join('')
-      : emptyState());
+  /* الراكد: فئات + فلتر مدة الصلاحية + قائمة */
+  var cats = d.slow_category_summary || [];
+  html += '<div class="subtabs" style="position:static;border:0;padding:0 0 10px">' +
+    '<button class="' + (INV.cat === '' ? 'on' : '') + '" onclick="setInvCat(\'\')">' +
+      tr('allCats') + '</button>' +
+    cats.slice(0, 10).map(function(c){
+      return '<button class="' + (INV.cat === c.category ? 'on' : '') + '" onclick="setInvCat(\'' +
+        esc(c.category).replace(/'/g, '') + '\')">' + esc(c.category) + ' ' + ltr(c.count) + '</button>';
+    }).join('') + '</div>';
 
-    box.innerHTML = html;
-  }).catch(function(e){ logErr(e); oops(box, "pgAging()"); });
+  var SHELF = [['all','allCats'],['u3','under3'],['3_6','m3_6'],['o6','over6'],['none','noExp']];
+  html += '<div class="subtabs" style="position:static;border:0;padding:0 0 10px">' +
+    SHELF.map(function(x){
+      return '<button class="' + (INV.shelf === x[0] ? 'on' : '') + '" onclick="setInvShelf(\'' + x[0] + '\')">' +
+        (x[0] === 'all' ? tr('shelfLife') + ': ' + tr('typeAll') : tr(x[1])) + '</button>';
+    }).join('') + '</div>';
+
+  var items = (d.slow_dead_list || []).filter(function(it){
+    if (INV.cat && it.category !== INV.cat) return false;
+    var e = it.days_to_expire;
+    if (INV.shelf === 'u3')   return e !== null && e < 90;
+    if (INV.shelf === '3_6')  return e !== null && e >= 90 && e < 180;
+    if (INV.shelf === 'o6')   return e !== null && e >= 180;
+    if (INV.shelf === 'none') return e === null;
+    return true;
+  });
+  var itemsCost = items.reduce(function(a, x){ return a + x.cost; }, 0);
+
+  html += card(tr('deadList'),
+    ltr(items.length) + ' ' + tr('items') + ' · ' + ltr(num(itemsCost)) + ' ' + tr('egp'),
+    items.length ? items.slice(0, 100).map(function(it){
+      var sub = ltr(it.stock) + ' ' + tr('qty') +
+        (it.days !== null ? ' · ' + tr('daysIdle') + ' ' + ltr(it.days) + ' ' + tr('daysAgo') : '') +
+        (it.expire ? ' · ' + tr('expiresOn') + ' ' + ltr(it.expire) : '');
+      return '<div class="row"><div class="row-main"><b style="white-space:normal">' + esc(it.name) + '</b>' +
+        '<small>' + sub + '</small></div>' +
+        '<span class="row-val" style="color:var(--bad)">' + ltr(num(it.cost)) + '</span></div>';
+    }).join('') : emptyState(), expBtns('expInv'));
+
+  box.innerHTML = html;
+}
+
+/* نافذة أصناف شهر معيّن */
+function expSheet(key){
+  var d = INV.data; if (!d) return;
+  var bucket = (key === 'expired')
+    ? d.expiry_by_month.expired
+    : d.expiry_by_month.months[key];
+  if (!bucket) return;
+  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  document.getElementById('sheet').classList.add('on');
+  t.textContent = (key === 'expired') ? tr('expiredNow') : bucket.label;
+  b.innerHTML =
+    '<div class="mini-grid"><div class="mini"><small>' + tr('items') + '</small><b>' +
+      LRI + num(bucket.count) + PDI + '</b></div>' +
+    '<div class="mini"><small>' + tr('stockValue') + '</small><b style="color:var(--bad)">' +
+      LRI + num(bucket.totalCost) + PDI + '</b></div></div>' +
+    (bucket.items || []).slice(0, 120).map(function(it){
+      return rowLite(it.name, ltr(it.stock) + ' ' + tr('qty') + ' · ' + ltr(it.expire),
+        ltr(num(it.cost)));
+    }).join('');
 }
 
 /* ─────── مخزون: النواقص ─────── */
@@ -1312,40 +1543,205 @@ function shortAct(btn, action, code, name){
 }
 
 /* ─────── عملاء: الرسايل ─────── */
+var MSG = { data: null, type: 'all', failedOnly: false };
+
+function setMsgType(v){ MSG.type = v; drawMessages(); }
+function toggleFailed(){ MSG.failedOnly = !MSG.failedOnly; drawMessages(); }
+
 function pgMessages(){
-  var box = document.getElementById('p-cust'); busy(box);
+  var box = document.getElementById('p-cust');
+  var seed = cacheGet('sms', {});
+  if (seed) { MSG.data = seed; drawMessages(true); } else busy(box);
+
   api('getSMSLogFast', { days: 30 }).then(function(d){
     if (!d || !d.ok) throw new Error('sms');
-    markSync();
-    var msgs = d.messages || [];
-    var bad = msgs.filter(function(m){ return /فشل|❌/.test(m.status); });
-    var okc = msgs.length - bad.length;
-    var html = vitals(tr('messages'), ltr('30') + ' ' + (LANG==='ar'?'يوم':'days'), [
-      { value: num(okc), label: tr('sent'), tone: 'ok' },
-      { value: num(bad.length), label: tr('msgFailed'), tone: bad.length ? 'bad' : 'ok' },
-      { value: num(msgs.length), label: tr('messages'), tone: 'brand' }
-    ]);
-    if (bad.length) html += card(tr('msgFailed'), null, bad.slice(0, 40).map(function(m){
-      return '<div class="row"><div class="row-main"><b>' + esc(m.customername || '—') + '</b>' +
-        '<small>' + ltr(m.phone) + ' · ' + ltr(m.date) + '</small></div>' +
-        (m.invoiceid ? '<div style="display:flex;gap:6px">' +
-          '<button class="badge" style="--tone:var(--brand);border:0;cursor:pointer" onclick="smsAction(this,\'retrySMS\',\'' + m.invoiceid + '\')">' + tr('resend') + '</button>' +
-          '<button class="badge" style="--tone:var(--ink-2);border:0;cursor:pointer" onclick="smsAction(this,\'dismissSMS\',\'' + m.invoiceid + '\')">' + tr('ignore') + '</button>' +
-        '</div>' : '') + '</div>';
-    }).join(''));
-    html += card(tr('history'), null, msgs.length ? msgs.slice(0, 60).map(function(m){
-      var t = /فشل|❌/.test(m.status) ? 'bad' : 'ok';
-      return row(m.customername || '—', ltr(m.phone) + ' · ' + ltr(m.date),
-        badge(/فشل|❌/.test(m.status) ? tr('msgFailed') : tr('sent'), t));
-    }).join('') : emptyState());
-    box.innerHTML = html;
-  }).catch(function(e){ logErr(e); oops(box, "pgMessages()"); });
+    cacheSet('sms', {}, d);
+    MSG.data = d; markSync(); drawMessages(false);
+  }).catch(function(e){ logErr(e); if (!seed) oops(box, "pgMessages()"); });
 }
+
+function isFail(m){ return /فشل|❌|مبعتهاش/.test(String(m.status || '')); }
+
+function drawMessages(isOld){
+  var box = document.getElementById('p-cust'), d = MSG.data;
+  if (!d) return;
+  var all = d.messages || [];
+
+  var counts = { all: all.length, invoice: 0, coupon: 0, debt: 0 };
+  all.forEach(function(m){ if (counts[m.type] !== undefined) counts[m.type]++; });
+  var bad = all.filter(isFail);
+
+  var html = (isOld ? '<div class="state" style="padding:0 0 8px">' + tr('cached') + '</div>' : '');
+
+  html += vitals(tr('messages'), ltr('30') + ' ' + (LANG === 'ar' ? 'يوم' : 'days'), [
+    { value: num(all.length - bad.length), label: tr('sent'), tone: 'ok' },
+    { value: num(bad.length), label: tr('msgFailed'), tone: bad.length ? 'bad' : 'ok' },
+    { value: num(all.length), label: tr('messages'), tone: 'brand' }
+  ]);
+
+  /* فلتر النوع */
+  var TYPES = [['all','typeAll'],['invoice','typeInvoice'],['coupon','typeCoupon'],['debt','typeDebt']];
+  html += '<div class="subtabs" style="position:static;border:0;padding:0 0 10px">' +
+    TYPES.map(function(t){
+      return '<button class="' + (MSG.type === t[0] ? 'on' : '') + '" onclick="setMsgType(\'' + t[0] + '\')">' +
+        tr(t[1]) + ' ' + ltr(counts[t[0]]) + '</button>';
+    }).join('') +
+    '<button class="' + (MSG.failedOnly ? 'on' : '') + '" onclick="toggleFailed()">' +
+      tr('onlyFailed') + '</button></div>';
+
+  html += '<div class="btn-row" style="margin-bottom:12px">' +
+    '<button class="btn btn-primary" onclick="couponSheet()">' + tr('sendCoupon') + '</button>' +
+    '<button class="btn btn-quiet" onclick="pointsSheet()">' + tr('pointsBal') + '</button></div>';
+
+  var shown = all.filter(function(m){
+    if (MSG.failedOnly && !isFail(m)) return false;
+    return MSG.type === 'all' || m.type === MSG.type;
+  });
+
+  var TYPE_LBL = { invoice:'typeInvoice', coupon:'typeCoupon', debt:'typeDebt' };
+  html += card(tr('messages'), null, shown.length
+    ? shown.slice(0, 80).map(function(m){
+        var f = isFail(m);
+        var actions = (f && m.invoiceid)
+          ? '<button class="badge" style="--tone:var(--brand);border:0;cursor:pointer" ' +
+              'onclick="smsAction(this,\'retrySMS\',\'' + m.invoiceid + '\')">' + tr('resend') + '</button>' +
+            '<button class="badge" style="--tone:var(--ink-2);border:0;cursor:pointer" ' +
+              'onclick="smsAction(this,\'dismissSMS\',\'' + m.invoiceid + '\')">' + tr('ignore') + '</button>'
+          : badge(f ? tr('msgFailed') : tr('sent'), f ? 'bad' : 'ok');
+        return '<div class="row"><div class="row-main"><b>' + esc(m.customername || '—') + '</b>' +
+          '<small>' + ltr(m.phone) + ' · ' + ltr(m.date) + ' · ' + tr(TYPE_LBL[m.type] || 'typeAll') +
+          '</small></div><div style="display:flex;gap:6px">' + actions + '</div></div>';
+      }).join('')
+    : emptyState(), expBtns('expMsgs'));
+
+  box.innerHTML = html;
+}
+
 function smsAction(btn, action, id){
   btn.disabled = true; btn.textContent = '…';
   post({ action: action, invoiceid: id })
     .then(function(){ btn.textContent = '✓'; })
     .catch(function(e){ logErr(e); btn.textContent = '✗'; });
+}
+
+/* ── رصيد نقاط عميل ── */
+function pointsSheet(){
+  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  document.getElementById('sheet').classList.add('on');
+  t.textContent = tr('pointsBal');
+  b.innerHTML =
+    '<input id="ptPhone" type="tel" inputmode="numeric" placeholder="01xxxxxxxxx" ' +
+      'style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);' +
+      'background:var(--surface-2);color:var(--ink);font-family:inherit;font-size:15px;direction:ltr">' +
+    '<div style="height:12px"></div>' +
+    '<button class="btn btn-primary" onclick="loadPoints()">' + tr('pointsBal') + '</button>' +
+    '<div id="ptOut"></div>';
+}
+function loadPoints(){
+  var ph = (document.getElementById('ptPhone').value || '').trim();
+  var out = document.getElementById('ptOut');
+  if (!ph) return;
+  out.innerHTML = '<div class="state"><div class="spin"></div></div>';
+  api('getCustomerPoints', { phone: ph }).then(function(d){
+    if (!d || !d.ok) { out.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; return; }
+    out.innerHTML =
+      '<div class="mini-grid" style="margin-top:14px"><div class="mini">' +
+        '<small>' + tr('points') + '</small><b style="color:var(--ok)">' + LRI + num(d.total_points) + PDI + '</b>' +
+      '</div><div class="mini"><small>' + tr('invoices') + '</small><b>' +
+        LRI + num((d.history || []).length) + PDI + '</b></div></div>' +
+      (d.history || []).slice(0, 25).map(function(h){
+        return rowLite(String(h.date).slice(0, 10), ltr(num(h.amount)) + ' ' + tr('egp'),
+          ltr('+' + h.points));
+      }).join('');
+  }).catch(function(e){ logErr(e); out.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+}
+
+/* ── إرسال كوبونات: فردي أو جماعي ── */
+var COUPON = { list: [], sel: {} };
+
+function couponSheet(){
+  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  document.getElementById('sheet').classList.add('on');
+  t.textContent = tr('sendCoupon');
+  var d30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+  b.innerHTML =
+    '<div class="group-title">' + tr('couponText') + '</div>' +
+    '<textarea id="cpMsg" rows="3" style="width:100%;padding:12px;border-radius:12px;' +
+      'border:1px solid var(--line);background:var(--surface-2);color:var(--ink);' +
+      'font-family:inherit;font-size:14px;resize:vertical">' + esc(tr('couponDefault')) + '</textarea>' +
+    '<div class="group-title">' + tr('expiry') + '</div>' +
+    '<input id="cpExp" type="date" value="' + d30 + '" style="width:100%;padding:11px;' +
+      'border-radius:12px;border:1px solid var(--line);background:var(--surface-2);' +
+      'color:var(--ink);font-family:inherit;font-size:14px">' +
+    '<div id="cpList"><div class="state"><div class="spin"></div></div></div>';
+
+  api('getCustomers').then(function(list){
+    if (!Array.isArray(list)) throw new Error('cust');
+    /* اللي محتاجين متابعة الأول — دول هدف الكوبون */
+    COUPON.list = list.filter(function(c){ return c.phone && !c.is_blocked; })
+      .sort(function(a, b){ return (a.status === 'تنبيه' ? -1 : 0) - (b.status === 'تنبيه' ? -1 : 0); });
+    COUPON.sel = {};
+    drawCouponList();
+  }).catch(function(e){
+    logErr(e);
+    var el = document.getElementById('cpList');
+    if (el) el.innerHTML = '<div class="state err">' + tr('failed') + '</div>';
+  });
+}
+
+function toggleCp(ph){ COUPON.sel[ph] = !COUPON.sel[ph]; drawCouponList(); }
+function selAllCp(on){
+  COUPON.sel = {};
+  if (on) COUPON.list.slice(0, 60).forEach(function(c){ COUPON.sel[c.phone] = true; });
+  drawCouponList();
+}
+
+function drawCouponList(){
+  var el = document.getElementById('cpList'); if (!el) return;
+  var n = Object.keys(COUPON.sel).filter(function(k){ return COUPON.sel[k]; }).length;
+  el.innerHTML =
+    '<div class="group-title" style="display:flex;justify-content:space-between;align-items:center">' +
+      '<span>' + tr('customers') + ' · ' + ltr(n) + ' ' + tr('selected') + '</span>' +
+      '<span><u style="cursor:pointer" onclick="selAllCp(true)">' + tr('selectAll') + '</u> · ' +
+      '<u style="cursor:pointer" onclick="selAllCp(false)">' + tr('clearSel') + '</u></span></div>' +
+    (n ? '<button class="btn btn-primary" onclick="sendCoupons()">' + tr('sendToSel') +
+         ' (' + ltr(n) + ')</button>' : '') +
+    '<div id="cpRows">' + COUPON.list.slice(0, 60).map(function(c){
+      var on = !!COUPON.sel[c.phone];
+      return '<div class="row" style="cursor:pointer" onclick="toggleCp(\'' + c.phone + '\')">' +
+        '<div style="display:flex;gap:10px;align-items:center;min-width:0">' +
+        '<span style="width:18px;height:18px;border-radius:5px;flex-shrink:0;display:grid;place-items:center;' +
+          'border:1.5px solid var(--' + (on ? 'brand' : 'line') + ');background:var(--' +
+          (on ? 'brand' : 'surface-2') + ');color:#fff;font-size:11px">' + (on ? '✓' : '') + '</span>' +
+        '<div class="row-main"><b>' + esc(c.name || '—') + '</b>' +
+        '<small>' + ltr(c.phone) + (c.cls ? ' · ' + esc(c.cls) : '') + '</small></div></div>' +
+        (c.status === 'تنبيه' ? badge(tr('needFollow'), 'warn') : '') + '</div>';
+    }).join('') + '</div>';
+}
+
+function sendCoupons(){
+  var msg = (document.getElementById('cpMsg').value || '').trim();
+  var exp = document.getElementById('cpExp').value;
+  var phones = COUPON.list.filter(function(c){ return COUPON.sel[c.phone]; });
+  if (!msg || !phones.length) return;
+
+  var el = document.getElementById('cpRows');
+  var done = 0, ok = 0;
+  function step(i){
+    if (i >= phones.length){
+      el.innerHTML = '<div class="state">' + tr('sentCount') + ' ' + ltr(ok) + ' / ' + ltr(phones.length) + '</div>';
+      toast(tr('sentCount') + ' ' + ok);
+      return;
+    }
+    var c = phones[i];
+    el.innerHTML = '<div class="state"><div class="spin"></div>' + tr('sending') + ' ' +
+      ltr(i + 1) + '/' + ltr(phones.length) + '</div>';
+    api('sendCoupon', { phone: c.phone, name: c.name, message: msg, expiry: exp })
+      .then(function(r){ if (r && r.ok) ok++; })
+      .catch(logErr)
+      .then(function(){ done++; step(i + 1); });
+  }
+  step(0);
 }
 
 /* ─────── عملاء: القائمة ─────── */

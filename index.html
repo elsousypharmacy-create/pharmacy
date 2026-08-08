@@ -351,7 +351,12 @@ var T = {
   healthGood:['كويسة','Good'], healthMid:['متوسطة','Fair'], healthBad:['محتاجة تدخّل','Needs work'],
   retailValue:['بسعر الجمهور','At retail'], exportX:['Excel','Excel'], exportP:['PDF','PDF'],
   noExport:['مفيش بيانات للتصدير','Nothing to export'],
-  more:['المزيد','More'], category:['الفئة','Category'], topItems:['أعلى الأصناف قيمة','Highest value'], filters:['فلاتر','Filters'], actions:['إجراءات','Actions'],
+  more:['المزيد','More'], category:['الفئة','Category'], topItems:['أعلى الأصناف قيمة','Highest value'],
+  viewDetails:['شوف الكل','View all'], ofTotal:['من الإجمالي','of total'],
+  negStock:['أرصدة سالبة','Negative stock'],
+  negSub:['رصيد أقل من صفر — خطأ جرد أو بيع من غير إدخال','Below zero — stock error or sale without entry'],
+  fixThese:['محتاجة تصحيح جرد','Need a stock correction'],
+  qtyShort:['ناقص','Short'], noNeg:['مفيش أرصدة سالبة','No negative stock'], filters:['فلاتر','Filters'], actions:['إجراءات','Actions'],
   testSMS:['رسالة تجريبية','Test message'], testSMSSub:['اتأكد إن الإرسال شغال','Check sending works'],
   send:['ابعت','Send'], exportXSub:['ملف تقدر تفتحه وتفلتره','A file you can open and filter'],
   exportPSub:['نسخة جاهزة للطباعة','Ready to print'],
@@ -915,10 +920,13 @@ function drawHome(b, kpi, isOld){
     /* ── ١) المؤشرات ──
        نظام البيع بيصفّر عداد اليوم عند فتح الصيدلية، مش نص الليل.
        فلو آخر تحديث ليه من يوم فات، الأرقام دي بتاعت أمس مش النهاردة. */
+    /* نظام البيع بيصفّر عداده عند فتح الصيدلية مش نص الليل.
+       الفواتير بتيجي من ملف اليوم (بيتصفّر فعلاً)، فلو الفواتير صفر
+       والمبيعات مش صفر → الرقم ده بتاع يوم فات. */
     var upd = String(d.updated_at || '');
     var updDay = (upd.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
     var todayStr = new Date().toLocaleDateString('en-CA');
-    var isStaleDay = updDay && updDay < todayStr;
+    var isStaleDay = (updDay && updDay < todayStr) || (tot.inv === 0 && salesT > 0);
 
     html += vitals(isStaleDay ? tr('yesterdayNums') : tr('today'),
       new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), [
@@ -1207,12 +1215,18 @@ function drawDebts(isOld){
 
   var html = (isOld ? '<div class="state" style="padding:0 0 8px">' + tr('cached') + '</div>' : '');
 
+  /* المؤشرات لازم تكون متسقة: مجموع النطاقات = الإجمالي بالظبط */
+  var totalAll   = list.reduce(function(a,c){ return a + c.net; }, 0);
+  var staleTotal = stale.reduce(function(a,c){ return a + c.net; }, 0);
+  var freshTotal = totalAll - staleTotal;
+
   html += vitals(tr('debts'), null, [
-    { value: num(d.total_net), label: tr('totalDebt'), tone: 'bad',
+    { value: num(totalAll), label: tr('totalDebt'), tone: 'bad',
       note: num(list.length), sub: tr('debtors') },
-    { value: num(stale.reduce(function(a,c){ return a + c.net; }, 0)), label: tr('overdueDebt'),
-      tone: 'warn', note: num(stale.length), sub: tr('customers') },
-    { value: num(d.total_paid), label: tr('collected'), tone: 'ok' }
+    { value: num(staleTotal), label: tr('overdueDebt'), tone: 'warn',
+      note: pct(staleTotal, totalAll) + '%', sub: tr('ofTotal') },
+    { value: num(freshTotal), label: tr('bucketFresh'), tone: 'ok',
+      note: num(list.length - stale.length), sub: tr('customers') }
   ]);
 
   /* سطر تحكّم واحد */
@@ -1517,6 +1531,24 @@ function drawAging(isOld){
       '<span class="row-val" style="color:var(--' + tone + ')">' + ltr(num(g.cost)) + '</span></div>';
   }).join('') || emptyState());
 
+  /* ── كارت: الأرصدة السالبة — أول حاجة لأنها خطأ محتاج تصحيح ── */
+  var neg = d.negative_list || [];
+  if (neg.length) {
+    html += card(tr('negStock'),
+      tr('negSub'),
+      neg.slice(0, 8).map(function(it){
+        return '<div class="row"><div class="row-main"><b style="white-space:normal">' + esc(it.name) + '</b>' +
+          '<small>' + esc(it.category) + '</small></div>' +
+          '<span class="row-val" style="color:var(--bad)">' + ltr(it.stock) + '</span></div>';
+      }).join('') +
+      (neg.length > 8
+        ? '<div class="row" style="cursor:pointer;border-bottom:0" onclick="negSheet()">' +
+            '<div class="row-main"><b style="color:var(--brand)">' + tr('viewDetails') + '</b></div>' +
+            '<span class="row-val" style="color:var(--brand)">' + ltr(neg.length) + '</span></div>'
+        : ''),
+      badge(ltr(neg.length) + ' ' + tr('items'), 'bad'));
+  }
+
   /* ── كارت: الراكد حسب الفئة — كل فئة تفتح نافذة ── */
   var cats = d.slow_category_summary || [];
   html += card(tr('deadStock'),
@@ -1551,7 +1583,38 @@ function invMenu(){
         c.count + ' ' + tr('items'), "closeSheet();setInvCat('" + esc(c.category).replace(/'/g,'') + "')");
     }).join('') +
     '<div class="group-title">' + tr('exportX') + ' / ' + tr('exportP') + '</div>' +
-    exportRows('expInv'));
+    exportRows('expInv') +
+    menuRow('⚠', 'bad', tr('negStock'),
+      ltr(((INV.data || {}).negative_list || []).length) + ' ' + tr('items'), "negSheet()"));
+}
+
+
+/* نافذة: كل الأرصدة السالبة */
+function negSheet(){
+  var d = INV.data; if (!d) return;
+  var neg = d.negative_list || [];
+  openMenu(tr('negStock'),
+    '<div class="state" style="padding:0 0 12px;text-align:start">' + tr('negSub') + '</div>' +
+    '<div class="mini-grid">' +
+      '<div class="mini"><small>' + tr('items') + '</small><b style="color:var(--bad)">' +
+        LRI + num(neg.length) + PDI + '</b></div>' +
+      '<div class="mini"><small>' + tr('qtyShort') + '</small><b style="color:var(--bad)">' +
+        LRI + num(d.negative_qty) + PDI + '</b></div></div>' +
+    '<button class="btn btn-quiet" onclick="expNeg(\'p\')">' + tr('exportP') + ' ↓</button>' +
+    '<button class="btn btn-quiet" onclick="expNeg(\'x\')">' + tr('exportX') + ' ↓</button>' +
+    '<div class="group-title">' + tr('fixThese') + '</div>' +
+    (neg.length ? neg.map(function(it){
+      return '<div class="row"><div class="row-main"><b style="white-space:normal">' + esc(it.name) + '</b>' +
+        '<small>' + esc(it.category) + (it.id ? ' · ' + ltr(it.id) : '') + '</small></div>' +
+        '<span class="row-val" style="color:var(--bad)">' + ltr(it.stock) + '</span></div>';
+    }).join('') : '<div class="state">' + tr('noNeg') + '</div>'));
+}
+function expNeg(k){
+  var neg = ((INV.data || {}).negative_list || []).map(function(it){
+    return { 'الكود': it.id, 'الصنف': it.name, 'الفئة': it.category,
+             'الرصيد': it.stock, 'السعر': it.price };
+  });
+  k === 'x' ? toExcel(neg, 'negative_stock') : toPDF(neg, tr('negStock'));
 }
 
 /* نافذة: أصناف شريحة ركود */
@@ -1873,7 +1936,8 @@ function couponSheet(){
       'color:var(--ink);font-family:inherit;font-size:14px">' +
     '<div id="cpList"><div class="state"><div class="spin"></div></div></div>';
 
-  api('getCustomers').then(function(list){
+  api('getCustomers').then(function(res){
+    var list = Array.isArray(res) ? res : (res && res.list);
     if (!Array.isArray(list)) throw new Error('cust');
     /* اللي محتاجين متابعة الأول — دول هدف الكوبون */
     COUPON.list = list.filter(function(c){ return c.phone && !c.is_blocked; })
@@ -1945,7 +2009,8 @@ function sendCoupons(){
 /* ─────── عملاء: القائمة ─────── */
 function pgCustomers(){
   var box = document.getElementById('p-cust'); busy(box);
-  api('getCustomers').then(function(list){
+  api('getCustomers').then(function(res){
+    var list = Array.isArray(res) ? res : (res && res.list);
     if (!Array.isArray(list)) throw new Error('cust');
     markSync();
     var alert_ = list.filter(function(c){ return c.status === 'تنبيه'; });

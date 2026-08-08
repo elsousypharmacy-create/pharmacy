@@ -483,7 +483,7 @@ function toggleTheme(){
 }
 function markSync(){
   var el = document.getElementById('sync');
-  if (el) el.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  if (el) el.textContent = new Date().toLocaleTimeString(LANG === 'ar' ? 'ar-EG' : 'en-US', {hour:'2-digit',minute:'2-digit'});
 }
 
 /* سجل الأخطاء — أي فشل بيتسجّل بدل ما يضيع في صمت */
@@ -594,10 +594,36 @@ function cacheSet(a, p, d){
 function apiFresh(action, params, base){
   return api(action, params, base).then(function(d){ cacheSet(action, params, d); return d; });
 }
-function apiCached(action, params, onData, base){
+/* ═══ الرسم الفوري ═══
+   الصفحة بترسم المحفوظ من آخر مرة على طول، وبتحدّث ورا لما الرد ييجي.
+   ده اللي بيخلي الفتح فوري بدل ما تقعد تبصّ على الدايرة بتاعة التحميل. */
+function paint1(action, params, box, draw){
   var old = cacheGet(action, params);
-  if (old) { try{ onData(old, true); }catch(e){ logErr(e); } }
-  return apiFresh(action, params, base).then(function(d){ onData(d, false); return d; });
+  if (!old) return false;
+  try{ draw(old, box); return true; }catch(e){ logErr(e); return false; }
+}
+/* نفس الفكرة بس للصفحات اللي بتنده نداءين مع بعض */
+function paint2(key, a1, p1, a2, p2, box, draw){
+  var old = cacheGet(key, p1);
+  if (!old) return false;
+  try{ draw(old.m, old.k, box); return true; }catch(e){ logErr(e); return false; }
+}
+function apiCached(action, params, box, draw){
+  var seed = paint1(action, params, box, draw);
+  if (!seed) busy(box);
+  return apiFresh(action, params).then(function(d){
+    markSync(); draw(d, box); return d;
+  }).catch(function(e){ logErr(e); if (!seed) oops(box, ''); });
+}
+
+/* ═══ الأهداف ═══
+   بتيجي من السيرفر (TARGETS في Code.gs). قبل كده كانت مكتوبة بالإيد
+   في الواجهة، فلو غيّرت الهدف في السيرفر الداشبورد ميتغيرش. */
+var SRV_TARGETS = {};
+function setTargets(t){ if (t && typeof t === 'object') SRV_TARGETS = t; }
+function goalOf(name, fallback){
+  var v = parseFloat(SRV_TARGETS[name]);
+  return isNaN(v) ? fallback : v;
 }
 
 /* لما ترجع للصفحة بعد غياب — نحدّث بس لو عدّت ٣ دقايق */
@@ -615,13 +641,6 @@ document.addEventListener('visibilitychange', function(){
 var RANGE = { sales:'today', exp:'month', att:'today', perf:'today', debt:'month', short:'7' };
 var CUSTOM = {};
 
-function rangeBar(key, opts, cb){
-  return '<div class="subtabs" style="position:static;border:0;padding:0 0 12px">' +
-    opts.map(function(o){
-      return '<button class="' + (RANGE[key] === o[0] ? 'on' : '') + '" onclick="' + cb + '(\'' + o[0] + '\')">' +
-        tr(o[1]) + '</button>';
-    }).join('') + '</div>';
-}
 function rangeParams(key){
   var v = RANGE[key];
   if (v === 'custom' && CUSTOM[key]) return { from: CUSTOM[key].from, to: CUSTOM[key].to };
@@ -684,11 +703,6 @@ function exportRows(fn){
 
 /* ═══ التصدير: Excel و PDF ═══
    نفس اللبنة في كل الصفحات — بتاخد صفوف جاهزة وبتطلّع ملف. */
-function expBtns(fn){
-  return '<div class="exp-btns">' +
-    '<button onclick="' + fn + '(\'x\')">' + tr('exportX') + ' ↓</button>' +
-    '<button onclick="' + fn + '(\'p\')">' + tr('exportP') + ' ↓</button></div>';
-}
 function toExcel(rows, name){
   if (!rows || !rows.length) { toast(tr('noExport')); return; }
   try{
@@ -984,8 +998,10 @@ function drawHome(b, kpi, isOld){
 
     /* ── ٤) أرقام اليوم — من غير تكرار، والأهداف بشريط ── */
     html += card(tr('todayNumbers'), null, tot.inv ? (
-      row(tr('avgTicket'), tr('target') + ' ' + ltr('150'), goal(avgInv, 150)) +
-      row(tr('regRate'), tr('target') + ' ' + ltr('75%'), goal(regPct + '%', '75%', regPct >= 75)) +
+      row(tr('avgTicket'), tr('target') + ' ' + ltr(goalOf('avg_invoice', 150)),
+          goal(avgInv, goalOf('avg_invoice', 150))) +
+      row(tr('regRate'), tr('target') + ' ' + ltr(goalOf('registration', 75) + '%'),
+          goal(regPct + '%', goalOf('registration', 75) + '%', regPct >= goalOf('registration', 75))) +
       rowLite(tr('customersToday'),
         ltr(tot.reg) + ' ' + tr('registered') + ' · ' + ltr(tot.nreg) + ' ' + tr('notReg'),
         ltr(num(totCust))) +
@@ -1073,48 +1089,64 @@ function loadTrends(){
 /* ─────── مبيعات ─────── */
 function setSalesRange(v){ setRange('sales', v, pgSales); }
 function pgSales(){
-  var box = document.getElementById('p-sales'); busy(box);
+  var box = document.getElementById('p-sales');
   var p = rangeParams('sales');
-  var range = (RANGE.sales === 'lastMonth') ? 'lastMonth' : 'month';
-  Promise.all([ api('getMonthTotalsRaw', { range: range }), api('getStaffKPI', p) ])
+
+  /* الفترة اللي المستخدم اختارها بتتبعت زي ما هي للنداءين.
+     قبل كده كانت بتتحوّل لـ"الشهر" دايمًا، فالعنوان يقول "اليوم"
+     والأرقام تحته بتاعة الشهر كله. */
+  var seed = paint2('sales', 'getMonthTotalsRaw', p, 'getStaffKPI', p, box, drawSales);
+  if (!seed) busy(box);
+
+  Promise.all([ apiFresh('getMonthTotalsRaw', p), apiFresh('getStaffKPI', p) ])
   .then(function(r){
-    var m = r[0] || {}, k = r[1] || {};
-    if (!m.ok) throw new Error('sales');
+    if (!r[0] || !r[0].ok) throw new Error('sales');
+    cacheSet('sales', p, { m: r[0], k: r[1] });
     markSync();
-    var avg = m.invoices_total ? Math.round(m.sales_total / m.invoices_total) : 0;
+    drawSales(r[0], r[1], box);
+  }).catch(function(e){ logErr(e); if (!seed) oops(box, "pgSales()"); });
+}
+function drawSales(m, k, box){
+  m = m || {}; k = k || {};
+  var avg = m.invoices_total ? Math.round(m.sales_total / m.invoices_total) : 0;
+  var tAvg = goalOf('avg_invoice', 150);
 
-    var html = ctlBar(
-      RANGE_OPTS.slice(0, 4).map(function(o){
-        return ctlBtn(tr(o[1]), RANGE.sales === o[0], "setSalesRange('" + o[0] + "')");
-      }).join(''),
-      'salesMenu()',
-      RANGE.sales === 'custom' || RANGE.sales === 'lastMonth') +
-      vitals(tr('salesPerf'), k.label || m.label, [
-      { value: num(m.sales_total), label: tr('netSales'), tone: 'ok' },
-      { value: num(avg), label: tr('avgTicket'), tone: avg >= 150 ? 'ok' : 'warn', note: ltr('150') },
-      { value: num(m.invoices_total), label: tr('invoices'), tone: 'brand' }
-    ]);
+  /* العنوان والأرقام بقوا من نفس الفترة — مفيش تناقض تاني */
+  var label = m.label || k.label || '';
 
-    html += card(tr('salesPerf'), m.label,
-      row(tr('profit'), null, ltr(num(m.profit_total))) +
-      row(tr('discount'), null, ltr(num(m.discount_total))) +
-      row(tr('returns'), ltr(num(m.returns_value_total)) + ' ' + tr('egp'), ltr(num(m.returns_total))));
+  var html = ctlBar(
+    RANGE_OPTS.slice(0, 4).map(function(o){
+      return ctlBtn(tr(o[1]), RANGE.sales === o[0], "setSalesRange('" + o[0] + "')");
+    }).join(''),
+    'salesMenu()',
+    RANGE.sales === 'custom' || RANGE.sales === 'lastMonth') +
+    vitals(tr('salesPerf'), label, [
+    { value: num(m.sales_total), label: tr('netSales'), tone: 'ok' },
+    { value: num(avg), label: tr('avgTicket'), tone: avg >= tAvg ? 'ok' : 'warn', note: ltr(tAvg) },
+    { value: num(m.invoices_total), label: tr('invoices'), tone: 'brand' }
+  ]);
 
-    var daily = (k.daily || []).slice(-14).reverse();
-    html += card(tr('byDay'), null, daily.length ? daily.map(function(d){
-      return row(d.date, ltr(d.new_c) + ' ' + tr('newCust'), ltr(num(d.sales)));
-    }).join('') : emptyState());
+  html += card(tr('salesPerf'), label,
+    row(tr('profit'), null, ltr(num(m.profit_total))) +
+    row(tr('discount'), null, ltr(num(m.discount_total))) +
+    row(tr('returns'), ltr(num(m.returns_value_total)) + ' ' + tr('egp'), ltr(num(m.returns_total))));
 
-    box.innerHTML = html;
-  }).catch(function(e){ logErr(e); oops(box, "pgSales()"); });
+  var daily = (k.daily || []).slice(-14).reverse();
+  html += card(tr('byDay'), null, daily.length ? daily.map(function(d){
+    return row(d.date, ltr(d.new_c) + ' ' + tr('newCust'), ltr(num(d.sales)));
+  }).join('') : emptyState());
+
+  box.innerHTML = html;
 }
 
 /* ─────── مالية: الربح والخسارة ─────── */
 function pgPL(){
-  var box = document.getElementById('p-money'); busy(box);
-  api('getProfitLoss', {}).then(function(d){
-    if (!d || !d.ok) throw new Error('pl');
-    markSync();
+  var box = document.getElementById('p-money');
+  apiCached('getProfitLoss', {}, box, drawPL);
+}
+function drawPL(d, box){
+  if (!d || !d.ok) { oops(box, "pgPL()"); return; }
+  {
     var html = vitals(tr('pl'), d.month, [
       { value: num(d.total_profit), label: tr('totalProfit'), tone: 'ok' },
       { value: num(d.total_expenses), label: tr('totalExpenses'), tone: 'warn' },
@@ -1129,16 +1161,18 @@ function pgPL(){
         '<span style="color:var(--' + (x.net >= 0 ? 'ok' : 'bad') + ')">' + ltr(num(x.net)) + '</span>');
     }).join('') : emptyState());
     box.innerHTML = html;
-  }).catch(function(e){ logErr(e); oops(box, "pgPL()"); });
+  }
 }
 
 /* ─────── مالية: المصروفات ─────── */
 function setExpRange(v){ setRange('exp', v, pgExpenses); }
 function pgExpenses(){
-  var box = document.getElementById('p-money'); busy(box);
-  api('getExpensesData', rangeParams('exp')).then(function(d){
-    if (!d || !d.ok) throw new Error('exp');
-    markSync();
+  var box = document.getElementById('p-money');
+  apiCached('getExpensesData', rangeParams('exp'), box, drawExpenses);
+}
+function drawExpenses(d, box){
+  if (!d || !d.ok) { oops(box, "pgExpenses()"); return; }
+  {
     var top = (d.byCategory || [])[0];
     var html = ctlBar(
       RANGE_OPTS.slice(0, 4).map(function(o){
@@ -1160,7 +1194,7 @@ function pgExpenses(){
       return row(i.category, esc(i.desc) + ' · ' + ltr(i.date), ltr(num(i.amount)));
     }).join(''));
     box.innerHTML = html;
-  }).catch(function(e){ logErr(e); oops(box, "pgExpenses()"); });
+  }
 }
 
 /* ─────── مالية: الديون ─────── */
@@ -1311,6 +1345,7 @@ function pgStaffHub(){
   }).catch(function(e){ logErr(e); if (!seed) oops(box, "pgStaffHub()"); });
 }
 function setHub(d){
+  setTargets(d.targets);            /* الأهداف من السيرفر بدل أرقام بالإيد */
   HR.kpi  = { employees: d.employees, daily: d.daily, label: d.label };
   HR.hist = { rows: d.rows, label: d.label };
   HR.live = { ok: !d.attendanceError, live: d.live, error: d.attendanceError };
@@ -1356,7 +1391,8 @@ function drawStaffHub(isOld){
     { value: num(live.length), label: tr('onShiftNow'), tone: live.length ? 'ok' : 'warn',
       note: num(list.length), sub: tr('staffToday') },
     { value: pct(totReg, totCust) + '%', label: tr('regRate'),
-      tone: pct(totReg, totCust) >= 75 ? 'ok' : 'warn', note: '75%', sub: tr('target') },
+      tone: pct(totReg, totCust) >= goalOf('registration', 75) ? 'ok' : 'warn',
+      note: goalOf('registration', 75) + '%', sub: tr('target') },
     { value: num(totNew), label: tr('newCust'), tone: 'brand' }
   ]);
 
@@ -1431,7 +1467,7 @@ function staffSheet(i){
 
     '<div class="group-title">' + tr('customers') + '</div>' +
     rowLite(tr('regRate'), tr('target') + ' 75%',
-      '<span dir="ltr" class="n" style="color:var(--' + (e.reg_pct >= 75 ? 'ok' : 'warn') + ')">' +
+      '<span dir="ltr" class="n" style="color:var(--' + (e.reg_pct >= goalOf('registration', 75) ? 'ok' : 'warn') + ')">' +
       e.reg_pct + '%</span>') +
     rowLite(tr('newCust'), null, ltr(num(e.new_c))) +
     rowLite(tr('pRepeat'), null, ltr(num(e.repeat_c))) +
@@ -1691,11 +1727,15 @@ function setShortSec(v){ SHORT_SEC = v; drawShort(); }
 function toggleCat(id){ SHORT_OPEN[id] = !SHORT_OPEN[id]; drawShort(); }
 
 function pgShort(){
-  var box = document.getElementById('p-stock'); busy(box);
-  api('getShortages', { days: RANGE.short }, SHORTAGE_URL).then(function(d){
+  var box = document.getElementById('p-stock');
+  var pr  = { days: RANGE.short };
+  var seed = cacheGet('getShortages', pr);
+  if (seed && !seed.error) { SHORT_DATA = seed; drawShort(); } else busy(box);
+  api('getShortages', pr, SHORTAGE_URL).then(function(d){
     if (!d || d.error) throw new Error(d && d.msg);
+    cacheSet('getShortages', pr, d);
     SHORT_DATA = d; markSync(); drawShort();
-  }).catch(function(e){ logErr(e); oops(box, "pgShort()"); });
+  }).catch(function(e){ logErr(e); if (!seed) oops(box, "pgShort()"); });
 }
 
 function drawShort(){
@@ -2008,11 +2048,13 @@ function sendCoupons(){
 
 /* ─────── عملاء: القائمة ─────── */
 function pgCustomers(){
-  var box = document.getElementById('p-cust'); busy(box);
-  api('getCustomers').then(function(res){
-    var list = Array.isArray(res) ? res : (res && res.list);
-    if (!Array.isArray(list)) throw new Error('cust');
-    markSync();
+  var box = document.getElementById('p-cust');
+  apiCached('getCustomers', {}, box, drawCustomers);
+}
+function drawCustomers(res, box){
+  var list = Array.isArray(res) ? res : (res && res.list);
+  if (!Array.isArray(list)) { oops(box, "pgCustomers()"); return; }
+  {
     var alert_ = list.filter(function(c){ return c.status === 'تنبيه'; });
     var blocked = list.filter(function(c){ return c.is_blocked; });
     var html = vitals(tr('customers'), null, [
@@ -2027,15 +2069,17 @@ function pgCustomers(){
           ltr(num(c.monthly_spend)));
       }).join('') || emptyState());
     box.innerHTML = html;
-  }).catch(function(e){ logErr(e); oops(box, "pgCustomers()"); });
+  }
 }
 
 /* ─────── عملاء: المندوبين ─────── */
 function pgAgents(){
-  var box = document.getElementById('p-cust'); busy(box);
-  api('getAgents').then(function(d){
-    if (!d || !d.ok) throw new Error('agents');
-    markSync();
+  var box = document.getElementById('p-cust');
+  apiCached('getAgents', {}, box, drawAgents);
+}
+function drawAgents(d, box){
+  if (!d || !d.ok) { oops(box, "pgAgents()"); return; }
+  {
     var list = d.agents || [];
     var html = vitals(tr('agents'), null, [
       { value: num(list.length), label: tr('agents'), tone: 'brand' },
@@ -2048,7 +2092,7 @@ function pgAgents(){
         ltr(num(a.balance)));
     }).join('') : emptyState());
     box.innerHTML = html;
-  }).catch(function(e){ logErr(e); oops(box, "pgAgents()"); });
+  }
 }
 
 /* ═══════════ الإعدادات ═══════════ */

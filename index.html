@@ -258,6 +258,7 @@ button{font-family:inherit}
   <div class="tools">
     <button class="ibtn" id="langBtn" onclick="setLang(LANG==='ar'?'en':'ar')">EN</button>
     <button class="ibtn" onclick="toggleTheme()">◐</button>
+    <button class="ibtn" onclick="refreshNow()" title="حدّث دلوقتي">⟳</button>
     <button class="ibtn" onclick="openSheet('settings')">⚙</button>
   </div>
 </header>
@@ -1203,6 +1204,19 @@ var DEBT = { data: null, sort: 'amount', open: {} };
 function setDebtSort(v){ DEBT.sort = v; drawDebts(); }
 function toggleBucket(k){ DEBT.open[k] = !DEBT.open[k]; drawDebts(); }
 
+/* 🆕 بيفضّي كاش السيرفر للأرقام الحية وبعدين يعيد تحميل الصفحة الحالية.
+   لازم عشان كاش الكاش بتاع Apps Script بيمسك الرقم لدقايق. */
+function refreshNow(){
+  var el = document.getElementById('sync');
+  if (el) el.textContent = '⏳';
+  apiFresh('refreshNow', {}).then(function(){
+    ['debts','sales','getShortages','getProfitLoss','getExpensesData'].forEach(function(k){
+      try{ localStorage.removeItem(cacheKey(k, {})); }catch(e){}
+    });
+    render(CUR, TAB);
+  }).catch(function(e){ logErr(e); render(CUR, TAB); });
+}
+
 function pgDebts(){
   var box = document.getElementById('p-money');
   var seed = cacheGet('debts', {});
@@ -1254,14 +1268,31 @@ function drawDebts(isOld){
   var staleTotal = stale.reduce(function(a,c){ return a + c.net; }, 0);
   var freshTotal = totalAll - staleTotal;
 
+  /* 🎯 الإجمالي بياخده من نظام البيع مباشرة (رقم رسمي ولحظي).
+     جمع التفاصيل من الملفات الخام مستحيل يظبط لأن فيه مرتجعات
+     وتعديلات بتغيّر الرصيد من غير ما تتسجل في ملف الديون. */
+  var headline = (d.total_official !== null && d.total_official !== undefined)
+                 ? d.total_official : totalAll;
+
   html += vitals(tr('debts'), null, [
-    { value: num(totalAll), label: tr('totalDebt'), tone: 'bad',
+    { value: num(headline), label: tr('totalDebt'), tone: 'bad',
       note: num(list.length), sub: tr('debtors') },
     { value: num(staleTotal), label: tr('overdueDebt'), tone: 'warn',
       note: pct(staleTotal, totalAll) + '%', sub: tr('ofTotal') },
     { value: num(freshTotal), label: tr('bucketFresh'), tone: 'ok',
       note: num(list.length - stale.length), sub: tr('customers') }
   ]);
+
+  /* تنبيه المطابقة: لو التفاصيل بعيدة عن الرقم الرسمي، يبقى فيه
+     مدينين آخر حركة ليهم أقدم من سنة (بره نطاق القراءة). */
+  if (d.reconcile_ok === false) {
+    html += '<div class="state warn" style="margin:8px 0">' +
+            'الرقم الكبير من نظام البيع (' + num(d.total_official) + ')، ' +
+            'ومجموع التفاصيل تحت ' + num(d.total_detail) + '. ' +
+            'الفرق ' + num(Math.abs(d.reconcile_gap)) + ' — غالبًا مدينين قدام ' +
+            'آخر حركة ليهم أقدم من سنة.' +
+            '</div>';
+  }
 
   /* سطر تحكّم واحد */
   html += ctlBar(

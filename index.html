@@ -304,6 +304,13 @@ var SHORTAGE_URL = 'https://script.google.com/macros/s/AKfycbyKMrAmkZ9Ipjgy59Kak
    كل نص في التطبيق هنا مرة واحدة. عايز لغة تالتة؟ ضيف عمود. */
 var T = {
   pharmacy:['صيدلية السوسي','El Sousy Pharmacy'], branch:['محلة كيل','Mahallet Keel'],
+  dailyAvg:['المتوسط اليومي','Daily average'],
+  avgDailyNet:['متوسط الصافي','Avg net'],
+  avgDailySales:['متوسط المبيعات','Avg sales'],
+  avgDailyProfit:['متوسط الربح','Avg profit'],
+  perDay:['في اليوم','per day'],
+  daysWord:['يوم','days'],
+  withData:['فيهم بيع','with sales'],
   close:['إقفال','Close'], retry:['حاول تاني','Try again'], loading:['بيحمّل…','Loading…'],
   failed:['مقدرتش أحمّل','Could not load'], empty:['مفيش بيانات','No data'],
   updated:['آخر تحديث','Updated'], egp:['جنيه','EGP'],
@@ -944,7 +951,7 @@ function drawHome(b, kpi, isOld){
     var isStaleDay = (updDay && updDay < todayStr) || (tot.inv === 0 && salesT > 0);
 
     html += vitals(isStaleDay ? tr('yesterdayNums') : tr('today'),
-      new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}), [
+      new Date().toLocaleDateString(LANG === 'ar' ? 'ar-EG' : 'en-GB',{day:'numeric',month:'short'}), [
       { value: num(salesT), label: tr('salesToday'),
         tone: isStaleDay ? 'slate' : salesNote.tone,
         note: isStaleDay ? null : salesNote.num, sub: isStaleDay ? null : salesNote.word },
@@ -1109,10 +1116,16 @@ function pgSales(){
 }
 function drawSales(m, k, box){
   m = m || {}; k = k || {};
-  var avg = m.invoices_total ? Math.round(m.sales_total / m.invoices_total) : 0;
   var tAvg = goalOf('avg_invoice', 150);
 
-  /* العنوان والأرقام بقوا من نفس الفترة — مفيش تناقض تاني */
+  /* المتوسطات بتيجي محسوبة من السيرفر دلوقتي.
+     قبل كده كانت بتتحسب هنا sales/invoices — وده كان بيطلع صفر في
+     فلتر "اليوم" لأن عدد الفواتير مكانش بيتحسب أصلاً. */
+  var avg     = m.avg_invoice     || 0;
+  var days    = m.days_with_data  || 0;
+  var netSale = (m.net_sales !== undefined && m.net_sales !== null)
+                ? m.net_sales : (m.sales_total || 0);
+
   var label = m.label || k.label || '';
 
   var html = ctlBar(
@@ -1122,10 +1135,21 @@ function drawSales(m, k, box){
     'salesMenu()',
     RANGE.sales === 'custom' || RANGE.sales === 'lastMonth') +
     vitals(tr('salesPerf'), label, [
-    { value: num(m.sales_total), label: tr('netSales'), tone: 'ok' },
+    { value: num(netSale), label: tr('netSales'), tone: 'ok',
+      note: days > 1 ? (ltr(days) + ' ' + tr('daysWord')) : null,
+      sub: days > 1 ? tr('withData') : null },
     { value: num(avg), label: tr('avgTicket'), tone: avg >= tAvg ? 'ok' : 'warn', note: ltr(tAvg) },
     { value: num(m.invoices_total), label: tr('invoices'), tone: 'brand' }
   ]);
+
+  /* 🆕 كارت المتوسطات — كان ناقص تمامًا.
+     مفيد أكتر من الإجمالي لما تقارن فترات مختلفة الطول. */
+  if (days > 1) {
+    html += card(tr('dailyAvg'), label,
+      row(tr('avgDailyNet'),    tr('perDay'), ltr(num(m.avg_daily_net || 0))) +
+      row(tr('avgDailySales'),  tr('perDay'), ltr(num(m.avg_daily_sales || 0))) +
+      row(tr('avgDailyProfit'), tr('perDay'), ltr(num(m.avg_daily_profit || 0))));
+  }
 
   html += card(tr('salesPerf'), label,
     row(tr('profit'), null, ltr(num(m.profit_total))) +

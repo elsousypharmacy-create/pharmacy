@@ -104,10 +104,13 @@ button,input,select{font-family:inherit;font-size:inherit;color:inherit;border:0
 .sheet{position:fixed;inset:0;z-index:80;display:none}
 .sheet.on{display:block}
 .sheet .veil{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+/* 60% بس — الكاميرا لازم تفضل بانة فوق عشان الموظف يشوف
+   إنه لسه في وضع المسح ومحتاجش يخرج ويرجع */
 .sheet .pan{position:absolute;left:0;right:0;bottom:0;background:var(--panel);
-  border-radius:var(--r-lg) var(--r-lg) 0 0;padding:20px;
-  padding-bottom:calc(20px + env(safe-area-inset-bottom));
-  max-height:82%;overflow-y:auto;animation:up .22s ease}
+  border-radius:var(--r-lg) var(--r-lg) 0 0;padding:18px 20px;
+  padding-bottom:calc(18px + env(safe-area-inset-bottom));
+  max-height:62%;overflow-y:auto;animation:up .22s ease}
+.sheet h2{font-size:var(--t-md)}
 @keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .grab{width:42px;height:5px;border-radius:99px;background:var(--line);margin:0 auto 16px}
 .sheet h2{font-size:var(--t-lg);font-weight:700;margin-bottom:6px}
@@ -133,13 +136,13 @@ button,input,select{font-family:inherit;font-size:inherit;color:inherit;border:0
 /* عمود جانبي: ناقص + تجزئة */
 .exp .side{display:flex;flex-direction:column;flex:0 0 auto;
   border-inline-start:1px solid rgba(255,255,255,.1)}
-.exp .side button{width:62px;flex:1;display:grid;place-items:center;
-  font-size:19px;color:var(--ink-2)}
+.exp .side button{width:74px;flex:1;display:grid;place-items:center;
+  font-size:13px;font-weight:700;color:var(--ink-2);background:rgba(255,255,255,.05)}
 .exp .side button:first-child{border-bottom:1px solid rgba(255,255,255,.1)}
-.exp .side button:active{background:rgba(255,255,255,.12)}
-.exp .side .minus{font-size:26px;font-weight:600}
-.exp.hit .side button{color:rgba(255,255,255,.9)}
-.exp .side .part.on{color:var(--warn)}
+.exp .side button:active{background:rgba(255,255,255,.16)}
+.exp .side .minus{font-size:30px;font-weight:400;line-height:1}
+.exp.hit .side button{color:#fff;background:rgba(0,0,0,.16)}
+.exp .side .part.on{color:var(--warn);background:rgba(233,166,63,.16)}
 
 .fld{width:100%;padding:18px;border-radius:var(--r);border:1px solid var(--line);
   background:var(--bg);color:var(--ink);font-size:var(--t-lg);margin-bottom:12px;
@@ -572,7 +575,7 @@ function openBatches(it){
   var all = allBatches(it);
   var u = it.units || 1;
   openSheet('<h2>' + esc(it.name) + '</h2>' +
-    '<div class="hint">دوس على الصلاحية اللي في إيدك — كل دوسة علبة' +
+    '<div class="hint">دوس على صلاحية العلبة اللي في إيدك' +
       (u > 1 ? (' · العلبة ' + n(u) + ' ' + partWord(it)) : '') + '</div>' +
     all.map(function(b){
       var ex = b.expire || '';
@@ -584,13 +587,14 @@ function openBatches(it){
         '<button class="main" onclick="tapBatch(\'' + esc(ex) + '\',' + (b.stock||0) + ')">' +
           '<span class="q">' + n(q) + '</span>' +
           '<span class="l"><b>' + esc(b.expire || 'من غير صلاحية') + '</b>' +
-          '<small>' + (b.added ? 'مش في السيستم' : 'السيستم ' + n(b.stock)) +
+          '<small>' + (b.added ? 'مش في السيستم' : 'السيستم ' + human(b.stock, it)) +
+          (partial ? ' · عدّيت ' + human(q, it) : '') +
           '</small></span></button>' +
         '<span class="side">' +
           '<button class="minus" onclick="tapMinus(\'' + esc(ex) + '\',' + (b.stock||0) +
             ')" aria-label="ناقص">−</button>' +
           (u > 1 ? '<button class="part' + (partial?' on':'') + '" onclick="openPartial(\'' +
-            esc(ex) + '\',' + (b.stock||0) + ')" aria-label="علبة مفتوحة">◒</button>' : '') +
+            esc(ex) + '\',' + (b.stock||0) + ')">جزئي</button>' : '') +
         '</span></div>';
     }).join('') +
     '<button class="btn" onclick="openAddExp()">+ صلاحية تانية على الرف</button>' +
@@ -634,7 +638,8 @@ function openPartial(expire, sys){
   openSheet('<h2>علبة مفتوحة</h2>' +
     '<div class="hint">' + esc(it.name) + ' · ' +
       (expire ? esc(expire) : 'من غير صلاحية') +
-      '<br>العلبة الكاملة ' + n(u) + ' ' + w + '</div>' +
+      '<br>العلبة الكاملة ' + n(u) + ' ' + w +
+      ' · السيستم ' + human(sys, it) + '</div>' +
     '<div class="lbl" style="margin-top:0">العلب الكاملة اللي مسحتها</div>' +
     '<input class="fld" id="pB" type="number" inputmode="numeric" min="0" value="' +
       full + '" oninput="prevPartial()">' +
@@ -654,7 +659,7 @@ function prevPartial(){
   var p = parseFloat(($('pU')||{}).value) || 0;
   var el = $('pOut'); if (!el) return;
   el.innerHTML = 'الإجمالي: <b style="color:var(--ink)">' +
-    n(Math.round((b + p/u)*100)/100) + '</b> علبة';
+    human(b + p/u, last) + '</b>';
 }
 function applyPartial(expire, sys){
   if (!last) return;
@@ -705,6 +710,21 @@ function partWord(it){
   if (/امبول|أمبول/.test(nm))     return 'أمبول';
   if (/لبوس|اقماع/.test(nm))      return 'لبوسة';
   return 'شريط';
+}
+
+/* "0.5" مش لغة الموظف وهو واقف قدام الرف.
+   بنترجمها لـ"شريط واحد" أو "علبة و٣ شرايط". */
+function human(q, it){
+  var u = (it && it.units) || 1;
+  q = Math.round((+q||0) * 10000) / 10000;
+  if (q === 0) return 'صفر';
+  if (u <= 1) return n(q) + ' علبة';
+  var full = Math.floor(q);
+  var part = Math.round((q - full) * u);
+  var w = partWord(it);
+  if (!part) return n(full) + ' علبة';
+  if (!full) return n(part) + ' ' + w;
+  return n(full) + ' علبة و' + n(part) + ' ' + w;
 }
 function prevManual(){
   if (!last) return;

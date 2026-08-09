@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A0B0D">
+<title>جرد المخزون — صيدلية السوسي</title>
+<style>
+/* ═══ تصميم مقفول على الجرد: زرار كبير، خط كبير، مفيش تشتيت ═══ */
+:root{
+  --bg:#0A0B0D; --card:#15171A; --line:#24272C;
+  --tx:#F2F4F7; --dim:#8B929C;
+  --ok:#34C77B; --warn:#F0A93B; --bad:#F45B5B; --brand:#3B9BF0;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden}
+body{
+  background:var(--bg);color:var(--tx);
+  font-family:-apple-system,"SF Arabic",system-ui,sans-serif;
+  font-size:17px;line-height:1.5;
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+  display:flex;flex-direction:column;
+  user-select:none;
+}
+button{font-family:inherit;font-size:inherit;color:inherit;border:0;background:none;cursor:pointer}
+
+.top{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;border-bottom:1px solid var(--line);flex:0 0 auto;
+}
+.top h1{font-size:16px;margin:0;flex:1;font-weight:700}
+.top small{display:block;color:var(--dim);font-size:12px;font-weight:400}
+.ib{
+  width:40px;height:40px;border-radius:12px;background:var(--card);
+  display:grid;place-items:center;font-size:18px
+}
+
+.body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px}
+
+.big{
+  width:100%;padding:22px;border-radius:18px;font-size:20px;font-weight:700;
+  background:var(--brand);color:#fff;margin-bottom:12px
+}
+.big.quiet{background:var(--card);color:var(--tx)}
+.big:disabled{opacity:.45}
+
+/* ═══ الكاميرا ═══ */
+#cam{position:fixed;inset:0;background:#000;z-index:50;display:none;flex-direction:column}
+#cam.on{display:flex}
+#video{flex:1;width:100%;object-fit:cover}
+.reticle{
+  position:absolute;top:22%;left:8%;right:8%;height:150px;
+  border:3px solid rgba(255,255,255,.85);border-radius:14px;pointer-events:none;
+  box-shadow:0 0 0 4000px rgba(0,0,0,.45)
+}
+.camfoot{
+  position:absolute;left:0;right:0;bottom:0;padding:14px;
+  padding-bottom:calc(14px + env(safe-area-inset-bottom));
+  background:linear-gradient(transparent,rgba(0,0,0,.9) 30%)
+}
+
+/* الصنف اللي لسه اتمسح */
+.last{background:var(--card);border-radius:16px;padding:14px;margin-bottom:10px}
+.last .nm{font-weight:700;font-size:18px;margin-bottom:6px}
+.last .meta{color:var(--dim);font-size:14px}
+.cnt{display:flex;align-items:center;gap:12px;margin-top:12px}
+.cnt b{font-size:34px;font-weight:800;min-width:56px;text-align:center}
+.step{
+  width:52px;height:52px;border-radius:14px;background:#20242A;
+  font-size:26px;display:grid;place-items:center
+}
+
+/* الدفعات */
+.batch{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 0;border-top:1px solid var(--line)
+}
+.batch .ex{flex:1}
+.batch .ex b{display:block;font-size:16px}
+.batch .ex small{color:var(--dim);font-size:13px}
+.batch input{
+  width:84px;padding:12px;border-radius:12px;border:1px solid var(--line);
+  background:#0F1114;color:var(--tx);font-size:20px;text-align:center;font-weight:700
+}
+
+.tot{
+  display:flex;gap:10px;padding:12px 14px;border-top:1px solid var(--line);
+  flex:0 0 auto;background:var(--card)
+}
+.tot div{flex:1;text-align:center}
+.tot b{display:block;font-size:22px;font-weight:800}
+.tot small{color:var(--dim);font-size:12px}
+
+.row{display:flex;gap:10px;padding:13px 0;border-bottom:1px solid var(--line);align-items:center}
+.row .m{flex:1;min-width:0}
+.row .m b{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .m small{color:var(--dim);font-size:13px}
+.row .v{font-weight:700;font-variant-numeric:tabular-nums}
+
+.pill{padding:4px 10px;border-radius:99px;font-size:13px;font-weight:700}
+.pill.ok{background:rgba(52,199,123,.16);color:var(--ok)}
+.pill.bad{background:rgba(244,91,91,.16);color:var(--bad)}
+.pill.warn{background:rgba(240,169,59,.16);color:var(--warn)}
+
+.note{color:var(--dim);font-size:14px;text-align:center;padding:26px 14px}
+.err{color:var(--bad)}
+.n{direction:ltr;display:inline-block;font-variant-numeric:tabular-nums}
+
+input.txt{
+  width:100%;padding:15px;border-radius:14px;border:1px solid var(--line);
+  background:var(--card);color:var(--tx);font-size:17px;margin-bottom:10px
+}
+.gt{color:var(--dim);font-size:13px;font-weight:700;margin:18px 0 6px}
+.spin{
+  width:22px;height:22px;border:2px solid var(--line);border-top-color:var(--brand);
+  border-radius:99px;animation:sp .7s linear infinite;margin:0 auto 8px
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <button class="ib" onclick="goHome()">‹</button>
+  <h1>جرد المخزون<small id="sub">صيدلية السوسي</small></h1>
+  <button class="ib" id="saveBtn" onclick="finish()" style="display:none">✓</button>
+</div>
+
+<div class="body" id="main"></div>
+
+<div class="tot" id="tot" style="display:none">
+  <div><b id="tItems">0</b><small>صنف</small></div>
+  <div><b id="tUnits">0</b><small>علبة</small></div>
+  <div><b id="tDiff">0</b><small>فيها فرق</small></div>
+</div>
+
+<!-- الكاميرا -->
+<div id="cam">
+  <video id="video" playsinline muted></video>
+  <div class="reticle"></div>
+  <div class="camfoot">
+    <div id="camMsg" style="text-align:center;color:#fff;margin-bottom:10px;min-height:24px"></div>
+    <button class="big quiet" onclick="stopCam()">إقفال الكاميرا</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   جرد المخزون — صفحة مستقلة للموظفين
+   مفيهاش أي أرقام مالية ولا بيانات عملاء. الجرد بيطلع تقرير بس،
+   ومبيغيّرش المخزون خالص.
+
+   إزاي بيشتغل:
+     • كل علبة عليها ملصق فيه باركود Code128 = كود الصنف (8 أرقام)
+     • الملصق مفيهوش تاريخ صلاحية، فالماسحة بتعرف الصنف مش الدفعة
+     • عشان كده: الأصناف العادية بتتعدّ فورًا (+1)، والأصناف اللي
+       ليها أكتر من صلاحية بتوقف وتطلب من الموظف يوزّع الكمية
+   ═══════════════════════════════════════════════════════════════════ */
+
+var API = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7ctTVJjckmbTxegDq7E3R3p6aEBzqt275HNL8SBfWg/exec';
+
+var S = {           // حالة الجرد
+  id: null, title: '', by: '',
+  lines: {},        // "كود|صلاحية" -> {code,name,expire,qty,sys,isNew}
+  last: null
+};
+var reader = null, stream = null, busy = false, lastCode = '', lastAt = 0;
+
+/* ═══ مساعدات ═══ */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function n(v){ return '<span class="n">' + (Math.round((+v||0)*100)/100).toLocaleString('en-US') + '</span>'; }
+function beep(ok){
+  try{
+    var c = new (window.AudioContext||window.webkitAudioContext)();
+    var o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination);
+    o.frequency.value = ok ? 880 : 240;
+    g.gain.setValueAtTime(.25, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(.01, c.currentTime + .16);
+    o.start(); o.stop(c.currentTime + .16);
+  }catch(e){}
+  try{ navigator.vibrate && navigator.vibrate(ok ? 40 : [60,50,60]); }catch(e){}
+}
+function api(action, params){
+  var u = API + '?action=' + action;
+  for (var k in (params||{})) if (params[k]!=null) u += '&'+k+'='+encodeURIComponent(params[k]);
+  u += '&_ts=' + Date.now();
+  return fetch(u, {cache:'no-store'}).then(function(r){ return r.json(); });
+}
+
+/* الجرد بيتحفظ محليًا مع كل مسحة — قطع النت أو قفل الصفحة مبيضيّعش شغل */
+function save(){ try{ localStorage.setItem('scan_session', JSON.stringify(S)); }catch(e){} }
+function load(){
+  try{
+    var r = localStorage.getItem('scan_session');
+    if (r){ var o = JSON.parse(r); if (o && o.id){ S = o; return true; } }
+  }catch(e){}
+  return false;
+}
+function clearSession(){ try{ localStorage.removeItem('scan_session'); }catch(e){} }
+
+/* ═══ الشاشات ═══ */
+function goHome(){
+  stopCam();
+  if (S.id && Object.keys(S.lines).length){
+    if (!confirm('في جرد شغال. تسيبه ومحفوظ؟')) return;
+  }
+  screenStart();
+}
+
+function screenStart(){
+  $('tot').style.display = 'none';
+  $('saveBtn').style.display = 'none';
+  $('sub').textContent = 'صيدلية السوسي';
+  var has = S.id && Object.keys(S.lines).length;
+  $('main').innerHTML =
+    (has ? '<button class="big" onclick="screenCount()">كمّل الجرد الشغال<br>' +
+           '<small style="font-weight:400;font-size:14px;opacity:.9">' + esc(S.title) + ' · ' +
+           Object.keys(S.lines).length + ' صنف</small></button>' : '') +
+    '<div class="gt">جرد جديد</div>' +
+    '<input class="txt" id="ttl" placeholder="اسم الجرد (مثلاً: رف الأدوية)">' +
+    '<input class="txt" id="who" placeholder="اسمك">' +
+    '<button class="big" onclick="startNew()">ابدأ الجرد</button>';
+}
+
+function startNew(){
+  var t = ($('ttl').value||'').trim(), w = ($('who').value||'').trim();
+  if (!t){ alert('اكتب اسم الجرد'); return; }
+  if (S.id && Object.keys(S.lines).length &&
+      !confirm('في جرد شغال هيتمسح. تكمّل؟')) return;
+  S = { id: 'J'+Date.now(), title: t, by: w, lines: {}, last: null };
+  save(); screenCount(); startCam();
+}
+
+function screenCount(){
+  $('tot').style.display = 'flex';
+  $('saveBtn').style.display = 'grid';
+  $('sub').textContent = S.title;
+  draw();
+}
+
+function draw(){
+  var keys = Object.keys(S.lines);
+  var items = {}, units = 0, diffs = 0;
+  keys.forEach(function(k){
+    var L = S.lines[k];
+    items[L.code] = 1; units += L.qty;
+    if (Math.abs(L.qty - L.sys) > .001) diffs++;
+  });
+  $('tItems').textContent = Object.keys(items).length;
+  $('tUnits').textContent = Math.round(units);
+  $('tDiff').textContent = diffs;
+
+  var h = '<button class="big" onclick="startCam()">📷 امسح</button>' +
+          '<button class="big quiet" onclick="manual()">بحث بالاسم أو الكود</button>';
+
+  if (S.last) h += lastCard(S.last);
+
+  if (keys.length){
+    h += '<div class="gt">اللي اتعدّ (' + Object.keys(items).length + ' صنف)</div>';
+    h += keys.slice().reverse().map(function(k){
+      var L = S.lines[k], d = L.qty - L.sys;
+      var cls = Math.abs(d) < .001 ? 'ok' : (d > 0 ? 'warn' : 'bad');
+      return '<div class="row"><div class="m"><b>' + esc(L.name) + '</b>' +
+             '<small>' + (L.expire ? esc(L.expire) : 'من غير صلاحية') +
+             ' · السيستم ' + n(L.sys) + '</small></div>' +
+             '<span class="pill ' + cls + '">' + n(L.qty) + '</span></div>';
+    }).join('');
+  } else {
+    h += '<div class="note">دوس «امسح» وصوّر باركود العلبة</div>';
+  }
+  $('main').innerHTML = h;
+  $('main').scrollTop = 0;
+}
+
+/* كارت آخر صنف اتمسح */
+function lastCard(it){
+  var h = '<div class="last"><div class="nm">' + esc(it.name) + '</div>';
+
+  if (it.multi){
+    /* أكتر من صلاحية: الموظف يوزّع بنفسه — الملصق مبيفرقش بينهم */
+    h += '<div class="meta">الصنف ده ليه ' + it.batches.length +
+         ' صلاحيات. اكتب اللي عدّيته من كل واحدة:</div>';
+    it.batches.forEach(function(b, i){
+      var k = it.code + '|' + b.expire;
+      var cur = S.lines[k] ? S.lines[k].qty : '';
+      h += '<div class="batch"><div class="ex"><b>' + esc(b.expire || '—') + '</b>' +
+           '<small>السيستم ' + n(b.stock) + '</small></div>' +
+           '<input type="number" inputmode="decimal" min="0" value="' + cur + '" ' +
+           'onchange="setBatch(\'' + it.code + '\',' + i + ',this.value)"></div>';
+    });
+    h += '<button class="big quiet" style="margin-top:12px" onclick="addBatch(\'' +
+         it.code + '\')">+ صلاحية مش موجودة</button>';
+  } else {
+    var b = it.batches[0] || {expire:'', stock: it.stock};
+    var k = it.code + '|' + (b.expire||'');
+    var q = S.lines[k] ? S.lines[k].qty : 0;
+    h += '<div class="meta">' + (b.expire ? esc(b.expire) : 'من غير صلاحية') +
+         ' · السيستم ' + n(b.stock) + '</div>' +
+         '<div class="cnt"><button class="step" onclick="bump(\'' + k + '\',-1)">−</button>' +
+         '<b>' + n(q) + '</b>' +
+         '<button class="step" onclick="bump(\'' + k + '\',1)">+</button></div>' +
+         '<button class="big quiet" style="margin-top:12px" onclick="addBatch(\'' +
+         it.code + '\')">+ صلاحية مش موجودة</button>';
+  }
+  return h + '</div>';
+}
+
+/* ═══ العدّ ═══ */
+function put(code, name, expire, qty, sys, isNew){
+  var k = code + '|' + (expire||'');
+  if (qty <= 0){ delete S.lines[k]; }
+  else S.lines[k] = { code:code, name:name, expire:expire||'',
+                      qty:qty, sys:sys||0, isNew: !!isNew };
+  save(); draw();
+}
+function bump(k, d){
+  var L = S.lines[k];
+  if (L){ put(L.code, L.name, L.expire, L.qty + d, L.sys, L.isNew); return; }
+  var it = S.last; if (!it) return;
+  var b = it.batches[0] || {expire:'', stock: it.stock};
+  if (d > 0) put(it.code, it.name, b.expire, d, b.stock, false);
+}
+function setBatch(code, i, val){
+  var it = S.last; if (!it || it.code !== code) return;
+  var b = it.batches[i];
+  put(code, it.name, b.expire, parseFloat(val)||0, b.stock, false);
+}
+function addBatch(code){
+  var it = S.last; if (!it || it.code !== code) return;
+  var e = prompt('الصلاحية بالشكل ده: 2027-05');
+  if (!e) return;
+  e = e.trim();
+  if (!/^\d{4}-\d{2}$/.test(e)){ alert('اكتبها كده: 2027-05'); return; }
+  var q = prompt('عدّيت كام علبة بالصلاحية دي؟');
+  q = parseFloat(q)||0;
+  if (q <= 0) return;
+  var full = e + '-01';
+  if (!it.batches.some(function(b){ return b.expire === full; }))
+    it.batches.push({ expire: full, stock: 0 });
+  it.multi = it.batches.length > 1;
+  put(code, it.name, full, q, 0, true);
+}
+
+/* ═══ الكاميرا ═══ */
+function startCam(){
+  $('cam').classList.add('on');
+  $('camMsg').textContent = 'وجّه الكاميرا على الباركود';
+  if (!window.ZXing){ $('camMsg').innerHTML = '<span class="err">مكتبة القراءة متحمّلتش — راجع النت</span>'; return; }
+  try{
+    var hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,
+      [ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+       ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+       ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.UPC_A]);
+    reader = new ZXing.BrowserMultiFormatReader(hints, 220);
+    reader.decodeFromConstraints(
+      { video: { facingMode: { ideal: 'environment' } } },
+      'video',
+      function(res, err){ if (res) onScan(res.getText()); }
+    ).catch(function(e){
+      $('camMsg').innerHTML = '<span class="err">الكاميرا مش راضية تفتح: ' + esc(e.message) + '</span>';
+    });
+  }catch(e){
+    $('camMsg').innerHTML = '<span class="err">' + esc(e.message) + '</span>';
+  }
+}
+function stopCam(){
+  $('cam').classList.remove('on');
+  try{ reader && reader.reset(); }catch(e){}
+  reader = null;
+}
+
+function onScan(text){
+  var code = String(text||'').replace(/\D/g,'');
+  if (!code) return;
+  var now = Date.now();
+  /* نفس الباركود خلال ثانية ونص = ارتجاجة مش مسحة جديدة */
+  if (code === lastCode && now - lastAt < 1500) return;
+  lastCode = code; lastAt = now;
+  if (busy) return;
+  busy = true;
+
+  $('camMsg').textContent = 'بيدوّر…';
+  api('scanLookup', { code: code }).then(function(d){
+    busy = false;
+    if (!d || !d.ok || !d.found){
+      beep(false);
+      $('camMsg').innerHTML = '<span class="err">الكود ' + esc(code) + ' مش موجود في المخزون</span>';
+      return;
+    }
+    var it = d.item;
+    S.last = it;
+    beep(true);
+
+    if (it.multi){
+      /* وقفة: الموظف لازم يوزّع الكمية على الصلاحيات */
+      $('camMsg').textContent = it.name + ' — ليه ' + it.batches.length + ' صلاحيات';
+      stopCam(); screenCount();
+    } else {
+      var b = it.batches[0] || {expire:'', stock: it.stock};
+      var k = it.code + '|' + (b.expire||'');
+      var q = (S.lines[k] ? S.lines[k].qty : 0) + 1;
+      put(it.code, it.name, b.expire, q, b.stock, false);
+      $('camMsg').textContent = it.name + ' — ' + q;
+    }
+  }).catch(function(e){
+    busy = false; beep(false);
+    $('camMsg').innerHTML = '<span class="err">النت مش راضي — جرب تاني</span>';
+  });
+}
+
+/* ═══ بحث يدوي — لما الملصق يبقى مقروش ═══ */
+function manual(){
+  var q = prompt('اكتب اسم الصنف أو الكود');
+  if (!q) return;
+  q = q.trim(); if (!q) return;
+
+  if (/^\d{6,14}$/.test(q)){
+    api('scanLookup', { code: q }).then(function(d){
+      if (d && d.ok && d.found){ S.last = d.item; screenCount(); }
+      else alert('الكود مش موجود');
+    });
+    return;
+  }
+  api('scanSearch', { q: q }).then(function(d){
+    var r = (d && d.results) || [];
+    if (!r.length){ alert('مفيش نتايج'); return; }
+    var msg = r.slice(0,9).map(function(x,i){ return (i+1)+'. '+x.name; }).join('\n');
+    var pick = prompt(msg + '\n\nاكتب الرقم:');
+    var i = parseInt(pick,10) - 1;
+    if (i >= 0 && r[i]){ S.last = r[i]; screenCount(); }
+  });
+}
+
+/* ═══ الحفظ النهائي ═══ */
+function finish(){
+  var keys = Object.keys(S.lines);
+  if (!keys.length){ alert('الجرد فاضي'); return; }
+  if (!confirm('تحفظ الجرد؟ ' + keys.length + ' سطر.\n\nالجرد بيطلع تقرير بس ومش بيغيّر المخزون.')) return;
+
+  $('main').innerHTML = '<div class="note"><div class="spin"></div>بيحفظ…</div>';
+  stopCam();
+
+  fetch(API, {
+    method: 'POST',
+    /* text/plain عشان المتصفح ميبعتش preflight — Apps Script مبيردش عليه */
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      action: 'saveCount', sessionId: S.id, title: S.title, by: S.by,
+      lines: keys.map(function(k){
+        var L = S.lines[k];
+        return { code:L.code, expire:L.expire, qty:L.qty, isNewBatch:L.isNew };
+      })
+    })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (!d || !d.ok) throw new Error((d && d.error) || 'فشل');
+    clearSession();
+    S = { id:null, title:'', by:'', lines:{}, last:null };
+    $('tot').style.display = 'none';
+    $('saveBtn').style.display = 'none';
+    $('main').innerHTML =
+      '<div class="note" style="color:var(--ok);font-size:20px;font-weight:700">✅ الجرد اتحفظ</div>' +
+      '<div class="row"><div class="m"><b>الأصناف</b></div><span class="v">' + n(d.lines) + '</span></div>' +
+      '<div class="row"><div class="m"><b>فيها فرق</b></div><span class="v">' + n(d.diffCount) + '</span></div>' +
+      '<button class="big" style="margin-top:18px" onclick="screenStart()">جرد جديد</button>';
+  }).catch(function(e){
+    /* الجرد لسه محفوظ محليًا — مفيش حاجة ضاعت */
+    $('main').innerHTML =
+      '<div class="note err">الحفظ فشل: ' + esc(e.message) + '<br><br>' +
+      'الجرد لسه محفوظ على الموبايل. جرب تاني لما النت يرجع.</div>' +
+      '<button class="big" onclick="finish()">حاول تاني</button>' +
+      '<button class="big quiet" onclick="screenCount()">ارجع للجرد</button>';
+  });
+}
+
+/* ═══ التشغيل ═══ */
+load();
+screenStart();
+window.addEventListener('beforeunload', save);
+</script>
+</body>
+</html>

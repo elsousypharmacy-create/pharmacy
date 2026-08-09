@@ -335,7 +335,7 @@ function drawStart(open){
     h += '<div class="lbl">الجرد الشغال</div>' +
       '<button class="btn primary" onclick="resume(\'' + esc(cur.id) + '\')">' +
       esc(cur.title) + '<small>' + cur.lines + ' من ' + n(TOTAL) + ' صنف · ' +
-      pct + '٪ · آخر مسحة ' + ago(cur.updated) + '</small></button>' +
+      pct + '٪' + agoTxt(cur) + '</small></button>' +
       recentBlock(cur);
   } else if (open === null && S.id && Object.keys(S.lines).length){
     h += '<div class="lbl">محفوظ على الموبايل</div>' +
@@ -351,9 +351,14 @@ function drawStart(open){
   if (old_.length){
     h += '<div class="lbl">شهور فاتت لسه مفتوحة</div>';
     h += old_.map(function(x){
-      return '<button class="btn side" onclick="resume(\'' + esc(x.id) + '\')">' +
-        esc(x.title) + '<small>' + x.lines + ' صنف · ' + ago(x.updated) +
-        '</small></button>'; }).join('');
+      return '<div style="display:flex;gap:8px;align-items:stretch;margin-bottom:12px">' +
+        '<button class="btn side" style="margin:0;flex:1" onclick="resume(\'' + esc(x.id) +
+        '\')">' + esc(x.title) + '<small>' + x.lines + ' صنف' + agoTxt(x) +
+        '</small></button>' +
+        '<button class="btn" style="margin:0;width:64px;padding:0;font-size:22px" ' +
+        'onclick="askDrop(\'' + esc(x.id) + '\',\'' +
+        esc(String(x.title||'').replace(/'/g,'')) + '\')">🗑</button></div>';
+    }).join('');
   }
   $('main').innerHTML = h;
 }
@@ -368,7 +373,7 @@ function recentBlock(x){
     list.map(function(L){
       return '<div class="row"><div class="m"><b>' + esc(L.name) + '</b><small>' +
         (L.expire?esc(L.expire)+' · ':'') + 'عدّ ' + n(L.qty) +
-        (L.at ? ' · ' + ago(L.at) : '') + '</small></div></div>';
+        (ago(L.at) ? ' · ' + ago(L.at) : '') + '</small></div></div>';
     }).join('');
 }
 
@@ -384,16 +389,29 @@ function pickWho(el){
   }).catch(function(){});
 }
 
+/* الصيغة "2026-08-09 14:01:22" بيفشل تحويلها في Safari وبترجع NaN.
+   بنجرب الرقم الأول، وبعدين النص بصيغة ISO، وآخر حاجة نسيبها فاضية
+   بدل ما نطبع NaN. */
 function ago(t){
-  try{
-    var ms = (typeof t === 'number') ? t
-           : new Date(String(t).replace(' ','T')).getTime();
-    var m = Math.round((Date.now() - ms)/60000);
-    if (m<1) return 'دلوقتي';
-    if (m<60) return 'من ' + m + ' دقيقة';
-    var hh = Math.round(m/60);
-    return hh<24 ? ('من ' + hh + ' ساعة') : ('من ' + Math.round(hh/24) + ' يوم');
-  }catch(e){ return ''; }
+  var ms = 0;
+  if (typeof t === 'number' && isFinite(t) && t > 0) ms = t;
+  else if (t){
+    var str = String(t).trim();
+    ms = new Date(str.replace(' ','T')).getTime();
+    if (!isFinite(ms)) ms = new Date(str).getTime();
+  }
+  if (!isFinite(ms) || ms <= 0) return '';
+  var m = Math.round((Date.now() - ms)/60000);
+  if (m < 0) return 'دلوقتي';
+  if (m < 1) return 'دلوقتي';
+  if (m < 60) return 'من ' + m + ' دقيقة';
+  var hh = Math.round(m/60);
+  if (hh < 24) return 'من ' + hh + ' ساعة';
+  return 'من ' + Math.round(hh/24) + ' يوم';
+}
+function agoTxt(x){
+  var a = ago(x.updatedMs || x.updated);
+  return a ? (' · آخر مسحة ' + a) : '';
 }
 
 function startNew(){
@@ -659,6 +677,23 @@ function doFind(){
 function chooseFind(i){
   var r = window.__found||[]; if (!r[i]) return;
   S.last = r[i]; closeSheet(); screenCount();
+}
+
+/* مسح جرد شغال — للجرود القديمة اللي عمرها ما اتقفلت */
+function askDrop(id, title){
+  openSheet('<h2>تمسح الجرد ده؟</h2>' +
+    '<div class="state">' + esc(title) + '<br>هيتمسح نهائيًا ومفيش رجوع.</div>' +
+    '<button class="btn" style="background:var(--bad);color:#fff" onclick="doDrop(\'' +
+      esc(id) + '\')">امسح</button>' +
+    '<button class="btn" onclick="closeSheet()">إلغاء</button>');
+}
+function doDrop(id){
+  closeSheet();
+  $('main').innerHTML = '<div class="state"><div class="spin"></div>بيمسح…</div>';
+  post({ action:'deleteCount', sessionId:id, confirm:'DELETE' }).then(function(d){
+    if (S.id === id){ wipe(); S = {id:null,title:'',by:S.by,lines:{},order:[],last:null}; }
+    screenStart();
+  }).catch(function(){ say('مقدرتش','النت مش راضي — جرب تاني'); screenStart(); });
 }
 
 /* ══════════ ٣) الكاميرا ══════════ */

@@ -133,6 +133,7 @@ button{font-family:inherit}
   font-size:var(--t-body);font-weight:650;cursor:pointer;margin-bottom:var(--s2)}
 .btn-primary{background:var(--brand);color:#fff}
 .btn-quiet{background:var(--surface-2);color:var(--ink)}
+.btn-danger{background:var(--bad);color:#fff}
 .btn-row{display:flex;gap:var(--s2)}
 .btn-row .btn{margin-bottom:0}
 .exp-btns{display:flex;gap:6px}
@@ -341,6 +342,12 @@ var T = {
   scanVerdictBad:['عالي — الوقفات كتير أوي. لازم نغيّر تصميم شاشة الجرد.',
                   'High — too many pauses. The counting screen needs a different design.'],
   counts:['الجرد','Stocktake'],
+  deleteCount:['مسح الجرد','Delete stocktake'],
+  typeToConfirm:['اكتب «مسح» عشان تأكد','Type «مسح» to confirm'],
+  deleteNow:['امسح نهائيًا','Delete permanently'],
+  deleting:['بيمسح…','Deleting…'],
+  deleted:['اتمسح','Deleted'],
+  cancel:['إلغاء','Cancel'],
   fixOrder:['أمر تصحيح الأرصدة','Stock fix order'],
   fix:['صحّح','Fix'],
   fixCount:['أصناف محتاجة تصحيح','Items to fix'],
@@ -2359,7 +2366,10 @@ function drawCounts(){
       ' · ' + ltr(num(x.lines)) + ' ' + tr('items') + '</small></div>' +
       (bad ? '<span class="badge warn" onclick="event.stopPropagation();openFix(\'' +
              esc(x.id) + '\')" style="cursor:pointer">' + tr('fix') + '</span>' : '') +
-      badge(ltr(num(x.diffValue)), bad ? 'bad' : 'ok') + '</div>';
+      badge(ltr(num(x.diffValue)), bad ? 'bad' : 'ok') +
+      '<span onclick="event.stopPropagation();askDeleteCount(\'' + esc(x.id) + '\',\'' +
+        esc(String(x.title||'').replace(/'/g,'')) + '\',' + (x.lines||0) +
+        ')" style="cursor:pointer;padding:6px 10px;opacity:.55">🗑</span></div>';
   }).join(''));
 
   box.innerHTML = html;
@@ -2400,6 +2410,42 @@ function openCount(id){
     }
     b.innerHTML = h;
   }).catch(function(e){ logErr(e); b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+}
+
+/* 🗑️ مسح جرد.
+   بنطلب من المستخدم يكتب "مسح" بنفسه — نقرة "متأكد؟" سهل جدًا
+   تتدوس بالغلط، وده مالوش رجعة. */
+function askDeleteCount(id, title, lines){
+  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  document.getElementById('sheet').classList.add('on');
+  t.textContent = tr('deleteCount');
+  b.innerHTML =
+    '<div class="state">' + esc(title || '') + '<br>' +
+    ltr(num(lines)) + ' ' + tr('items') + ' هيتمسحوا نهائيًا.<br>' +
+    '<b style="color:var(--bad)">مفيش رجوع.</b></div>' +
+    '<div class="group-title">' + tr('typeToConfirm') + '</div>' +
+    '<input id="delWord" class="fld" placeholder="مسح" autocomplete="off" ' +
+      'style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);' +
+      'background:var(--surface-2);color:var(--ink);font-family:inherit;font-size:15px">' +
+    '<button class="btn btn-danger" style="margin-top:12px" onclick="doDeleteCount(\'' +
+      esc(id) + '\')">' + tr('deleteNow') + '</button>' +
+    '<button class="btn btn-quiet" onclick="closeSheetX()">' + tr('cancel') + '</button>';
+  setTimeout(function(){ var e = document.getElementById('delWord'); e && e.focus(); }, 250);
+}
+
+function closeSheetX(){ document.getElementById('sheet').classList.remove('on'); }
+
+function doDeleteCount(id){
+  var w = (document.getElementById('delWord') || {}).value || '';
+  if (w.trim() !== 'مسح'){ toast(tr('typeToConfirm')); return; }
+  closeSheetX();
+  toast(tr('deleting'));
+  post({ action: 'deleteCount', sessionId: id, confirm: 'DELETE' }).then(function(d){
+    if (!d || !d.ok){ toast((d && d.error) || tr('failed')); return; }
+    toast(tr('deleted'));
+    try{ localStorage.removeItem(cacheKey('counts', {})); }catch(e){}
+    pgCounts();
+  }).catch(function(e){ logErr(e); toast(tr('failed')); });
 }
 
 /* ═══ أمر تصحيح الأرصدة ═══

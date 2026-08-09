@@ -142,24 +142,29 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
 .tot small{color:var(--ink-3);font-size:var(--t-small)}
 
 /* ── الكاميرا ── */
+/* الكاميرا ملء الشاشة.
+   الإطار والتعتيم بقوا عنصر واحد بـbox-shadow ضخم بدل mask —
+   الـmask كان بيتحسب بنسبة مئوية والإطار بـtop ثابت، فكانوا
+   بيفترقوا عن بعض على مقاسات الشاشات المختلفة. */
 #cam{position:fixed;inset:0;z-index:60;background:#000;display:none}
 #cam.on{display:block}
-#video{width:100%;height:100%;object-fit:cover}
-.mask{position:absolute;inset:0;pointer-events:none;
-  background:rgba(0,0,0,.5);
-  -webkit-mask:linear-gradient(#000,#000) ,
-    linear-gradient(#000,#000) 8% 26%/84% 140px no-repeat;
-  -webkit-mask-composite:xor;
-  mask:linear-gradient(#000,#000),
-    linear-gradient(#000,#000) 8% 26%/84% 140px no-repeat;
-  mask-composite:exclude}
-.frame{position:absolute;top:26%;left:8%;right:8%;height:140px;
-  border:3px solid rgba(255,255,255,.9);border-radius:var(--r2);pointer-events:none}
-.camtop{position:absolute;top:0;left:0;right:0;
+#video{position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;background:#000}
+.frame{
+  position:absolute;top:50%;left:7%;right:7%;height:150px;
+  transform:translateY(-50%);
+  border:3px solid rgba(255,255,255,.95);border-radius:var(--r2);
+  box-shadow:0 0 0 100vmax rgba(0,0,0,.55);   /* التعتيم من نفس العنصر */
+  pointer-events:none}
+.frame::after{
+  content:'';position:absolute;top:50%;left:10px;right:10px;height:2px;
+  background:rgba(255,60,60,.85);transform:translateY(-50%);
+  box-shadow:0 0 8px rgba(255,60,60,.6)}
+.camtop{position:absolute;top:0;left:0;right:0;z-index:2;
   padding:calc(var(--s4) + env(safe-area-inset-top)) var(--s4) var(--s4);
   background:linear-gradient(rgba(0,0,0,.75),transparent)}
 .camtop .hint{color:#fff;font-size:var(--t-body);text-align:center}
-.cambot{position:absolute;left:0;right:0;bottom:0;
+.cambot{position:absolute;left:0;right:0;bottom:0;z-index:2;
   padding:var(--s4);padding-bottom:calc(var(--s4) + env(safe-area-inset-bottom));
   background:linear-gradient(transparent,rgba(0,0,0,.88) 35%)}
 .flash{background:var(--surface);border-radius:var(--r3);
@@ -210,7 +215,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
 
 <div id="cam">
   <video id="video" playsinline muted autoplay></video>
-  <div class="mask"></div><div class="frame"></div>
+  <div class="frame"></div>
   <div class="camtop"><div class="hint" id="hint">وجّه الكاميرا على الباركود</div></div>
   <div class="cambot">
     <div class="flash" id="flash"><div class="state" style="padding:6px">مستني المسح…</div></div>

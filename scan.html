@@ -67,7 +67,9 @@ button,input,select{font-family:inherit;font-size:inherit;color:inherit;border:0
   background:linear-gradient(rgba(0,0,0,.85),transparent)}
 .bar .who{flex:1;min-width:0;font-size:var(--t-sm);color:var(--ink-2);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bar .num{font-size:var(--t-md);font-weight:700}
+.bar .num{font-size:var(--t-md);font-weight:700;
+  padding:8px 14px;border-radius:99px;background:rgba(255,255,255,.1)}
+.bar .num:active{background:rgba(255,255,255,.2)}
 .bar .num small{color:var(--ink-3);font-weight:400;font-size:13px}
 
 /* بطاقة آخر صنف — في النص، للتأكيد البصري بس، مش بتتلمس */
@@ -222,7 +224,7 @@ button,input,select{font-family:inherit;font-size:inherit;color:inherit;border:0
 
   <div class="bar">
     <div class="who" id="bWho"></div>
-    <div class="num" id="bNum">0<small>/0</small></div>
+    <button class="num" id="bNum" onclick="openSession()">0<small>/0</small></button>
   </div>
 
   <div class="echo" id="echo"></div>
@@ -231,7 +233,7 @@ button,input,select{font-family:inherit;font-size:inherit;color:inherit;border:0
     <button class="k wide undo" id="kUndo" onclick="undo()" disabled>تراجع عن آخر مسحة</button>
     <div class="grid">
       <button class="k" onclick="openFind()">بحث<small>بالاسم</small></button>
-      <button class="k" onclick="reopenLast()">آخر صنف<small>عدّل</small></button>
+      <button class="k" onclick="openSession()">الجرد<small>شوف الكل</small></button>
       <button class="k done" onclick="askEnd()">خلّصت</button>
     </div>
   </div>
@@ -671,6 +673,69 @@ function applyPartial(expire, sys){
   put(last.code, last.name, expire, qty, sys, !known);
   SND.ok();
   openBatches(last);
+}
+
+/* ═══ قايمة اللي اتعدّ في الجلسة دي ═══
+   الموظف كان بيمسح والعداد بيزيد بس — مش شايف اللي عدّه.
+   فلو شك إنه عدّ صنف قبل كده، أو عايز يعدّل حاجة من ١٠ دقايق،
+   مكانش فيه طريقة. القايمة دي بترتيب عكسي (الأحدث فوق) وكل
+   سطر بيفتح ورقة الصنف للتعديل. */
+function openSession(){
+  var keys = (S.order||[]).slice().reverse();
+  if (!keys.length){
+    openSheet('<h2>الجرد</h2><div class="state">لسه مفيش حاجة اتعدّت</div>' +
+      '<button class="btn primary" onclick="closeSheet()">تمام</button>');
+    return;
+  }
+  var u = {}, units = 0, diffs = 0;
+  keys.forEach(function(k){ var L = S.lines[k];
+    if (!L) return;
+    u[L.code] = 1; units += L.qty;
+    if (Math.abs(L.qty - L.sys) > .001) diffs++; });
+
+  openSheet('<h2>' + esc(S.title) + '</h2>' +
+    '<div class="hint">' + Object.keys(u).length + ' صنف · ' +
+      n(Math.round(units*100)/100) + ' علبة · ' + diffs + ' فيهم فرق</div>' +
+    '<input class="fld" id="sQ" placeholder="دوّر في اللي اتعدّ" oninput="filterSession()" ' +
+      'style="text-align:right;font-weight:400;font-size:var(--t-md)">' +
+    '<div id="sList">' + sessionRows(keys) + '</div>' +
+    '<button class="btn primary" onclick="closeSheet()">تمام</button>');
+}
+
+function sessionRows(keys){
+  return keys.map(function(k){
+    var L = S.lines[k]; if (!L) return '';
+    var d = L.qty - L.sys;
+    var cls = Math.abs(d) < .001 ? 'ok' : (d > 0 ? 'warn' : 'bad');
+    var it = { units: (last && last.code === L.code) ? last.units : 1, name: L.name };
+    return '<div class="row" onclick="editFromSession(\'' + esc(L.code) + '\')">' +
+      '<div class="m"><b>' + esc(L.name) + '</b><small>' +
+      (L.expire ? esc(L.expire) + ' · ' : '') +
+      'السيستم ' + n(L.sys) + (L.isNew ? ' · صلاحية زيادة' : '') +
+      '</small></div><span class="tag ' + cls + '">' + n(L.qty) + '</span></div>';
+  }).join('');
+}
+
+function filterSession(){
+  var q = (($('sQ')||{}).value || '').trim();
+  var keys = (S.order||[]).slice().reverse();
+  if (q) keys = keys.filter(function(k){
+    var L = S.lines[k];
+    return L && (L.name.indexOf(q) !== -1 || L.code.indexOf(q) !== -1);
+  });
+  var el = $('sList'); if (!el) return;
+  el.innerHTML = keys.length ? sessionRows(keys) :
+    '<div class="state">مفيش نتايج</div>';
+}
+
+/* تعديل صنف من القايمة — بنجيب بياناته من السيرفر عشان الدفعات
+   تبقى كاملة، مش اللي اتعدّ بس */
+function editFromSession(code){
+  closeSheet();
+  api('scanLookup', { code: code }).then(function(d){
+    if (d && d.ok && d.found){ last = d.item; openBatches(d.item); }
+    else toast('مقدرتش أفتحه');
+  }).catch(function(){ toast('النت مش راضي'); });
 }
 
 /* رجوع لآخر صنف اتمسح — لو قفل الورقة وعايز يعدّل */

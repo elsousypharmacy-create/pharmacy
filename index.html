@@ -341,6 +341,22 @@ var T = {
   scanVerdictBad:['عالي — الوقفات كتير أوي. لازم نغيّر تصميم شاشة الجرد.',
                   'High — too many pauses. The counting screen needs a different design.'],
   counts:['الجرد','Stocktake'],
+  fixOrder:['أمر تصحيح الأرصدة','Stock fix order'],
+  fix:['صحّح','Fix'],
+  fixCount:['أصناف محتاجة تصحيح','Items to fix'],
+  netGap:['صافي الفرق','Net gap'],
+  adjustStock:['تعديل رصيد','Adjust stock'],
+  newBatches:['صلاحيات مش مسجلة','Unregistered batches'],
+  newBatchHint:['دي دفعات على الرف ومش في السيستم — تتدخل كدفعة جديدة مش تعديل رصيد',
+                'Batches on the shelf but not in the system — enter as new batch'],
+  code:['كود','Code'],
+  copyText:['انسخ كنص','Copy as text'],
+  asPDF:['حمّل PDF','Download PDF'],
+  sendTg:['ابعت على تليجرام','Send to Telegram'],
+  copied:['اتنسخ','Copied'],
+  sending:['بيبعت…','Sending…'],
+  sentOk:['اتبعت للجروب','Sent to group'],
+  allMatched:['كل حاجة مطابقة — مفيش تصحيح مطلوب','All matched — nothing to fix'],
   needsCount:['محتاج جرد','Needs counting'],
   neverCounted:['عمره ما اتجرد','Never counted'],
   never:['عمره ما اتجرد','Never'],
@@ -2341,6 +2357,8 @@ function drawCounts(){
       '<small>' + esc(String(x.at).substring(0,16)) +
       (x.by ? ' · ' + esc(x.by) : '') +
       ' · ' + ltr(num(x.lines)) + ' ' + tr('items') + '</small></div>' +
+      (bad ? '<span class="badge warn" onclick="event.stopPropagation();openFix(\'' +
+             esc(x.id) + '\')" style="cursor:pointer">' + tr('fix') + '</span>' : '') +
       badge(ltr(num(x.diffValue)), bad ? 'bad' : 'ok') + '</div>';
   }).join(''));
 
@@ -2382,6 +2400,99 @@ function openCount(id){
     }
     b.innerHTML = h;
   }).catch(function(e){ logErr(e); b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+}
+
+/* ═══ أمر تصحيح الأرصدة ═══
+   ناتج الجرد بيتحوّل لليستة تنفيذية للمدير. الكود بييجي الأول لأن
+   المدير بيدوّر بيه في نظام البيع مباشرة مش بالاسم. */
+var FIX = null;
+
+function openFix(id){
+  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  document.getElementById('sheet').classList.add('on');
+  t.textContent = tr('fixOrder');
+  b.innerHTML = '<div class="state"><div class="spin"></div></div>';
+
+  api('fixOrder', { session: id }).then(function(d){
+    if (!d || !d.ok){ b.innerHTML = '<div class="state err">' + esc((d&&d.error)||tr('failed')) + '</div>'; return; }
+    FIX = d;
+    if (!d.count){
+      b.innerHTML = '<div class="state" style="color:var(--ok)">' + tr('allMatched') + '</div>';
+      return;
+    }
+
+    var h = '<div class="state">' + tr('fixCount') + ': ' + ltr(num(d.count)) +
+            ' · ' + tr('netGap') + ' ' + ltr(num(d.netValue)) + ' ' + tr('egp') + '</div>' +
+      '<button class="btn btn-quiet" onclick="copyFix()">' + tr('copyText') + '</button>' +
+      '<button class="btn btn-quiet" onclick="pdfFix()">' + tr('asPDF') + '</button>' +
+      '<button class="btn btn-quiet" onclick="tgFix(\'' + esc(id) + '\')">' + tr('sendTg') + '</button>';
+
+    if ((d.fixes||[]).length){
+      h += '<div class="group-title">' + tr('adjustStock') + '</div>' +
+        d.fixes.map(function(r){
+          return '<div class="row"><div class="row-main"><b>' + esc(r.name) + '</b>' +
+            '<small>' + tr('code') + ' ' + ltr(r.code) +
+            (r.expire ? ' · ' + esc(r.expire) : '') +
+            ' · ' + ltr(num(r.sys)) + ' → ' + ltr(num(r.counted)) + '</small></div>' +
+            badge((r.diff>0?'+':'') + ltr(num(r.diff)), r.diff>0?'warn':'bad') + '</div>';
+        }).join('');
+    }
+    if ((d.newBatches||[]).length){
+      h += '<div class="group-title">' + tr('newBatches') + '</div>' +
+        '<div class="state" style="padding:4px 0 8px">' + tr('newBatchHint') + '</div>' +
+        d.newBatches.map(function(r){
+          return '<div class="row"><div class="row-main"><b>' + esc(r.name) + '</b>' +
+            '<small>' + tr('code') + ' ' + ltr(r.code) +
+            ' · ' + esc(r.expire || '؟') + '</small></div>' +
+            badge(ltr(num(r.counted)), 'warn') + '</div>';
+        }).join('');
+    }
+    b.innerHTML = h;
+  }).catch(function(e){ logErr(e); b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+}
+
+function copyFix(){
+  if (!FIX || !FIX.text) return;
+  var done = function(){ toast(tr('copied')); };
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(FIX.text).then(done).catch(fallbackCopy);
+  } else fallbackCopy();
+  function fallbackCopy(){
+    /* Safari القديم مبيدعمش clipboard API خارج سياق آمن */
+    var ta = document.createElement('textarea');
+    ta.value = FIX.text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); done(); }catch(e){ toast(tr('failed')); }
+    document.body.removeChild(ta);
+  }
+}
+
+function pdfFix(){
+  if (!FIX) return;
+  var rows = [];
+  (FIX.fixes||[]).forEach(function(r){
+    rows.push({
+      'الكود': r.code, 'الصنف': r.name, 'الصلاحية': r.expire || '—',
+      'السيستم': r.sys, 'الفعلي': r.counted,
+      'التعديل': (r.diff>0?'+':'') + r.diff, 'النوع': 'تعديل رصيد'
+    });
+  });
+  (FIX.newBatches||[]).forEach(function(r){
+    rows.push({
+      'الكود': r.code, 'الصنف': r.name, 'الصلاحية': r.expire || '؟',
+      'السيستم': 0, 'الفعلي': r.counted,
+      'التعديل': '+' + r.counted, 'النوع': 'دفعة جديدة'
+    });
+  });
+  if (!rows.length){ toast(tr('noExport')); return; }
+  toPDF(rows, tr('fixOrder') + ' — ' + ((FIX.meta||{}).title || ''));
+}
+
+function tgFix(id){
+  toast(tr('sending'));
+  api('sendFixOrder', { session: id }).then(function(d){
+    toast(d && d.ok ? tr('sentOk') : ((d && d.error) || tr('failed')));
+  }).catch(function(){ toast(tr('failed')); });
 }
 
 /* ═══ الفحص الدوري ═══

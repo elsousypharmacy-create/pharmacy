@@ -100,6 +100,11 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
   gap:var(--s5);margin:var(--s5) 0 var(--s3)}
 .counter b{font-size:var(--t-huge);font-weight:800;min-width:80px;text-align:center;
   font-variant-numeric:tabular-nums}
+.counter .qty{
+  width:120px;padding:14px;border-radius:var(--r2);border:1px solid var(--line);
+  background:var(--bg);color:var(--ink);font-size:var(--t-head);
+  text-align:center;font-weight:800;font-variant-numeric:tabular-nums}
+.counter .qty:focus{outline:0;border-color:var(--brand)}
 .step{width:62px;height:62px;border:0;border-radius:var(--r2);
   background:var(--surface-2);font-size:30px;font-weight:600;display:grid;place-items:center}
 .step:active{background:var(--brand);color:#fff}
@@ -478,14 +483,24 @@ function lastCard(it){
         (b.stock||0) + ',this.value)"></div>';
     });
   } else {
+    /* حتى الصنف بدفعة واحدة بياخد خانة — الموظف يكتب العدد على طول
+       بدل ما يفضل يدوس + عشرين مرة */
     var b = all[0] || {expire:'', stock:it.stock};
     var k = it.code+'|'+(b.expire||'');
     var q = S.lines[k] ? S.lines[k].qty : 0;
     h += '<div class="sub">' + (b.expire?esc(b.expire):'من غير صلاحية') +
       ' · السيستم ' + n(b.stock) + '</div>' +
       '<div class="counter"><button class="step" onclick="bump(\'' + k + '\',-1)">−</button>' +
-      '<b>' + n(q) + '</b>' +
+      '<input class="qty" type="number" inputmode="decimal" min="0" step="any" value="' + q +
+      '" onchange="setQty(\'' + it.code + '\',\'' + (b.expire||'') + '\',' +
+      (b.stock||0) + ',this.value)">' +
       '<button class="step" onclick="bump(\'' + k + '\',1)">+</button></div>';
+  }
+
+  /* ── التجزئة ── */
+  if ((it.units||1) > 1){
+    h += '<button class="btn" onclick="openPartial(\'' + it.code +
+         '\')" style="margin:0 0 10px">علبة مفتوحة — عدّ بالـ' + partWord(it) + '</button>';
   }
   /* موجود دايمًا — أكتر حاجة بتكشف مشاكل: بضاعة بصلاحية متسجلتش */
   h += '<button class="btn" onclick="openAddBatch(\'' + it.code +
@@ -542,6 +557,74 @@ function doAddBatch(code){
   var full = $('bY').value + '-' + $('bM').value + '-01';
   var known = it.batches.filter(function(b){ return b.expire===full; })[0];
   put(code,it.name,full,q,known?known.stock:0,!known);
+  closeSheet();
+}
+
+/* ══════════ التجزئة ══════════
+   الرصيد متخزن بالعلبة. صنف units=10 ورصيده 0.9 معناه 9 أكياس.
+   الموظف بيعدّ بالجزء (شرايط/أكياس) والحساب بيحوّل لعلب — أنضف
+   من إنه يكتب 0.9 بإيده ويغلط. */
+function partWord(it){
+  var nm = (it.name||'');
+  if (/كيس|اكياس|أكياس/.test(nm)) return 'كيس';
+  if (/امبول|أمبول|امب/.test(nm))  return 'أمبول';
+  if (/لبوس|اقماع/.test(nm))       return 'لبوسة';
+  return 'شريط';
+}
+
+function openPartial(code){
+  var it = S.last; if (!it || it.code !== code) return;
+  var u = it.units || 1, w = partWord(it);
+
+  var all = it.batches.slice();
+  Object.keys(S.lines).forEach(function(k){ var L=S.lines[k];
+    if (L.code!==it.code) return;
+    if (!all.some(function(b){ return (b.expire||'')===(L.expire||''); }))
+      all.push({expire:L.expire, stock:0}); });
+
+  var opts = all.map(function(b,i){
+    return '<option value="' + esc(b.expire||'') + '">' +
+      (b.expire ? esc(b.expire) : 'من غير صلاحية') + '</option>'; }).join('');
+
+  openSheet('<h2>علبة مفتوحة</h2>' +
+    '<div class="state" style="padding:0 0 14px;text-align:right">' +
+      esc(it.name) + '<br><span style="color:var(--ink-3)">العلبة الكاملة ' +
+      n(u) + ' ' + w + '</span></div>' +
+    (all.length > 1 ? '<div class="lbl" style="margin-top:0">الصلاحية</div>' +
+      '<select class="fld" id="pE">' + opts + '</select>' :
+      '<input type="hidden" id="pE" value="' + esc((all[0]||{}).expire||'') + '">') +
+    '<div class="lbl">علب كاملة</div>' +
+    '<input class="fld" id="pB" type="number" inputmode="numeric" min="0" value="0">' +
+    '<div class="lbl">' + w + ' زيادة (من علبة مفتوحة)</div>' +
+    '<input class="fld" id="pU" type="number" inputmode="numeric" min="0" max="' + (u-1) +
+      '" value="0" oninput="prevPartial()">' +
+    '<div class="state" id="pOut" style="padding:6px 0 14px"></div>' +
+    '<button class="btn primary" onclick="doPartial(\'' + code + '\')">سجّل</button>' +
+    '<button class="btn" onclick="closeSheet()">إلغاء</button>');
+  prevPartial();
+}
+
+function prevPartial(){
+  var it = S.last; if (!it) return;
+  var u = it.units || 1;
+  var b = parseFloat(($('pB')||{}).value) || 0;
+  var p = parseFloat(($('pU')||{}).value) || 0;
+  var tot = b + (p / u);
+  var el = $('pOut'); if (!el) return;
+  el.innerHTML = 'الإجمالي: <b style="color:var(--ink)">' +
+    n(Math.round(tot*100)/100) + '</b> علبة';
+}
+
+function doPartial(code){
+  var it = S.last; if (!it || it.code !== code){ closeSheet(); return; }
+  var u = it.units || 1;
+  var b = parseFloat($('pB').value) || 0;
+  var p = parseFloat($('pU').value) || 0;
+  var qty = Math.round((b + p/u) * 10000) / 10000;
+  if (qty <= 0){ closeSheet(); return; }
+  var ex = $('pE').value || '';
+  var known = it.batches.filter(function(x){ return (x.expire||'') === ex; })[0];
+  put(code, it.name, ex, qty, known ? known.stock : 0, !known);
   closeSheet();
 }
 

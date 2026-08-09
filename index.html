@@ -320,8 +320,9 @@ var T = {
   scanMulti:['بأكتر من صلاحية','Multi-expiry'],
   scanNoExp:['من غير صلاحية مسجلة','No expiry on file'],
   ofInStock:['من اللي فيها رصيد','of in-stock'],
-  scanVerdictGood:['ممتاز — الشاشة هتوقف نادرًا، الجرد هيبقى سريع.',
-                   'Great — the screen will rarely pause.'],
+  snapMissing:['لسه متبنيتش','not built yet'],
+  scanVerdictGood:['ممتاز — أغلب الأصناف بصلاحية واحدة، فالمسح هيعدّي على طول.',
+                   'Great — most items have a single expiry, so scanning flows.'],
   scanVerdictMid:['مقبول — الشاشة هتوقف عند صنف من كل خمسة تقريبًا.',
                   'OK — pauses on roughly one in five items.'],
   scanVerdictBad:['عالي — الوقفات كتير أوي. لازم نغيّر تصميم شاشة الجرد.',
@@ -908,12 +909,47 @@ function pgHome(){
   Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }) ])
   .then(function(res){
     cacheSet('home', {}, { b: res[0], kpi: res[1] });
+    markSync();
     drawHome(res[0], res[1], false);
   }).catch(function(e){
     logErr(e);
     if (!seed) oops(box, "pgHome()");
   });
+
+  startAutoRefresh();
 }
+
+/* ═══ التحديث التلقائي ═══
+   المشكلة اللي كانت: الصفحة كانت بتجيب البيانات مرة واحدة بس عند
+   الفتح. لو سيبت الموبايل مفتوح على الشاشة، الرقم بيفضل واقف لحد
+   ما تخرج وترجع. دلوقتي بيسأل السيرفر كل دقيقة طول ما الشاشة قدامك.
+
+   بيقف لوحده لما تقفل الموبايل أو تبدّل تبويب — عشان مناكلش
+   من حصة Apps Script اليومية ومن بطارية الموبايل. */
+var AUTO_TIMER = null;
+
+function startAutoRefresh(){
+  stopAutoRefresh();
+  AUTO_TIMER = setInterval(function(){
+    if (document.hidden) return;          // الشاشة مقفولة أو تبويب تاني
+    if (CUR !== 'home') { stopAutoRefresh(); return; }
+    Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }) ])
+    .then(function(res){
+      cacheSet('home', {}, { b: res[0], kpi: res[1] });
+      markSync();
+      drawHome(res[0], res[1], false);
+    }).catch(function(e){ logErr(e); });
+  }, 60000);
+}
+
+function stopAutoRefresh(){
+  if (AUTO_TIMER){ clearInterval(AUTO_TIMER); AUTO_TIMER = null; }
+}
+
+/* لما ترجع للتطبيق بعد ما كان مقفول، حدّث على طول من غير ما تستنى الدورة */
+document.addEventListener('visibilitychange', function(){
+  if (!document.hidden && CUR === 'home') pgHome();
+});
 
 function drawHome(b, kpi, isOld){
   var box = document.getElementById('p-home');
@@ -2201,7 +2237,10 @@ function snapStatus(){
     box.innerHTML = row(tr('autoUpdate'), d.lastRun ? ltr(d.lastRun) : '',
       badge(d.triggerOn ? tr('autoOn') : tr('autoOff'), d.triggerOn ? 'ok' : 'warn')) +
       (d.files || []).map(function(f){
-        return row(f.name, null, f.ready ? ltr(f.builtAt) : badge('—', 'warn'));
+        /* الأسماء كانت بتظهر بالإنجليزي زي ما هي جاية من السيرفر */
+        var nm = ({ debts: tr('debts'), inventory: tr('invAging'), agents: tr('agents') })[f.name] || f.name;
+        return row(nm, f.ready ? null : tr('snapMissing'),
+                   f.ready ? ltr(f.builtAt) : badge('—', 'warn'));
       }).join('');
   }).catch(function(e){ logErr(e); });
 }
@@ -2224,7 +2263,7 @@ function runScanReady(){
     }
     var pct = (d.multiPct !== undefined) ? d.multiPct
               : (d.inStock ? Math.round(d.multi / d.inStock * 100) : 0);
-    var tone = pct < 15 ? 'ok' : (pct < 40 ? 'warn' : 'bad');
+    var tone = pct <= 20 ? 'ok' : (pct <= 40 ? 'warn' : 'bad');
     box.innerHTML =
       row(tr('scanTotal'),   null, ltr(num(d.total))) +
       row(tr('scanInStock'), null, ltr(num(d.inStock))) +
@@ -2232,8 +2271,8 @@ function runScanReady(){
       row(tr('scanMulti'), ltr(pct) + '% ' + tr('ofInStock'), badge(ltr(num(d.multi)), tone)) +
       row(tr('scanNoExp'), null, ltr(num(d.noExp || 0))) +
       '<div class="state">' +
-        (pct < 15 ? tr('scanVerdictGood')
-                  : (pct < 40 ? tr('scanVerdictMid') : tr('scanVerdictBad'))) +
+        (pct <= 20 ? tr('scanVerdictGood')
+                   : (pct <= 40 ? tr('scanVerdictMid') : tr('scanVerdictBad'))) +
       '</div>';
   }).catch(function(e){
     logErr(e);

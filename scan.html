@@ -65,6 +65,10 @@ button,input,select{font-family:inherit;font-size:inherit;color:inherit;border:0
   padding:calc(10px + env(safe-area-inset-top)) 18px 10px;
   display:flex;align-items:center;gap:12px;
   background:linear-gradient(rgba(0,0,0,.85),transparent)}
+.bar .snap{font-size:12px;color:var(--ink-2);padding:7px 12px;border-radius:99px;
+  background:rgba(255,255,255,.09);white-space:nowrap}
+.bar .snap.old{color:var(--warn);background:rgba(233,166,63,.16)}
+.bar .snap .rf{opacity:.7}
 .bar .who{flex:1;min-width:0;font-size:var(--t-sm);color:var(--ink-2);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar .num{font-size:var(--t-md);font-weight:700;
@@ -223,6 +227,7 @@ button,input,select{font-family:inherit;font-size:inherit;color:inherit;border:0
   <div class="frame"></div>
 
   <div class="bar">
+    <button class="snap" id="bSnap" onclick="refreshIndex()">⟳</button>
     <div class="who" id="bWho"></div>
     <button class="num" id="bNum" onclick="openSession()">0<small>/0</small></button>
   </div>
@@ -253,6 +258,82 @@ var API = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7c
 
 var S = { id:null, title:'', by:'', lines:{}, order:[] };
 var STAFF = [], TOTAL = 0, OPEN = [];
+
+/* ═══ الفهرس المحلي ═══
+   المخزون كله بينزل مرة واحدة، فكل مسحة بتلاقي الصنف فورًا من
+   غير نداء شبكة. الأرصدة ممكن تبقى قديمة بساعة — عشان كده
+   بنسجّل وقت اللقطة مع كل سطر، فالتقرير يفرّق بين "فرق حقيقي"
+   و"حركة حصلت بعد اللقطة". */
+var IDX = null, IDX_AT = '', IDX_MS = 0;
+
+function idxSave(){
+  try{ localStorage.setItem('scan_idx',
+    JSON.stringify({ at:IDX_AT, ms:IDX_MS, items:IDX })); }catch(e){}
+}
+function idxLoad(){
+  try{
+    var r = localStorage.getItem('scan_idx');
+    if (!r) return false;
+    var o = JSON.parse(r);
+    if (!o || !o.items) return false;
+    IDX = o.items; IDX_AT = o.at || ''; IDX_MS = o.ms || 0;
+    return true;
+  }catch(e){ return false; }
+}
+
+/* بيحوّل المصفوفة المضغوطة اللي جاية من السيرفر لكائن الصنف */
+function idxGet(code){
+  if (!IDX) return null;
+  var a = IDX[code];
+  if (!a) a = IDX[String(code).replace(/^0+/,'')] || IDX['0'+code];
+  if (!a) return null;
+  return { code:a[0], name:a[1], units:a[2]||1, multi:!!a[3],
+           stock:(a[4]||[]).reduce(function(t,b){ return t + (+b[1]||0); }, 0),
+           batches:(a[4]||[]).map(function(b){ return {expire:b[0], stock:+b[1]||0}; }) };
+}
+
+function idxSearch(q){
+  if (!IDX) return [];
+  var out = [];
+  for (var c in IDX){
+    if (out.length >= 25) break;
+    if (String(IDX[c][1]).indexOf(q) !== -1) out.push(idxGet(c));
+  }
+  return out;
+}
+
+function fetchIndex(silent){
+  if (!silent) toast('بينزّل المخزون…');
+  return api('scanBundle').then(function(d){
+    if (!d || !d.ok || !d.items) throw new Error('فشل');
+    IDX = {};
+    d.items.forEach(function(a){ IDX[a[0]] = a; });
+    IDX_AT = d.at || ''; IDX_MS = d.ms || Date.now();
+    TOTAL = d.count || TOTAL;
+    idxSave();
+    if (!silent) toast(d.count + ' صنف جاهزين');
+    updateSnapBar();
+    return true;
+  }).catch(function(){
+    if (!silent) toast('مقدرتش أنزّل المخزون');
+    return false;
+  });
+}
+
+function snapAgo(){
+  if (!IDX_MS) return '';
+  var m = Math.round((Date.now() - IDX_MS)/60000);
+  if (m < 2) return 'دلوقتي';
+  if (m < 60) return 'من ' + m + ' دقيقة';
+  return 'من ' + Math.round(m/60) + ' ساعة';
+}
+function updateSnapBar(){
+  var el = $('bSnap'); if (!el) return;
+  var a = snapAgo();
+  var oldish = IDX_MS && (Date.now() - IDX_MS) > 3600000;
+  el.innerHTML = a ? ('الأرصدة ' + a + ' <span class="rf">⟳</span>') : '⟳ حمّل';
+  el.className = 'snap' + (oldish ? ' old' : '');
+}
 var reader = null, busy = false, lastCode = '', lastAt = 0;
 var scans = 0, syncing = false, hist = [], echoTimer = null, last = null;
 
@@ -325,7 +406,8 @@ function sync(force){
   post({ action:'saveOpen', sessionId:S.id, title:S.title, by:S.by,
     lines: Object.keys(S.lines).map(function(k){ var L = S.lines[k];
       return {code:L.code,name:L.name,expire:L.expire,qty:L.qty,
-              sys:L.sys,isNew:L.isNew,who:L.who||'',at:L.at||0}; }) })
+              sys:L.sys,isNew:L.isNew,who:L.who||'',at:L.at||0,
+              snapAt:L.snapAt||''}; }) })
   .then(function(){ syncing = false; }).catch(function(){ syncing = false; });
 }
 
@@ -460,14 +542,24 @@ function enterScan(){
   $('scan').classList.add('on');
   $('bWho').textContent = S.by || '';
   refreshBar();
+  updateSnapBar();
   startCam();
+
+  /* الفهرس: لو مش موجود ننزله، ولو أقدم من ساعة نحدّثه في الخلفية */
+  if (!IDX) fetchIndex(false);
+  else if (Date.now() - IDX_MS > 3600000) fetchIndex(true);
 }
 
 function refreshBar(){
-  var u = {};
-  Object.keys(S.lines).forEach(function(k){ u[S.lines[k].code] = 1; });
+  var u = {}, units = 0;
+  Object.keys(S.lines).forEach(function(k){
+    var L = S.lines[k];
+    u[L.code] = 1;
+    if (!S.by || L.who === S.by) units += (+L.qty || 0);   /* علبي أنا */
+  });
   $('bNum').innerHTML = Object.keys(u).length +
-    (TOTAL ? '<small>/' + TOTAL + '</small>' : '');
+    (TOTAL ? '<small>/' + TOTAL + '</small>' : '') +
+    (units ? '<small> · ' + (Math.round(units*10)/10) + ' علبة</small>' : '');
   $('kUndo').disabled = !hist.length;
 }
 
@@ -491,7 +583,8 @@ function put(code, name, expire, qty, sys, isNew, track){
   if (qty <= 0){ delete S.lines[k]; S.order = S.order.filter(function(x){ return x!==k; }); }
   else {
     S.lines[k] = { code:code, name:name, expire:expire||'', qty:qty, sys:sys||0,
-                   isNew:!!isNew, who:S.by||'', at:Date.now() };
+                   isNew:!!isNew, who:S.by||'', at:Date.now(),
+                   snapAt: IDX_AT || '' };   /* الرصيد ده كان بتاريخ إيه */
     S.order = S.order.filter(function(x){ return x!==k; });
     S.order.push(k);
   }
@@ -541,6 +634,16 @@ function onScan(text){
   lastCode = code; lastAt = now;
   if (busy) return;
   busy = true;
+
+  /* من الفهرس المحلي — فوري، من غير نت */
+  var localIt = idxGet(code);
+  if (localIt){
+    busy = false;
+    last = localIt;
+    SND.ask();
+    openBatches(localIt);
+    return;
+  }
 
   api('scanLookup',{code:code}).then(function(d){
     busy = false;
@@ -739,6 +842,10 @@ function editFromSession(code){
 }
 
 /* رجوع لآخر صنف اتمسح — لو قفل الورقة وعايز يعدّل */
+function refreshIndex(){
+  fetchIndex(false).then(function(){ updateSnapBar(); });
+}
+
 function reopenLast(){
   if (!last){ toast('امسح صنف الأول'); return; }
   openBatches(last);
@@ -857,10 +964,20 @@ function doFind(){
   var q = ($('fQ').value||'').trim(); if (!q) return;
   $('fRes').innerHTML = '<div class="state"><div class="spin"></div></div>';
   if (/^\d{6,14}$/.test(q)){
+    var li = idxGet(q);
+    if (li){ last = li; closeSheet(); pickAfterFind(li); return; }
     api('scanLookup',{code:q}).then(function(d){
       if (d && d.ok && d.found){ last = d.item; closeSheet(); pickAfterFind(d.item); }
       else $('fRes').innerHTML = '<div class="state err">الكود مش موجود</div>';
     });
+    return;
+  }
+  var lr = idxSearch(q);
+  if (lr.length){
+    window.__f = lr;
+    $('fRes').innerHTML = lr.slice(0,12).map(function(x,i){
+      return '<div class="row" onclick="chooseFind(' + i + ')"><div class="m"><b>' +
+        esc(x.name) + '</b><small>رصيد ' + n(x.stock) + '</small></div></div>'; }).join('');
     return;
   }
   api('scanSearch',{q:q}).then(function(d){
@@ -943,6 +1060,7 @@ function doDrop(id){
 })();
 
 loadLocal();
+idxLoad();
 goHome();
 window.addEventListener('beforeunload', save);
 document.addEventListener('visibilitychange', function(){

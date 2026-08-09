@@ -342,6 +342,12 @@ var T = {
   scanVerdictBad:['عالي — الوقفات كتير أوي. لازم نغيّر تصميم شاشة الجرد.',
                   'High — too many pauses. The counting screen needs a different design.'],
   counts:['الجرد','Stocktake'],
+  liveNow:['شغال دلوقتي','Counting now'],
+  staffCounts:['جرد الموظفين','Staff counting'],
+  boxes:['علبة','boxes'],
+  justNow:['دلوقتي','just now'],
+  minAgo:['دقيقة','min ago'],
+  hrAgo:['ساعة','hr ago'],
   deleteCount:['مسح الجرد','Delete stocktake'],
   typeToConfirm:['اكتب «مسح» عشان تأكد','Type «مسح» to confirm'],
   deleteNow:['امسح نهائيًا','Delete permanently'],
@@ -2328,9 +2334,13 @@ function pgCounts(){
   var seed = cacheGet('counts', {});
   if (seed) { CNT.sessions = seed; drawCounts(); } else busy(box);
 
-  api('countSessions').then(function(d){
+  Promise.all([ api('countSessions'),
+                api('countActivity', { range:'month' }).catch(function(){ return null; }) ])
+  .then(function(r){
+    var d = r[0];
     if (!d || !d.ok) throw new Error('counts');
     CNT.sessions = d.sessions || [];
+    CNT.act = r[1];
     cacheSet('counts', {}, CNT.sessions);
     markSync(); drawCounts();
   }).catch(function(e){ logErr(e); if (!seed) oops(box, "pgCounts()"); });
@@ -2339,10 +2349,36 @@ function pgCounts(){
 function drawCounts(){
   var box = document.getElementById('p-stock');
   var L = CNT.sessions || [];
+  var A = CNT.act || null;
+
+  /* مين شغال دلوقتي + جرد كل موظف.
+     ⚠️ الترتيب بالأصناف مش بالعلب عن قصد — لو قسنا بالعلبة الموظف
+     هيدوّر على الرفوف اللي فيها كميات كبيرة ويسيب الصعبة. */
+  var actHtml = '';
+  if (A && A.ok){
+    if ((A.live||[]).length){
+      actHtml += card(tr('liveNow'), null, A.live.map(function(x){
+        return '<div class="row"><div class="row-main"><b>' + esc(x.who) + '</b>' +
+          '<small>' + esc(x.title) + ' · ' + ltr(num(x.units)) + ' ' + tr('boxes') +
+          ' · ' + agoMs(x.lastMs) + '</small></div>' +
+          badge(ltr(num(x.items)) + ' ' + tr('items'), 'ok') + '</div>';
+      }).join(''));
+    }
+    if ((A.staff||[]).length){
+      actHtml += card(tr('staffCounts'), A.label, A.staff.map(function(x){
+        return '<div class="row"><div class="row-main"><b>' + esc(x.who) + '</b>' +
+          '<small>' + ltr(num(x.units)) + ' ' + tr('boxes') + ' · ' +
+          ltr(x.days) + ' ' + tr('daysWord') + ' · ' + tr('hasGap') + ' ' +
+          ltr(num(x.gaps)) + '</small></div>' +
+          badge(ltr(num(x.items)) + ' ' + tr('items') + ' · ' + ltr(x.coverage) + '%',
+                x.coverage >= 10 ? 'ok' : 'warn') + '</div>';
+      }).join(''));
+    }
+  }
   if (!L.length){
     box.innerHTML =
       '<button class="btn btn-quiet" onclick="openDue()" style="margin-bottom:10px">' +
-      tr('needsCount') + '</button>' +
+      tr('needsCount') + '</button>' + actHtml +
       card(tr('counts'), null, '<div class="state">' + tr('noCounts') + '</div>');
     return;
   }
@@ -2357,6 +2393,7 @@ function drawCounts(){
     { value: num(Math.round(totDiff)), label: tr('gapValue'), tone: 'warn', sub: tr('egp') }
   ]);
 
+  html += actHtml;
   html += card(tr('countHistory'), null, L.map(function(x){
     var bad = Math.abs(+x.diffValue || 0) > 0.5;
     return '<div class="row" onclick="openCount(\'' + esc(x.id) + '\')" style="cursor:pointer">' +
@@ -2446,6 +2483,14 @@ function doDeleteCount(id){
     try{ localStorage.removeItem(cacheKey('counts', {})); }catch(e){}
     pgCounts();
   }).catch(function(e){ logErr(e); toast(tr('failed')); });
+}
+
+function agoMs(ms){
+  if (!ms) return '';
+  var m = Math.round((Date.now() - ms)/60000);
+  if (m < 2) return tr('justNow');
+  if (m < 60) return ltr(m) + ' ' + tr('minAgo');
+  return ltr(Math.round(m/60)) + ' ' + tr('hrAgo');
 }
 
 /* ═══ أمر تصحيح الأرصدة ═══

@@ -4,463 +4,605 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0A0B0D">
-<title>جرد المخزون — صيدلية السوسي</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>جرد المخزون</title>
 <style>
-/* ═══ تصميم مقفول على الجرد: زرار كبير، خط كبير، مفيش تشتيت ═══ */
+/* ══════════════════════════════════════════════════════════
+   شاشة الجرد — مصمّمة للموظف واقف قدام الرف ماسك الموبايل بإيد.
+   المبادئ: خط أكبر من الداشبورد، لمسات أقل، شاشة واحدة في المرة،
+   وصفر نوافذ متصفح (prompt/alert) — كلها شيتات من تحت.
+   ══════════════════════════════════════════════════════════ */
 :root{
-  --bg:#0A0B0D; --card:#15171A; --line:#24272C;
-  --tx:#F2F4F7; --dim:#8B929C;
-  --ok:#34C77B; --warn:#F0A93B; --bad:#F45B5B; --brand:#3B9BF0;
+  --bg:#0A0B0D; --surface:#141619; --surface-2:#1C1F24; --line:#25292F;
+  --ink:#F2F4F7; --ink-2:#9BA3AF; --ink-3:#5F6670;
+  --brand:#1B92D4; --ok:#3DBE8B; --warn:#E8A33D; --bad:#E5646E;
+  --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px;
+  --r2:14px; --r3:20px;
+  /* أكبر من الداشبورد — الموظف بيبص بسرعة من مسافة */
+  --t-small:14px; --t-body:17px; --t-title:20px; --t-head:26px; --t-huge:44px;
 }
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;overflow:hidden}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+html,body{height:100%;overflow:hidden}
 body{
-  background:var(--bg);color:var(--tx);
-  font-family:-apple-system,"SF Arabic",system-ui,sans-serif;
-  font-size:17px;line-height:1.5;
-  padding-top:env(safe-area-inset-top);
-  padding-bottom:env(safe-area-inset-bottom);
+  background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;
+  font-size:var(--t-body);line-height:1.5;
+  -webkit-font-smoothing:antialiased;
   display:flex;flex-direction:column;
-  user-select:none;
+  user-select:none;-webkit-user-select:none;
 }
-button{font-family:inherit;font-size:inherit;color:inherit;border:0;background:none;cursor:pointer}
+button,input{font-family:inherit;font-size:inherit;color:inherit}
+.n{direction:ltr;unicode-bidi:isolate;display:inline-block;font-variant-numeric:tabular-nums}
 
+/* ── الرأس ── */
 .top{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 14px;border-bottom:1px solid var(--line);flex:0 0 auto;
+  flex:0 0 auto;display:flex;align-items:center;gap:var(--s3);
+  padding:var(--s3) var(--s4);
+  padding-top:calc(var(--s3) + env(safe-area-inset-top));
+  border-bottom:1px solid var(--line);background:var(--bg);
 }
-.top h1{font-size:16px;margin:0;flex:1;font-weight:700}
-.top small{display:block;color:var(--dim);font-size:12px;font-weight:400}
+.top .ttl{flex:1;min-width:0}
+.top h1{font-size:var(--t-title);font-weight:700;letter-spacing:-.3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top p{font-size:var(--t-small);color:var(--ink-3);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ib{
-  width:40px;height:40px;border-radius:12px;background:var(--card);
-  display:grid;place-items:center;font-size:18px
+  width:46px;height:46px;flex:0 0 auto;border:0;border-radius:var(--r2);
+  background:var(--surface-2);display:grid;place-items:center;font-size:22px;
 }
+.ib.go{background:var(--ok);color:#fff}
 
-.body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px}
+/* ── الجسم ── */
+.body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:var(--s4);padding-bottom:var(--s6)}
 
-.big{
-  width:100%;padding:22px;border-radius:18px;font-size:20px;font-weight:700;
-  background:var(--brand);color:#fff;margin-bottom:12px
+/* ── الأزرار ── */
+.btn{
+  display:block;width:100%;border:0;border-radius:var(--r3);
+  padding:var(--s5);font-size:var(--t-title);font-weight:700;
+  background:var(--surface-2);color:var(--ink);margin-bottom:var(--s3);
+  text-align:center;line-height:1.35;
 }
-.big.quiet{background:var(--card);color:var(--tx)}
-.big:disabled{opacity:.45}
+.btn.primary{background:var(--brand);color:#fff}
+.btn.go{background:var(--ok);color:#fff}
+.btn small{display:block;font-size:var(--t-small);font-weight:400;opacity:.8;margin-top:4px}
+.btn:active{transform:scale(.985)}
+.btn[disabled]{opacity:.4}
+.btn.side{text-align:right}
 
-/* ═══ الكاميرا ═══ */
-#cam{position:fixed;inset:0;background:#000;z-index:50;display:none;flex-direction:column}
-#cam.on{display:flex}
-#video{flex:1;width:100%;object-fit:cover}
-.reticle{
-  position:absolute;top:22%;left:8%;right:8%;height:150px;
-  border:3px solid rgba(255,255,255,.85);border-radius:14px;pointer-events:none;
-  box-shadow:0 0 0 4000px rgba(0,0,0,.45)
+/* ── حقول ── */
+.fld{
+  width:100%;padding:var(--s4);border-radius:var(--r2);
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  font-size:var(--t-body);margin-bottom:var(--s3);
 }
-.camfoot{
-  position:absolute;left:0;right:0;bottom:0;padding:14px;
-  padding-bottom:calc(14px + env(safe-area-inset-bottom));
-  background:linear-gradient(transparent,rgba(0,0,0,.9) 30%)
-}
+.fld:focus{outline:0;border-color:var(--brand)}
+.lbl{font-size:var(--t-small);color:var(--ink-3);font-weight:700;
+  margin:var(--s5) 0 var(--s2)}
 
-/* الصنف اللي لسه اتمسح */
-.last{background:var(--card);border-radius:16px;padding:14px;margin-bottom:10px}
-.last .nm{font-weight:700;font-size:18px;margin-bottom:6px}
-.last .meta{color:var(--dim);font-size:14px}
-.cnt{display:flex;align-items:center;gap:12px;margin-top:12px}
-.cnt b{font-size:34px;font-weight:800;min-width:56px;text-align:center}
-.step{
-  width:52px;height:52px;border-radius:14px;background:#20242A;
-  font-size:26px;display:grid;place-items:center
+/* ── اختيار الموظف ── */
+.picks{display:flex;flex-wrap:wrap;gap:var(--s2);margin-bottom:var(--s3)}
+.pick{
+  border:1px solid var(--line);background:var(--surface);border-radius:99px;
+  padding:12px 18px;font-size:var(--t-body);font-weight:600;
 }
+.pick.on{background:var(--brand);border-color:var(--brand);color:#fff}
 
-/* الدفعات */
-.batch{
-  display:flex;align-items:center;gap:10px;
-  padding:12px 0;border-top:1px solid var(--line)
-}
-.batch .ex{flex:1}
-.batch .ex b{display:block;font-size:16px}
-.batch .ex small{color:var(--dim);font-size:13px}
-.batch input{
-  width:84px;padding:12px;border-radius:12px;border:1px solid var(--line);
-  background:#0F1114;color:var(--tx);font-size:20px;text-align:center;font-weight:700
-}
+/* ── بطاقة آخر صنف ── */
+.card{background:var(--surface);border-radius:var(--r3);
+  padding:var(--s4);margin-bottom:var(--s3)}
+.card .nm{font-size:var(--t-title);font-weight:700;line-height:1.3}
+.card .sub{font-size:var(--t-small);color:var(--ink-2);margin-top:6px}
 
-.tot{
-  display:flex;gap:10px;padding:12px 14px;border-top:1px solid var(--line);
-  flex:0 0 auto;background:var(--card)
-}
-.tot div{flex:1;text-align:center}
-.tot b{display:block;font-size:22px;font-weight:800}
-.tot small{color:var(--dim);font-size:12px}
+/* عدّاد كبير */
+.counter{display:flex;align-items:center;justify-content:center;
+  gap:var(--s5);margin:var(--s5) 0 var(--s3)}
+.counter b{font-size:var(--t-huge);font-weight:800;min-width:80px;text-align:center;
+  font-variant-numeric:tabular-nums}
+.step{width:62px;height:62px;border:0;border-radius:var(--r2);
+  background:var(--surface-2);font-size:30px;font-weight:600;display:grid;place-items:center}
+.step:active{background:var(--brand);color:#fff}
 
-.row{display:flex;gap:10px;padding:13px 0;border-bottom:1px solid var(--line);align-items:center}
+/* صف دفعة */
+.bt{display:flex;align-items:center;gap:var(--s3);
+  padding:var(--s3) 0;border-top:1px solid var(--line)}
+.bt .ex{flex:1;min-width:0}
+.bt .ex b{display:block;font-size:var(--t-body);font-weight:700}
+.bt .ex small{color:var(--ink-3);font-size:var(--t-small)}
+.bt input{width:92px;padding:14px;border-radius:var(--r2);border:1px solid var(--line);
+  background:var(--bg);color:var(--ink);font-size:var(--t-title);
+  text-align:center;font-weight:700}
+.bt input:focus{outline:0;border-color:var(--brand)}
+
+/* ── صفوف ── */
+.row{display:flex;align-items:center;gap:var(--s3);
+  padding:var(--s4) 0;border-bottom:1px solid var(--line)}
 .row .m{flex:1;min-width:0}
-.row .m b{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.row .m small{color:var(--dim);font-size:13px}
-.row .v{font-weight:700;font-variant-numeric:tabular-nums}
+.row .m b{display:block;font-size:var(--t-body);font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .m small{display:block;color:var(--ink-3);font-size:var(--t-small);margin-top:2px}
+.tag{padding:7px 14px;border-radius:99px;font-size:var(--t-small);font-weight:700;flex:0 0 auto}
+.tag.ok{background:rgba(61,190,139,.15);color:var(--ok)}
+.tag.warn{background:rgba(232,163,61,.15);color:var(--warn)}
+.tag.bad{background:rgba(229,100,110,.15);color:var(--bad)}
 
-.pill{padding:4px 10px;border-radius:99px;font-size:13px;font-weight:700}
-.pill.ok{background:rgba(52,199,123,.16);color:var(--ok)}
-.pill.bad{background:rgba(244,91,91,.16);color:var(--bad)}
-.pill.warn{background:rgba(240,169,59,.16);color:var(--warn)}
+/* ── شريط الإجماليات ── */
+.tot{flex:0 0 auto;display:flex;background:var(--surface);
+  border-top:1px solid var(--line);
+  padding:var(--s3) var(--s4);
+  padding-bottom:calc(var(--s3) + env(safe-area-inset-bottom))}
+.tot div{flex:1;text-align:center}
+.tot b{display:block;font-size:var(--t-head);font-weight:800;font-variant-numeric:tabular-nums}
+.tot small{color:var(--ink-3);font-size:var(--t-small)}
 
-.note{color:var(--dim);font-size:14px;text-align:center;padding:26px 14px}
-.err{color:var(--bad)}
-.n{direction:ltr;display:inline-block;font-variant-numeric:tabular-nums}
+/* ── الكاميرا ── */
+#cam{position:fixed;inset:0;z-index:60;background:#000;display:none}
+#cam.on{display:block}
+#video{width:100%;height:100%;object-fit:cover}
+.mask{position:absolute;inset:0;pointer-events:none;
+  background:rgba(0,0,0,.5);
+  -webkit-mask:linear-gradient(#000,#000) ,
+    linear-gradient(#000,#000) 8% 26%/84% 140px no-repeat;
+  -webkit-mask-composite:xor;
+  mask:linear-gradient(#000,#000),
+    linear-gradient(#000,#000) 8% 26%/84% 140px no-repeat;
+  mask-composite:exclude}
+.frame{position:absolute;top:26%;left:8%;right:8%;height:140px;
+  border:3px solid rgba(255,255,255,.9);border-radius:var(--r2);pointer-events:none}
+.camtop{position:absolute;top:0;left:0;right:0;
+  padding:calc(var(--s4) + env(safe-area-inset-top)) var(--s4) var(--s4);
+  background:linear-gradient(rgba(0,0,0,.75),transparent)}
+.camtop .hint{color:#fff;font-size:var(--t-body);text-align:center}
+.cambot{position:absolute;left:0;right:0;bottom:0;
+  padding:var(--s4);padding-bottom:calc(var(--s4) + env(safe-area-inset-bottom));
+  background:linear-gradient(transparent,rgba(0,0,0,.88) 35%)}
+.flash{background:var(--surface);border-radius:var(--r3);
+  padding:var(--s4);margin-bottom:var(--s3);min-height:76px}
+.flash .nm{font-size:var(--t-title);font-weight:700;line-height:1.3}
+.flash .sub{font-size:var(--t-small);color:var(--ink-2);margin-top:4px}
+.flash.bad{background:rgba(229,100,110,.2)}
 
-input.txt{
-  width:100%;padding:15px;border-radius:14px;border:1px solid var(--line);
-  background:var(--card);color:var(--tx);font-size:17px;margin-bottom:10px
-}
-.gt{color:var(--dim);font-size:13px;font-weight:700;margin:18px 0 6px}
-.spin{
-  width:22px;height:22px;border:2px solid var(--line);border-top-color:var(--brand);
-  border-radius:99px;animation:sp .7s linear infinite;margin:0 auto 8px
-}
+/* ── شيت من تحت (بديل prompt) ── */
+.sheet{position:fixed;inset:0;z-index:70;display:none}
+.sheet.on{display:block}
+.sheet .bd{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+.sheet .pn{position:absolute;left:0;right:0;bottom:0;
+  background:var(--surface);border-radius:var(--r3) var(--r3) 0 0;
+  padding:var(--s5) var(--s4);
+  padding-bottom:calc(var(--s5) + env(safe-area-inset-bottom));
+  max-height:88%;overflow-y:auto}
+.sheet h2{font-size:var(--t-title);font-weight:700;margin-bottom:var(--s4)}
+.grab{width:40px;height:5px;border-radius:99px;background:var(--line);
+  margin:0 auto var(--s4)}
+
+/* ── حالات ── */
+.state{text-align:center;color:var(--ink-3);padding:var(--s6) var(--s4);
+  font-size:var(--t-body);line-height:1.6}
+.state.err{color:var(--bad)}
+.spin{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--brand);
+  border-radius:99px;animation:sp .7s linear infinite;margin:0 auto var(--s3)}
 @keyframes sp{to{transform:rotate(360deg)}}
+.dot{width:9px;height:9px;border-radius:99px;background:var(--ok);
+  display:inline-block;margin-inline-end:7px}
 </style>
 </head>
 <body>
 
 <div class="top">
-  <button class="ib" onclick="goHome()">‹</button>
-  <h1>جرد المخزون<small id="sub">صيدلية السوسي</small></h1>
-  <button class="ib" id="saveBtn" onclick="finish()" style="display:none">✓</button>
+  <button class="ib" id="back" onclick="goBack()">‹</button>
+  <div class="ttl"><h1 id="hTitle">جرد المخزون</h1><p id="hSub">صيدلية السوسي</p></div>
+  <button class="ib go" id="done" onclick="askFinish()" style="display:none">✓</button>
 </div>
 
 <div class="body" id="main"></div>
 
 <div class="tot" id="tot" style="display:none">
-  <div><b id="tItems">0</b><small>صنف</small></div>
-  <div><b id="tUnits">0</b><small>علبة</small></div>
-  <div><b id="tDiff">0</b><small>فيها فرق</small></div>
+  <div><b id="tI">0</b><small>صنف</small></div>
+  <div><b id="tU">0</b><small>علبة</small></div>
+  <div><b id="tD">0</b><small>فرق</small></div>
 </div>
 
-<!-- الكاميرا -->
 <div id="cam">
-  <video id="video" playsinline muted></video>
-  <div class="reticle"></div>
-  <div class="camfoot">
-    <div id="camMsg" style="text-align:center;color:#fff;margin-bottom:10px;min-height:24px"></div>
-    <button class="big quiet" onclick="stopCam()">إقفال الكاميرا</button>
+  <video id="video" playsinline muted autoplay></video>
+  <div class="mask"></div><div class="frame"></div>
+  <div class="camtop"><div class="hint" id="hint">وجّه الكاميرا على الباركود</div></div>
+  <div class="cambot">
+    <div class="flash" id="flash"><div class="state" style="padding:6px">مستني المسح…</div></div>
+    <button class="btn" onclick="stopCam()">إقفال الكاميرا</button>
   </div>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="bd" onclick="closeSheet()"></div>
+  <div class="pn"><div class="grab"></div><div id="sheetBody"></div></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
-/* ═══════════════════════════════════════════════════════════════════
-   جرد المخزون — صفحة مستقلة للموظفين
-   مفيهاش أي أرقام مالية ولا بيانات عملاء. الجرد بيطلع تقرير بس،
-   ومبيغيّرش المخزون خالص.
-
-   إزاي بيشتغل:
-     • كل علبة عليها ملصق فيه باركود Code128 = كود الصنف (8 أرقام)
-     • الملصق مفيهوش تاريخ صلاحية، فالماسحة بتعرف الصنف مش الدفعة
-     • عشان كده: الأصناف العادية بتتعدّ فورًا (+1)، والأصناف اللي
-       ليها أكتر من صلاحية بتوقف وتطلب من الموظف يوزّع الكمية
-   ═══════════════════════════════════════════════════════════════════ */
-
 var API = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7ctTVJjckmbTxegDq7E3R3p6aEBzqt275HNL8SBfWg/exec';
 
-var S = {           // حالة الجرد
-  id: null, title: '', by: '',
-  lines: {},        // "كود|صلاحية" -> {code,name,expire,qty,sys,isNew}
-  last: null
-};
-var reader = null, stream = null, busy = false, lastCode = '', lastAt = 0;
+var S = { id:null, title:'', by:'', lines:{}, last:null };
+var STAFF = [], reader = null, busy = false, lastCode = '', lastAt = 0, scans = 0, syncing = false;
 
-/* ═══ مساعدات ═══ */
-function $(id){ return document.getElementById(id); }
+/* ── مساعدات ── */
+function $(i){ return document.getElementById(i); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-function n(v){ return '<span class="n">' + (Math.round((+v||0)*100)/100).toLocaleString('en-US') + '</span>'; }
-function beep(ok){
+function n(v){ return '<span class="n">' +
+  (Math.round((+v||0)*100)/100).toLocaleString('en-US') + '</span>'; }
+function feedback(ok){
   try{
     var c = new (window.AudioContext||window.webkitAudioContext)();
     var o = c.createOscillator(), g = c.createGain();
     o.connect(g); g.connect(c.destination);
-    o.frequency.value = ok ? 880 : 240;
-    g.gain.setValueAtTime(.25, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(.01, c.currentTime + .16);
-    o.start(); o.stop(c.currentTime + .16);
+    o.frequency.value = ok ? 920 : 220;
+    g.gain.setValueAtTime(.22, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(.01, c.currentTime + .15);
+    o.start(); o.stop(c.currentTime + .15);
   }catch(e){}
-  try{ navigator.vibrate && navigator.vibrate(ok ? 40 : [60,50,60]); }catch(e){}
+  try{ navigator.vibrate && navigator.vibrate(ok ? 35 : [70,60,70]); }catch(e){}
 }
-function api(action, params){
-  var u = API + '?action=' + action;
-  for (var k in (params||{})) if (params[k]!=null) u += '&'+k+'='+encodeURIComponent(params[k]);
-  u += '&_ts=' + Date.now();
-  return fetch(u, {cache:'no-store'}).then(function(r){ return r.json(); });
+function api(a,p){
+  var u = API + '?action=' + a;
+  for (var k in (p||{})) if (p[k]!=null) u += '&'+k+'='+encodeURIComponent(p[k]);
+  return fetch(u + '&_ts=' + Date.now(), {cache:'no-store'}).then(function(r){ return r.json(); });
 }
-
-/* الجرد بيتحفظ محليًا مع كل مسحة — قطع النت أو قفل الصفحة مبيضيّعش شغل */
-var scans = 0, syncing = false;
-
-/* المحلي احتياطي للنت لما يقطع — المصدر الأساسي بقى السيرفر */
-function save(){ try{ localStorage.setItem('scan_session', JSON.stringify(S)); }catch(e){} }
-
-/* رفع للسيرفر كل 10 مسحات. كده لو الموبايل وقع تخسر 10 بالكتير،
-   وأي زميل يقدر يكمّل الجرد من موبايله. */
-function autoSync(force){
-  if (!S.id) return;
-  if (!force && (++scans % 10) !== 0) return;
-  if (syncing) return;
-  syncing = true;
-  var el = $('camMsg');
-  if (el && $('cam').classList.contains('on')) el.textContent += ' · بيحفظ…';
-  post({ action:'saveOpen', sessionId:S.id, title:S.title, by:S.by,
-         lines: Object.keys(S.lines).map(function(k){
-           var L = S.lines[k];
-           return { code:L.code, name:L.name, expire:L.expire,
-                    qty:L.qty, sys:L.sys, isNew:L.isNew };
-         }) })
-  .then(function(){ syncing=false; S.synced = Date.now(); })
-  .catch(function(){ syncing=false; });   /* فشل الرفع مبيوقفش الجرد */
-}
-
-function post(body){
-  return fetch(API, {
-    method:'POST',
+function post(b){
+  return fetch(API, { method:'POST',
     /* text/plain عشان المتصفح ميبعتش preflight — Apps Script مبيردش عليه */
-    headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-    body: JSON.stringify(body)
-  }).then(function(r){ return r.json(); });
-}
-function load(){
-  try{
-    var r = localStorage.getItem('scan_session');
-    if (r){ var o = JSON.parse(r); if (o && o.id){ S = o; return true; } }
-  }catch(e){}
-  return false;
-}
-function clearSession(){ try{ localStorage.removeItem('scan_session'); }catch(e){} }
-
-/* ═══ الشاشات ═══ */
-function goHome(){
-  stopCam();
-  if (S.id && Object.keys(S.lines).length){
-    if (!confirm('في جرد شغال. تسيبه ومحفوظ؟')) return;
-  }
-  screenStart();
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(b) }).then(function(r){ return r.json(); });
 }
 
+/* ── الشيت (بديل prompt/alert) ── */
+function openSheet(html){ $('sheetBody').innerHTML = html; $('sheet').classList.add('on'); }
+function closeSheet(){ $('sheet').classList.remove('on'); }
+function say(title, msg, btn){
+  openSheet('<h2>' + esc(title) + '</h2><div class="state">' + esc(msg) + '</div>' +
+    '<button class="btn primary" onclick="closeSheet()">' + (btn||'تمام') + '</button>');
+}
+
+/* ── التخزين ── */
+function save(){ try{ localStorage.setItem('scan_s', JSON.stringify(S)); }catch(e){} }
+function load(){ try{ var r=localStorage.getItem('scan_s');
+  if(r){ var o=JSON.parse(r); if(o&&o.id){ S=o; return true; } } }catch(e){} return false; }
+function wipe(){ try{ localStorage.removeItem('scan_s'); }catch(e){} }
+
+/* رفع كل 10 مسحات — لو الموبايل وقع تخسر 10 بالكتير، وأي زميل يكمّل */
+function sync(force){
+  if (!S.id || syncing) return;
+  if (!force && (++scans % 10) !== 0) return;
+  syncing = true;
+  post({ action:'saveOpen', sessionId:S.id, title:S.title, by:S.by,
+    lines: Object.keys(S.lines).map(function(k){ var L=S.lines[k];
+      return {code:L.code,name:L.name,expire:L.expire,qty:L.qty,
+              sys:L.sys,isNew:L.isNew,who:L.who||'',at:L.at||0}; }) })
+  .then(function(){ syncing=false; }).catch(function(){ syncing=false; });
+}
+
+/* ══════════ ١) شاشة البداية ══════════ */
 function screenStart(){
-  $('tot').style.display = 'none';
-  $('saveBtn').style.display = 'none';
-  $('sub').textContent = 'صيدلية السوسي';
-  $('main').innerHTML = '<div class="note"><div class="spin"></div>بيحمّل الجرود الشغالة…</div>';
+  stopCam();
+  $('tot').style.display='none'; $('done').style.display='none';
+  $('back').style.visibility='hidden';
+  $('hTitle').textContent='جرد المخزون'; $('hSub').textContent='صيدلية السوسي';
+  $('main').innerHTML = '<div class="state"><div class="spin"></div>بيحمّل…</div>';
 
-  api('openCounts').then(function(d){
-    drawStart((d && d.open) || []);
-  }).catch(function(){
-    drawStart(null);   /* النت مش راضي — نعرض المحلي بس */
+  Promise.all([ api('openCounts', S.by?{by:S.by}:{}).catch(function(){return null;}),
+                STAFF.length ? {ok:true,staff:STAFF} : api('scanStaff').catch(function(){return null;}) ])
+  .then(function(r){
+    if (r[1] && r[1].ok) STAFF = r[1].staff || [];
+    if (r[0] && r[0].ok) TOTAL = r[0].total || 0;
+    drawStart(r[0] && r[0].ok ? (r[0].open||[]) : null);
   });
 }
 
-function drawStart(open){
-  var h = '';
+var OPEN = [], TOTAL = 0;
 
-  if (open && open.length){
-    h += '<div class="gt">جرود شغالة — اقفل على واحد وكمّل</div>';
-    h += open.map(function(x){
-      return '<button class="big quiet" style="text-align:right" onclick="resume(\'' +
-        esc(x.id) + '\')">' + esc(x.title) +
-        '<br><small style="font-weight:400;font-size:13px;opacity:.75">' +
-        (x.by ? esc(x.by) + ' · ' : '') + x.lines + ' صنف · ' + ago(x.updated) +
-        '</small></button>';
-    }).join('');
+/* اسم الجرد بيتولّد من الشهر — مفيش تسمية يدوية.
+   الجرد عملية مستمرة، مش حدث بيتسمّى كل مرة. */
+function monthTitle(){
+  var M = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
+           'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  var d = new Date();
+  return 'جرد ' + M[d.getMonth()] + ' ' + d.getFullYear();
+}
+function monthId(){
+  var d = new Date();
+  return 'M' + d.getFullYear() + ('0'+(d.getMonth()+1)).slice(-2);
+}
+
+function drawStart(open){
+  OPEN = open || [];
+  var h = '<div class="lbl" style="margin-top:0">مين بيجرد؟</div>' +
+    '<div class="picks" id="who">' +
+      STAFF.map(function(s){
+        var on = (S.by === s.name) ? ' on' : '';
+        return '<button class="pick' + on + '" data-nm="' + esc(s.name) +
+          '" onclick="pickWho(this)">' + esc(s.name) + '</button>'; }).join('') +
+    '</div>';
+
+  var cur = OPEN.filter(function(x){ return x.id === monthId(); })[0];
+
+  if (cur){
+    var pct = TOTAL ? Math.round(cur.lines/TOTAL*100) : 0;
+    h += '<div class="lbl">الجرد الشغال</div>' +
+      '<button class="btn primary" onclick="resume(\'' + esc(cur.id) + '\')">' +
+      esc(cur.title) + '<small>' + cur.lines + ' من ' + n(TOTAL) + ' صنف · ' +
+      pct + '٪ · آخر مسحة ' + ago(cur.updated) + '</small></button>' +
+      recentBlock(cur);
   } else if (open === null && S.id && Object.keys(S.lines).length){
-    /* النت واقع بس فيه جرد محفوظ على الموبايل */
-    h += '<div class="gt">محفوظ على الموبايل</div>' +
-         '<button class="big quiet" onclick="screenCount()">كمّل: ' + esc(S.title) +
-         '<br><small style="font-weight:400;font-size:13px;opacity:.75">' +
-         Object.keys(S.lines).length + ' صنف</small></button>';
+    h += '<div class="lbl">محفوظ على الموبايل</div>' +
+      '<button class="btn primary" onclick="screenCount()">' + esc(S.title) +
+      '<small>' + Object.keys(S.lines).length + ' صنف · النت مش راضي</small></button>';
+  } else {
+    h += '<div class="lbl">' + monthTitle() + '</div>' +
+      '<button class="btn primary" onclick="startNew()">ابدأ الجرد</button>';
   }
 
-  h += '<div class="gt">جرد جديد</div>' +
-       '<input class="txt" id="ttl" placeholder="اسم الجرد (مثلاً: رف الأدوية)">' +
-       '<input class="txt" id="who" placeholder="اسمك">' +
-       '<button class="big" onclick="startNew()">ابدأ الجرد</button>';
+  /* جرود شهور فاتت لسه مفتوحة */
+  var old_ = OPEN.filter(function(x){ return x.id !== monthId(); });
+  if (old_.length){
+    h += '<div class="lbl">شهور فاتت لسه مفتوحة</div>';
+    h += old_.map(function(x){
+      return '<button class="btn side" onclick="resume(\'' + esc(x.id) + '\')">' +
+        esc(x.title) + '<small>' + x.lines + ' صنف · ' + ago(x.updated) +
+        '</small></button>'; }).join('');
+  }
   $('main').innerHTML = h;
+}
+
+/* آخر 5 أصناف — الموظف يبص عليهم ويفتكر هو كان واقف فين.
+   لو اختار اسمه، بيشوف آخر 5 بتوعه هو مش بتوع الكل. */
+function recentBlock(x){
+  var list = (S.by && x.mine && x.mine.length) ? x.mine : (x.recent||[]);
+  if (!list.length) return '';
+  var mine = !!(S.by && x.mine && x.mine.length);
+  return '<div class="lbl">' + (mine ? 'آخر ٥ عدّيتهم' : 'آخر ٥ اتعدّوا') + '</div>' +
+    list.map(function(L){
+      return '<div class="row"><div class="m"><b>' + esc(L.name) + '</b><small>' +
+        (L.expire?esc(L.expire)+' · ':'') + 'عدّ ' + n(L.qty) +
+        (L.at ? ' · ' + ago(L.at) : '') + '</small></div></div>';
+    }).join('');
+}
+
+function pickWho(el){
+  var all = document.querySelectorAll('#who .pick');
+  for (var i=0;i<all.length;i++) all[i].classList.remove('on');
+  el.classList.add('on');
+  S.by = el.dataset.nm;
+  save();
+  /* نعيد الرسم عشان يشوف آخر 5 بتوعه هو */
+  api('openCounts', { by: S.by }).then(function(d){
+    if (d && d.ok){ TOTAL = d.total || TOTAL; drawStart(d.open||[]); }
+  }).catch(function(){});
 }
 
 function ago(t){
   try{
-    var d = new Date(String(t).replace(' ','T'));
-    var m = Math.round((Date.now() - d.getTime()) / 60000);
-    if (m < 1) return 'دلوقتي';
-    if (m < 60) return 'من ' + m + ' دقيقة';
+    var ms = (typeof t === 'number') ? t
+           : new Date(String(t).replace(' ','T')).getTime();
+    var m = Math.round((Date.now() - ms)/60000);
+    if (m<1) return 'دلوقتي';
+    if (m<60) return 'من ' + m + ' دقيقة';
     var hh = Math.round(m/60);
-    if (hh < 24) return 'من ' + hh + ' ساعة';
-    return 'من ' + Math.round(hh/24) + ' يوم';
+    return hh<24 ? ('من ' + hh + ' ساعة') : ('من ' + Math.round(hh/24) + ' يوم');
   }catch(e){ return ''; }
 }
 
-/* فتح جرد زميل تاني بدأه */
-function resume(id){
-  $('main').innerHTML = '<div class="note"><div class="spin"></div>بيفتح…</div>';
-  api('loadCount', { session: id }).then(function(d){
-    if (!d || !d.ok){ alert('مقدرتش أفتحه'); screenStart(); return; }
-    S = { id: d.sessionId, title: d.title, by: d.by || '', lines: {}, last: null };
-    (d.lines || []).forEach(function(L){
-      S.lines[L.code + '|' + (L.expire||'')] = {
-        code:L.code, name:L.name||'', expire:L.expire||'',
-        qty:+L.qty||0, sys:+L.sys||0, isNew: !!L.isNew
-      };
-    });
-    save(); screenCount(); startCam();
-  }).catch(function(){ alert('النت مش راضي'); screenStart(); });
-}
-
 function startNew(){
-  var t = ($('ttl').value||'').trim(), w = ($('who').value||'').trim();
-  if (!t){ alert('اكتب اسم الجرد'); return; }
-  if (S.id && Object.keys(S.lines).length &&
-      !confirm('في جرد شغال هيتمسح. تكمّل؟')) return;
-  S = { id: 'J'+Date.now(), title: t, by: w, lines: {}, last: null };
+  var sel = document.querySelector('#who .pick.on');
+  if (!sel){ say('ناقص حاجة','اختار اسمك من القايمة الأول'); return; }
+  S = { id: monthId(), title: monthTitle(), by: sel.dataset.nm,
+        lines:{}, order:[], last:null };
   save(); screenCount(); startCam();
 }
 
+function resume(id){
+  var sel = document.querySelector('#who .pick.on');
+  if (!sel && !S.by){ say('ناقص حاجة','اختار اسمك من القايمة الأول'); return; }
+  var me = sel ? sel.dataset.nm : S.by;
+
+  $('main').innerHTML = '<div class="state"><div class="spin"></div>بيفتح…</div>';
+  api('loadCount',{session:id}).then(function(d){
+    if (!d || !d.ok){ say('مقدرتش','الجرد ده مش موجود'); screenStart(); return; }
+    S = { id:d.sessionId, title:d.title, by:me, lines:{}, order:[], last:null };
+    (d.lines||[]).forEach(function(L){
+      var k = L.code+'|'+(L.expire||'');
+      S.lines[k] = { code:L.code, name:L.name||'', expire:L.expire||'',
+        qty:+L.qty||0, sys:+L.sys||0, isNew:!!L.isNew,
+        who:L.who||'', at:L.at||0 };
+      S.order.push(k);
+    });
+    save(); screenCount(); startCam();
+  }).catch(function(){ say('النت','مش راضي يفتح — جرب تاني'); screenStart(); });
+}
+
+/* ══════════ ٢) شاشة الجرد ══════════ */
 function screenCount(){
-  $('tot').style.display = 'flex';
-  $('saveBtn').style.display = 'grid';
-  $('sub').textContent = S.title;
+  $('tot').style.display='flex'; $('done').style.display='grid';
+  $('back').style.visibility='visible';
+  $('hTitle').textContent = S.title;
+  $('hSub').textContent = S.by || '';
   draw();
 }
 
 function draw(){
-  var keys = Object.keys(S.lines);
-  var items = {}, units = 0, diffs = 0;
-  keys.forEach(function(k){
-    var L = S.lines[k];
-    items[L.code] = 1; units += L.qty;
-    if (Math.abs(L.qty - L.sys) > .001) diffs++;
-  });
-  $('tItems').textContent = Object.keys(items).length;
-  $('tUnits').textContent = Math.round(units);
-  $('tDiff').textContent = diffs;
+  var keys = Object.keys(S.lines), items = {}, units = 0, diffs = 0;
+  keys.forEach(function(k){ var L=S.lines[k];
+    items[L.code]=1; units+=L.qty;
+    if (Math.abs(L.qty-L.sys)>.001) diffs++; });
+  var cnt = Object.keys(items).length;
+  $('tI').innerHTML = cnt + (TOTAL ? '<small style="font-size:12px;opacity:.6">/' +
+    TOTAL + '</small>' : '');
+  $('tU').textContent = Math.round(units);
+  $('tD').textContent = diffs;
 
-  var h = '<button class="big" onclick="startCam()">📷 امسح</button>' +
-          '<button class="big quiet" onclick="manual()">بحث بالاسم أو الكود</button>';
-
+  var h = '<button class="btn primary" onclick="startCam()">📷 امسح باركود</button>' +
+          '<button class="btn" onclick="openFind()">بحث بالاسم</button>';
   if (S.last) h += lastCard(S.last);
 
   if (keys.length){
-    h += '<div class="gt">اللي اتعدّ (' + Object.keys(items).length + ' صنف)</div>';
+    h += '<div class="lbl">اللي اتعدّ</div>';
     h += keys.slice().reverse().map(function(k){
-      var L = S.lines[k], d = L.qty - L.sys;
-      var cls = Math.abs(d) < .001 ? 'ok' : (d > 0 ? 'warn' : 'bad');
-      return '<div class="row"><div class="m"><b>' + esc(L.name) + '</b>' +
-             '<small>' + (L.expire ? esc(L.expire) : 'من غير صلاحية') +
-             ' · السيستم ' + n(L.sys) + '</small></div>' +
-             '<span class="pill ' + cls + '">' + n(L.qty) + '</span></div>';
+      var L = S.lines[k], d = L.qty-L.sys;
+      var cls = Math.abs(d)<.001 ? 'ok' : (d>0?'warn':'bad');
+      return '<div class="row"><div class="m"><b>' + esc(L.name) + '</b><small>' +
+        (L.expire?esc(L.expire):'من غير صلاحية') + ' · السيستم ' + n(L.sys) +
+        '</small></div><span class="tag ' + cls + '">' + n(L.qty) + '</span></div>';
     }).join('');
   } else {
-    h += '<div class="note">دوس «امسح» وصوّر باركود العلبة</div>';
+    h += '<div class="state">دوس «امسح باركود» وصوّر ملصق العلبة</div>';
   }
   $('main').innerHTML = h;
-  $('main').scrollTop = 0;
 }
 
-/* كارت آخر صنف اتمسح */
 function lastCard(it){
-  var h = '<div class="last"><div class="nm">' + esc(it.name) + '</div>';
-
-  /* الدفعات = اللي السيستم عارفها + أي صلاحية الموظف ضافها بنفسه.
-     الملصق مفيهوش تاريخ، فالموظف هو اللي بيفرّق بعينه من على العلبة. */
+  var h = '<div class="card"><div class="nm">' + esc(it.name) + '</div>';
   var all = it.batches.slice();
-  Object.keys(S.lines).forEach(function(k){
-    var L = S.lines[k];
-    if (L.code !== it.code) return;
-    if (!all.some(function(b){ return (b.expire||'') === (L.expire||''); }))
-      all.push({ expire: L.expire, stock: 0, added: true });
-  });
+  Object.keys(S.lines).forEach(function(k){ var L=S.lines[k];
+    if (L.code!==it.code) return;
+    if (!all.some(function(b){ return (b.expire||'')===(L.expire||''); }))
+      all.push({expire:L.expire, stock:0, added:true}); });
 
   if (all.length > 1){
-    h += '<div class="meta">' + all.length + ' صلاحيات — اكتب اللي عدّيته من كل واحدة:</div>';
+    h += '<div class="sub">' + all.length + ' صلاحيات — اكتب اللي عدّيته من كل واحدة</div>';
     all.forEach(function(b){
-      var k = it.code + '|' + (b.expire||'');
+      var k = it.code+'|'+(b.expire||'');
       var cur = S.lines[k] ? S.lines[k].qty : '';
-      h += '<div class="batch"><div class="ex"><b>' + esc(b.expire || '—') + '</b>' +
-           '<small>' + (b.added ? 'مش في السيستم' : 'السيستم ' + n(b.stock)) + '</small></div>' +
-           '<input type="number" inputmode="decimal" min="0" value="' + cur + '" ' +
-           'onchange="setQty(\'' + it.code + '\',\'' + (b.expire||'') + '\',' +
-           (b.stock||0) + ',this.value)"></div>';
+      h += '<div class="bt"><div class="ex"><b>' + esc(b.expire||'—') + '</b><small>' +
+        (b.added?'مش في السيستم':'السيستم ' + n(b.stock)) + '</small></div>' +
+        '<input type="number" inputmode="decimal" min="0" value="' + cur +
+        '" onchange="setQty(\'' + it.code + '\',\'' + (b.expire||'') + '\',' +
+        (b.stock||0) + ',this.value)"></div>';
     });
   } else {
-    var b = all[0] || {expire:'', stock: it.stock};
-    var k = it.code + '|' + (b.expire||'');
+    var b = all[0] || {expire:'', stock:it.stock};
+    var k = it.code+'|'+(b.expire||'');
     var q = S.lines[k] ? S.lines[k].qty : 0;
-    h += '<div class="meta">' + (b.expire ? esc(b.expire) : 'من غير صلاحية') +
-         ' · السيستم ' + n(b.stock) + '</div>' +
-         '<div class="cnt"><button class="step" onclick="bump(\'' + k + '\',-1)">−</button>' +
-         '<b>' + n(q) + '</b>' +
-         '<button class="step" onclick="bump(\'' + k + '\',1)">+</button></div>';
+    h += '<div class="sub">' + (b.expire?esc(b.expire):'من غير صلاحية') +
+      ' · السيستم ' + n(b.stock) + '</div>' +
+      '<div class="counter"><button class="step" onclick="bump(\'' + k + '\',-1)">−</button>' +
+      '<b>' + n(q) + '</b>' +
+      '<button class="step" onclick="bump(\'' + k + '\',1)">+</button></div>';
   }
-
-  /* الزرار ده موجود دايمًا — حتى لو السيستم شايف صلاحية واحدة.
-     أكتر حاجة بتكشف مشاكل: بضاعة دخلت بصلاحية متسجلتش. */
-  h += '<button class="big quiet" style="margin-top:12px" onclick="addBatch(\'' +
-       it.code + '\')">+ صلاحية تانية على الرف</button>';
+  /* موجود دايمًا — أكتر حاجة بتكشف مشاكل: بضاعة بصلاحية متسجلتش */
+  h += '<button class="btn" onclick="openAddBatch(\'' + it.code +
+       '\')" style="margin:0">+ صلاحية تانية على الرف</button>';
   return h + '</div>';
 }
 
-/* ═══ العدّ ═══ */
-function put(code, name, expire, qty, sys, isNew){
-  var k = code + '|' + (expire||'');
-  if (qty <= 0){ delete S.lines[k]; }
-  else S.lines[k] = { code:code, name:name, expire:expire||'',
-                      qty:qty, sys:sys||0, isNew: !!isNew };
-  save(); autoSync(); draw();
+/* ── العدّ ── */
+function put(code,name,expire,qty,sys,isNew){
+  var k = code+'|'+(expire||'');
+  if (qty<=0){ delete S.lines[k]; }
+  else {
+    /* بنسجّل مين عدّه وإمتى — منهم بيتبني "كنت واقف فين" */
+    S.lines[k] = { code:code, name:name, expire:expire||'', qty:qty,
+                   sys:sys||0, isNew:!!isNew, who:S.by||'', at:Date.now() };
+    S.order = (S.order||[]).filter(function(x){ return x!==k; });
+    S.order.push(k);
+  }
+  save(); sync(); draw();
 }
-function bump(k, d){
+function bump(k,d){
   var L = S.lines[k];
-  if (L){ put(L.code, L.name, L.expire, L.qty + d, L.sys, L.isNew); return; }
-  var it = S.last; if (!it) return;
-  var b = it.batches[0] || {expire:'', stock: it.stock};
-  if (d > 0) put(it.code, it.name, b.expire, d, b.stock, false);
+  if (L){ put(L.code,L.name,L.expire,L.qty+d,L.sys,L.isNew); return; }
+  var it = S.last; if (!it || d<=0) return;
+  var b = it.batches[0] || {expire:'',stock:it.stock};
+  put(it.code,it.name,b.expire,d,b.stock,false);
 }
-function setQty(code, expire, sys, val){
-  var it = S.last; if (!it || it.code !== code) return;
-  var known = it.batches.some(function(b){ return (b.expire||'') === expire; });
-  put(code, it.name, expire, parseFloat(val)||0, sys, !known);
-}
-function addBatch(code){
-  var it = S.last; if (!it || it.code !== code) return;
-  var e = prompt('صلاحية العلبة (شهر وسنة):\n\nمثال: 2027-05');
-  if (!e) return;
-  e = String(e).trim().replace(/\//g,'-');
-  var m = e.match(/^(\d{4})-(\d{1,2})$/);
-  if (!m){ alert('اكتبها كده: 2027-05'); return; }
-  var full = m[1] + '-' + ('0'+m[2]).slice(-2) + '-01';
-
-  var known = it.batches.filter(function(b){ return b.expire === full; })[0];
-  var q = prompt('عدّيت كام علبة بصلاحية ' + m[1] + '-' + ('0'+m[2]).slice(-2) + '؟');
-  q = parseFloat(q)||0;
-  if (q <= 0) return;
-  put(code, it.name, full, q, known ? known.stock : 0, !known);
+function setQty(code,expire,sys,val){
+  var it = S.last; if (!it || it.code!==code) return;
+  var known = it.batches.some(function(b){ return (b.expire||'')===expire; });
+  put(code,it.name,expire,parseFloat(val)||0,sys,!known);
 }
 
-/* ═══ الكاميرا ═══ */
+/* ── إضافة صلاحية (شيت مش prompt) ── */
+function openAddBatch(code){
+  var y = new Date().getFullYear(), yrs = '';
+  for (var i=0;i<7;i++) yrs += '<option value="'+(y+i)+'">'+(y+i)+'</option>';
+  var mo = '';
+  for (var m=1;m<=12;m++){ var v=('0'+m).slice(-2); mo += '<option value="'+v+'">'+v+'</option>'; }
+  openSheet('<h2>صلاحية تانية على الرف</h2>' +
+    '<div class="lbl" style="margin-top:0">الشهر والسنة المكتوبين على العلبة</div>' +
+    '<div style="display:flex;gap:10px;margin-bottom:12px">' +
+      '<select class="fld" id="bM" style="margin:0">' + mo + '</select>' +
+      '<select class="fld" id="bY" style="margin:0">' + yrs + '</select></div>' +
+    '<div class="lbl">عدّيت كام علبة بالصلاحية دي؟</div>' +
+    '<input class="fld" id="bQ" type="number" inputmode="decimal" min="0" placeholder="مثلاً 3">' +
+    '<button class="btn primary" onclick="doAddBatch(\'' + code + '\')">ضيف</button>' +
+    '<button class="btn" onclick="closeSheet()">إلغاء</button>');
+}
+function doAddBatch(code){
+  var it = S.last; if (!it || it.code!==code){ closeSheet(); return; }
+  var q = parseFloat($('bQ').value)||0;
+  if (q<=0){ return; }
+  var full = $('bY').value + '-' + $('bM').value + '-01';
+  var known = it.batches.filter(function(b){ return b.expire===full; })[0];
+  put(code,it.name,full,q,known?known.stock:0,!known);
+  closeSheet();
+}
+
+/* ── بحث بالاسم ── */
+function openFind(){
+  openSheet('<h2>بحث</h2>' +
+    '<input class="fld" id="fQ" placeholder="اسم الصنف أو الكود" autocomplete="off">' +
+    '<button class="btn primary" onclick="doFind()">دوّر</button>' +
+    '<div id="fRes"></div>');
+  setTimeout(function(){ var e=$('fQ'); e&&e.focus(); },250);
+}
+function doFind(){
+  var q = ($('fQ').value||'').trim(); if (!q) return;
+  $('fRes').innerHTML = '<div class="state"><div class="spin"></div></div>';
+  if (/^\d{6,14}$/.test(q)){
+    api('scanLookup',{code:q}).then(function(d){
+      if (d&&d.ok&&d.found){ S.last=d.item; closeSheet(); screenCount(); }
+      else $('fRes').innerHTML = '<div class="state err">الكود مش موجود</div>';
+    });
+    return;
+  }
+  api('scanSearch',{q:q}).then(function(d){
+    var r = (d&&d.results)||[];
+    if (!r.length){ $('fRes').innerHTML='<div class="state">مفيش نتايج</div>'; return; }
+    $('fRes').innerHTML = r.slice(0,12).map(function(x,i){
+      return '<div class="row" onclick="chooseFind('+i+')" style="cursor:pointer">' +
+        '<div class="m"><b>' + esc(x.name) + '</b><small>رصيد ' + n(x.stock) +
+        '</small></div></div>'; }).join('');
+    window.__found = r;
+  });
+}
+function chooseFind(i){
+  var r = window.__found||[]; if (!r[i]) return;
+  S.last = r[i]; closeSheet(); screenCount();
+}
+
+/* ══════════ ٣) الكاميرا ══════════ */
 function startCam(){
   $('cam').classList.add('on');
-  $('camMsg').textContent = 'وجّه الكاميرا على الباركود';
-  if (!window.ZXing){ $('camMsg').innerHTML = '<span class="err">مكتبة القراءة متحمّلتش — راجع النت</span>'; return; }
+  $('hint').textContent = 'وجّه الكاميرا على الباركود';
+  $('flash').className='flash';
+  $('flash').innerHTML = '<div class="state" style="padding:6px">مستني المسح…</div>';
+  if (!window.ZXing){
+    $('hint').innerHTML = '<span style="color:#E5646E">مكتبة القراءة متحمّلتش — راجع النت</span>';
+    return;
+  }
   try{
     var hints = new Map();
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,
       [ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
        ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
        ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.UPC_A]);
-    reader = new ZXing.BrowserMultiFormatReader(hints, 220);
-    reader.decodeFromConstraints(
-      { video: { facingMode: { ideal: 'environment' } } },
-      'video',
-      function(res, err){ if (res) onScan(res.getText()); }
-    ).catch(function(e){
-      $('camMsg').innerHTML = '<span class="err">الكاميرا مش راضية تفتح: ' + esc(e.message) + '</span>';
+    reader = new ZXing.BrowserMultiFormatReader(hints, 200);
+    reader.decodeFromConstraints({ video:{ facingMode:{ideal:'environment'} } }, 'video',
+      function(res){ if (res) onScan(res.getText()); })
+    .catch(function(e){
+      $('hint').innerHTML = '<span style="color:#E5646E">الكاميرا مش راضية تفتح</span>';
+      $('flash').innerHTML = '<div class="state" style="padding:6px">' + esc(e.message) + '</div>';
     });
   }catch(e){
-    $('camMsg').innerHTML = '<span class="err">' + esc(e.message) + '</span>';
+    $('hint').innerHTML = '<span style="color:#E5646E">' + esc(e.message) + '</span>';
   }
 }
 function stopCam(){
@@ -474,106 +616,96 @@ function onScan(text){
   if (!code) return;
   var now = Date.now();
   /* نفس الباركود خلال ثانية ونص = ارتجاجة مش مسحة جديدة */
-  if (code === lastCode && now - lastAt < 1500) return;
-  lastCode = code; lastAt = now;
+  if (code===lastCode && now-lastAt<1500) return;
+  lastCode=code; lastAt=now;
   if (busy) return;
   busy = true;
 
-  $('camMsg').textContent = 'بيدوّر…';
-  api('scanLookup', { code: code }).then(function(d){
+  api('scanLookup',{code:code}).then(function(d){
     busy = false;
     if (!d || !d.ok || !d.found){
-      beep(false);
-      $('camMsg').innerHTML = '<span class="err">الكود ' + esc(code) + ' مش موجود في المخزون</span>';
+      feedback(false);
+      $('flash').className='flash bad';
+      $('flash').innerHTML = '<div class="nm">مش موجود</div><div class="sub">الكود ' +
+        esc(code) + ' مش في المخزون</div>';
       return;
     }
-    var it = d.item;
-    S.last = it;
-    beep(true);
+    var it = d.item; S.last = it; feedback(true);
 
     if (it.multi){
-      /* وقفة: الموظف لازم يوزّع الكمية على الصلاحيات */
-      $('camMsg').textContent = it.name + ' — ليه ' + it.batches.length + ' صلاحيات';
+      /* وقفة: الموظف لازم يوزّع على الصلاحيات */
       stopCam(); screenCount();
-    } else {
-      var b = it.batches[0] || {expire:'', stock: it.stock};
-      var k = it.code + '|' + (b.expire||'');
-      var q = (S.lines[k] ? S.lines[k].qty : 0) + 1;
-      put(it.code, it.name, b.expire, q, b.stock, false);
-      $('camMsg').textContent = it.name + ' — ' + q;
+      return;
     }
-  }).catch(function(e){
-    busy = false; beep(false);
-    $('camMsg').innerHTML = '<span class="err">النت مش راضي — جرب تاني</span>';
+    var b = it.batches[0] || {expire:'', stock:it.stock};
+    var k = it.code+'|'+(b.expire||'');
+    var q = (S.lines[k]?S.lines[k].qty:0) + 1;
+    put(it.code,it.name,b.expire,q,b.stock,false);
+    $('flash').className='flash';
+    $('flash').innerHTML = '<div class="nm">' + esc(it.name) +
+      '</div><div class="sub">عدّيت ' + n(q) + ' · السيستم ' + n(b.stock) + '</div>';
+  }).catch(function(){
+    busy=false; feedback(false);
+    $('flash').className='flash bad';
+    $('flash').innerHTML = '<div class="state" style="padding:6px">النت مش راضي — جرب تاني</div>';
   });
 }
 
-/* ═══ بحث يدوي — لما الملصق يبقى مقروش ═══ */
-function manual(){
-  var q = prompt('اكتب اسم الصنف أو الكود');
-  if (!q) return;
-  q = q.trim(); if (!q) return;
-
-  if (/^\d{6,14}$/.test(q)){
-    api('scanLookup', { code: q }).then(function(d){
-      if (d && d.ok && d.found){ S.last = d.item; screenCount(); }
-      else alert('الكود مش موجود');
-    });
-    return;
-  }
-  api('scanSearch', { q: q }).then(function(d){
-    var r = (d && d.results) || [];
-    if (!r.length){ alert('مفيش نتايج'); return; }
-    var msg = r.slice(0,9).map(function(x,i){ return (i+1)+'. '+x.name; }).join('\n');
-    var pick = prompt(msg + '\n\nاكتب الرقم:');
-    var i = parseInt(pick,10) - 1;
-    if (i >= 0 && r[i]){ S.last = r[i]; screenCount(); }
-  });
+/* ══════════ ٤) الإنهاء ══════════ */
+function goBack(){
+  if (!S.id){ screenStart(); return; }
+  sync(true);
+  openSheet('<h2>تسيب الجرد؟</h2>' +
+    '<div class="state">الشغل محفوظ. تقدر ترجع تكمّله من أي موبايل.</div>' +
+    '<button class="btn primary" onclick="closeSheet();screenStart()">اسيبه</button>' +
+    '<button class="btn" onclick="closeSheet()">كمّل</button>');
 }
 
-/* ═══ الحفظ النهائي ═══ */
-function finish(){
-  var keys = Object.keys(S.lines);
-  if (!keys.length){ alert('الجرد فاضي'); return; }
-  if (!confirm('تحفظ الجرد؟ ' + keys.length + ' سطر.\n\nالجرد بيطلع تقرير بس ومش بيغيّر المخزون.')) return;
-
-  $('main').innerHTML = '<div class="note"><div class="spin"></div>بيحفظ…</div>';
+function askFinish(){
+  var k = Object.keys(S.lines).length;
+  if (!k){ say('الجرد فاضي','امسح حاجة الأول'); return; }
   stopCam();
+  openSheet('<h2>تقفل الجرد؟</h2>' +
+    '<div class="state">' + k + ' سطر هيتسجّل.<br>الجرد بيطلع تقرير بس ومش بيغيّر المخزون.</div>' +
+    '<button class="btn go" onclick="finish()">اقفل واحفظ</button>' +
+    '<button class="btn" onclick="closeSheet()">لسه</button>');
+}
 
-  post({
-    action: 'saveCount', sessionId: S.id, title: S.title, by: S.by,
-    lines: keys.map(function(k){
-      var L = S.lines[k];
-      return { code:L.code, expire:L.expire, qty:L.qty, isNewBatch:L.isNew };
-    })
-  }).then(function(d){
-    if (!d || !d.ok) throw new Error((d && d.error) || 'فشل');
-    clearSession();
-    S = { id:null, title:'', by:'', lines:{}, last:null };
-    $('tot').style.display = 'none';
-    $('saveBtn').style.display = 'none';
+function finish(){
+  closeSheet();
+  var keys = Object.keys(S.lines);
+  $('main').innerHTML = '<div class="state"><div class="spin"></div>بيحفظ…</div>';
+  post({ action:'saveCount', sessionId:S.id, title:S.title, by:S.by,
+    lines: keys.map(function(k){ var L=S.lines[k];
+      return {code:L.code,expire:L.expire,qty:L.qty,isNewBatch:L.isNew}; }) })
+  .then(function(d){
+    if (!d || !d.ok) throw new Error((d&&d.error)||'فشل');
+    wipe(); S = {id:null,title:'',by:'',lines:{},last:null};
+    $('tot').style.display='none'; $('done').style.display='none';
+    $('hTitle').textContent='تم'; $('hSub').textContent='';
     $('main').innerHTML =
-      '<div class="note" style="color:var(--ok);font-size:20px;font-weight:700">✅ الجرد اتحفظ</div>' +
-      '<div class="row"><div class="m"><b>الأصناف</b></div><span class="v">' + n(d.lines) + '</span></div>' +
-      '<div class="row"><div class="m"><b>فيها فرق</b></div><span class="v">' + n(d.diffCount) + '</span></div>' +
-      '<button class="big" style="margin-top:18px" onclick="screenStart()">جرد جديد</button>';
+      '<div class="state" style="color:var(--ok);font-size:22px;font-weight:700;padding-bottom:8px">' +
+      '<span class="dot"></span>الجرد اتحفظ</div>' +
+      '<div class="row"><div class="m"><b>الأصناف</b></div><span class="tag ok">' +
+        n(d.lines) + '</span></div>' +
+      '<div class="row"><div class="m"><b>فيها فرق</b></div><span class="tag ' +
+        (d.diffCount?'warn':'ok') + '">' + n(d.diffCount) + '</span></div>' +
+      '<button class="btn primary" style="margin-top:20px" onclick="screenStart()">جرد جديد</button>';
   }).catch(function(e){
-    /* الجرد لسه محفوظ محليًا — مفيش حاجة ضاعت */
-    $('main').innerHTML =
-      '<div class="note err">الحفظ فشل: ' + esc(e.message) + '<br><br>' +
-      'الجرد لسه محفوظ على الموبايل. جرب تاني لما النت يرجع.</div>' +
-      '<button class="big" onclick="finish()">حاول تاني</button>' +
-      '<button class="big quiet" onclick="screenCount()">ارجع للجرد</button>';
+    /* الجرد لسه محفوظ محليًا وعلى السيرفر — مفيش حاجة ضاعت */
+    $('main').innerHTML = '<div class="state err">الحفظ فشل<br>' + esc(e.message) +
+      '<br><br>الشغل لسه محفوظ. جرب تاني لما النت يرجع.</div>' +
+      '<button class="btn primary" onclick="finish()">حاول تاني</button>' +
+      '<button class="btn" onclick="screenCount()">ارجع للجرد</button>';
   });
 }
 
-/* ═══ التشغيل ═══ */
+/* ══════════ التشغيل ══════════ */
 load();
 screenStart();
-window.addEventListener('beforeunload', function(){ save(); });
-/* لما يقفل الموبايل أو يبدّل تبويب، نرفع فورًا بدل ما نستنى العشرة */
+window.addEventListener('beforeunload', save);
 document.addEventListener('visibilitychange', function(){
-  if (document.hidden && S.id && Object.keys(S.lines).length) autoSync(true);
+  if (document.hidden && S.id && Object.keys(S.lines).length) sync(true);
 });
 </script>
 </body>

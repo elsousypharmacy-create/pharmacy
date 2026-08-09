@@ -113,16 +113,33 @@ button,input,select{font-family:inherit;font-size:inherit;color:inherit;border:0
 .sheet h2{font-size:var(--t-lg);font-weight:700;margin-bottom:6px}
 .sheet .hint{font-size:var(--t-sm);color:var(--ink-3);margin-bottom:16px}
 
-/* أزرار الصلاحيات — كبيرة، لمسة واحدة */
-.exp{display:flex;align-items:center;gap:14px;width:100%;
-  background:var(--panel-2);border-radius:var(--r);padding:18px;margin-bottom:10px;text-align:right}
+/* ═══ صف الصلاحية ═══
+   دي أدوية — كل علبة تتمسح لوحدها. مفيش كتابة أرقام من الدماغ.
+   الجسم الكبير = +١ (لمسة واحدة، سهلة وهو ماسك علبة).
+   الأزرار الصغيرة على الشمال بعيدة عنه عشان ميدوسش غلط. */
+.exp{display:flex;align-items:stretch;gap:0;width:100%;
+  background:var(--panel-2);border-radius:var(--r);margin-bottom:10px;overflow:hidden}
+.exp .main{flex:1;display:flex;align-items:center;gap:14px;
+  padding:18px;text-align:right;min-width:0;background:none}
+.exp .main:active{background:rgba(255,255,255,.07)}
 .exp .l{flex:1;min-width:0}
 .exp .l b{display:block;font-size:var(--t-lg);font-weight:700}
-.exp .l small{color:var(--ink-3);font-size:var(--t-sm)}
-.exp .q{font-size:var(--t-xl);font-weight:800;min-width:52px;text-align:center;
+.exp .l small{display:block;color:var(--ink-3);font-size:var(--t-sm)}
+.exp .q{font-size:var(--t-xl);font-weight:800;min-width:54px;text-align:center;
   font-variant-numeric:tabular-nums}
 .exp.hit{background:var(--brand)}
-.exp.hit .l small{color:rgba(255,255,255,.8)}
+.exp.hit .l small{color:rgba(255,255,255,.82)}
+
+/* عمود جانبي: ناقص + تجزئة */
+.exp .side{display:flex;flex-direction:column;flex:0 0 auto;
+  border-inline-start:1px solid rgba(255,255,255,.1)}
+.exp .side button{width:62px;flex:1;display:grid;place-items:center;
+  font-size:19px;color:var(--ink-2)}
+.exp .side button:first-child{border-bottom:1px solid rgba(255,255,255,.1)}
+.exp .side button:active{background:rgba(255,255,255,.12)}
+.exp .side .minus{font-size:26px;font-weight:600}
+.exp.hit .side button{color:rgba(255,255,255,.9)}
+.exp .side .part.on{color:var(--warn)}
 
 .fld{width:100%;padding:18px;border-radius:var(--r);border:1px solid var(--line);
   background:var(--bg);color:var(--ink);font-size:var(--t-lg);margin-bottom:12px;
@@ -211,7 +228,7 @@ button,input,select{font-family:inherit;font-size:inherit;color:inherit;border:0
     <button class="k wide undo" id="kUndo" onclick="undo()" disabled>تراجع عن آخر مسحة</button>
     <div class="grid">
       <button class="k" onclick="openFind()">بحث<small>بالاسم</small></button>
-      <button class="k" onclick="openManual()">كمية<small>أو صلاحية</small></button>
+      <button class="k" onclick="reopenLast()">آخر صنف<small>عدّل</small></button>
       <button class="k done" onclick="askEnd()">خلّصت</button>
     </div>
   </div>
@@ -529,22 +546,12 @@ function onScan(text){
     }
     var it = d.item; last = it;
 
-    if (it.multi){
-      /* الورقة بتطلع والكاميرا شغالة وراها — مفيش انتقال شاشة */
-      SND.ask();
-      openBatches(it);
-      return;
-    }
-    var b = it.batches[0] || {expire:'', stock:it.stock};
-    var k = it.code + '|' + (b.expire||'');
-    var had = S.lines[k] ? S.lines[k].qty : 0;
-    var q = had + 1;
-    put(it.code, it.name, b.expire, q, b.stock, false);
-    if (had) SND.again(); else SND.ok();
-    showEcho('<div class="nm">' + esc(it.name) + '</div>' +
-      '<div class="meta">السيستم ' + n(b.stock) +
-      (b.expire ? ' · ' + esc(b.expire) : '') + '</div>' +
-      '<div class="big">' + n(q) + '</div>');
+    /* ⚠️ كل مسحة توقف — حتى لو السيستم شايف صلاحية واحدة.
+       "صلاحية واحدة في السيستم" مش معناها إن الرف فيه واحدة. لو
+       عدّينا بسرعة، الدفعة المش مسجلة مش هتتكتشف أبدًا — وهي أهم
+       حاجة الجرد المفروض يلاقيها. الورقة بتطلع فوق الكاميرا وهي شغالة. */
+    SND.ask();
+    openBatches(it);
   }).catch(function(){
     busy = false; SND.miss();
     showEcho('<div class="nm">النت</div><div class="meta">مش راضي — جرب تاني</div>', true);
@@ -563,17 +570,28 @@ function allBatches(it){
 
 function openBatches(it){
   var all = allBatches(it);
+  var u = it.units || 1;
   openSheet('<h2>' + esc(it.name) + '</h2>' +
-    '<div class="hint">دوس على الصلاحية اللي في إيدك — كل دوسة +١</div>' +
+    '<div class="hint">دوس على الصلاحية اللي في إيدك — كل دوسة علبة' +
+      (u > 1 ? (' · العلبة ' + n(u) + ' ' + partWord(it)) : '') + '</div>' +
     all.map(function(b){
-      var k = it.code + '|' + (b.expire||'');
-      var q = S.lines[k] ? S.lines[k].qty : 0;
-      return '<button class="exp' + (q?' hit':'') + '" onclick="tapBatch(\'' +
-        esc(b.expire||'') + '\',' + (b.stock||0) + ')">' +
-        '<span class="q">' + n(q) + '</span>' +
-        '<span class="l"><b>' + esc(b.expire || 'من غير صلاحية') + '</b>' +
-        '<small>' + (b.added ? 'مش في السيستم' : 'السيستم ' + n(b.stock)) +
-        '</small></span></button>';
+      var ex = b.expire || '';
+      var k = it.code + '|' + ex;
+      var L = S.lines[k];
+      var q = L ? L.qty : 0;
+      var partial = (q % 1) !== 0;   /* فيه كسر = علبة مفتوحة متسجلة */
+      return '<div class="exp' + (q?' hit':'') + '">' +
+        '<button class="main" onclick="tapBatch(\'' + esc(ex) + '\',' + (b.stock||0) + ')">' +
+          '<span class="q">' + n(q) + '</span>' +
+          '<span class="l"><b>' + esc(b.expire || 'من غير صلاحية') + '</b>' +
+          '<small>' + (b.added ? 'مش في السيستم' : 'السيستم ' + n(b.stock)) +
+          '</small></span></button>' +
+        '<span class="side">' +
+          '<button class="minus" onclick="tapMinus(\'' + esc(ex) + '\',' + (b.stock||0) +
+            ')" aria-label="ناقص">−</button>' +
+          (u > 1 ? '<button class="part' + (partial?' on':'') + '" onclick="openPartial(\'' +
+            esc(ex) + '\',' + (b.stock||0) + ')" aria-label="علبة مفتوحة">◒</button>' : '') +
+        '</span></div>';
     }).join('') +
     '<button class="btn" onclick="openAddExp()">+ صلاحية تانية على الرف</button>' +
     '<button class="btn primary" onclick="closeSheet()">تمام</button>');
@@ -586,10 +604,77 @@ function tapBatch(expire, sys){
   var known = last.batches.some(function(b){ return (b.expire||'') === expire; });
   put(last.code, last.name, expire, q, sys, !known);
   SND.ok();
-  openBatches(last);   /* نعيد الرسم عشان الرقم يتحدّث */
+  openBatches(last);
 }
 
-/* ═══ كمية أو صلاحية يدوي ═══ */
+function tapMinus(expire, sys){
+  if (!last) return;
+  var k = last.code + '|' + expire;
+  var cur = S.lines[k] ? S.lines[k].qty : 0;
+  if (cur <= 0) return;
+  /* لو فيه كسر (علبة مفتوحة)، بنشيل الكسر الأول مش علبة كاملة */
+  var next = (cur % 1) !== 0 ? Math.floor(cur) : cur - 1;
+  var known = last.batches.some(function(b){ return (b.expire||'') === expire; });
+  put(last.code, last.name, expire, next, sys, !known);
+  SND.undo();
+  openBatches(last);
+}
+
+/* ═══ العلبة المفتوحة ═══
+   مش هينفع تتمسح، فبتتكتب بالجزء (شرايط/أكياس) والنظام بيحوّل لعلبة.
+   العلب الكاملة بتفضل زي ما هي — دي بتضيف الكسر بس. */
+function openPartial(expire, sys){
+  if (!last) return;
+  var it = last, u = it.units || 1, w = partWord(it);
+  var k = it.code + '|' + expire;
+  var cur = S.lines[k] ? S.lines[k].qty : 0;
+  var full = Math.floor(cur);
+  var parts = Math.round((cur - full) * u);
+
+  openSheet('<h2>علبة مفتوحة</h2>' +
+    '<div class="hint">' + esc(it.name) + ' · ' +
+      (expire ? esc(expire) : 'من غير صلاحية') +
+      '<br>العلبة الكاملة ' + n(u) + ' ' + w + '</div>' +
+    '<div class="lbl" style="margin-top:0">العلب الكاملة اللي مسحتها</div>' +
+    '<input class="fld" id="pB" type="number" inputmode="numeric" min="0" value="' +
+      full + '" oninput="prevPartial()">' +
+    '<div class="lbl">' + w + ' من العلبة المفتوحة</div>' +
+    '<input class="fld" id="pU" type="number" inputmode="numeric" min="0" max="' + (u-1) +
+      '" value="' + parts + '" oninput="prevPartial()">' +
+    '<div class="hint" id="pOut" style="text-align:center"></div>' +
+    '<button class="btn primary" onclick="applyPartial(\'' + esc(expire) + '\',' + sys +
+      ')">سجّل</button>' +
+    '<button class="btn" onclick="openBatches(last)">رجوع</button>');
+  prevPartial();
+}
+function prevPartial(){
+  if (!last) return;
+  var u = last.units || 1;
+  var b = parseFloat(($('pB')||{}).value) || 0;
+  var p = parseFloat(($('pU')||{}).value) || 0;
+  var el = $('pOut'); if (!el) return;
+  el.innerHTML = 'الإجمالي: <b style="color:var(--ink)">' +
+    n(Math.round((b + p/u)*100)/100) + '</b> علبة';
+}
+function applyPartial(expire, sys){
+  if (!last) return;
+  var u = last.units || 1;
+  var b = parseFloat($('pB').value) || 0;
+  var p = parseFloat($('pU').value) || 0;
+  var qty = Math.round((b + p/u) * 10000) / 10000;
+  var known = last.batches.some(function(x){ return (x.expire||'') === expire; });
+  put(last.code, last.name, expire, qty, sys, !known);
+  SND.ok();
+  openBatches(last);
+}
+
+/* رجوع لآخر صنف اتمسح — لو قفل الورقة وعايز يعدّل */
+function reopenLast(){
+  if (!last){ toast('امسح صنف الأول'); return; }
+  openBatches(last);
+}
+
+/* ═══ (متسابة للتوافق) ═══ */
 function openManual(){
   if (!last){ toast('امسح صنف الأول'); return; }
   var it = last, u = it.units || 1;
@@ -706,10 +791,7 @@ function chooseFind(i){
   var r = window.__f || []; if (!r[i]) return;
   last = r[i]; closeSheet(); pickAfterFind(r[i]);
 }
-function pickAfterFind(it){
-  if (it.multi) openBatches(it);
-  else openManual();
-}
+function pickAfterFind(it){ openBatches(it); }
 
 /* ═══ الإنهاء والمسح ═══ */
 function askEnd(){

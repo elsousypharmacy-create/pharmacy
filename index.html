@@ -340,6 +340,25 @@ var T = {
                   'OK — pauses on roughly one in five items.'],
   scanVerdictBad:['عالي — الوقفات كتير أوي. لازم نغيّر تصميم شاشة الجرد.',
                   'High — too many pauses. The counting screen needs a different design.'],
+  counts:['الجرد','Stocktake'],
+  needsCount:['محتاج جرد','Needs counting'],
+  neverCounted:['عمره ما اتجرد','Never counted'],
+  never:['عمره ما اتجرد','Never'],
+  stockValue:['قيمة المخزون','Stock value'],
+  unitsWord:['علبة','units'],
+  noCounts:['لسه مفيش جرد. الموظف بيجرد من صفحة scan.html','No stocktake yet. Staff use scan.html'],
+  countSessions:['جلسات','Sessions'],
+  lastCount:['آخر جرد','Last count'],
+  gapValue:['قيمة الفروقات','Gap value'],
+  countHistory:['سجل الجرد','History'],
+  countDetail:['تفاصيل الجرد','Stocktake detail'],
+  items:['صنف','items'],
+  matched:['مطابق','Matched'],
+  hasGap:['فيه فرق','With gap'],
+  gaps:['الفروقات','Gaps'],
+  matchedItems:['المطابق','Matched items'],
+  system:['السيستم','System'],
+  counted:['اتعدّ','Counted'],
   close:['إقفال','Close'], retry:['حاول تاني','Try again'], loading:['بيحمّل…','Loading…'],
   failed:['مقدرتش أحمّل','Could not load'], empty:['مفيش بيانات','No data'],
   updated:['آخر تحديث','Updated'], egp:['جنيه','EGP'],
@@ -879,7 +898,8 @@ var SECTIONS = {
   money: [['pl',    function(){ return tr('pl'); }], ['exp', function(){ return tr('expenses'); }],
           ['debt',  function(){ return tr('debts'); }]],
   hr:    [['perf',  function(){ return tr('staffToday'); }]],
-  stock: [['aging', function(){ return tr('invAging'); }], ['short', function(){ return tr('shortages'); }]],
+  stock: [['aging', function(){ return tr('invAging'); }], ['short', function(){ return tr('shortages'); }],
+          ['count', function(){ return tr('counts'); }]],
   cust:  [['msgs',  function(){ return tr('messages'); }], ['list', function(){ return tr('customers'); }],
           ['agents',function(){ return tr('agents'); }]]
 };
@@ -908,7 +928,7 @@ function renderTabs(sec, tab){
 }
 function render(sec, tab){
   var key = SECTIONS[sec][tab][0];
-  ({ home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts,
+  ({ count:pgCounts, home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts,
      perf:pgStaffHub, aging:pgAging, short:pgShort,
      msgs:pgMessages, list:pgCustomers, agents:pgAgents })[key](key);
 }
@@ -2275,6 +2295,119 @@ function snap(action){
    شاشة الجرد نفسه لازم يتغيّر. */
 /* بيقيس اللقطة جزء جزء. ممكن ياخد كذا دقيقة — ده طبيعي، لأنه
    بيعمل نفس شغل اللقطة الحقيقي عشان يقيسه. */
+/* ═══ نتايج الجرد ═══
+   الموظف بيجرد من صفحة scan.html المنفصلة، والنتيجة بتيجي هنا.
+   الترتيب بقيمة الفرق — الأغلى فوق، لأنه ده اللي يستاهل وقتك. */
+var CNT = { sessions: [], open: null };
+
+function pgCounts(){
+  var box = document.getElementById('p-stock');
+  var seed = cacheGet('counts', {});
+  if (seed) { CNT.sessions = seed; drawCounts(); } else busy(box);
+
+  api('countSessions').then(function(d){
+    if (!d || !d.ok) throw new Error('counts');
+    CNT.sessions = d.sessions || [];
+    cacheSet('counts', {}, CNT.sessions);
+    markSync(); drawCounts();
+  }).catch(function(e){ logErr(e); if (!seed) oops(box, "pgCounts()"); });
+}
+
+function drawCounts(){
+  var box = document.getElementById('p-stock');
+  var L = CNT.sessions || [];
+  if (!L.length){
+    box.innerHTML =
+      '<button class="btn btn-quiet" onclick="openDue()" style="margin-bottom:10px">' +
+      tr('needsCount') + '</button>' +
+      card(tr('counts'), null, '<div class="state">' + tr('noCounts') + '</div>');
+    return;
+  }
+  var totDiff = 0;
+  L.forEach(function(x){ totDiff += Math.abs(+x.diffValue || 0); });
+
+  var html = '<button class="btn btn-quiet" onclick="openDue()" style="margin-bottom:10px">' +
+             tr('needsCount') + '</button>' +
+             vitals(tr('counts'), null, [
+    { value: num(L.length), label: tr('countSessions'), tone: 'brand' },
+    { value: num(L[0].lines), label: tr('lastCount'), tone: 'ok', sub: tr('items') },
+    { value: num(Math.round(totDiff)), label: tr('gapValue'), tone: 'warn', sub: tr('egp') }
+  ]);
+
+  html += card(tr('countHistory'), null, L.map(function(x){
+    var bad = Math.abs(+x.diffValue || 0) > 0.5;
+    return '<div class="row" onclick="openCount(\'' + esc(x.id) + '\')" style="cursor:pointer">' +
+      '<div class="row-main"><b>' + esc(x.title || '—') + '</b>' +
+      '<small>' + esc(String(x.at).substring(0,16)) +
+      (x.by ? ' · ' + esc(x.by) : '') +
+      ' · ' + ltr(num(x.lines)) + ' ' + tr('items') + '</small></div>' +
+      badge(ltr(num(x.diffValue)), bad ? 'bad' : 'ok') + '</div>';
+  }).join(''));
+
+  box.innerHTML = html;
+}
+
+/* تفاصيل جلسة — الفروقات بس بتهمّك، فبتيجي الأول */
+function openCount(id){
+  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  document.getElementById('sheet').classList.add('on');
+  t.textContent = tr('countDetail');
+  b.innerHTML = '<div class="state"><div class="spin"></div></div>';
+  api('countReport', { session: id }).then(function(d){
+    if (!d || !d.ok){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; return; }
+    var L = d.lines || [];
+    var diff = L.filter(function(x){ return Math.abs(x.diff) > 0.001; });
+    var same = L.length - diff.length;
+
+    var h = '<div class="state">' + tr('matched') + ': ' + ltr(num(same)) +
+            ' · ' + tr('hasGap') + ': ' + ltr(num(diff.length)) + '</div>';
+
+    if (diff.length){
+      h += '<div class="group-title">' + tr('gaps') + '</div>';
+      h += diff.map(function(x){
+        var tone = x.diff > 0 ? 'warn' : 'bad';
+        return '<div class="row"><div class="row-main"><b>' + esc(x.name) + '</b>' +
+          '<small>' + (x.expire && x.expire !== '—' ? esc(x.expire) + ' · ' : '') +
+          tr('system') + ' ' + ltr(num(x.sys)) + ' · ' + tr('counted') + ' ' + ltr(num(x.counted)) +
+          (x.note ? ' · ' + esc(x.note) : '') + '</small></div>' +
+          badge((x.diff > 0 ? '+' : '') + ltr(num(x.diff)), tone) + '</div>';
+      }).join('');
+    }
+    if (same){
+      h += '<div class="group-title">' + tr('matchedItems') + '</div>' +
+        L.filter(function(x){ return Math.abs(x.diff) <= 0.001; }).map(function(x){
+          return '<div class="row"><div class="row-main"><b>' + esc(x.name) + '</b>' +
+            '<small>' + ltr(num(x.counted)) + '</small></div></div>';
+        }).join('');
+    }
+    b.innerHTML = h;
+  }).catch(function(e){ logErr(e); b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+}
+
+/* ═══ الفحص الدوري ═══
+   الترتيب بالخطورة = القيمة × مدة الإهمال. صنف بـ2400 جنيه معدّاش
+   عليه 6 شهور أخطر من صنف بـ20 جنيه معدّاش عليه سنة. */
+function openDue(){
+  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  document.getElementById('sheet').classList.add('on');
+  t.textContent = tr('needsCount');
+  b.innerHTML = '<div class="state"><div class="spin"></div></div>';
+  api('countDue', { limit: 60 }).then(function(d){
+    if (!d || !d.ok){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; return; }
+    b.innerHTML =
+      '<div class="state">' + tr('neverCounted') + ': ' + ltr(num(d.never_counted)) +
+      ' ' + tr('items') + ' · ' + tr('stockValue') + ' ' + ltr(num(d.total_value)) + '</div>' +
+      (d.items || []).map(function(x){
+        var lbl = x.days === null ? tr('never') : (ltr(x.days) + ' ' + tr('daysWord'));
+        var tone = (x.days === null || x.days > 180) ? 'bad' : (x.days > 90 ? 'warn' : 'ok');
+        return '<div class="row"><div class="row-main"><b>' + esc(x.name) + '</b>' +
+          '<small>' + ltr(num(x.stock)) + ' ' + tr('unitsWord') + ' · ' +
+          ltr(num(x.value)) + ' ' + tr('egp') + '</small></div>' +
+          badge(lbl, tone) + '</div>';
+      }).join('');
+  }).catch(function(e){ logErr(e); b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+}
+
 function runSnapTime(){
   var box = document.getElementById('snaptime');
   box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('measuring') + '</div>';

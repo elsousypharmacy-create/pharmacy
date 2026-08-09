@@ -193,7 +193,38 @@ function api(action, params){
 }
 
 /* الجرد بيتحفظ محليًا مع كل مسحة — قطع النت أو قفل الصفحة مبيضيّعش شغل */
+var scans = 0, syncing = false;
+
+/* المحلي احتياطي للنت لما يقطع — المصدر الأساسي بقى السيرفر */
 function save(){ try{ localStorage.setItem('scan_session', JSON.stringify(S)); }catch(e){} }
+
+/* رفع للسيرفر كل 10 مسحات. كده لو الموبايل وقع تخسر 10 بالكتير،
+   وأي زميل يقدر يكمّل الجرد من موبايله. */
+function autoSync(force){
+  if (!S.id) return;
+  if (!force && (++scans % 10) !== 0) return;
+  if (syncing) return;
+  syncing = true;
+  var el = $('camMsg');
+  if (el && $('cam').classList.contains('on')) el.textContent += ' · بيحفظ…';
+  post({ action:'saveOpen', sessionId:S.id, title:S.title, by:S.by,
+         lines: Object.keys(S.lines).map(function(k){
+           var L = S.lines[k];
+           return { code:L.code, name:L.name, expire:L.expire,
+                    qty:L.qty, sys:L.sys, isNew:L.isNew };
+         }) })
+  .then(function(){ syncing=false; S.synced = Date.now(); })
+  .catch(function(){ syncing=false; });   /* فشل الرفع مبيوقفش الجرد */
+}
+
+function post(body){
+  return fetch(API, {
+    method:'POST',
+    /* text/plain عشان المتصفح ميبعتش preflight — Apps Script مبيردش عليه */
+    headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+    body: JSON.stringify(body)
+  }).then(function(r){ return r.json(); });
+}
 function load(){
   try{
     var r = localStorage.getItem('scan_session');
@@ -216,15 +247,68 @@ function screenStart(){
   $('tot').style.display = 'none';
   $('saveBtn').style.display = 'none';
   $('sub').textContent = 'صيدلية السوسي';
-  var has = S.id && Object.keys(S.lines).length;
-  $('main').innerHTML =
-    (has ? '<button class="big" onclick="screenCount()">كمّل الجرد الشغال<br>' +
-           '<small style="font-weight:400;font-size:14px;opacity:.9">' + esc(S.title) + ' · ' +
-           Object.keys(S.lines).length + ' صنف</small></button>' : '') +
-    '<div class="gt">جرد جديد</div>' +
-    '<input class="txt" id="ttl" placeholder="اسم الجرد (مثلاً: رف الأدوية)">' +
-    '<input class="txt" id="who" placeholder="اسمك">' +
-    '<button class="big" onclick="startNew()">ابدأ الجرد</button>';
+  $('main').innerHTML = '<div class="note"><div class="spin"></div>بيحمّل الجرود الشغالة…</div>';
+
+  api('openCounts').then(function(d){
+    drawStart((d && d.open) || []);
+  }).catch(function(){
+    drawStart(null);   /* النت مش راضي — نعرض المحلي بس */
+  });
+}
+
+function drawStart(open){
+  var h = '';
+
+  if (open && open.length){
+    h += '<div class="gt">جرود شغالة — اقفل على واحد وكمّل</div>';
+    h += open.map(function(x){
+      return '<button class="big quiet" style="text-align:right" onclick="resume(\'' +
+        esc(x.id) + '\')">' + esc(x.title) +
+        '<br><small style="font-weight:400;font-size:13px;opacity:.75">' +
+        (x.by ? esc(x.by) + ' · ' : '') + x.lines + ' صنف · ' + ago(x.updated) +
+        '</small></button>';
+    }).join('');
+  } else if (open === null && S.id && Object.keys(S.lines).length){
+    /* النت واقع بس فيه جرد محفوظ على الموبايل */
+    h += '<div class="gt">محفوظ على الموبايل</div>' +
+         '<button class="big quiet" onclick="screenCount()">كمّل: ' + esc(S.title) +
+         '<br><small style="font-weight:400;font-size:13px;opacity:.75">' +
+         Object.keys(S.lines).length + ' صنف</small></button>';
+  }
+
+  h += '<div class="gt">جرد جديد</div>' +
+       '<input class="txt" id="ttl" placeholder="اسم الجرد (مثلاً: رف الأدوية)">' +
+       '<input class="txt" id="who" placeholder="اسمك">' +
+       '<button class="big" onclick="startNew()">ابدأ الجرد</button>';
+  $('main').innerHTML = h;
+}
+
+function ago(t){
+  try{
+    var d = new Date(String(t).replace(' ','T'));
+    var m = Math.round((Date.now() - d.getTime()) / 60000);
+    if (m < 1) return 'دلوقتي';
+    if (m < 60) return 'من ' + m + ' دقيقة';
+    var hh = Math.round(m/60);
+    if (hh < 24) return 'من ' + hh + ' ساعة';
+    return 'من ' + Math.round(hh/24) + ' يوم';
+  }catch(e){ return ''; }
+}
+
+/* فتح جرد زميل تاني بدأه */
+function resume(id){
+  $('main').innerHTML = '<div class="note"><div class="spin"></div>بيفتح…</div>';
+  api('loadCount', { session: id }).then(function(d){
+    if (!d || !d.ok){ alert('مقدرتش أفتحه'); screenStart(); return; }
+    S = { id: d.sessionId, title: d.title, by: d.by || '', lines: {}, last: null };
+    (d.lines || []).forEach(function(L){
+      S.lines[L.code + '|' + (L.expire||'')] = {
+        code:L.code, name:L.name||'', expire:L.expire||'',
+        qty:+L.qty||0, sys:+L.sys||0, isNew: !!L.isNew
+      };
+    });
+    save(); screenCount(); startCam();
+  }).catch(function(){ alert('النت مش راضي'); screenStart(); });
 }
 
 function startNew(){
@@ -281,32 +365,42 @@ function draw(){
 function lastCard(it){
   var h = '<div class="last"><div class="nm">' + esc(it.name) + '</div>';
 
-  if (it.multi){
-    /* أكتر من صلاحية: الموظف يوزّع بنفسه — الملصق مبيفرقش بينهم */
-    h += '<div class="meta">الصنف ده ليه ' + it.batches.length +
-         ' صلاحيات. اكتب اللي عدّيته من كل واحدة:</div>';
-    it.batches.forEach(function(b, i){
-      var k = it.code + '|' + b.expire;
+  /* الدفعات = اللي السيستم عارفها + أي صلاحية الموظف ضافها بنفسه.
+     الملصق مفيهوش تاريخ، فالموظف هو اللي بيفرّق بعينه من على العلبة. */
+  var all = it.batches.slice();
+  Object.keys(S.lines).forEach(function(k){
+    var L = S.lines[k];
+    if (L.code !== it.code) return;
+    if (!all.some(function(b){ return (b.expire||'') === (L.expire||''); }))
+      all.push({ expire: L.expire, stock: 0, added: true });
+  });
+
+  if (all.length > 1){
+    h += '<div class="meta">' + all.length + ' صلاحيات — اكتب اللي عدّيته من كل واحدة:</div>';
+    all.forEach(function(b){
+      var k = it.code + '|' + (b.expire||'');
       var cur = S.lines[k] ? S.lines[k].qty : '';
       h += '<div class="batch"><div class="ex"><b>' + esc(b.expire || '—') + '</b>' +
-           '<small>السيستم ' + n(b.stock) + '</small></div>' +
+           '<small>' + (b.added ? 'مش في السيستم' : 'السيستم ' + n(b.stock)) + '</small></div>' +
            '<input type="number" inputmode="decimal" min="0" value="' + cur + '" ' +
-           'onchange="setBatch(\'' + it.code + '\',' + i + ',this.value)"></div>';
+           'onchange="setQty(\'' + it.code + '\',\'' + (b.expire||'') + '\',' +
+           (b.stock||0) + ',this.value)"></div>';
     });
-    h += '<button class="big quiet" style="margin-top:12px" onclick="addBatch(\'' +
-         it.code + '\')">+ صلاحية مش موجودة</button>';
   } else {
-    var b = it.batches[0] || {expire:'', stock: it.stock};
+    var b = all[0] || {expire:'', stock: it.stock};
     var k = it.code + '|' + (b.expire||'');
     var q = S.lines[k] ? S.lines[k].qty : 0;
     h += '<div class="meta">' + (b.expire ? esc(b.expire) : 'من غير صلاحية') +
          ' · السيستم ' + n(b.stock) + '</div>' +
          '<div class="cnt"><button class="step" onclick="bump(\'' + k + '\',-1)">−</button>' +
          '<b>' + n(q) + '</b>' +
-         '<button class="step" onclick="bump(\'' + k + '\',1)">+</button></div>' +
-         '<button class="big quiet" style="margin-top:12px" onclick="addBatch(\'' +
-         it.code + '\')">+ صلاحية مش موجودة</button>';
+         '<button class="step" onclick="bump(\'' + k + '\',1)">+</button></div>';
   }
+
+  /* الزرار ده موجود دايمًا — حتى لو السيستم شايف صلاحية واحدة.
+     أكتر حاجة بتكشف مشاكل: بضاعة دخلت بصلاحية متسجلتش. */
+  h += '<button class="big quiet" style="margin-top:12px" onclick="addBatch(\'' +
+       it.code + '\')">+ صلاحية تانية على الرف</button>';
   return h + '</div>';
 }
 
@@ -316,7 +410,7 @@ function put(code, name, expire, qty, sys, isNew){
   if (qty <= 0){ delete S.lines[k]; }
   else S.lines[k] = { code:code, name:name, expire:expire||'',
                       qty:qty, sys:sys||0, isNew: !!isNew };
-  save(); draw();
+  save(); autoSync(); draw();
 }
 function bump(k, d){
   var L = S.lines[k];
@@ -325,25 +419,25 @@ function bump(k, d){
   var b = it.batches[0] || {expire:'', stock: it.stock};
   if (d > 0) put(it.code, it.name, b.expire, d, b.stock, false);
 }
-function setBatch(code, i, val){
+function setQty(code, expire, sys, val){
   var it = S.last; if (!it || it.code !== code) return;
-  var b = it.batches[i];
-  put(code, it.name, b.expire, parseFloat(val)||0, b.stock, false);
+  var known = it.batches.some(function(b){ return (b.expire||'') === expire; });
+  put(code, it.name, expire, parseFloat(val)||0, sys, !known);
 }
 function addBatch(code){
   var it = S.last; if (!it || it.code !== code) return;
-  var e = prompt('الصلاحية بالشكل ده: 2027-05');
+  var e = prompt('صلاحية العلبة (شهر وسنة):\n\nمثال: 2027-05');
   if (!e) return;
-  e = e.trim();
-  if (!/^\d{4}-\d{2}$/.test(e)){ alert('اكتبها كده: 2027-05'); return; }
-  var q = prompt('عدّيت كام علبة بالصلاحية دي؟');
+  e = String(e).trim().replace(/\//g,'-');
+  var m = e.match(/^(\d{4})-(\d{1,2})$/);
+  if (!m){ alert('اكتبها كده: 2027-05'); return; }
+  var full = m[1] + '-' + ('0'+m[2]).slice(-2) + '-01';
+
+  var known = it.batches.filter(function(b){ return b.expire === full; })[0];
+  var q = prompt('عدّيت كام علبة بصلاحية ' + m[1] + '-' + ('0'+m[2]).slice(-2) + '؟');
   q = parseFloat(q)||0;
   if (q <= 0) return;
-  var full = e + '-01';
-  if (!it.batches.some(function(b){ return b.expire === full; }))
-    it.batches.push({ expire: full, stock: 0 });
-  it.multi = it.batches.length > 1;
-  put(code, it.name, full, q, 0, true);
+  put(code, it.name, full, q, known ? known.stock : 0, !known);
 }
 
 /* ═══ الكاميرا ═══ */
@@ -446,18 +540,13 @@ function finish(){
   $('main').innerHTML = '<div class="note"><div class="spin"></div>بيحفظ…</div>';
   stopCam();
 
-  fetch(API, {
-    method: 'POST',
-    /* text/plain عشان المتصفح ميبعتش preflight — Apps Script مبيردش عليه */
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-      action: 'saveCount', sessionId: S.id, title: S.title, by: S.by,
-      lines: keys.map(function(k){
-        var L = S.lines[k];
-        return { code:L.code, expire:L.expire, qty:L.qty, isNewBatch:L.isNew };
-      })
+  post({
+    action: 'saveCount', sessionId: S.id, title: S.title, by: S.by,
+    lines: keys.map(function(k){
+      var L = S.lines[k];
+      return { code:L.code, expire:L.expire, qty:L.qty, isNewBatch:L.isNew };
     })
-  }).then(function(r){ return r.json(); }).then(function(d){
+  }).then(function(d){
     if (!d || !d.ok) throw new Error((d && d.error) || 'فشل');
     clearSession();
     S = { id:null, title:'', by:'', lines:{}, last:null };
@@ -481,7 +570,11 @@ function finish(){
 /* ═══ التشغيل ═══ */
 load();
 screenStart();
-window.addEventListener('beforeunload', save);
+window.addEventListener('beforeunload', function(){ save(); });
+/* لما يقفل الموبايل أو يبدّل تبويب، نرفع فورًا بدل ما نستنى العشرة */
+document.addEventListener('visibilitychange', function(){
+  if (document.hidden && S.id && Object.keys(S.lines).length) autoSync(true);
+});
 </script>
 </body>
 </html>

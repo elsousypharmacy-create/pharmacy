@@ -312,6 +312,19 @@ var T = {
   perDay:['في اليوم','per day'],
   daysWord:['يوم','days'],
   withData:['فيهم بيع','with sales'],
+  snapSpeed:['سرعة بناء اللقطة','Snapshot speed'],
+  measureSnap:['قيس اللقطة','Measure snapshot'],
+  measuring:['بيقيس… ممكن ياخد كذا دقيقة','Measuring… may take minutes'],
+  sec:['ثانية','sec'],
+  snapTotal:['الإجمالي','Total'],
+  snapLimit:['السقف 360 ثانية','Limit 360 sec'],
+  snapTimedOut:['القياس نفسه اتقطع — يبقى اللقطة أبطأ من السقف أكيد.',
+                'The measurement itself timed out — the snapshot is definitely over the limit.'],
+  snapVerdictOk:['تمام — اللقطة بتخلص في وقتها.','Fine — the snapshot completes in time.'],
+  snapVerdictSlow:['قربت من السقف — أي يوم زيادة في البيانات هيوقّعها.',
+                   'Close to the limit — a bit more data will break it.'],
+  snapVerdictFail:['عدّت السقف — دي سبب إن اللقطة مش بتتبني. لازم نقسّمها.',
+                   'Over the limit — this is why the snapshot never builds. It must be split.'],
   scanReady:['جاهزية الجرد بالكاميرا','Scan readiness'],
   checkScan:['افحص الجرد','Check scanning'],
   scanTotal:['إجمالي الأصناف','Total items'],
@@ -2215,6 +2228,9 @@ function openSheet(kind){
       '<button class="btn btn-primary" id="snapEnable" onclick="snap(\'snapshotEnable\')">' + tr('enableAuto') + '</button></div>' +
       '<button class="btn btn-quiet" onclick="runDiag()">' + tr('startCheck') + '</button>' +
       '<div id="diagbox"></div>' +
+      '<div class="group-title">' + tr('snapSpeed') + '</div>' +
+      '<button class="btn btn-quiet" onclick="runSnapTime()">' + tr('measureSnap') + '</button>' +
+      '<div id="snaptime"></div>' +
       '<div class="group-title">' + tr('scanReady') + '</div>' +
       '<button class="btn btn-quiet" onclick="runScanReady()">' + tr('checkScan') + '</button>' +
       '<div id="scanbox"></div>' +
@@ -2253,6 +2269,32 @@ function snap(action){
    أهم رقم فيه: "أصناف بأكتر من صلاحية" — دول اللي الشاشة هتوقف
    عندهم وتطلب من الموظف يوزّع الكمية. لو نسبتهم عالية، تصميم
    شاشة الجرد نفسه لازم يتغيّر. */
+/* بيقيس اللقطة جزء جزء. ممكن ياخد كذا دقيقة — ده طبيعي، لأنه
+   بيعمل نفس شغل اللقطة الحقيقي عشان يقيسه. */
+function runSnapTime(){
+  var box = document.getElementById('snaptime');
+  box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('measuring') + '</div>';
+  api('timeSnapshot').then(function(d){
+    if (!d || !d.ok){
+      box.innerHTML = '<div class="state err">' + tr('snapTimedOut') + '</div>';
+      return;
+    }
+    var verdict = d.willFail ? tr('snapVerdictFail')
+                : (d.tooSlow ? tr('snapVerdictSlow') : tr('snapVerdictOk'));
+    var tone = d.willFail ? 'bad' : (d.tooSlow ? 'warn' : 'ok');
+    box.innerHTML =
+      (d.parts || []).map(function(p){
+        return row(p.name, p.detail, badge(ltr(p.secs) + ' ' + tr('sec'),
+                   p.ok ? (p.secs > 120 ? 'warn' : 'ok') : 'bad'));
+      }).join('') +
+      row(tr('snapTotal'), tr('snapLimit'), badge(ltr(d.total) + ' ' + tr('sec'), tone)) +
+      '<div class="state">' + verdict + '</div>';
+  }).catch(function(e){
+    logErr(e);
+    box.innerHTML = '<div class="state err">' + tr('snapTimedOut') + '</div>';
+  });
+}
+
 function runScanReady(){
   var box = document.getElementById('scanbox');
   box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';

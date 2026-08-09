@@ -2252,6 +2252,10 @@ function snapStatus(){
     if (btn && d.triggerOn){ btn.textContent = tr('running'); btn.disabled = true; btn.style.opacity = '.5'; }
     box.innerHTML = row(tr('autoUpdate'), d.lastRun ? ltr(d.lastRun) : '',
       badge(d.triggerOn ? tr('autoOn') : tr('autoOff'), d.triggerOn ? 'ok' : 'warn')) +
+      /* سبب فشل آخر محاولة — كان بيتخبّى في اللوج */
+      (d.lastResult ? '<div class="state' +
+        (d.lastResult.indexOf('❌') === 0 ? ' err' : '') + '">' +
+        esc(d.lastResult) + '</div>' : '') +
       (d.files || []).map(function(f){
         /* الأسماء كانت بتظهر بالإنجليزي زي ما هي جاية من السيرفر */
         var nm = ({ debts: tr('debts'), inventory: tr('invAging'), agents: tr('agents') })[f.name] || f.name;

@@ -143,10 +143,21 @@ button,input,select{font-family:inherit;font-size:inherit;color:inherit;border:0
 .btn.side{text-align:right}
 .btn:active{transform:scale(.985)}
 
-.chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:14px}
-.chip{border:1px solid var(--line);background:var(--panel);border-radius:99px;
-  padding:14px 20px;font-size:var(--t-md);font-weight:600}
-.chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+/* قايمة الموظفين — سطر لكل واحد بعرض الشاشة.
+   الشرايح كانت بتتصف عشوائي (٢ فوق، ٢ نص، ١ لوحده) لأن الأسماء
+   أطوال مختلفة. السطور مصفوفة دايمًا مهما طال الاسم.
+   ومسبناهاش دروب داون لأنها ٣ لمسات بدل واحدة والاختيار بيختفي. */
+.who-list{border-radius:var(--r);overflow:hidden;background:var(--panel);margin-bottom:20px}
+.who-item{display:flex;align-items:center;gap:12px;width:100%;
+  padding:18px 20px;font-size:var(--t-md);font-weight:600;text-align:right;
+  border-bottom:1px solid var(--line)}
+.who-item:last-child{border-bottom:0}
+.who-item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who-item .ck{width:24px;flex:0 0 auto;font-size:19px;color:var(--brand);opacity:0}
+.who-item.on{background:var(--brand);color:#fff}
+.who-item.on .ck{opacity:1;color:#fff}
+.who-item:active{background:var(--panel-2)}
+.who-item.on:active{background:var(--brand)}
 
 .row{display:flex;align-items:center;gap:12px;padding:15px 0;border-bottom:1px solid var(--line)}
 .row .m{flex:1;min-width:0}
@@ -339,11 +350,14 @@ function goHome(){
 
 function drawHome(open){
   OPEN = open || [];
-  var h = '<div class="lbl" style="margin-top:0">مين بيجرد؟</div><div class="chips" id="who">' +
-    STAFF.map(function(s){
-      return '<button class="chip' + (S.by===s.name?' on':'') + '" data-nm="' +
-        esc(s.name) + '" onclick="pickWho(this)">' + esc(s.name) + '</button>';
-    }).join('') + '</div>';
+  var h = '<div class="lbl" style="margin-top:0">مين بيجرد؟</div>' +
+    '<div class="who-list" id="who">' +
+      STAFF.map(function(s){
+        return '<button class="who-item' + (S.by===s.name?' on':'') + '" data-nm="' +
+          esc(s.name) + '" onclick="pickWho(this)">' +
+          '<span class="nm">' + esc(s.name) + '</span><span class="ck">✓</span></button>';
+      }).join('') +
+    '</div>';
 
   var cur = OPEN.filter(function(x){ return x.id === monthId(); })[0];
 
@@ -386,7 +400,7 @@ function recent(x){
 }
 
 function pickWho(el){
-  var a = document.querySelectorAll('#who .chip');
+  var a = document.querySelectorAll('#who .who-item');
   for (var i=0;i<a.length;i++) a[i].classList.remove('on');
   el.classList.add('on');
   S.by = el.dataset.nm; save();

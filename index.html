@@ -308,9 +308,24 @@ var T = {
   avgDailyNet:['متوسط الصافي','Avg net'],
   avgDailySales:['متوسط المبيعات','Avg sales'],
   avgDailyProfit:['متوسط الربح','Avg profit'],
+  avgDailyInv:['متوسط عدد الفواتير','Avg invoices'],
   perDay:['في اليوم','per day'],
   daysWord:['يوم','days'],
   withData:['فيهم بيع','with sales'],
+  scanReady:['جاهزية الجرد بالكاميرا','Scan readiness'],
+  checkScan:['افحص الجرد','Check scanning'],
+  scanTotal:['إجمالي الأصناف','Total items'],
+  scanInStock:['فيها رصيد','In stock'],
+  scanBadCode:['أكواد شكلها غلط','Bad codes'],
+  scanMulti:['بأكتر من صلاحية','Multi-expiry'],
+  scanNoExp:['من غير صلاحية مسجلة','No expiry on file'],
+  ofInStock:['من اللي فيها رصيد','of in-stock'],
+  scanVerdictGood:['ممتاز — الشاشة هتوقف نادرًا، الجرد هيبقى سريع.',
+                   'Great — the screen will rarely pause.'],
+  scanVerdictMid:['مقبول — الشاشة هتوقف عند صنف من كل خمسة تقريبًا.',
+                  'OK — pauses on roughly one in five items.'],
+  scanVerdictBad:['عالي — الوقفات كتير أوي. لازم نغيّر تصميم شاشة الجرد.',
+                  'High — too many pauses. The counting screen needs a different design.'],
   close:['إقفال','Close'], retry:['حاول تاني','Try again'], loading:['بيحمّل…','Loading…'],
   failed:['مقدرتش أحمّل','Could not load'], empty:['مفيش بيانات','No data'],
   updated:['آخر تحديث','Updated'], egp:['جنيه','EGP'],
@@ -1148,7 +1163,8 @@ function drawSales(m, k, box){
     html += card(tr('dailyAvg'), label,
       row(tr('avgDailyNet'),    tr('perDay'), ltr(num(m.avg_daily_net || 0))) +
       row(tr('avgDailySales'),  tr('perDay'), ltr(num(m.avg_daily_sales || 0))) +
-      row(tr('avgDailyProfit'), tr('perDay'), ltr(num(m.avg_daily_profit || 0))));
+      row(tr('avgDailyProfit'), tr('perDay'), ltr(num(m.avg_daily_profit || 0))) +
+      row(tr('avgDailyInv'),    tr('perDay'), ltr(num(m.avg_daily_invoices || 0))));
   }
 
   html += card(tr('salesPerf'), label,
@@ -2163,6 +2179,9 @@ function openSheet(kind){
       '<button class="btn btn-primary" id="snapEnable" onclick="snap(\'snapshotEnable\')">' + tr('enableAuto') + '</button></div>' +
       '<button class="btn btn-quiet" onclick="runDiag()">' + tr('startCheck') + '</button>' +
       '<div id="diagbox"></div>' +
+      '<div class="group-title">' + tr('scanReady') + '</div>' +
+      '<button class="btn btn-quiet" onclick="runScanReady()">' + tr('checkScan') + '</button>' +
+      '<div id="scanbox"></div>' +
       '<div class="group-title">' + tr('errorLog') + '</div>' +
       (ERRORS.length ? ERRORS.slice().reverse().map(function(e){
         return row(e.m, ltr(e.t));
@@ -2191,6 +2210,37 @@ function snap(action){
   if (box){ box.className = 'state'; box.innerHTML = '<div class="spin"></div>' + tr('loading'); }
   api(action).then(function(){ snapStatus(); toast('✓'); }).catch(function(e){ logErr(e); snapStatus(); });
 }
+/* 📷 فحص جاهزية الجرد بالكاميرا.
+   أهم رقم فيه: "أصناف بأكتر من صلاحية" — دول اللي الشاشة هتوقف
+   عندهم وتطلب من الموظف يوزّع الكمية. لو نسبتهم عالية، تصميم
+   شاشة الجرد نفسه لازم يتغيّر. */
+function runScanReady(){
+  var box = document.getElementById('scanbox');
+  box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';
+  api('scanReady').then(function(d){
+    if (!d || !d.ok){
+      box.innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + '</div>';
+      return;
+    }
+    var pct = (d.multiPct !== undefined) ? d.multiPct
+              : (d.inStock ? Math.round(d.multi / d.inStock * 100) : 0);
+    var tone = pct < 15 ? 'ok' : (pct < 40 ? 'warn' : 'bad');
+    box.innerHTML =
+      row(tr('scanTotal'),   null, ltr(num(d.total))) +
+      row(tr('scanInStock'), null, ltr(num(d.inStock))) +
+      row(tr('scanBadCode'), null, badge(ltr(d.bad), d.bad ? 'warn' : 'ok')) +
+      row(tr('scanMulti'), ltr(pct) + '% ' + tr('ofInStock'), badge(ltr(num(d.multi)), tone)) +
+      row(tr('scanNoExp'), null, ltr(num(d.noExp || 0))) +
+      '<div class="state">' +
+        (pct < 15 ? tr('scanVerdictGood')
+                  : (pct < 40 ? tr('scanVerdictMid') : tr('scanVerdictBad'))) +
+      '</div>';
+  }).catch(function(e){
+    logErr(e);
+    box.innerHTML = '<div class="state err">' + tr('failed') + '</div>';
+  });
+}
+
 function runDiag(){
   var box = document.getElementById('diagbox');
   box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';

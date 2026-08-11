@@ -344,6 +344,21 @@ var T = {
   expStale:['⚠️ المصروفات واقفة من','⚠️ Expenses stale for'],
   expStaleHint:['آخر مصروف مسجّل:','Last recorded entry:'],
   plStale:['⚠️ الصافي مش دقيق — المصروفات واقفة من','⚠️ Net is off — expenses stale for'],
+  entries:['حركة','entries'],
+  incomeIn:['إيرادات (فلوس داخلة)','Income (money in)'],
+  byCategory:['حسب الفئة','By category'],
+  bySupplier:['حسب المورّد','By supplier'],
+  allEntries:['كل الحركات','All entries'],
+  amount:['المبلغ','Amount'],
+  date:['التاريخ','Date'],
+  supplier:['المورّد','Supplier'],
+  staffMember:['الموظف','Staff'],
+  detail:['التفاصيل','Detail'],
+  serial:['التسلسل','Serial'],
+  total:['الإجمالي','Total'],
+  noData:['مفيش بيانات','No data'],
+  incomeNote:['دي فلوس داخلة (تسديد مديونية) — مش محسوبة في المصروفات',
+              'This is money in (debt payment) — not counted as an expense'],
   counts:['الجرد','Stocktake'],
   liveNow:['شغال دلوقتي','Counting now'],
   staffCounts:['جرد الموظفين','Staff counting'],
@@ -1341,18 +1356,37 @@ function drawExpenses(d, box){
       }).join(''),
       'expMenu()',
       RANGE.exp === 'custom' || RANGE.exp === 'lastMonth') +
-      vitals(tr('expenses'), null, [
-      { value: num(d.total), label: tr('totalExpenses'), tone: 'warn' },
-      { value: num(d.count), label: tr('items'), tone: 'brand' },
-      { value: num(top ? top.total : 0), label: top ? top.category : '—', tone: 'bad' }
+      vitals(tr('expenses'), d.label, [
+      { value: num(d.total), label: tr('totalExpenses'), tone: 'warn',
+        note: ltr(num(d.count)), sub: tr('entries') },
+      { value: num(top ? top.total : 0), label: top ? top.category : '—', tone: 'bad',
+        note: d.total ? (pct(top ? top.total : 0, d.total) + '%') : null },
+      { value: num(d.income || 0), label: tr('incomeIn'), tone: 'ok',
+        note: ltr(num(d.income_count || 0)), sub: tr('entries') }
     ]);
-    html += card(tr('expenses'), null, (d.byCategory || []).length
-      ? d.byCategory.map(function(c){ return row(c.category, ltr(c.count), ltr(num(c.total))); }).join('')
+
+    /* الفئات بقت قابلة للفتح — كانت أرقام صمّاء */
+    html += card(tr('byCategory'), null, (d.byCategory || []).length
+      ? d.byCategory.map(function(c){
+          var share = d.total ? pct(c.total, d.total) : 0;
+          return '<div class="row" onclick="openExpCat(\'' +
+            esc(String(c.category).replace(/'/g,'')) + '\')" style="cursor:pointer">' +
+            '<div class="row-main"><b>' + esc(c.category) + '</b>' +
+            '<small>' + ltr(num(c.count)) + ' ' + tr('entries') +
+            ' · ' + ltr(share) + '%</small></div>' +
+            '<span class="v">' + ltr(num(c.total)) + '</span>' +
+            '<span style="opacity:.4;padding-inline-start:6px">›</span></div>';
+        }).join('')
       : emptyState());
+
     EXP_ITEMS = d.items || [];
-    var items = (d.items || []).slice(0, 60);
+    var items = (d.items || []).filter(function(i){ return !i.isIncome; }).slice(0, 40);
     if (items.length) html += card(tr('history'), null, items.map(function(i){
-      return row(i.category, esc(i.desc) + ' · ' + ltr(i.date), ltr(num(i.amount)));
+      return '<div class="row" onclick="openExpItem(\'' + esc(i.id) + '\')" style="cursor:pointer">' +
+        '<div class="row-main"><b>' + esc(i.name || i.category) + '</b>' +
+        '<small>' + ltr(i.date) + (i.time ? ' · ' + ltr(i.time) : '') +
+        (i.company ? ' · ' + esc(i.company) : '') + '</small></div>' +
+        '<span class="v">' + ltr(num(i.amount)) + '</span></div>';
     }).join(''));
     box.innerHTML = warn + html;
   }
@@ -2513,6 +2547,78 @@ function agoMs(ms){
   if (m < 2) return tr('justNow');
   if (m < 60) return ltr(m) + ' ' + tr('minAgo');
   return ltr(Math.round(m/60)) + ' ' + tr('hrAgo');
+}
+
+/* ═══ نافذة تفاصيل فئة المصروفات ═══
+   الفئة لوحدها رقم مجمّع — الفايدة إنك تشوف مكوّناته: مين أكبر
+   مورّد، وإزاي اتوزّع على الأيام. */
+function openExpCat(cat){
+  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  document.getElementById('sheet').classList.add('on');
+  t.textContent = cat;
+
+  var rows = (EXP_ITEMS || []).filter(function(i){ return i.category === cat; });
+  if (!rows.length){ b.innerHTML = '<div class="state">' + tr('noData') + '</div>'; return; }
+
+  var total = 0, byCo = {}, byDay = {};
+  rows.forEach(function(i){
+    total += i.amount;
+    var co = i.company || i.name || '—';
+    byCo[co] = (byCo[co] || 0) + i.amount;
+    byDay[i.date] = (byDay[i.date] || 0) + i.amount;
+  });
+
+  var coList = Object.keys(byCo).map(function(k){ return { k:k, v:byCo[k] }; })
+                 .sort(function(a,b){ return b.v - a.v; });
+  var dayList = Object.keys(byDay).sort().reverse();
+
+  var h = '<div class="state">' + tr('total') + ' ' + ltr(num(total)) + ' ' + tr('egp') +
+          ' · ' + ltr(num(rows.length)) + ' ' + tr('entries') + '</div>';
+
+  if (coList.length > 1){
+    h += '<div class="group-title">' + tr('bySupplier') + '</div>' +
+      coList.map(function(c){
+        return '<div class="row"><div class="row-main"><b>' + esc(c.k) + '</b>' +
+          '<small>' + ltr(pct(c.v, total)) + '%</small></div>' +
+          '<span class="v">' + ltr(num(c.v)) + '</span></div>';
+      }).join('');
+  }
+
+  h += '<div class="group-title">' + tr('byDay') + '</div>' +
+    dayList.map(function(day){
+      return '<div class="row"><div class="row-main"><b>' + ltr(day) + '</b></div>' +
+        '<span class="v">' + ltr(num(byDay[day])) + '</span></div>';
+    }).join('');
+
+  h += '<div class="group-title">' + tr('allEntries') + '</div>' +
+    rows.sort(function(a,b){ return b.amount - a.amount; }).map(function(i){
+      return '<div class="row" onclick="openExpItem(\'' + esc(i.id) + '\')" style="cursor:pointer">' +
+        '<div class="row-main"><b>' + esc(i.name || '—') + '</b>' +
+        '<small>' + ltr(i.date) + (i.time ? ' · ' + ltr(i.time) : '') + '</small></div>' +
+        '<span class="v">' + ltr(num(i.amount)) + '</span></div>';
+    }).join('');
+
+  b.innerHTML = h;
+}
+
+/* نافذة سطر واحد — كل اللي النظام سجّله عنه */
+function openExpItem(id){
+  var i = (EXP_ITEMS || []).filter(function(x){ return String(x.id) === String(id); })[0];
+  if (!i) return;
+  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  document.getElementById('sheet').classList.add('on');
+  t.textContent = i.name || i.category;
+
+  b.innerHTML =
+    vitals(i.category, null, [
+      { value: num(i.amount), label: tr('amount'), tone: i.isIncome ? 'ok' : 'warn' }
+    ]) +
+    row(tr('date'), null, ltr(i.date + (i.time ? ' · ' + i.time : ''))) +
+    (i.company ? row(tr('supplier'), null, esc(i.company)) : '') +
+    (i.staff ? row(tr('staffMember'), null, esc(i.staff)) : '') +
+    (i.detail ? row(tr('detail'), null, esc(i.detail)) : '') +
+    row(tr('serial'), null, ltr(i.id)) +
+    (i.isIncome ? '<div class="state">' + tr('incomeNote') + '</div>' : '');
 }
 
 /* ═══ أمر تصحيح الأرصدة ═══

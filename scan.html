@@ -56,6 +56,8 @@ button,input,select{font-family:inherit;font-size:inherit;color:inherit;border:0
 .frame{position:absolute;top:34%;left:7%;right:7%;height:26vh;max-height:190px;
   transform:translateY(-50%);border:3px solid rgba(255,255,255,.95);border-radius:var(--r);
   box-shadow:0 0 0 100vmax rgba(0,0,0,.5);pointer-events:none;z-index:1}
+.frame.hit{border-color:#35C08A;box-shadow:0 0 0 100vmax rgba(0,0,0,.5),
+  0 0 26px rgba(53,192,138,.9)}
 .frame::after{content:'';position:absolute;top:50%;left:12px;right:12px;height:2px;
   background:rgba(255,70,70,.9);transform:translateY(-50%);
   box-shadow:0 0 10px rgba(255,70,70,.7)}
@@ -346,7 +348,26 @@ function n(v){ return '<span class="n">' +
 /* ═══ الصوت هو التغذية الراجعة الأساسية ═══
    الموظف مش بيبص على الشاشة وهو بيمسح، فنغمة مختلفة لكل حالة
    بتوفّر عليه إنه يتأكد بعينه كل مرة. */
-var AC = null;
+var AC = null, audioReady = false;
+
+/* iOS بيمنع أي صوت لحد ما المستخدم يلمس الشاشة، والاهتزاز مش
+   مدعوم على iPhone خالص. فبنفك القفل من أول لمسة في الصفحة —
+   من غير كده الموظف بيمسح وميسمعش حاجة ويفتكر إنه مش شغال. */
+function unlockAudio(){
+  if (audioReady) return;
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.connect(g); g.connect(AC.destination);
+    g.gain.value = 0.0001;            /* نغمة صامتة تفتح القناة */
+    o.start(); o.stop(AC.currentTime + .02);
+    audioReady = true;
+  }catch(e){}
+}
+document.addEventListener('touchstart', unlockAudio, { once:false, passive:true });
+document.addEventListener('click', unlockAudio, { once:false });
+
 function tone(freqs, dur){
   try{
     AC = AC || new (window.AudioContext||window.webkitAudioContext)();
@@ -614,12 +635,60 @@ function startCam(){
       [ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
        ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
        ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.UPC_A]);
-    reader = new ZXing.BrowserMultiFormatReader(hints, 180);
-    reader.decodeFromConstraints({ video:{ facingMode:{ideal:'environment'} } },
-      'video', function(res){ if (res) onScan(res.getText()); })
-    .catch(function(e){ toast('الكاميرا مش راضية تفتح'); reader = null; });
-  }catch(e){ toast(e.message); reader = null; }
+    reader = new ZXing.BrowserMultiFormatReader(hints, 150);
+
+    /* الدقة الافتراضية 640×480 — مش كفاية لباركود Code128 الرفيع.
+       بنطلب 1920×1080 وتركيز مستمر. من غير كده الكاميرا بتشتغل
+       والقراءة مش بتحصل، وده اللي بيخلي الموظف يقول "مش شغال". */
+    reader.decodeFromConstraints({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 },
+        focusMode: { ideal: 'continuous' },
+        advanced: [{ focusMode: 'continuous' }]
+      }
+    }, 'video', function(res){ if (res) onScan(res.getText()); })
+    .then(function(){ camOk(); })
+    .catch(function(e){
+      /* لو الدقة العالية مرفوضة، نرجع للإعداد البسيط بدل ما نفشل */
+      reader.decodeFromConstraints({ video:{ facingMode:{ideal:'environment'} } },
+        'video', function(res){ if (res) onScan(res.getText()); })
+      .then(function(){ camOk(); })
+      .catch(function(e2){
+        $('hint').innerHTML = '<span style="color:#E85D67">الكاميرا مش راضية تفتح — ' +
+          esc(e2.message || '') + '</span>';
+        reader = null;
+      });
+    });
+  }catch(e){
+    $('hint').innerHTML = '<span style="color:#E85D67">' + esc(e.message) + '</span>';
+    reader = null;
+  }
 }
+
+/* الكاميرا اشتغلت — بنبيّن الدقة الفعلية عشان لو ضعيفة نعرف السبب */
+function camOk(){
+  setTimeout(function(){
+    try{
+      var v = $('video');
+      var w = v.videoWidth || 0, h = v.videoHeight || 0;
+      $('hint').innerHTML = 'وجّه على الباركود' +
+        (w ? ' <span style="opacity:.5">· ' + w + '×' + h + '</span>' : '');
+      if (w && w < 1000){
+        $('hint').innerHTML += '<br><span style="color:#E9A63F;font-size:13px">' +
+          'دقة منخفضة — قرّب أكتر</span>';
+      }
+    }catch(e){}
+  }, 900);
+}
+function flashFrame(){
+  var f = document.querySelector('.frame');
+  if (!f) return;
+  f.classList.add('hit');
+  setTimeout(function(){ f.classList.remove('hit'); }, 260);
+}
+
 function stopCam(){
   try{ reader && reader.reset(); }catch(e){}
   reader = null;
@@ -627,6 +696,9 @@ function stopCam(){
 
 function onScan(text){
   var code = String(text||'').replace(/\D/g,'');
+  /* وميض أخضر مع كل قراءة — دليل بصري إن الماسحة شغالة حتى لو
+     الصوت مقفول أو الموظف في مكان دوشة */
+  flashFrame();
   if (!code) return;
   var now = Date.now();
   /* نفس الباركود خلال ثانية = ارتجاجة مش مسحة جديدة */

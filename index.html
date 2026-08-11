@@ -341,6 +341,9 @@ var T = {
                   'OK — pauses on roughly one in five items.'],
   scanVerdictBad:['عالي — الوقفات كتير أوي. لازم نغيّر تصميم شاشة الجرد.',
                   'High — too many pauses. The counting screen needs a different design.'],
+  expStale:['⚠️ المصروفات واقفة من','⚠️ Expenses stale for'],
+  expStaleHint:['آخر مصروف مسجّل:','Last recorded entry:'],
+  plStale:['⚠️ الصافي مش دقيق — المصروفات واقفة من','⚠️ Net is off — expenses stale for'],
   counts:['الجرد','Stocktake'],
   liveNow:['شغال دلوقتي','Counting now'],
   staffCounts:['جرد الموظفين','Staff counting'],
@@ -1286,6 +1289,12 @@ function pgPL(){
 function drawPL(d, box){
   if (!d || !d.ok) { oops(box, "pgPL()"); return; }
   {
+    /* الصافي = ربح − مصروفات − مرتبات. لو المصروفات باتت، الصافي
+       بيطلع أعلى من الحقيقة — فالتحذير لازم يظهر هنا كمان. */
+    var warn = d.exp_stale
+      ? ('<div class="state err" style="margin-bottom:10px">' + tr('plStale') +
+         ' ' + ltr(d.exp_stale_days) + ' ' + tr('daysWord') + '</div>')
+      : '';
     var html = vitals(tr('pl'), d.month, [
       { value: num(d.total_profit), label: tr('totalProfit'), tone: 'ok' },
       { value: num(d.total_expenses), label: tr('totalExpenses'), tone: 'warn' },
@@ -1299,7 +1308,7 @@ function drawPL(d, box){
       return row(x.date, tr('profit') + ' ' + ltr(num(x.profit)),
         '<span style="color:var(--' + (x.net >= 0 ? 'ok' : 'bad') + ')">' + ltr(num(x.net)) + '</span>');
     }).join('') : emptyState());
-    box.innerHTML = html;
+    box.innerHTML = warn + html;
   }
 }
 
@@ -1312,6 +1321,19 @@ function pgExpenses(){
 function drawExpenses(d, box){
   if (!d || !d.ok) { oops(box, "pgExpenses()"); return; }
   {
+    /* ⚠️ التنبيه ده أهم من الأرقام نفسها.
+       المصروفات وقفت 9 أيام في أغسطس والصفحة فضلت تعرض القديم
+       كأنه صح — والصافي كان بيطلع منفوخ. */
+    var warn = '';
+    if (d.stale){
+      warn = '<div class="state err" style="margin-bottom:10px">' +
+        tr('expStale') + ' ' + ltr(d.staleDays) + ' ' + tr('daysWord') +
+        '<br><span style="opacity:.8;font-size:13px">' +
+        tr('expStaleHint') + ' ' + esc(d.lastEntry || '') + '</span></div>';
+    } else if (d.sourceError){
+      warn = '<div class="state err" style="margin-bottom:10px">' +
+        esc(d.sourceError) + '</div>';
+    }
     var top = (d.byCategory || [])[0];
     var html = ctlBar(
       RANGE_OPTS.slice(0, 4).map(function(o){
@@ -1332,7 +1354,7 @@ function drawExpenses(d, box){
     if (items.length) html += card(tr('history'), null, items.map(function(i){
       return row(i.category, esc(i.desc) + ' · ' + ltr(i.date), ltr(num(i.amount)));
     }).join(''));
-    box.innerHTML = html;
+    box.innerHTML = warn + html;
   }
 }
 

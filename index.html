@@ -359,6 +359,10 @@ var T = {
   noData:['مفيش بيانات','No data'],
   incomeNote:['دي فلوس داخلة (تسديد مديونية) — مش محسوبة في المصروفات',
               'This is money in (debt payment) — not counted as an expense'],
+  neverSold:['بضاعة عمرها ما اتباعت','Never sold'],
+  neverSoldSub:['مش راكدة — دي بضاعة لسه ما اتباعتش أول مرة',
+                'Not slow-moving — never had a first sale'],
+  laterMonths:['بعد ٦ شهور','Beyond 6 months'],
   counts:['الجرد','Stocktake'],
   liveNow:['شغال دلوقتي','Counting now'],
   staffCounts:['جرد الموظفين','Staff counting'],
@@ -1088,7 +1092,9 @@ function drawHome(b, kpi, isOld){
         note: isStaleDay ? null : salesNote.num, sub: isStaleDay ? null : salesNote.word },
       { value: num(d.profit_today), label: tr('profitToday'),
         tone: isStaleDay ? 'slate' : 'brand',
-        note: pct(d.profit_today, salesT) + '%', sub: tr('margin') },
+        /* أول الصبح المبيعات صفر — القسمة كانت بتطلع NaN */
+        note: salesT > 0 ? (pct(d.profit_today, salesT) + '%') : null,
+        sub: salesT > 0 ? tr('margin') : null },
       { value: num(tot.inv), label: tr('invoices'), tone: 'brand',
         note: num(totCust), sub: tr('customersToday') }
     ], (isStaleDay
@@ -1741,6 +1747,8 @@ function drawAging(isOld){
   var deadPct = pct(d.slow_dead_total_cost, d.total_cost_value);
   var expCost = (d.near_expiry_list || []).reduce(function(a, x){ return a + x.cost; }, 0);
   var expPct  = pct(expCost, d.total_cost_value);
+  /* المؤشر ده معادلة تقديرية — بيوزن الراكد وقرب الصلاحية.
+     مش رقم محاسبي، للمقارنة مع نفسه عبر الوقت بس. */
   var score   = Math.max(0, Math.min(100, 100 - deadPct * 1.6 - expPct * 2));
   var hTone   = score >= 70 ? 'ok' : score >= 45 ? 'warn' : 'bad';
   var hLabel  = score >= 70 ? tr('healthGood') : score >= 45 ? tr('healthMid') : tr('healthBad');
@@ -1777,7 +1785,16 @@ function drawAging(isOld){
         '<div class="row-main"><b>' + esc(m.label) + '</b>' +
         '<small>' + ltr(m.count) + ' ' + tr('items') + '</small></div>' +
         '<span class="row-val">' + ltr(num(m.totalCost)) + '</span></div>';
-    }).join('') || emptyState());
+    }).join('') +
+    /* اللي بينتهي بعد 6 شهور — كان بيختفي من الجدول تمامًا */
+    (function(){
+      var L = d.expiry_by_month && d.expiry_by_month.later;
+      if (!L || !L.count) return '';
+      return '<div class="row" style="cursor:pointer" onclick="expSheet(\'later\')">' +
+        '<div class="row-main"><b>' + tr('laterMonths') + '</b>' +
+        '<small>' + ltr(L.count) + ' ' + tr('items') + '</small></div>' +
+        '<span class="row-val">' + ltr(num(L.totalCost)) + '</span></div>';
+    })() || emptyState());
 
   /* ── كارت: الركود حسب آخر بيع — كل شريحة تفتح نافذة ── */
   var AG = [['never','never'],['b0_30','d0_30'],['b31_60','d31_60'],['b61_90','d61_90'],
@@ -1791,6 +1808,21 @@ function drawAging(isOld){
       '<small>' + ltr(g.skus) + ' ' + tr('skus') + '</small></div>' +
       '<span class="row-val" style="color:var(--' + tone + ')">' + ltr(num(g.cost)) + '</span></div>';
   }).join('') || emptyState());
+
+  /* ── كارت: بضاعة عمرها ما اتباعت ──
+     كانت مخلوطة مع "الراكد" وبتنفخ رقمه. البضاعة الجديدة بتقع هنا
+     لحد ما تتباع أول مرة. */
+  if (d.never_sold_count) {
+    html += card(tr('neverSold'), tr('neverSoldSub'),
+      row(tr('items'), null, ltr(num(d.never_sold_count))) +
+      row(tr('stockValue'), null, ltr(num(d.never_sold_total_cost))) +
+      (d.never_sold_list || []).slice(0, 6).map(function(it){
+        return '<div class="row"><div class="row-main"><b>' + esc(it.name) + '</b>' +
+          '<small>' + ltr(num(it.stock)) + ' ' + tr('unitsWord') +
+          (it.expire ? ' · ' + esc(it.expire) : '') + '</small></div>' +
+          '<span class="row-val">' + ltr(num(it.cost)) + '</span></div>';
+      }).join(''));
+  }
 
   /* ── كارت: الأرصدة السالبة — أول حاجة لأنها خطأ محتاج تصحيح ── */
   var neg = d.negative_list || [];
@@ -1928,7 +1960,8 @@ function expSheet(key){
   var d = INV.data; if (!d) return;
   var bucket = (key === 'expired')
     ? d.expiry_by_month.expired
-    : d.expiry_by_month.months[key];
+    : (key === 'later' ? d.expiry_by_month.later
+                       : d.expiry_by_month.months[key]);
   if (!bucket) return;
   var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
   document.getElementById('sheet').classList.add('on');

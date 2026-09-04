@@ -803,6 +803,13 @@ function openMenu(title, body){
   document.getElementById('sheet').classList.add('on');
 }
 /* أزرار التصدير جوه القايمة — مكان واحد بدل ما تتكرر */
+/* ⤓ جنب عنوان كل كارت — التصدير كان مخفي جوه زرار «...» ومحتاج
+   نزول تحت، وكان بيصدّر الراكد بس مهما كان القسم المفتوح. */
+function expBtn(fn){
+  return '<button class="ibtn" onclick="event.stopPropagation();' + fn +
+         '" title="تصدير" style="font-size:17px;opacity:.65">⤓</button>';
+}
+
 function exportRows(fn){
   return menuRow('⤓', 'ok', tr('exportX'), tr('exportXSub'), "closeSheet();" + fn + "('x')") +
          menuRow('⎙', 'brand', tr('exportP'), tr('exportPSub'), "closeSheet();" + fn + "('p')");
@@ -876,6 +883,47 @@ function expInv(k){
   });
   k === 'x' ? toExcel(rows, 'dead_stock') : toPDF(rows, tr('deadList'));
 }
+/* الصلاحية شهر بشهر — كل الدفعات مع شهرها */
+function expExpiry(k){
+  var E = (INV.data || {}).expiry_by_month || {};
+  var rows = [];
+  function push(label, b){
+    (b && b.items || []).forEach(function(it){
+      rows.push({ 'الشهر': label, 'الصنف': it.name, 'الرصيد': it.stock,
+                  'التكلفة': it.cost, 'ينتهي': it.expire || '—' });
+    });
+  }
+  push('منتهي', E.expired);
+  (E.months || []).forEach(function(m){ push(m.label, m); });
+  push('بعد ٦ شهور', E.later);
+  k === 'x' ? toExcel(rows, 'expiry_by_month') : toPDF(rows, tr('expByMonth'));
+}
+
+/* حسب آخر بيع — كل الشرايح */
+function expAging(k){
+  var d = INV.data || {}, rows = [];
+  var LBL = { never:'ما اتباعش', b0_30:'أقل من شهر', b31_60:'١-٢ شهر',
+              b61_90:'٢-٣ شهور', b91_180:'٣-٦ شهور',
+              b181_365:'٦-١٢ شهر', b365plus:'أكتر من سنة' };
+  Object.keys(LBL).forEach(function(k2){
+    ((d.aging_items || {})[k2] || []).forEach(function(it){
+      rows.push({ 'الشريحة': LBL[k2], 'الصنف': it.name, 'الرصيد': it.stock,
+                  'التكلفة': it.cost,
+                  'ساكن (يوم)': (it.days === null || it.days === undefined) ? '—' : it.days });
+    });
+  });
+  k === 'x' ? toExcel(rows, 'aging') : toPDF(rows, tr('agingTitle'));
+}
+
+/* بضاعة عمرها ما اتباعت */
+function expNeverSold(k){
+  var rows = ((INV.data || {}).never_sold_list || []).map(function(it){
+    return { 'الصنف': it.name, 'الفئة': it.category, 'الرصيد': it.stock,
+             'التكلفة': it.cost, 'ينتهي': it.expire || '—' };
+  });
+  k === 'x' ? toExcel(rows, 'never_sold') : toPDF(rows, tr('neverSold'));
+}
+
 function expMsgs(k){
   var rows = ((MSG.data || {}).messages || []).map(function(m){
     return { 'التاريخ': m.date, 'الاسم': m.customername, 'التليفون': m.phone,
@@ -1794,7 +1842,8 @@ function drawAging(isOld){
         '<div class="row-main"><b>' + tr('laterMonths') + '</b>' +
         '<small>' + ltr(L.count) + ' ' + tr('items') + '</small></div>' +
         '<span class="row-val">' + ltr(num(L.totalCost)) + '</span></div>';
-    })() || emptyState());
+    })() || emptyState(),
+    expBtn("expiryMenu()"));
 
   /* ── كارت: الركود حسب آخر بيع — كل شريحة تفتح نافذة ── */
   var AG = [['never','never'],['b0_30','d0_30'],['b31_60','d31_60'],['b61_90','d61_90'],
@@ -1807,7 +1856,8 @@ function drawAging(isOld){
       '<div class="row-main"><b>' + tr(x[1]) + '</b>' +
       '<small>' + ltr(g.skus) + ' ' + tr('skus') + '</small></div>' +
       '<span class="row-val" style="color:var(--' + tone + ')">' + ltr(num(g.cost)) + '</span></div>';
-  }).join('') || emptyState());
+  }).join('') || emptyState(),
+    expBtn("agingMenu()"));
 
   /* ── كارت: بضاعة عمرها ما اتباعت ──
      كانت مخلوطة مع "الراكد" وبتنفخ رقمه. البضاعة الجديدة بتقع هنا
@@ -1821,7 +1871,8 @@ function drawAging(isOld){
           '<small>' + ltr(num(it.stock)) + ' ' + tr('unitsWord') +
           (it.expire ? ' · ' + esc(it.expire) : '') + '</small></div>' +
           '<span class="row-val">' + ltr(num(it.cost)) + '</span></div>';
-      }).join(''));
+      }).join(''),
+      expBtn("neverSoldMenu()"));
   }
 
   /* ── كارت: الأرصدة السالبة — أول حاجة لأنها خطأ محتاج تصحيح ── */
@@ -1858,6 +1909,10 @@ function drawAging(isOld){
 }
 
 /* قايمة ⋯ للمخزون: الفلاتر والتصدير */
+function expiryMenu(){ openMenu(tr('expByMonth'), exportRows('expExpiry')); }
+function agingMenu(){ openMenu(tr('agingTitle'), exportRows('expAging')); }
+function neverSoldMenu(){ openMenu(tr('neverSold'), exportRows('expNeverSold')); }
+
 function invMenu(){
   var SHELF = [['all','typeAll'],['u3','under3'],['3_6','m3_6'],['o6','over6'],['none','noExp']];
   var cats = ((INV.data || {}).slow_category_summary || []).slice(0, 12);

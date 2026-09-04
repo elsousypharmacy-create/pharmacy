@@ -59,6 +59,29 @@ button{font-family:inherit}
 .brand p{font-size:var(--t-micro);color:var(--ink-3);margin-top:1px;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .tools{display:flex;gap:var(--s2);flex-shrink:0}
+/* ═══ أقسام المخزون ═══ */
+.sec{width:100%;display:flex;align-items:center;gap:var(--s4);
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);
+  padding:18px;margin-bottom:var(--s3);text-align:right;font:inherit;color:inherit}
+.sec:active{transform:scale(.99)}
+.sec-dot{width:10px;height:10px;border-radius:99px;flex:0 0 auto;background:var(--ink-3)}
+.sec-mid{flex:1;min-width:0}
+.sec-mid b{display:block;font-size:15px;font-weight:700}
+.sec-mid small{display:block;color:var(--ink-3);font-size:var(--t-small);margin-top:3px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sec-num{text-align:left;flex:0 0 auto}
+.sec-num b{display:block;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+.sec-num small{color:var(--ink-3);font-size:var(--t-micro)}
+.sec-arw{color:var(--ink-3);font-size:17px}
+.sec.bad{border-color:rgba(229,100,110,.35)}
+.sec.bad .sec-dot{background:var(--bad)}
+.sec.bad .sec-num b{color:var(--bad)}
+.sec.warn .sec-dot{background:var(--warn)}
+.sec.warn .sec-num b{color:var(--warn)}
+.sec.ok .sec-dot{background:var(--ok)}
+.sec-head{display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s4)}
+.sec-head h3{flex:1;font-size:16px;font-weight:700}
+
 .ibtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);
   background:var(--surface);color:var(--ink-2);display:grid;place-items:center;
   cursor:pointer;font-size:13px;font-weight:700}
@@ -461,6 +484,12 @@ var T = {
   more:['المزيد','More'], category:['الفئة','Category'], topItems:['أعلى الأصناف قيمة','Highest value'],
   viewDetails:['شوف الكل','View all'], ofTotal:['من الإجمالي','of total'],
   negStock:['أرصدة سالبة','Negative stock'],
+  nearExpiry:['قرب الصلاحية','Near expiry'],
+  within6:['خلال ٦ شهور','Within 6 months'],
+  deadSection:['راكد وما اتباعش','Slow & never sold'],
+  deadSub:['مش بيتحرك — فلوس واقفة','Not moving — money parked'],
+  allStock:['كل المخزون','All stock'],
+  inStockSub:['فيها رصيد','in stock'],
   negSub:['رصيد أقل من صفر — خطأ جرد أو بيع من غير إدخال','Below zero — stock error or sale without entry'],
   fixThese:['محتاجة تصحيح جرد','Need a stock correction'],
   qtyShort:['ناقص','Short'], noNeg:['مفيش أرصدة سالبة','No negative stock'], filters:['فلاتر','Filters'], actions:['إجراءات','Actions'],
@@ -1788,6 +1817,35 @@ function pgAging(){
   }).catch(function(e){ logErr(e); if (!seed) oops(box, "pgAging()"); });
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   تحليل المخزون — بأقسام
+   الشاشة الأولى بتقول "فيه مشكلة ولا لأ" في نظرة واحدة، والتفاصيل
+   كلها زي ما هي جوه كل قسم. الترتيب بالخطورة: السالب فوق لأنه خطأ
+   محتاج تصحيح مش مجرد معلومة.
+   ═══════════════════════════════════════════════════════════════ */
+var INV_SEC = 'home';   /* home | neg | exp | dead | all */
+
+function setInvSec(k){ INV_SEC = k; drawAging(false); window.scrollTo(0,0); }
+
+/* زرار قسم في الشاشة الأولى */
+function secBtn(key, tone, title, sub, val, valSub){
+  return '<button class="sec ' + tone + '" onclick="setInvSec(\'' + key + '\')">' +
+    '<span class="sec-dot"></span>' +
+    '<span class="sec-mid"><b>' + title + '</b><small>' + sub + '</small></span>' +
+    '<span class="sec-num"><b>' + val + '</b>' +
+      (valSub ? '<small>' + valSub + '</small>' : '') + '</span>' +
+    '<span class="sec-arw">‹</span></button>';
+}
+
+/* رأس الشاشة الداخلية */
+function secHead(title, expFn){
+  return '<div class="sec-head">' +
+    '<button class="ibtn" onclick="setInvSec(\'home\')">›</button>' +
+    '<h3>' + title + '</h3>' +
+    (expFn ? '<button class="ibtn" onclick="' + expFn + '">⤓</button>' : '') +
+    '</div>';
+}
+
 function drawAging(isOld){
   var box = document.getElementById('p-stock'), d = INV.data;
   if (!d) return;
@@ -1812,6 +1870,49 @@ function drawAging(isOld){
   ]);
 
   /* سطر تحكّم واحد */
+  /* ── الشاشة الأولى: الأقسام ── */
+  if (INV_SEC === 'home'){
+    var negN  = (d.negative_list || []).length;
+    var nearC = (d.near_expiry_list || []).reduce(function(a,x){ return a + x.cost; }, 0);
+    var nearN = (d.near_expiry_list || []).length;
+    var deadC = (d.slow_dead_total_cost || 0) + (d.never_sold_total_cost || 0);
+    var deadN = (d.slow_dead_count || 0) + (d.never_sold_count || 0);
+
+    if (negN) html += secBtn('neg', 'bad', tr('negStock'), tr('negSub'),
+      ltr(num(negN)), tr('items'));
+
+    html += secBtn('exp', nearN ? 'warn' : 'ok', tr('nearExpiry'), tr('within6'),
+      ltr(num(Math.round(nearC))), ltr(num(nearN)) + ' ' + tr('items'));
+
+    html += secBtn('dead', deadN ? 'warn' : 'ok', tr('deadSection'), tr('deadSub'),
+      ltr(num(Math.round(deadC))), ltr(num(deadN)) + ' ' + tr('items'));
+
+    html += secBtn('all', 'ok', tr('allStock'),
+      ltr(num(d.sku_in_stock)) + ' ' + tr('items'),
+      ltr(num(d.total_cost_value)), tr('stockValue'));
+
+    box.innerHTML = html;
+    return;
+  }
+
+  /* رأس القسم — رجوع + تصدير */
+  html += secHead(
+    INV_SEC === 'neg'    ? tr('negStock')
+    : INV_SEC === 'exp'  ? tr('nearExpiry')
+    : INV_SEC === 'dead' ? tr('deadSection') : tr('allStock'),
+    INV_SEC === 'exp'    ? "expiryMenu()"
+    : INV_SEC === 'neg'  ? "negMenu()" : "invMenu()");
+
+  /* كل المخزون — الأرقام المجمّعة */
+  if (INV_SEC === 'all'){
+    html += card(tr('allStock'), d.snapshot_at || d.generated_date,
+      row(tr('stockValue'), null, ltr(num(d.total_cost_value))) +
+      row(tr('retailValue'), null, ltr(num(d.total_retail_value))) +
+      row(tr('items'), tr('inStockSub'), ltr(num(d.sku_in_stock))) +
+      row(tr('health'), hLabel, ltr(Math.round(score))));
+  }
+
+  if (INV_SEC === 'dead' || INV_SEC === 'exp')
   html += ctlBar(
     ctlBtn(tr('invAging'), true, "void 0"),
     'invMenu()',
@@ -1821,6 +1922,7 @@ function drawAging(isOld){
   /* ── كارت: الصلاحية شهر بشهر — كل شهر سطر يفتح نافذة ── */
   var months  = (d.expiry_by_month && d.expiry_by_month.months) || [];
   var expired = d.expiry_by_month && d.expiry_by_month.expired;
+  if (INV_SEC === 'exp')
   html += card(tr('expByMonth'), null,
     ((expired && expired.count)
       ? '<div class="row" style="cursor:pointer" onclick="expSheet(\'expired\')">' +
@@ -1848,6 +1950,7 @@ function drawAging(isOld){
   /* ── كارت: الركود حسب آخر بيع — كل شريحة تفتح نافذة ── */
   var AG = [['never','never'],['b0_30','d0_30'],['b31_60','d31_60'],['b61_90','d61_90'],
             ['b91_180','d91_180'],['b181_365','d181_365'],['b365plus','d365']];
+  if (INV_SEC === 'dead')
   html += card(tr('agingTitle'), null, AG.map(function(x){
     var g = (d.aging || {})[x[0]]; if (!g || !g.skus) return '';
     var tone = (x[0] === 'never' || x[0] === 'b365plus' || x[0] === 'b181_365') ? 'bad'
@@ -1862,7 +1965,7 @@ function drawAging(isOld){
   /* ── كارت: بضاعة عمرها ما اتباعت ──
      كانت مخلوطة مع "الراكد" وبتنفخ رقمه. البضاعة الجديدة بتقع هنا
      لحد ما تتباع أول مرة. */
-  if (d.never_sold_count) {
+  if (INV_SEC === 'dead' && d.never_sold_count) {
     html += card(tr('neverSold'), tr('neverSoldSub'),
       row(tr('items'), null, ltr(num(d.never_sold_count))) +
       row(tr('stockValue'), null, ltr(num(d.never_sold_total_cost))) +
@@ -1877,7 +1980,7 @@ function drawAging(isOld){
 
   /* ── كارت: الأرصدة السالبة — أول حاجة لأنها خطأ محتاج تصحيح ── */
   var neg = d.negative_list || [];
-  if (neg.length) {
+  if (INV_SEC === 'neg' && neg.length) {
     html += card(tr('negStock'),
       tr('negSub'),
       neg.slice(0, 8).map(function(it){
@@ -1895,6 +1998,7 @@ function drawAging(isOld){
 
   /* ── كارت: الراكد حسب الفئة — كل فئة تفتح نافذة ── */
   var cats = d.slow_category_summary || [];
+  if (INV_SEC === 'dead')
   html += card(tr('deadStock'),
     ltr(d.slow_dead_count) + ' ' + tr('items') + ' · ' + ltr(num(d.slow_dead_total_cost)),
     cats.length ? cats.slice(0, 12).map(function(c){
@@ -1909,6 +2013,15 @@ function drawAging(isOld){
 }
 
 /* قايمة ⋯ للمخزون: الفلاتر والتصدير */
+function expNeg(k){
+  var rows = ((INV.data || {}).negative_list || []).map(function(it){
+    return { 'الصنف': it.name, 'الفئة': it.category, 'الرصيد': it.stock,
+             'التكلفة': it.cost, 'السعر': it.price };
+  });
+  k === 'x' ? toExcel(rows, 'negative_stock') : toPDF(rows, tr('negStock'));
+}
+function negMenu(){ openMenu(tr('negStock'), exportRows('expNeg')); }
+
 function expiryMenu(){ openMenu(tr('expByMonth'), exportRows('expExpiry')); }
 function agingMenu(){ openMenu(tr('agingTitle'), exportRows('expAging')); }
 function neverSoldMenu(){ openMenu(tr('neverSold'), exportRows('expNeverSold')); }

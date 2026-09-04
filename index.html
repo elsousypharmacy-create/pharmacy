@@ -2013,14 +2013,25 @@ function drawAging(isOld){
 }
 
 /* قايمة ⋯ للمخزون: الفلاتر والتصدير */
-function expNeg(k){
-  var rows = ((INV.data || {}).negative_list || []).map(function(it){
-    return { 'الصنف': it.name, 'الفئة': it.category, 'الرصيد': it.stock,
-             'التكلفة': it.cost, 'السعر': it.price };
-  });
-  k === 'x' ? toExcel(rows, 'negative_stock') : toPDF(rows, tr('negStock'));
-}
 function negMenu(){ openMenu(tr('negStock'), exportRows('expNeg')); }
+
+function expCat(k){
+  var rows = CAT_ROWS.map(function(it){
+    return { 'الصنف': it.name, 'الرصيد': it.stock, 'التكلفة': it.cost,
+             'ينتهي': it.expire || '—' };
+  });
+  k === 'x' ? toExcel(rows, 'category') : toPDF(rows, tr('byCategory'));
+}
+function catMenu(){ openMenu(tr('byCategory'), exportRows('expCat')); }
+
+function expCatAll(k){
+  var rows = ((INV.data || {}).all_category_summary || []).map(function(c){
+    return { 'الفئة': c.category, 'عدد الأصناف': c.count, 'العلب': c.units,
+             'التكلفة': c.cost, 'بسعر الجمهور': c.retail };
+  });
+  k === 'x' ? toExcel(rows, 'categories') : toPDF(rows, tr('byCategory'));
+}
+function catAllMenu(){ openMenu(tr('byCategory'), exportRows('expCatAll')); }
 
 function expiryMenu(){ openMenu(tr('expByMonth'), exportRows('expExpiry')); }
 function agingMenu(){ openMenu(tr('agingTitle'), exportRows('expAging')); }
@@ -2089,6 +2100,7 @@ function agingSheet(key, labelKey){
 }
 
 /* نافذة: أصناف راكدة لفئة */
+var CAT_ROWS = [];
 function catSheet(cat){
   var d = INV.data; if (!d) return;
   var items = (d.slow_dead_list || []).filter(function(it){

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>شرح مضادات الالتهاب NSAIDs</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0F2A43;--card:#17395A;--ink:#F1F7FA;--mint:#2EC4B6;--amber:#FFB703;--red:#E63946;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:Cairo,Tahoma,sans-serif;overflow:hidden}
+#app{height:100%;display:flex;flex-direction:column;max-width:560px;margin:auto;padding:14px 18px}
+#bar{display:flex;gap:5px}
+#bar i{flex:1;height:4px;border-radius:2px;background:#ffffff26;overflow:hidden}
+#bar i b{display:block;height:100%;width:0;background:var(--mint)}
+#bar i.done b{width:100%}
+#bar i.cur b{animation:fill 8s linear forwards}
+.paused #bar i.cur b{animation-play-state:paused}
+@keyframes fill{to{width:100%}}
+#stage{flex:1;position:relative}
+.s{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;gap:18px}
+.s.on{display:flex}
+h1{font-size:34px;font-weight:900;line-height:1.35}
+h2{font-size:26px;font-weight:900;line-height:1.4}
+p{font-size:18px;line-height:1.8;opacity:.92}
+.m{color:var(--mint)}.a{color:var(--amber)}.r{color:var(--red)}
+.pill{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:14px;padding:12px 16px;font-size:18px;font-weight:700;opacity:0}
+.on .pill{animation:in .5s forwards}
+.pill:nth-child(2){animation-delay:.6s!important}.pill:nth-child(3){animation-delay:1.4s!important}.pill:nth-child(4){animation-delay:2.2s!important}
+.pill:nth-child(5){animation-delay:3s!important}.pill:nth-child(6){animation-delay:3.8s!important}.pill:nth-child(7){animation-delay:4.6s!important}
+@keyframes in{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+.dot{width:14px;height:14px;border-radius:50%;flex:none}
+/* flow */
+.flow{display:flex;flex-direction:column;align-items:center;gap:6px}
+.node{background:var(--card);border-radius:14px;padding:10px 18px;font-weight:700;font-size:17px;opacity:0;text-align:center;width:78%}
+.arrow{font-size:22px;opacity:0;color:var(--mint)}
+.on .node,.on .arrow{animation:pop .5s forwards}
+.flow>:nth-child(1){animation-delay:.3s!important}.flow>:nth-child(2){animation-delay:1s!important}
+.flow>:nth-child(3){animation-delay:1.5s!important}.flow>:nth-child(4){animation-delay:2.2s!important}
+.flow>:nth-child(5){animation-delay:2.7s!important}
+@keyframes pop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
+.enz{border:2px solid var(--amber);position:relative}
+.block{position:absolute;inset:-8px -6px;border:3px solid var(--red);border-radius:16px;background:#e639462e;display:flex;align-items:center;justify-content:center;color:var(--red);font-weight:900;font-size:18px;opacity:0;transform:scale(1.6)}
+.on .block{animation:slam .5s 4.6s forwards}
+@keyframes slam{to{opacity:1;transform:none}}
+.end{opacity:1}
+.on .endfade{animation:gone .8s 5.2s forwards}
+@keyframes gone{to{opacity:.2;text-decoration:line-through}}
+/* cox */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.box{background:var(--card);border-radius:16px;padding:16px;font-size:16px;line-height:1.7;opacity:0}
+.on .box{animation:in .6s forwards}.on .box+.box{animation-delay:1.2s}
+.box h3{font-size:20px;margin-bottom:6px}
+.note{opacity:0}.on .note{animation:in .6s 3s forwards}
+.warn{border-inline-start:5px solid var(--red)}
+.chip{display:inline-block;background:var(--card);border-radius:20px;padding:6px 14px;margin:4px;font-weight:700;opacity:0}
+.on .chip{animation:pop .4s forwards}
+.chip:nth-child(1){animation-delay:.2s!important}.chip:nth-child(2){animation-delay:.6s!important}.chip:nth-child(3){animation-delay:1s!important}.chip:nth-child(4){animation-delay:1.4s!important}.chip:nth-child(5){animation-delay:1.8s!important}.chip:nth-child(6){animation-delay:2.2s!important}
+#ctl{display:flex;gap:10px;padding-top:10px}
+button{flex:1;font:inherit;font-weight:700;font-size:16px;color:var(--ink);background:var(--card);border:0;border-radius:12px;padding:12px;cursor:pointer}
+button:focus-visible{outline:3px solid var(--amber)}
+.ill{display:block;margin:0 auto;height:96px}
+.row{display:flex;justify-content:center;gap:18px}.row svg{height:70px}
+#q{overflow:auto;justify-content:flex-start;padding-top:8px}
+.opt{display:block;width:100%;text-align:right;margin-top:8px;background:var(--card);padding:12px 14px}
+.opt.ok{background:var(--mint);color:var(--bg)}.opt.no{background:var(--red)}
+#ex{font-size:16px;margin-top:10px;min-height:52px}
+#qc{font-size:15px;opacity:.7}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="bar"></div>
+<div id="stage">
+
+<section class="s">
+<h1>مضادات الالتهاب<br><span class="m">NSAIDs</span></h1>
+<svg class="ill" viewBox="0 0 120 70"><g transform="rotate(-25 60 35)"><rect x="15" y="20" width="90" height="30" rx="15" fill="#F1F7FA"/><path d="M60 20h30a15 15 0 0 1 0 30H60z" fill="#2EC4B6"/></g><path d="M12 8l6 10-10 2z" fill="#E63946"/><path d="M104 56l6 10-10 2z" fill="#E63946"/></svg><p>مجموعة أدوية بتعمل ٣ حاجات مع بعض:</p>
+<div class="pill"><span class="dot" style="background:var(--red)"></span>تسكّن الألم</div>
+<div class="pill"><span class="dot" style="background:var(--amber)"></span>تخفض الحرارة</div>
+<div class="pill"><span class="dot" style="background:var(--mint)"></span>تقلل الالتهاب</div>
+</section>
+
+<section class="s">
+<h2>بتشتغل إزاي؟</h2>
+<div class="flow">
+<div class="node">حمض الأراكيدونيك</div>
+<div class="arrow">▼</div>
+<div class="node enz">إنزيم COX<div class="block">NSAID بيوقفه</div></div>
+<div class="arrow">▼</div>
+<div class="node endfade">بروستاجلاندينات ← ألم + حرارة + التهاب</div>
+</div>
+</section>
+
+<section class="s">
+<h2>COX-1 و COX-2</h2>
+<div class="row"><svg viewBox="0 0 60 60"><path d="M22 6v12c0 10-14 12-14 26a12 12 0 0 0 24 0c0-6 4-8 10-8 8 0 12-6 12-12S50 14 40 14H28V6z" fill="#FFB703"/></svg><svg viewBox="0 0 60 60"><path d="M36 8c14 0 20 12 14 28S34 54 24 50 10 36 18 22c4-8 10-14 18-14z" fill="#E63946"/><circle cx="26" cy="32" r="6" fill="#0F2A43"/></svg><svg viewBox="0 0 60 60"><path d="M30 6C20 22 12 30 12 40a18 18 0 0 0 36 0C48 30 40 22 30 6z" fill="#E63946"/></svg></div><div class="two">
+<div class="box"><h3 class="a">COX-1</h3>بيحمي المعدة والكلى وبيساعد الصفائح على التجلط</div>
+<div class="box"><h3 class="r">COX-2</h3>بيتكوّن وقت الالتهاب والألم</div>
+</div>
+<p class="note">أغلب الأدوية بتوقف الاتنين، عشان كده الفايدة جاية معاها آثار جانبية على المعدة والكلى. الأدوية الانتقائية لـ COX-2 أخف على المعدة بس ليها تحذير على القلب.</p>
+</section>
+
+<section class="s">
+<h2>أشهر الأدوية</h2>
+<div class="row"><svg viewBox="0 0 80 40"><g transform="rotate(-20 40 20)"><rect x="8" y="10" width="64" height="20" rx="10" fill="#F1F7FA"/><path d="M40 10h22a10 10 0 0 1 0 20H40z" fill="#FFB703"/></g></svg><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="#F1F7FA"/><path d="M8 20h24" stroke="#2EC4B6" stroke-width="3"/></svg><svg viewBox="0 0 80 40"><g transform="rotate(-20 40 20)"><rect x="8" y="10" width="64" height="20" rx="10" fill="#F1F7FA"/><path d="M40 10h22a10 10 0 0 1 0 20H40z" fill="#FFB703"/></g></svg></div>
+<div>
+<span class="chip">Ibuprofen</span><span class="chip">Diclofenac</span><span class="chip">Naproxen</span><span class="chip">Ketoprofen</span><span class="chip">Aspirin</span><span class="chip m">Celecoxib (انتقائي)</span>
+</div>
+<p>الباراسيتامول <b class="a">مش</b> NSAID: بيسكّن ويخفض الحرارة بس تقريبًا من غير تأثير على الالتهاب.</p>
+</section>
+
+<section class="s">
+<h2>انتبه</h2><div class="row"><svg viewBox="0 0 60 60"><path d="M22 6v12c0 10-14 12-14 26a12 12 0 0 0 24 0c0-6 4-8 10-8 8 0 12-6 12-12S50 14 40 14H28V6z" fill="#FFB703"/></svg><svg viewBox="0 0 60 60"><path d="M36 8c14 0 20 12 14 28S34 54 24 50 10 36 18 22c4-8 10-14 18-14z" fill="#E63946"/><circle cx="26" cy="32" r="6" fill="#0F2A43"/></svg><svg viewBox="0 0 60 60"><path d="M30 54S6 38 6 22A12 12 0 0 1 30 16a12 12 0 0 1 24 6c0 16-24 32-24 32z" fill="#E63946"/></svg></div>
+<div class="pill warn">قرحة أو نزيف في المعدة</div>
+<div class="pill warn">مشاكل الكلى أو الضغط أو القلب</div>
+<div class="pill warn">الحمل (خصوصًا آخر ٣ شهور)</div>
+<div class="pill warn">الربو الحساس للأسبرين</div>
+<div class="pill warn">مع وارفارين أو مدرّات بول أو أدوية الضغط</div>
+<div class="pill" style="background:var(--mint);color:var(--bg)">بعد الأكل، وأقل جرعة لأقصر مدة</div>
+</section>
+
+<section class="s" id="q">
+<h2>اختبر نفسك</h2>
+<div id="qc"></div><p id="qt" style="font-weight:700"></p><div id="qo"></div><div id="ex"></div>
+<button id="qn" style="display:none;background:var(--mint);color:var(--bg)">التالي</button>
+</section>
+</div>
+<div id="ctl"><button id="prev">السابق</button><button id="pp">إيقاف</button><button id="next">التالي</button></div>
+</div>
+<script>
+var S=[].slice.call(document.querySelectorAll('.s')),bar=document.getElementById('bar'),i=0,t,paused=false,D=8000;
+S.forEach(function(){bar.appendChild(document.createElement('i')).appendChild(document.createElement('b'))});
+function go(n){
+ i=Math.max(0,Math.min(S.length-1,n));
+ S.forEach(function(s,k){s.classList.remove('on');if(k===i){void s.offsetWidth;s.classList.add('on')}});
+ [].forEach.call(bar.children,function(b,k){b.className=k<i?'done':'';if(k===i){void b.offsetWidth;b.className='cur'}});
+ clearTimeout(t);
+ if(S[i].id==='q'){startQ();return}
+ if(!paused)t=setTimeout(function(){go(i+1)},D);
+}
+document.getElementById('next').onclick=function(){go(i+1)};
+document.getElementById('prev').onclick=function(){go(i-1)};
+document.getElementById('pp').onclick=function(e){
+ paused=!paused;document.body.classList.toggle('paused',paused);
+ e.target.textContent=paused?'تشغيل':'إيقاف';
+ if(paused)clearTimeout(t);else go(i);
+};
+var Q=[
+["الـ NSAIDs بتشتغل بإيقاف أنهي إنزيم؟",["COX","ACE","CYP3A4"],0,"بتوقف إنزيم COX فبيقل تكوين البروستاجلاندينات."],
+["أنهي دواء من دول مش NSAID؟",["Ibuprofen","Paracetamol","Diclofenac"],1,"الباراسيتامول بيسكّن ويخفض الحرارة بس تأثيره على الالتهاب ضعيف."],
+["COX-1 بيحمي إيه؟",["الكبد","الرئة","المعدة والكلى"],2,"وقفه هو سبب القرحة وتأثر الكلى."],
+["أخطر أثر جانبي شائع للـ NSAIDs؟",["قرحة ونزيف المعدة","تساقط الشعر","ضعف النظر"],0,"لازم تتاخد بعد الأكل وبأقل جرعة."],
+["مريض بياخد وارفارين وعنده صداع. الأنسب؟",["Ibuprofen","Diclofenac","Paracetamol"],2,"الـ NSAIDs مع وارفارين بتزود خطر النزيف."],
+["تحذير الأدوية الانتقائية لـ COX-2 زي Celecoxib؟",["القلب","الجلد","الغدة"],0,"أخف على المعدة بس ليها خطر على القلب والأوعية."],
+["الحمل في آخر ٣ شهور، الـ NSAIDs؟",["آمنة","ممنوعة","آمنة بنصف جرعة"],1,"ممكن تأثر على قناة الشريان عند الجنين وتقلل السائل الأمنيوسي."]
+],qi,sc,lock,fin=false;
+function startQ(){qi=0;sc=0;showQ()}
+function showQ(){
+ var q=Q[qi],o=document.getElementById('qo');lock=false;
+ document.getElementById('qc').textContent='سؤال '+(qi+1)+' من '+Q.length;
+ document.getElementById('qt').textContent=q[0];
+ document.getElementById('ex').textContent='';document.getElementById('qn').style.display='none';
+ o.innerHTML='';
+ q[1].forEach(function(x,k){var b=document.createElement('button');b.className='opt';b.textContent=x;
+  b.onclick=function(){if(lock)return;lock=true;
+   var all=o.children;all[q[2]].classList.add('ok');
+   if(k===q[2]){sc++;document.getElementById('ex').innerHTML='<b class="m">صح ✔</b> '+q[3]}
+   else{b.classList.add('no');document.getElementById('ex').innerHTML='<b class="r">غلط ✘</b> '+q[3]}
+   var n=document.getElementById('qn');n.style.display='block';n.textContent=qi<Q.length-1?'التالي':'شوف النتيجة'};
+  o.appendChild(b)});
+}
+document.getElementById('qn').onclick=function(){
+ if(fin){fin=false;startQ();return}
+ if(qi<Q.length-1){qi++;showQ();return}
+ var m=sc>=6?'ممتاز 👏':sc>=4?'كويس، راجع المشاهد وجرّب تاني':'راجع الشرح وجرّب تاني';
+ document.getElementById('qc').textContent='';
+ document.getElementById('qt').textContent='نتيجتك: '+sc+' من '+Q.length;
+ document.getElementById('qo').innerHTML='';document.getElementById('ex').textContent=m;
+ var n=document.getElementById('qn');n.textContent='ابدأ الاختبار تاني';fin=true;
+};
+go(0);
+</script>
+</body>
+</html>

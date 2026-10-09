@@ -374,7 +374,7 @@ var T = {
   allEntries:['كل الحركات','All entries'],
   amount:['المبلغ','Amount'],
   date:['التاريخ','Date'],
-  supplier:['المورّد','Supplier'],
+  supplierLbl:['المورّد','Supplier'],
   staffMember:['الموظف','Staff'],
   detail:['التفاصيل','Detail'],
   serial:['التسلسل','Serial'],
@@ -386,6 +386,79 @@ var T = {
   neverSoldSub:['مش راكدة — دي بضاعة لسه ما اتباعتش أول مرة',
                 'Not slow-moving — never had a first sale'],
   laterMonths:['بعد ٦ شهور','Beyond 6 months'],
+  groupAct:['محتاج تصرّف','Needs action'],
+  groupMoney:['فلوس واقفة','Money parked'],
+  fixSec:['صلّح','Fix'],
+  fixSub:['أرصدة سالبة ودقة الجرد','Negative stock & count accuracy'],
+  expSub:['مرتجع للمورّد قبل ما يبوظ','Return to supplier before it expires'],
+  orderSec:['اطلب','Order'],
+  orderSub:['خلصوا أو قربوا يخلصوا','Out or running low'],
+  deadOnly:['راكد','Slow-moving'],
+  deadSub2:['اتباع وبطّل — عرض أو خصم','Sold before, stopped — discount'],
+  neverSec:['ما اتباعش','Never sold'],
+  neverSub:['عمره ما اتباع — راجع الشراء','Never sold — review buying'],
+  countAcc:['دقة الجرد','Count accuracy'],
+  lastCountLbl:['آخر جرد','last count'],
+  noCountYet:['لسه مفيش جرد','No count yet'],
+  itemsAcc:['أصناف مطابقة','Matching items'],
+  matchedWord:['مطابق','matched'],
+  valAcc:['دقة بالقيمة','Value accuracy'],
+  valAccSub:['الفرق بالفلوس مقابل قيمة المتجرّد','Money gap vs counted value'],
+  coverage:['اللي اتجرد من المخزون','Share counted'],
+  accNote:['الرقم ده دقة اللي اتجرد بس، مش المخزون كله — اقرأه مع نسبة اللي اتجرد.','This is accuracy of what was counted only — read it with the share counted.'],
+  snapNote:['من السطور اتقارنت بلقطة وقت العدّ، والباقي برصيد وقت الحفظ','of lines compared to the count-time snapshot, the rest to save-time stock'],
+  accTrend:['الجرود السابقة','Previous counts'],
+  accByCat:['الخطأ حسب الفئة','Gap by category'],
+  accByCatSub:['مرتبة بقيمة الفرق','Sorted by gap value'],
+  noNegative:['مفيش أرصدة سالبة','No negative stock'],
+  nearestFirst:['الأقرب انتهاءً','Expiring soonest'],
+  nearestSub:['الأولوية للي وقته ضاق مش للأغلى','Priority is time left, not value'],
+  expiredWord:['منتهي','Expired'],
+  inTransit:['طلبيات في الطريق','Orders on the way'],
+  inTransitSub:['متطلبهاش تاني','Do not re-order these'],
+  ordPrep:['تحت التجهيز','Being prepared'],
+  ordRecv:['تحت الاستلام','To be received'],
+  noTransit:['مفيش طلبيات في الطريق','No orders on the way'],
+  byCompany:['حسب الشركة','By company'],
+  copyOrder:['انسخ الطلبية','Copy order'],
+  orderTitle:['طلبية','Order'],
+  needsDeploy:['السيرفر لسه بالنسخة القديمة — اعمل Deploy للـCode.js','Server is on the old version — deploy Code.js'],
+  moreInExport:['الباقي في التصدير','The rest is in the export'],
+  followSub:['غايب أكتر من مدة تنبيهه — الأقدم فوق','Away longer than their alert window — oldest first'],
+  followNote:['الأرقام بالأيام من آخر زيارة. الأحمر = عدّى مدة تنبيه العميل نفسه.','Days since last visit. Red = past that customer’s own alert window.'],
+  recoverSec:['استرجاع','Win-back'],
+  inRecovery:['في مرحلة الاسترجاع','In win-back'],
+  waitingWord:['منتظرين','waiting'],
+  failedWord:['فشلوا','failed'],
+  failedSub:['وصلوا للحد الأقصى من المحاولات','Reached max attempts'],
+  newSec:['جدد','New'],
+  newSub:['العملاء الجدد هذا الشهر','New customers this month'],
+  blockedSec:['محظورين','Blocked'],
+  blockedSub:['متوقف عنهم التواصل','Contact stopped'],
+  allCust:['كل العملاء','All customers'],
+  allCustSub:['بحث وفلتر','Search & filter'],
+  returnRate:['نسبة الرجوع','Return rate'],
+  lossRate:['نسبة المفقودين','Loss rate'],
+  custByEmp:['حسب الموظف','By employee'],
+  lastVisit:['آخر زيارة','Last visit'],
+  monthlyVisits:['زيارات الشهر','Visits this month'],
+  monthlySpend:['إنفاق الشهر','Spend this month'],
+  custClass:['الفئة','Class'],
+  custStatus:['الحالة','Status'],
+  attemptsWord:['محاولة','attempts'],
+  lastContact:['آخر تواصل','Last contact'],
+  logContact:['سجّل تواصل','Log contact'],
+  saveLog:['احفظ التواصل','Save contact'],
+  ctCall:['مكالمة','Call'], ctWa:['واتساب','WhatsApp'], ctSms:['رسالة','SMS'], ctNote:['ملاحظة','Note'],
+  rsAnswered:['رد','Answered'], rsBought:['اشترى','Bought'], rsLater:['هيرجع','Later'], rsNone:['مردش','No answer'],
+  blockBtn:['احظر العميل','Block customer'],
+  unblockBtn:['فك الحظر','Unblock'],
+  confirmBlock:['اضغط تاني للتأكيد — الحظر بيوقف المتابعة','Tap again to confirm — blocking stops follow-ups'],
+  searchCust:['دوّر بالاسم أو التليفون','Search name or phone'],
+  allWord:['الكل','All'],
+  noHistory:['لسه مفيش تواصل مسجّل','No contact logged yet'],
+  saving:['بيحفظ…','Saving…'],
+  saved:['اتحفظ','Saved'],
   counts:['الجرد','Stocktake'],
   liveNow:['شغال دلوقتي','Counting now'],
   staffCounts:['جرد الموظفين','Staff counting'],
@@ -411,13 +484,12 @@ var T = {
   copyText:['انسخ كنص','Copy as text'],
   asPDF:['حمّل PDF','Download PDF'],
   sendTg:['ابعت على تليجرام','Send to Telegram'],
-  copied:['اتنسخ','Copied'],
   sending:['بيبعت…','Sending…'],
   sentOk:['اتبعت للجروب','Sent to group'],
   allMatched:['كل حاجة مطابقة — مفيش تصحيح مطلوب','All matched — nothing to fix'],
   needsCount:['محتاج جرد','Needs counting'],
   neverCounted:['عمره ما اتجرد','Never counted'],
-  never:['عمره ما اتجرد','Never'],
+  neverCountedWord:['عمره ما اتجرد','Never counted'],
   stockValue:['قيمة المخزون','Stock value'],
   unitsWord:['علبة','units'],
   noCounts:['لسه مفيش جرد. الموظف بيجرد من صفحة scan.html','No stocktake yet. Staff use scan.html'],
@@ -484,7 +556,7 @@ var T = {
   more:['المزيد','More'], category:['الفئة','Category'], topItems:['أعلى الأصناف قيمة','Highest value'],
   viewDetails:['شوف الكل','View all'], ofTotal:['من الإجمالي','of total'],
   negStock:['أرصدة سالبة','Negative stock'],
-  nearExpiry:['قرب الصلاحية','Near expiry'],
+  nearExpSec:['قرب الصلاحية','Near expiry'],
   within6:['خلال ٦ شهور','Within 6 months'],
   deadSection:['راكد وما اتباعش','Slow & never sold'],
   deadSub:['مش بيتحرك — فلوس واقفة','Not moving — money parked'],
@@ -1807,6 +1879,8 @@ function setInvShelf(v){ INV.shelf = v; drawAging(); }
 
 function pgAging(){
   var box = document.getElementById('p-stock');
+  INV_SEC = 'home';
+  loadInvExtras();
   var seed = cacheGet('inv', {});
   if (seed) { INV.data = seed; drawAging(true); } else busy(box);
 
@@ -1825,11 +1899,213 @@ function pgAging(){
    ═══════════════════════════════════════════════════════════════ */
 var INV_SEC = 'home';   /* home | neg | exp | dead | all */
 
+
+/* ═══════════════════════════════════════════════════════════════
+   دقة الجرد + الطلبيات — بتتحمّل في الخلفية وبترسم نفسها لما توصل
+   ═══════════════════════════════════════════════════════════════ */
+var INV_ACC = null;
+var ORD = { sec: 'zero' }, ORD_STAT = null, ORD_BY = {}, ORD_NAMES = [], ORD_CUR = null;
+
+function invOnTab(){ return CUR === 'stock' && TAB === 0; }
+
+function loadInvExtras(){
+  api('countAccuracy', { range: 'all' }).then(function(d){
+    INV_ACC = d;
+    if (invOnTab() && INV.data) drawAging(false);
+  }).catch(function(e){ logErr(e); INV_ACC = { ok: false, error: tr('failed') }; });
+
+  api('getSystemDailyTotals').then(function(d){
+    ORD_STAT = d;
+    if (invOnTab() && INV.data && INV_SEC === 'order') drawAging(false);
+  }).catch(function(e){ logErr(e); });
+
+  var pr = { days: RANGE.short };
+  var seed = cacheGet('getShortages', pr);
+  if (seed && !seed.error) SHORT_DATA = seed;
+  api('getShortages', pr, SHORTAGE_URL).then(function(d){
+    if (!d || d.error) throw new Error(d && d.msg);
+    cacheSet('getShortages', pr, d);
+    SHORT_DATA = d;
+    if (invOnTab() && INV.data) drawAging(false);
+  }).catch(function(e){ logErr(e); });
+}
+
+/* ── صلّح: دقة الجرد + الأرصدة السالبة ── */
+function invFixHtml(d){
+  var h = '', A = INV_ACC;
+
+  if (!A){
+    h += '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';
+  } else if (!A.ok){
+    h += '<div class="state err">' + esc(A.error || tr('failed')) + '</div>';
+  } else if (!A.last){
+    h += card(tr('countAcc'), null, '<div class="state">' + tr('noCountYet') + '</div>');
+  } else {
+    var L = A.last, C = A.coverage || {};
+    function pc(v){ return ltr(v === null || v === undefined ? '—' : (v + '%')); }
+
+    h += card(tr('countAcc'), esc(L.title || '') + ' · ' + ltr(String(L.at).substring(0, 10)),
+      row(tr('itemsAcc'), ltr(L.matched) + ' / ' + ltr(L.lines) + ' ' + tr('matchedWord'),
+          badge(pc(L.accuracy), 'brand')) +
+      row(tr('valAcc'), tr('valAccSub'), badge(pc(L.valueAccuracy), 'brand')) +
+      (L.newBatch ? row(tr('newBatches'), tr('newBatchHint'), badge(ltr(L.newBatch), 'warn')) : '') +
+      row(tr('coverage'), ltr(num(C.counted)) + ' / ' + ltr(num(C.total)), badge(pc(C.pct), 'brand')));
+
+    /* حدود الرقم لازم تبان — الدقة عن اللي اتجرد بس، والرصيد ممكن يكون قديم */
+    h += '<div class="state" style="padding:0 0 12px;text-align:start">' + tr('accNote') +
+         (A.snapShare < 100 ? '<br>' + ltr(A.snapShare) + '% ' + tr('snapNote') : '') + '</div>';
+
+    if ((A.sessions || []).length > 1){
+      h += card(tr('accTrend'), null, A.sessions.slice(0, 6).map(function(x){
+        return '<div class="row" onclick="openFix(\'' + esc(String(x.id)) + '\')" style="cursor:pointer">' +
+          '<div class="row-main"><b>' + esc(x.title || '') + '</b><small>' +
+          ltr(String(x.at).substring(0, 10)) + ' · ' + ltr(num(x.lines)) + ' ' + tr('items') + '</small></div>' +
+          badge(pc(x.accuracy), 'brand') + '<span style="opacity:.4;padding-inline-start:6px">›</span></div>';
+      }).join(''));
+    }
+
+    var BC = (A.byCategory || []).filter(function(x){ return x.gapValue > 0; }).slice(0, 8);
+    if (BC.length){
+      h += card(tr('accByCat'), tr('accByCatSub'), BC.map(function(x){
+        return '<div class="row"><div class="row-main"><b>' + esc(x.category) + '</b><small>' +
+          ltr(num(x.lines)) + ' ' + tr('items') + ' · ' + pc(x.accuracy) + '</small></div>' +
+          '<span class="row-val" style="color:var(--bad)">' + ltr(num(x.gapValue)) + '</span></div>';
+      }).join(''));
+    }
+  }
+
+  var neg = d.negative_list || [];
+  h += card(tr('negStock'), neg.length ? tr('negSub') : null,
+    neg.length
+      ? neg.slice(0, 8).map(function(it){
+          return '<div class="row"><div class="row-main"><b style="white-space:normal">' + esc(it.name) + '</b>' +
+            '<small>' + esc(it.category) + '</small></div>' +
+            '<span class="row-val" style="color:var(--bad)">' + ltr(it.stock) + '</span></div>';
+        }).join('') +
+        (neg.length > 8
+          ? '<div class="row" style="cursor:pointer;border-bottom:0" onclick="negSheet()">' +
+              '<div class="row-main"><b style="color:var(--brand)">' + tr('viewDetails') + '</b></div>' +
+              '<span class="row-val" style="color:var(--brand)">' + ltr(neg.length) + '</span></div>'
+          : '')
+      : '<div class="state" style="color:var(--ok)">' + tr('noNegative') + '</div>',
+    neg.length ? expBtn("negMenu()") : null);
+  return h;
+}
+
+/* ── اطلب: النواقص مجمّعة بالشركة + اللي في الطريق ── */
+function setOrdSec(k){ ORD.sec = k; drawAging(false); }
+
+function invOrderHtml(){
+  var h = '', st = ORD_STAT;
+
+  /* طلبيات في الطريق — عشان متطلبش اللي اتطلب فعلاً */
+  if (st && st.ok){
+    var pc_ = st.orders_prep_count || 0, rc_ = st.orders_recv_count || 0;
+    h += card(tr('inTransit'), tr('inTransitSub'),
+      (pc_ || rc_)
+        ? row(tr('ordPrep'), ltr(num(st.orders_prep_cost)) + ' ' + tr('egp'), ltr(num(pc_))) +
+          row(tr('ordRecv'), ltr(num(st.orders_recv_cost)) + ' ' + tr('egp'), ltr(num(rc_)))
+        : '<div class="state">' + tr('noTransit') + '</div>');
+  }
+
+  if (!SHORT_DATA){
+    return h + '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';
+  }
+  var zero = SHORT_DATA.zero || { categories: {}, summary: {} };
+  var low  = SHORT_DATA.low  || { categories: {}, summary: {} };
+  var zT = (zero.summary || {}).total || 0, lT = (low.summary || {}).total || 0;
+
+  h += ctlBar(
+    ctlBtn(tr('outOfStock') + ' ' + ltr(zT), ORD.sec === 'zero', "setOrdSec('zero')") +
+    ctlBtn(tr('lowStock') + ' ' + ltr(lT), ORD.sec === 'low', "setOrdSec('low')"),
+    'orderMenu()', false);
+
+  var sec = (ORD.sec === 'zero') ? zero : low, by = {};
+  Object.keys(sec.categories || {}).forEach(function(cat){
+    var comps = sec.categories[cat];
+    Object.keys(comps).forEach(function(co){
+      by[co] = by[co] || [];
+      comps[co].forEach(function(it){
+        by[co].push({ code: it.code, name: it.name, qty: it.shortage, cat: cat });
+      });
+    });
+  });
+  ORD_BY = by;
+  ORD_NAMES = Object.keys(by).sort(function(a, b){ return by[b].length - by[a].length; });
+
+  var total = ORD_NAMES.reduce(function(a, c){ return a + by[c].length; }, 0);
+  h += card(tr('byCompany'), ltr(num(total)) + ' ' + tr('items'),
+    ORD_NAMES.length ? ORD_NAMES.map(function(co, i){
+      return '<div class="row" onclick="openOrderCo(' + i + ')" style="cursor:pointer">' +
+        '<div class="row-main"><b>' + esc(co) + '</b><small>' + ltr(num(by[co].length)) + ' ' + tr('items') +
+        '</small></div><span style="opacity:.4">›</span></div>';
+    }).join('') : emptyState(), expBtn("orderMenu()"));
+  return h;
+}
+
+function orderText(co, items){
+  var L = [tr('orderTitle') + ' — ' + co, new Date().toLocaleDateString('en-CA'), ''];
+  items.forEach(function(it){ L.push('• ' + it.name + ' × ' + it.qty); });
+  return L.join('\n');
+}
+
+/* نسخ نص — Safari القديم مبيدعمش clipboard API في كل السياقات */
+function copyTxt(text){
+  var done = function(){ toast(tr('copied')); };
+  function fallback(){
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { toast(tr('failed')); }
+    document.body.removeChild(ta);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(fallback);
+  } else fallback();
+}
+
+function openOrderCo(i){
+  var co = ORD_NAMES[i]; if (co === undefined) return;
+  var items = ORD_BY[co] || [];
+  ORD_CUR = { co: co, items: items };
+  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  document.getElementById('sheet').classList.add('on');
+  t.textContent = co;
+  b.innerHTML =
+    '<div class="state">' + ltr(num(items.length)) + ' ' + tr('items') + '</div>' +
+    '<button class="btn btn-quiet" onclick="copyTxt(orderText(ORD_CUR.co, ORD_CUR.items))">' + tr('copyOrder') + '</button>' +
+    '<button class="btn btn-quiet" onclick="expOrderCo(\'p\')">' + tr('exportP') + ' ↓</button>' +
+    '<button class="btn btn-quiet" onclick="expOrderCo(\'x\')">' + tr('exportX') + ' ↓</button>' +
+    items.map(function(it){
+      return '<div class="row"><div class="row-main"><b style="white-space:normal">' + esc(it.name) + '</b>' +
+        '<small>' + esc(it.cat || '') + '</small></div>' +
+        '<span class="row-val">' + tr('needed') + ' ' + ltr(it.qty) + '</span></div>';
+    }).join('');
+}
+
+function expOrderCo(k){
+  if (!ORD_CUR) return;
+  var rows = ORD_CUR.items.map(function(it){
+    return { 'الشركة': ORD_CUR.co, 'الكود': it.code, 'الصنف': it.name, 'المطلوب': it.qty };
+  });
+  k === 'x' ? toExcel(rows, 'order') : toPDF(rows, tr('orderTitle') + ' — ' + ORD_CUR.co);
+}
+function expOrder(k){
+  var rows = [];
+  ORD_NAMES.forEach(function(co){
+    (ORD_BY[co] || []).forEach(function(it){
+      rows.push({ 'الشركة': co, 'الكود': it.code, 'الصنف': it.name, 'المطلوب': it.qty });
+    });
+  });
+  k === 'x' ? toExcel(rows, 'orders') : toPDF(rows, tr('orderSec'));
+}
+function orderMenu(){ openMenu(tr('orderSec'), exportRows('expOrder')); }
+
 function setInvSec(k){ INV_SEC = k; drawAging(false); window.scrollTo(0,0); }
 
 /* زرار قسم في الشاشة الأولى */
-function secBtn(key, tone, title, sub, val, valSub){
-  return '<button class="sec ' + tone + '" onclick="setInvSec(\'' + key + '\')">' +
+function secBtn(key, tone, title, sub, val, valSub, fn){
+  return '<button class="sec ' + tone + '" onclick="' + (fn || 'setInvSec') + '(\'' + key + '\')">' +
     '<span class="sec-dot"></span>' +
     '<span class="sec-mid"><b>' + title + '</b><small>' + sub + '</small></span>' +
     '<span class="sec-num"><b>' + val + '</b>' +
@@ -1838,9 +2114,9 @@ function secBtn(key, tone, title, sub, val, valSub){
 }
 
 /* رأس الشاشة الداخلية */
-function secHead(title, expFn){
+function secHead(title, expFn, backFn){
   return '<div class="sec-head">' +
-    '<button class="ibtn" onclick="setInvSec(\'home\')">›</button>' +
+    '<button class="ibtn" onclick="' + (backFn || "setInvSec('home')") + '">›</button>' +
     '<h3>' + title + '</h3>' +
     (expFn ? '<button class="ibtn" onclick="' + expFn + '">⤓</button>' : '') +
     '</div>';
@@ -1850,164 +2126,168 @@ function drawAging(isOld){
   var box = document.getElementById('p-stock'), d = INV.data;
   if (!d) return;
 
+  var near  = d.near_expiry_list || [];
+  var nearC = near.reduce(function(a, x){ return a + x.cost; }, 0);
+  var neg   = d.negative_list || [];
   var deadPct = pct(d.slow_dead_total_cost, d.total_cost_value);
-  var expCost = (d.near_expiry_list || []).reduce(function(a, x){ return a + x.cost; }, 0);
-  var expPct  = pct(expCost, d.total_cost_value);
-  /* المؤشر ده معادلة تقديرية — بيوزن الراكد وقرب الصلاحية.
-     مش رقم محاسبي، للمقارنة مع نفسه عبر الوقت بس. */
-  var score   = Math.max(0, Math.min(100, 100 - deadPct * 1.6 - expPct * 2));
-  var hTone   = score >= 70 ? 'ok' : score >= 45 ? 'warn' : 'bad';
-  var hLabel  = score >= 70 ? tr('healthGood') : score >= 45 ? tr('healthMid') : tr('healthBad');
-
   var html = (isOld ? '<div class="state" style="padding:0 0 8px">' + tr('cached') + '</div>' : '');
 
-  html += vitals(tr('invAging'), d.snapshot_at || d.generated_date, [
-    { value: num(d.total_cost_value), label: tr('stockValue'), tone: 'brand',
-      note: num(d.total_retail_value), sub: tr('retailValue') },
-    { value: num(d.slow_dead_total_cost), label: tr('deadStock'), tone: 'bad',
-      note: deadPct + '%', sub: tr('turnover') },
-    { value: Math.round(score), label: tr('health'), tone: hTone, note: null, sub: hLabel }
-  ]);
+  /* السيرفر لسه بالنسخة القديمة؟ — من غير التنبيه ده الأقسام بتظهر ناقصة من غير تفسير */
+  if (d.never_sold_count === undefined && d.all_category_summary === undefined){
+    html += '<div class="state err" style="padding:0 0 10px">' + tr('needsDeploy') + '</div>';
+  }
 
-  /* سطر تحكّم واحد */
-  /* ── الشاشة الأولى: الأقسام ── */
+  /* ═══ الشاشة الأولى ═══
+     كل قسم قرار مختلف: صلّح · مرتجع · اطلب · اعرض/خصّم · راجع الشراء.
+     مفيش دمج بين الراكد وقرب الصلاحية لأن قرارهم مختلف. */
   if (INV_SEC === 'home'){
-    var negN  = (d.negative_list || []).length;
-    var nearC = (d.near_expiry_list || []).reduce(function(a,x){ return a + x.cost; }, 0);
-    var nearN = (d.near_expiry_list || []).length;
-    var deadC = (d.slow_dead_total_cost || 0) + (d.never_sold_total_cost || 0);
-    var deadN = (d.slow_dead_count || 0) + (d.never_sold_count || 0);
+    var A = (INV_ACC && INV_ACC.ok && INV_ACC.last) ? INV_ACC.last : null;
+    html += vitals(tr('invAging'), d.snapshot_at || d.generated_date, [
+      { value: num(d.total_cost_value), label: tr('stockValue'), tone: 'brand',
+        note: num(d.total_retail_value), sub: tr('retailValue') },
+      { value: num(d.slow_dead_total_cost), label: tr('deadStock'), tone: 'bad',
+        note: deadPct + '%', sub: tr('turnover') },
+      { value: A && A.accuracy !== null ? (A.accuracy + '%') : '—', label: tr('countAcc'),
+        tone: 'brand', note: null, sub: A ? tr('lastCountLbl') : tr('noCountYet') }
+    ]);
 
-    if (negN) html += secBtn('neg', 'bad', tr('negStock'), tr('negSub'),
-      ltr(num(negN)), tr('items'));
+    var zN = SHORT_DATA ? (((SHORT_DATA.zero || {}).summary || {}).total || 0) : null;
+    var lN = SHORT_DATA ? (((SHORT_DATA.low  || {}).summary || {}).total || 0) : null;
 
-    html += secBtn('exp', nearN ? 'warn' : 'ok', tr('nearExpiry'), tr('within6'),
-      ltr(num(Math.round(nearC))), ltr(num(nearN)) + ' ' + tr('items'));
+    html += '<div class="group-title">' + tr('groupAct') + '</div>';
+    html += secBtn('fix', neg.length ? 'bad' : 'ok', tr('fixSec'), tr('fixSub'),
+      ltr(num(neg.length)), tr('items'));
+    html += secBtn('exp', near.length ? 'warn' : 'ok', tr('nearExpSec'), tr('expSub'),
+      ltr(num(Math.round(nearC))), ltr(num(near.length)) + ' ' + tr('items'));
+    html += secBtn('order', zN ? 'warn' : 'ok', tr('orderSec'),
+      zN === null ? tr('orderSub') : (tr('outOfStock') + ' ' + ltr(num(zN)) + ' · ' + tr('lowStock') + ' ' + ltr(num(lN))),
+      zN === null ? '…' : ltr(num(zN)), zN === null ? '' : tr('items'));
 
-    html += secBtn('dead', deadN ? 'warn' : 'ok', tr('deadSection'), tr('deadSub'),
-      ltr(num(Math.round(deadC))), ltr(num(deadN)) + ' ' + tr('items'));
+    html += '<div class="group-title">' + tr('groupMoney') + '</div>';
+    html += secBtn('dead', d.slow_dead_count ? 'warn' : 'ok', tr('deadOnly'), tr('deadSub2'),
+      ltr(num(Math.round(d.slow_dead_total_cost || 0))), ltr(num(d.slow_dead_count || 0)) + ' ' + tr('items'));
+    html += secBtn('never', d.never_sold_count ? 'warn' : 'ok', tr('neverSec'), tr('neverSub'),
+      ltr(num(Math.round(d.never_sold_total_cost || 0))), ltr(num(d.never_sold_count || 0)) + ' ' + tr('items'));
 
+    html += '<div style="height:8px"></div>';
     html += secBtn('all', 'ok', tr('allStock'),
-      ltr(num(d.sku_in_stock)) + ' ' + tr('items'),
+      ltr(num(d.sku_in_stock)) + ' ' + tr('items') + ' · ' + tr('retailValue') + ' ' + ltr(num(d.total_retail_value)),
       ltr(num(d.total_cost_value)), tr('stockValue'));
 
     box.innerHTML = html;
     return;
   }
 
-  /* رأس القسم — رجوع + تصدير */
-  html += secHead(
-    INV_SEC === 'neg'    ? tr('negStock')
-    : INV_SEC === 'exp'  ? tr('nearExpiry')
-    : INV_SEC === 'dead' ? tr('deadSection') : tr('allStock'),
-    INV_SEC === 'exp'    ? "expiryMenu()"
-    : INV_SEC === 'neg'  ? "negMenu()" : "invMenu()");
+  /* ═══ رأس القسم: رجوع + تصدير ═══ */
+  var TITLES = { fix: tr('fixSec'), exp: tr('nearExpSec'), order: tr('orderSec'),
+                 dead: tr('deadOnly'), never: tr('neverSec'), all: tr('allStock') };
+  var EXPFN  = { fix: 'negMenu()', exp: 'expiryMenu()', order: 'orderMenu()',
+                 dead: 'agingMenu()', never: 'neverSoldMenu()', all: 'catAllMenu()' };
+  html += secHead(TITLES[INV_SEC] || '', EXPFN[INV_SEC]);
 
-  /* كل المخزون — الأرقام المجمّعة */
+  if (INV_SEC === 'fix')   html += invFixHtml(d);
+  if (INV_SEC === 'order') html += invOrderHtml();
+
+  /* ═══ كل المخزون ═══ */
   if (INV_SEC === 'all'){
     html += card(tr('allStock'), d.snapshot_at || d.generated_date,
       row(tr('stockValue'), null, ltr(num(d.total_cost_value))) +
       row(tr('retailValue'), null, ltr(num(d.total_retail_value))) +
-      row(tr('items'), tr('inStockSub'), ltr(num(d.sku_in_stock))) +
-      row(tr('health'), hLabel, ltr(Math.round(score))));
+      row(tr('items'), tr('inStockSub'), ltr(num(d.sku_in_stock))));
+
+    var AC = d.all_category_summary || [];
+    html += card(tr('byCategory'), null, AC.length ? AC.map(function(c){
+      var share = d.total_cost_value ? pct(c.cost, d.total_cost_value) : 0;
+      return '<div class="row" onclick="catSheet(\'' + esc(String(c.category).replace(/'/g, '')) +
+        '\',\'all\')" style="cursor:pointer"><div class="row-main"><b>' + esc(c.category) + '</b>' +
+        '<small>' + ltr(num(c.count)) + ' ' + tr('items') + ' · ' + ltr(share) + '%</small></div>' +
+        '<span class="row-val">' + ltr(num(c.cost)) + '</span>' +
+        '<span style="opacity:.4;padding-inline-start:6px">›</span></div>';
+    }).join('') : emptyState(), expBtn("catAllMenu()"));
   }
 
+  /* فلتر الفئة/الرف — بيظهر في الأقسام اللي ليها فلترة */
   if (INV_SEC === 'dead' || INV_SEC === 'exp')
-  html += ctlBar(
-    ctlBtn(tr('invAging'), true, "void 0"),
-    'invMenu()',
-    (INV.cat || INV.shelf !== 'all')
-  );
+    html += ctlBar(ctlBtn(tr('invAging'), true, "void 0"), 'invMenu()', (INV.cat || INV.shelf !== 'all'));
 
-  /* ── كارت: الصلاحية شهر بشهر — كل شهر سطر يفتح نافذة ── */
-  var months  = (d.expiry_by_month && d.expiry_by_month.months) || [];
-  var expired = d.expiry_by_month && d.expiry_by_month.expired;
-  if (INV_SEC === 'exp')
-  html += card(tr('expByMonth'), null,
-    ((expired && expired.count)
-      ? '<div class="row" style="cursor:pointer" onclick="expSheet(\'expired\')">' +
-          '<div class="row-main"><b style="color:var(--bad)">' + tr('expiredNow') + '</b>' +
-          '<small>' + ltr(expired.count) + ' ' + tr('items') + '</small></div>' +
-          '<span class="row-val" style="color:var(--bad)">' + ltr(num(expired.totalCost)) + '</span></div>'
-      : '') +
-    months.filter(function(m){ return m.count; }).map(function(m, i){
-      return '<div class="row" style="cursor:pointer" onclick="expSheet(' + i + ')">' +
-        '<div class="row-main"><b>' + esc(m.label) + '</b>' +
-        '<small>' + ltr(m.count) + ' ' + tr('items') + '</small></div>' +
-        '<span class="row-val">' + ltr(num(m.totalCost)) + '</span></div>';
-    }).join('') +
-    /* اللي بينتهي بعد 6 شهور — كان بيختفي من الجدول تمامًا */
-    (function(){
-      var L = d.expiry_by_month && d.expiry_by_month.later;
-      if (!L || !L.count) return '';
-      return '<div class="row" style="cursor:pointer" onclick="expSheet(\'later\')">' +
-        '<div class="row-main"><b>' + tr('laterMonths') + '</b>' +
-        '<small>' + ltr(L.count) + ' ' + tr('items') + '</small></div>' +
-        '<span class="row-val">' + ltr(num(L.totalCost)) + '</span></div>';
-    })() || emptyState(),
-    expBtn("expiryMenu()"));
+  /* ═══ قرب الصلاحية ═══ */
+  if (INV_SEC === 'exp'){
+    /* الترتيب بالأقرب انتهاءً — الوقت هو الضاغط هنا مش القيمة */
+    var soon = near.slice().sort(function(a, b){ return a.days_to_expire - b.days_to_expire; }).slice(0, 15);
+    html += card(tr('nearestFirst'), tr('nearestSub'), soon.length ? soon.map(function(it){
+      var dte = it.days_to_expire;
+      return '<div class="row"><div class="row-main"><b style="white-space:normal">' + esc(it.name) + '</b>' +
+        '<small>' + ltr(num(it.stock)) + ' ' + tr('unitsWord') + ' · ' + esc(it.expire || '') + '</small></div>' +
+        badge(dte < 0 ? tr('expiredWord') : (ltr(dte) + ' ' + tr('daysWord')), dte <= 90 ? 'bad' : 'warn') +
+        '<span class="row-val" style="padding-inline-start:8px">' + ltr(num(it.cost)) + '</span></div>';
+    }).join('') : emptyState());
 
-  /* ── كارت: الركود حسب آخر بيع — كل شريحة تفتح نافذة ── */
-  var AG = [['never','never'],['b0_30','d0_30'],['b31_60','d31_60'],['b61_90','d61_90'],
-            ['b91_180','d91_180'],['b181_365','d181_365'],['b365plus','d365']];
-  if (INV_SEC === 'dead')
-  html += card(tr('agingTitle'), null, AG.map(function(x){
-    var g = (d.aging || {})[x[0]]; if (!g || !g.skus) return '';
-    var tone = (x[0] === 'never' || x[0] === 'b365plus' || x[0] === 'b181_365') ? 'bad'
-             : (x[0] === 'b91_180') ? 'warn' : 'ok';
-    return '<div class="row" style="cursor:pointer" onclick="agingSheet(\'' + x[0] + '\',\'' + x[1] + '\')">' +
-      '<div class="row-main"><b>' + tr(x[1]) + '</b>' +
-      '<small>' + ltr(g.skus) + ' ' + tr('skus') + '</small></div>' +
-      '<span class="row-val" style="color:var(--' + tone + ')">' + ltr(num(g.cost)) + '</span></div>';
-  }).join('') || emptyState(),
-    expBtn("agingMenu()"));
+    var months  = (d.expiry_by_month && d.expiry_by_month.months) || [];
+    var expired = d.expiry_by_month && d.expiry_by_month.expired;
+    html += card(tr('expByMonth'), null,
+      ((expired && expired.count)
+        ? '<div class="row" style="cursor:pointer" onclick="expSheet(\'expired\')">' +
+            '<div class="row-main"><b style="color:var(--bad)">' + tr('expiredNow') + '</b>' +
+            '<small>' + ltr(expired.count) + ' ' + tr('items') + '</small></div>' +
+            '<span class="row-val" style="color:var(--bad)">' + ltr(num(expired.totalCost)) + '</span></div>'
+        : '') +
+      months.filter(function(m){ return m.count; }).map(function(m, i){
+        return '<div class="row" style="cursor:pointer" onclick="expSheet(' + i + ')">' +
+          '<div class="row-main"><b>' + esc(m.label) + '</b>' +
+          '<small>' + ltr(m.count) + ' ' + tr('items') + '</small></div>' +
+          '<span class="row-val">' + ltr(num(m.totalCost)) + '</span></div>';
+      }).join('') +
+      (function(){
+        var L = d.expiry_by_month && d.expiry_by_month.later;
+        if (!L || !L.count) return '';
+        return '<div class="row" style="cursor:pointer" onclick="expSheet(\'later\')">' +
+          '<div class="row-main"><b>' + tr('laterMonths') + '</b>' +
+          '<small>' + ltr(L.count) + ' ' + tr('items') + '</small></div>' +
+          '<span class="row-val">' + ltr(num(L.totalCost)) + '</span></div>';
+      })() || emptyState(),
+      expBtn("expiryMenu()"));
+  }
 
-  /* ── كارت: بضاعة عمرها ما اتباعت ──
-     كانت مخلوطة مع "الراكد" وبتنفخ رقمه. البضاعة الجديدة بتقع هنا
-     لحد ما تتباع أول مرة. */
-  if (INV_SEC === 'dead' && d.never_sold_count) {
+  /* ═══ راكد ═══ */
+  if (INV_SEC === 'dead'){
+    var AG = [['never','never'],['b0_30','d0_30'],['b31_60','d31_60'],['b61_90','d61_90'],
+              ['b91_180','d91_180'],['b181_365','d181_365'],['b365plus','d365']];
+    html += card(tr('agingTitle'), null, AG.map(function(x){
+      var g = (d.aging || {})[x[0]]; if (!g || !g.skus) return '';
+      var tone = (x[0] === 'never' || x[0] === 'b365plus' || x[0] === 'b181_365') ? 'bad'
+               : (x[0] === 'b91_180') ? 'warn' : 'ok';
+      return '<div class="row" style="cursor:pointer" onclick="agingSheet(\'' + x[0] + '\',\'' + x[1] + '\')">' +
+        '<div class="row-main"><b>' + tr(x[1]) + '</b><small>' + ltr(g.skus) + ' ' + tr('skus') + '</small></div>' +
+        '<span class="row-val" style="color:var(--' + tone + ')">' + ltr(num(g.cost)) + '</span></div>';
+    }).join('') || emptyState(), expBtn("agingMenu()"));
+
+    var cats = d.slow_category_summary || [];
+    html += card(tr('deadStock'),
+      ltr(d.slow_dead_count) + ' ' + tr('items') + ' · ' + ltr(num(d.slow_dead_total_cost)),
+      cats.length ? cats.slice(0, 12).map(function(c){
+        return '<div class="row" style="cursor:pointer" onclick="catSheet(\'' +
+          esc(c.category).replace(/'/g, '') + '\',\'dead\')">' +
+          '<div class="row-main"><b>' + esc(c.category) + '</b>' +
+          '<small>' + ltr(c.count) + ' ' + tr('items') + '</small></div>' +
+          '<span class="row-val" style="color:var(--bad)">' + ltr(num(c.cost)) + '</span></div>';
+      }).join('') : emptyState());
+  }
+
+  /* ═══ ما اتباعش ═══ */
+  if (INV_SEC === 'never'){
+    var nl = d.never_sold_list || [];
     html += card(tr('neverSold'), tr('neverSoldSub'),
-      row(tr('items'), null, ltr(num(d.never_sold_count))) +
-      row(tr('stockValue'), null, ltr(num(d.never_sold_total_cost))) +
-      (d.never_sold_list || []).slice(0, 6).map(function(it){
-        return '<div class="row"><div class="row-main"><b>' + esc(it.name) + '</b>' +
+      row(tr('items'), null, ltr(num(d.never_sold_count || 0))) +
+      row(tr('stockValue'), null, ltr(num(d.never_sold_total_cost || 0))) +
+      nl.slice(0, 40).map(function(it){
+        return '<div class="row"><div class="row-main"><b style="white-space:normal">' + esc(it.name) + '</b>' +
           '<small>' + ltr(num(it.stock)) + ' ' + tr('unitsWord') +
           (it.expire ? ' · ' + esc(it.expire) : '') + '</small></div>' +
           '<span class="row-val">' + ltr(num(it.cost)) + '</span></div>';
-      }).join(''),
+      }).join('') +
+      (nl.length > 40 ? '<div class="state" style="padding:10px 0 0">' + tr('moreInExport') + ' (' + ltr(nl.length - 40) + ')</div>' : ''),
       expBtn("neverSoldMenu()"));
   }
-
-  /* ── كارت: الأرصدة السالبة — أول حاجة لأنها خطأ محتاج تصحيح ── */
-  var neg = d.negative_list || [];
-  if (INV_SEC === 'neg' && neg.length) {
-    html += card(tr('negStock'),
-      tr('negSub'),
-      neg.slice(0, 8).map(function(it){
-        return '<div class="row"><div class="row-main"><b style="white-space:normal">' + esc(it.name) + '</b>' +
-          '<small>' + esc(it.category) + '</small></div>' +
-          '<span class="row-val" style="color:var(--bad)">' + ltr(it.stock) + '</span></div>';
-      }).join('') +
-      (neg.length > 8
-        ? '<div class="row" style="cursor:pointer;border-bottom:0" onclick="negSheet()">' +
-            '<div class="row-main"><b style="color:var(--brand)">' + tr('viewDetails') + '</b></div>' +
-            '<span class="row-val" style="color:var(--brand)">' + ltr(neg.length) + '</span></div>'
-        : ''),
-      badge(ltr(neg.length) + ' ' + tr('items'), 'bad'));
-  }
-
-  /* ── كارت: الراكد حسب الفئة — كل فئة تفتح نافذة ── */
-  var cats = d.slow_category_summary || [];
-  if (INV_SEC === 'dead')
-  html += card(tr('deadStock'),
-    ltr(d.slow_dead_count) + ' ' + tr('items') + ' · ' + ltr(num(d.slow_dead_total_cost)),
-    cats.length ? cats.slice(0, 12).map(function(c){
-      return '<div class="row" style="cursor:pointer" onclick="catSheet(\'' +
-        esc(c.category).replace(/'/g, '') + '\')">' +
-        '<div class="row-main"><b>' + esc(c.category) + '</b>' +
-        '<small>' + ltr(c.count) + ' ' + tr('items') + '</small></div>' +
-        '<span class="row-val" style="color:var(--bad)">' + ltr(num(c.cost)) + '</span></div>';
-    }).join('') : emptyState());
 
   box.innerHTML = html;
 }
@@ -2101,22 +2381,38 @@ function agingSheet(key, labelKey){
 
 /* نافذة: أصناف راكدة لفئة */
 var CAT_ROWS = [];
-function catSheet(cat){
-  var d = INV.data; if (!d) return;
-  var items = (d.slow_dead_list || []).filter(function(it){
-    if (it.category !== cat) return false;
-    var e = it.days_to_expire;
-    if (INV.shelf === 'u3')   return e !== null && e < 90;
-    if (INV.shelf === '3_6')  return e !== null && e >= 90 && e < 180;
-    if (INV.shelf === 'o6')   return e !== null && e >= 180;
-    if (INV.shelf === 'none') return e === null;
-    return true;
-  });
-  openMenu(cat, sheetItems(items, function(it){
-    return ltr(it.stock) + ' ' + tr('qty') +
-      (it.days !== null ? ' · ' + tr('daysIdle') + ' ' + ltr(it.days) + ' ' + tr('daysAgo') : '') +
-      (it.expire ? ' · ' + tr('expiresOn') + ' ' + ltr(it.expire) : '');
-  }));
+function catSheet(cat, scope){
+  var d = INV.data || {};
+  var rows;
+  if (scope === 'all'){
+    /* كل أصناف الفئة (اللي ليها رصيد) — من شرايح آخر بيع، كل صنف في شريحة واحدة */
+    rows = [];
+    Object.keys(d.aging_items || {}).forEach(function(k){
+      (d.aging_items[k] || []).forEach(function(it){ if (it.category === cat) rows.push(it); });
+    });
+  } else {
+    /* الراكد بس — نفس الأصناف اللي الرقم اللي دوست عليه مبني عليها */
+    rows = (d.slow_dead_list || []).filter(function(it){ return it.category === cat; });
+  }
+  rows.sort(function(a, b){ return (b.cost || 0) - (a.cost || 0); });
+  CAT_ROWS = rows;
+
+  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  document.getElementById('sheet').classList.add('on');
+  t.textContent = cat;
+  var tot = rows.reduce(function(a, x){ return a + (x.cost || 0); }, 0);
+  b.innerHTML =
+    '<div class="state">' + ltr(num(rows.length)) + ' ' + tr('items') +
+    ' · ' + ltr(num(Math.round(tot))) + ' ' + tr('egp') + '</div>' +
+    '<button class="btn btn-quiet" onclick="catMenu()">' + tr('exportX') + ' / ' + tr('exportP') + '</button>' +
+    (rows.length ? rows.slice(0, 80).map(function(it){
+      return '<div class="row"><div class="row-main"><b>' + esc(it.name) + '</b>' +
+        '<small>' + ltr(num(it.stock)) + ' ' + tr('unitsWord') +
+        (it.expire ? ' · ' + esc(it.expire) : '') + '</small></div>' +
+        '<span class="row-val">' + ltr(num(it.cost)) + '</span></div>';
+    }).join('') + (rows.length > 80
+      ? '<div class="state">' + tr('moreInExport') + ' (' + ltr(rows.length - 80) + ')</div>' : '')
+    : '<div class="state">' + tr('noData') + '</div>');
 }
 
 /* محتوى موحّد لنوافذ الأصناف */
@@ -2485,30 +2781,337 @@ function sendCoupons(){
 }
 
 /* ─────── عملاء: القائمة ─────── */
+/* ═══════════════════════════════════════════════════════════════
+   العملاء — بأقسام، كل قسم قرار مختلف
+   متابعة · استرجاع · جدد · محظورين · الكل
+   وكل صف بيوريك "من كام يوم آخر زيارة" — وبيتداس يفتح ملف العميل.
+   ═══════════════════════════════════════════════════════════════ */
+var CUST = { sec: 'home', list: [], dash: null, news: null, q: '', cls: 'all',
+             cur: [], curTitle: '', one: null, hist: null, confirmBlock: false };
+var CUST_LOG = { type: 'call', result: 'answered' };
+var ST_WAIT = 'تمت المتابعة - في الانتظار', ST_FAIL = 'محاولات استرجاع فشلت', ST_ALERT = 'تنبيه';
+
+function custOnTab(){ return CUR === 'cust' && TAB === 1; }
+
 function pgCustomers(){
   var box = document.getElementById('p-cust');
+  CUST.sec = 'home';
   apiCached('getCustomers', {}, box, drawCustomers);
+  loadCustDash();
 }
+
+/* أرقام الاسترجاع من السيرفر — بتوصل بعد القايمة، وبنعيد الرسم لما توصل */
+function loadCustDash(){
+  var today = new Date().toLocaleDateString('en-CA'), from = today.slice(0, 8) + '01';
+  api('getDashboard', { from: from, to: today }).then(function(d){
+    if (d && d.range){
+      CUST.dash = d;
+      if (custOnTab() && CUST.sec === 'home' && CUST.list.length)
+        drawCustomers(CUST.list, document.getElementById('p-cust'));
+    }
+  }).catch(function(e){ logErr(e); });
+}
+
+function setCustSec(k){
+  CUST.sec = k; CUST.q = ''; CUST.cls = 'all';
+  if (k === 'new' && !CUST.news) loadCustNew();
+  drawCustomers(CUST.list, document.getElementById('p-cust'));
+  window.scrollTo(0, 0);
+}
+
+function loadCustNew(){
+  api('getNewCustomersDetail', { range: 'month' }).then(function(d){
+    CUST.news = (d && d.customers) || [];
+    if (custOnTab() && CUST.sec === 'new') drawCustomers(CUST.list, document.getElementById('p-cust'));
+  }).catch(function(e){ logErr(e); CUST.news = []; });
+}
+
+function custDays(c){
+  var v = c.days_since;
+  if (v === null || v === undefined || v === '') return null;
+  v = parseFloat(v);
+  return isNaN(v) ? null : v;
+}
+
+/* لون الشارة من مدة تنبيه العميل نفسه (alert_days في الشيت) — مش رقم من عندي */
+function daysBadge(c){
+  var ds = custDays(c), lim = parseFloat(c.alert_days) || 30;
+  if (ds === null) return badge('—', 'brand');
+  return badge(ds === 0 ? tr('today') : (ltr(ds) + ' ' + tr('daysWord')), ds > lim ? 'bad' : 'ok');
+}
+
+function byDaysDesc(a, b){
+  var x = custDays(a), y = custDays(b);
+  if (x === null && y === null) return 0;
+  if (x === null) return 1;
+  if (y === null) return -1;
+  return y - x;
+}
+
+function custRow(c, right){
+  return '<div class="row" onclick="openCust(\'' + esc(String(c.phone)) + '\')" style="cursor:pointer">' +
+    '<div class="row-main"><b>' + esc(c.name || '—') + '</b><small>' + ltr(c.phone) +
+    (c.cls ? ' · ' + esc(c.cls) : '') + '</small></div>' + (right || daysBadge(c)) +
+    '<span style="opacity:.4;padding-inline-start:6px">›</span></div>';
+}
+
+function custGroups(list){
+  var blocked = list.filter(function(c){ return c.is_blocked; });
+  var live    = list.filter(function(c){ return !c.is_blocked; });
+  return {
+    blocked: blocked,
+    follow:  live.filter(function(c){ return c.status === ST_ALERT; }).sort(byDaysDesc),
+    recover: live.filter(function(c){ return c.status === ST_WAIT || c.status === ST_FAIL; }).sort(byDaysDesc)
+  };
+}
+
 function drawCustomers(res, box){
   var list = Array.isArray(res) ? res : (res && res.list);
   if (!Array.isArray(list)) { oops(box, "pgCustomers()"); return; }
-  {
-    var alert_ = list.filter(function(c){ return c.status === 'تنبيه'; });
-    var blocked = list.filter(function(c){ return c.is_blocked; });
-    var html = vitals(tr('customers'), null, [
+  CUST.list = list;
+  var G = custGroups(list), dash = CUST.dash, html = '';
+
+  /* ── الشاشة الأولى ── */
+  if (CUST.sec === 'home'){
+    var waitN = G.recover.filter(function(c){ return c.status === ST_WAIT; }).length;
+    var failN = G.recover.length - waitN;
+
+    html += vitals(tr('customers'), null, [
       { value: num(list.length), label: tr('customers'), tone: 'brand' },
-      { value: num(alert_.length), label: tr('needFollow'), tone: alert_.length ? 'warn' : 'ok' },
-      { value: num(blocked.length), label: LANG === 'ar' ? 'محظورين' : 'Blocked', tone: 'bad' }
+      { value: num(G.follow.length), label: tr('needFollow'), tone: G.follow.length ? 'warn' : 'ok' },
+      { value: dash && dash.return_rate !== undefined ? (dash.return_rate + '%') : '—',
+        label: tr('returnRate'), tone: 'brand', note: null, sub: tr('thisMonth') }
     ]);
-    var show = alert_.length ? alert_ : list;
-    html += card(alert_.length ? tr('needFollow') : tr('customers'), null,
-      show.slice(0, 60).map(function(c){
-        return row(c.name || '—', ltr(c.phone) + (c.cls ? ' · ' + c.cls : ''),
-          ltr(num(c.monthly_spend)));
-      }).join('') || emptyState());
+
+    html += secBtn('follow', G.follow.length ? 'warn' : 'ok', tr('needFollow'), tr('followSub'),
+      ltr(num(G.follow.length)), tr('customers'), 'setCustSec');
+    html += secBtn('recover', G.recover.length ? 'warn' : 'ok', tr('recoverSec'),
+      tr('waitingWord') + ' ' + ltr(num(waitN)) + ' · ' + tr('failedWord') + ' ' + ltr(num(failN)),
+      ltr(num(G.recover.length)), tr('customers'), 'setCustSec');
+    html += secBtn('new', 'ok', tr('newSec'), tr('newSub'),
+      dash && dash.new_customers !== undefined ? ltr(num(dash.new_customers)) : '…', tr('customers'), 'setCustSec');
+    html += secBtn('blocked', 'ok', tr('blockedSec'), tr('blockedSub'),
+      ltr(num(G.blocked.length)), tr('customers'), 'setCustSec');
+    html += '<div style="height:8px"></div>';
+    html += secBtn('all', 'ok', tr('allCust'), tr('allCustSub'), ltr(num(list.length)), tr('customers'), 'setCustSec');
     box.innerHTML = html;
+    return;
   }
+
+  /* ── الأقسام ── */
+  var TITLES = { follow: tr('needFollow'), recover: tr('recoverSec'), new: tr('newSec'),
+                 blocked: tr('blockedSec'), all: tr('allCust') };
+  html += secHead(TITLES[CUST.sec] || '', 'custMenu()', 'setCustSec(\'home\')');
+
+  if (CUST.sec === 'follow'){
+    CUST.cur = G.follow; CUST.curTitle = tr('needFollow');
+    html += '<div class="state" style="padding:0 0 10px;text-align:start">' + tr('followNote') + '</div>';
+    html += card(tr('needFollow'), ltr(num(G.follow.length)) + ' ' + tr('customers'),
+      G.follow.length ? G.follow.slice(0, 100).map(function(c){ return custRow(c); }).join('') : emptyState());
+  }
+
+  if (CUST.sec === 'recover'){
+    CUST.cur = G.recover; CUST.curTitle = tr('recoverSec');
+    if (dash){
+      html += card(tr('recoverSec'), tr('thisMonth'),
+        row(tr('returnRate'), ltr(num(dash.returning_customers || 0)) + ' ' + tr('customers'),
+            badge(ltr(dash.return_rate) + '%', 'brand')) +
+        row(tr('lossRate'), ltr(num(dash.lost_customers || 0)) + ' ' + tr('customers'),
+            badge(ltr(dash.loss_rate) + '%', 'brand')) +
+        row(tr('failedWord'), tr('failedSub'), ltr(num(dash.failed_followups || 0))));
+    }
+    html += card(tr('inRecovery'), ltr(num(G.recover.length)) + ' ' + tr('customers'),
+      G.recover.length ? G.recover.slice(0, 100).map(function(c){
+        var failed = c.status === ST_FAIL;
+        return custRow(c, badge(ltr(num(c.follow_up_count || 0)) + ' ' + tr('attemptsWord'), failed ? 'bad' : 'warn'));
+      }).join('') : emptyState());
+  }
+
+  if (CUST.sec === 'new'){
+    var N = CUST.news;
+    CUST.cur = (N || []).map(function(x){ return { name: x.name, phone: x.phone, cls: x.employee, days_since: null }; });
+    CUST.curTitle = tr('newSec');
+    if (N === null){
+      html += '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';
+    } else {
+      var byEmp = {};
+      N.forEach(function(x){ byEmp[x.employee || '—'] = (byEmp[x.employee || '—'] || 0) + 1; });
+      var emps = Object.keys(byEmp).sort(function(a, b){ return byEmp[b] - byEmp[a]; });
+      if (emps.length) html += card(tr('custByEmp'), tr('thisMonth'), emps.map(function(e){
+        return row(e, null, ltr(num(byEmp[e])));
+      }).join(''));
+      html += card(tr('newSec'), ltr(num(N.length)) + ' ' + tr('customers'),
+        N.length ? N.slice(0, 100).map(function(x){
+          return '<div class="row"><div class="row-main"><b>' + esc(x.name || '—') + '</b><small>' +
+            ltr(x.phone) + ' · ' + esc(x.employee || '') + '</small></div>' +
+            badge(ltr(String(x.date || '').substring(5)), 'brand') + '</div>';
+        }).join('') : emptyState());
+    }
+  }
+
+  if (CUST.sec === 'blocked'){
+    CUST.cur = G.blocked; CUST.curTitle = tr('blockedSec');
+    html += card(tr('blockedSec'), ltr(num(G.blocked.length)) + ' ' + tr('customers'),
+      G.blocked.length ? G.blocked.map(function(c){ return custRow(c); }).join('') : emptyState());
+  }
+
+  if (CUST.sec === 'all'){
+    var classes = {};
+    list.forEach(function(c){ if (c.cls) classes[c.cls] = 1; });
+    var cl = Object.keys(classes).sort();
+    html += '<input id="custQ" oninput="custFilter()" placeholder="' + tr('searchCust') + '" autocomplete="off" ' +
+      'style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);' +
+      'background:var(--surface-2);color:var(--ink);font-family:inherit;font-size:14px;margin-bottom:10px">';
+    if (cl.length > 1){
+      html += '<div class="ctl"><div class="ctl-main">' +
+        ctlBtn(tr('allWord'), CUST.cls === 'all', "setCustCls('all')") +
+        cl.map(function(k){ return ctlBtn(esc(k), CUST.cls === k, "setCustCls('" + esc(String(k).replace(/'/g, '')) + "')"); }).join('') +
+        '</div></div>';
+    }
+    html += '<div id="custList">' + custListHtml() + '</div>';
+  }
+  box.innerHTML = html;
 }
+
+/* قايمة "الكل" — بتتفلتر من غير ما نعيد رسم حقل البحث (عشان الكيبورد ميتقفلش) */
+function custListHtml(){
+  var q = (CUST.q || '').trim().toLowerCase();
+  var rows = CUST.list.filter(function(c){
+    if (CUST.cls !== 'all' && c.cls !== CUST.cls) return false;
+    if (!q) return true;
+    return String(c.name || '').toLowerCase().indexOf(q) !== -1 || String(c.phone || '').indexOf(q) !== -1;
+  }).sort(byDaysDesc);
+  CUST.cur = rows; CUST.curTitle = tr('allCust');
+  return card(tr('allCust'), ltr(num(rows.length)) + ' ' + tr('customers'),
+    rows.length ? rows.slice(0, 100).map(function(c){ return custRow(c); }).join('') +
+      (rows.length > 100 ? '<div class="state" style="padding:10px 0 0">' + tr('moreInExport') +
+        ' (' + ltr(rows.length - 100) + ')</div>' : '') : emptyState());
+}
+function custFilter(){
+  var el = document.getElementById('custQ'); CUST.q = el ? el.value : '';
+  var box = document.getElementById('custList'); if (box) box.innerHTML = custListHtml();
+}
+function setCustCls(k){ CUST.cls = k; drawCustomers(CUST.list, document.getElementById('p-cust')); }
+
+/* ── تصدير ── */
+function expCustList(k){
+  var rows = (CUST.cur || []).map(function(c){
+    var ds = custDays(c);
+    return { 'الاسم': c.name || '', 'التليفون': c.phone || '', 'الفئة': c.cls || '',
+             'آخر زيارة (يوم)': ds === null ? '—' : ds,
+             'زيارات الشهر': c.monthly_visits === undefined ? '' : c.monthly_visits,
+             'إنفاق الشهر': c.monthly_spend === undefined ? '' : c.monthly_spend,
+             'الحالة': c.status || '' };
+  });
+  k === 'x' ? toExcel(rows, 'customers') : toPDF(rows, CUST.curTitle || tr('customers'));
+}
+function custMenu(){ openMenu(CUST.curTitle || tr('customers'), exportRows('expCustList')); }
+
+/* ── ملف العميل ── */
+var LOG_TYPES = [['call', 'ctCall'], ['wa', 'ctWa'], ['sms', 'ctSms'], ['note', 'ctNote']];
+var LOG_RES   = [['answered', 'rsAnswered'], ['bought', 'rsBought'], ['later', 'rsLater'], ['noanswer', 'rsNone']];
+
+function findCust(phone){
+  for (var i = 0; i < CUST.list.length; i++) if (String(CUST.list[i].phone) === String(phone)) return CUST.list[i];
+  return null;
+}
+
+function logChips(){
+  return '<div class="ctl"><div class="ctl-main">' + LOG_TYPES.map(function(t){
+      return ctlBtn(tr(t[1]), CUST_LOG.type === t[0], "setLog('type','" + t[0] + "')"); }).join('') + '</div></div>' +
+    '<div class="ctl"><div class="ctl-main">' + LOG_RES.map(function(r){
+      return ctlBtn(tr(r[1]), CUST_LOG.result === r[0], "setLog('result','" + r[0] + "')"); }).join('') + '</div></div>';
+}
+function setLog(k, v){ CUST_LOG[k] = v; var el = document.getElementById('logBox'); if (el) el.innerHTML = logChips(); }
+
+function openCust(phone){
+  var c = findCust(phone); if (!c) return;
+  CUST.one = c; CUST.hist = null; CUST.confirmBlock = false;
+  CUST_LOG = { type: 'call', result: 'answered' };
+  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  document.getElementById('sheet').classList.add('on');
+  t.textContent = c.name || c.phone;
+  b.innerHTML = custSheetHtml(c);
+  api('getHistory', { phone: String(c.phone) }).then(function(rows){
+    CUST.hist = Array.isArray(rows) ? rows : [];
+    var el = document.getElementById('custHist'); if (el) el.innerHTML = histHtml();
+  }).catch(function(e){ logErr(e); var el = document.getElementById('custHist'); if (el) el.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+}
+
+function custSheetHtml(c){
+  return '<div class="state" style="padding:0 0 8px">' + ltr(c.phone) + '</div>' +
+    row(tr('lastVisit'), null, daysBadge(c)) +
+    row(tr('monthlyVisits'), null, ltr(num(c.monthly_visits || 0))) +
+    row(tr('monthlySpend'), null, ltr(num(c.monthly_spend || 0))) +
+    (c.cls ? row(tr('custClass'), null, esc(c.cls)) : '') +
+    row(tr('custStatus'), null, esc(c.is_blocked ? tr('blockedSec') : (c.status || '—'))) +
+    (c.follow_up_count ? row(tr('attemptsWord'), null, ltr(num(c.follow_up_count))) : '') +
+    (c.last_contact_date ? row(tr('lastContact'), null, ltr(String(c.last_contact_date).substring(0, 10))) : '') +
+    '<div class="group-title">' + tr('logContact') + '</div>' +
+    '<div id="logBox">' + logChips() + '</div>' +
+    '<button class="btn btn-quiet" onclick="saveLog()">' + tr('saveLog') + '</button>' +
+    '<button class="btn ' + (c.is_blocked ? 'btn-quiet' : 'btn-danger') + '" id="blkBtn" onclick="toggleBlock()">' +
+      (c.is_blocked ? tr('unblockBtn') : tr('blockBtn')) + '</button>' +
+    '<div class="group-title">' + tr('history') + '</div>' +
+    '<div id="custHist"><div class="state"><div class="spin"></div></div></div>';
+}
+
+function histHtml(){
+  var H = CUST.hist || [];
+  if (!H.length) return '<div class="state">' + tr('noHistory') + '</div>';
+  var TY = { call: tr('ctCall'), wa: tr('ctWa'), sms: tr('ctSms'), note: tr('ctNote') };
+  var RS = { answered: tr('rsAnswered'), bought: tr('rsBought'), later: tr('rsLater'), noanswer: tr('rsNone') };
+  return H.map(function(h){
+    return '<div class="row"><div class="row-main"><b>' + esc(TY[h.type] || h.type || '—') + '</b><small>' +
+      ltr(String(h.timestamp || '').substring(0, 10)) + (h.note ? ' · ' + esc(h.note) : '') + '</small></div>' +
+      badge(esc(RS[h.result] || h.result || '—'), h.result === 'bought' ? 'ok' : 'brand') + '</div>';
+  }).join('') + '<button class="btn btn-quiet" onclick="expCustHist(\'p\')">' + tr('exportP') + ' ↓</button>';
+}
+function expCustHist(k){
+  var c = CUST.one || {};
+  var rows = (CUST.hist || []).map(function(h){
+    return { 'التاريخ': String(h.timestamp || '').substring(0, 10), 'النوع': h.type, 'النتيجة': h.result, 'ملاحظة': h.note || '' };
+  });
+  k === 'x' ? toExcel(rows, 'history') : toPDF(rows, (c.name || '') + ' — ' + tr('history'));
+}
+
+/* بعد أي تعديل نجيب القايمة من جديد — حالة العميل بتتغيّر على السيرفر (متابعة/حظر) */
+function refreshCust(then){
+  try { localStorage.removeItem(cacheKey('getCustomers', {})); } catch (e) {}
+  api('getCustomers').then(function(res){
+    var l = Array.isArray(res) ? res : (res && res.list);
+    if (Array.isArray(l)) CUST.list = l;
+    if (custOnTab()) drawCustomers(CUST.list, document.getElementById('p-cust'));
+    if (then) then();
+  }).catch(function(e){ logErr(e); if (then) then(); });
+}
+
+function saveLog(){
+  var c = CUST.one; if (!c) return;
+  toast(tr('saving'));
+  post({ action: 'log', phone: String(c.phone), name: c.name || '', type: CUST_LOG.type,
+         text: '', result: CUST_LOG.result, note: '' }).then(function(){
+    toast(tr('saved'));
+    refreshCust(function(){ openCust(c.phone); });
+  }).catch(function(e){ logErr(e); toast(tr('failed')); });
+}
+
+function toggleBlock(){
+  var c = CUST.one; if (!c) return;
+  /* الحظر بيوقف المتابعة — لمسة تأكيد قبل التنفيذ عشان مايتعملش بالغلط */
+  if (!c.is_blocked && !CUST.confirmBlock){
+    CUST.confirmBlock = true;
+    var bt = document.getElementById('blkBtn'); if (bt) bt.textContent = tr('confirmBlock');
+    return;
+  }
+  toast(tr('saving'));
+  post({ action: c.is_blocked ? 'unblock' : 'block', phone: String(c.phone) }).then(function(){
+    toast(tr('saved'));
+    refreshCust(function(){ document.getElementById('sheet').classList.remove('on'); });
+  }).catch(function(e){ logErr(e); toast(tr('failed')); });
+}
+
+
 
 /* ─────── عملاء: المندوبين ─────── */
 function pgAgents(){
@@ -2827,7 +3430,7 @@ function openExpItem(id){
       { value: num(i.amount), label: tr('amount'), tone: i.isIncome ? 'ok' : 'warn' }
     ]) +
     row(tr('date'), null, ltr(i.date + (i.time ? ' · ' + i.time : ''))) +
-    (i.company ? row(tr('supplier'), null, esc(i.company)) : '') +
+    (i.company ? row(tr('supplierLbl'), null, esc(i.company)) : '') +
     (i.staff ? row(tr('staffMember'), null, esc(i.staff)) : '') +
     (i.detail ? row(tr('detail'), null, esc(i.detail)) : '') +
     row(tr('serial'), null, ltr(i.id)) +
@@ -2941,7 +3544,7 @@ function openDue(){
       '<div class="state">' + tr('neverCounted') + ': ' + ltr(num(d.never_counted)) +
       ' ' + tr('items') + ' · ' + tr('stockValue') + ' ' + ltr(num(d.total_value)) + '</div>' +
       (d.items || []).map(function(x){
-        var lbl = x.days === null ? tr('never') : (ltr(x.days) + ' ' + tr('daysWord'));
+        var lbl = x.days === null ? tr('neverCountedWord') : (ltr(x.days) + ' ' + tr('daysWord'));
         var tone = (x.days === null || x.days > 180) ? 'bad' : (x.days > 90 ? 'warn' : 'ok');
         return '<div class="row"><div class="row-main"><b>' + esc(x.name) + '</b>' +
           '<small>' + ltr(num(x.stock)) + ' ' + tr('unitsWord') + ' · ' +

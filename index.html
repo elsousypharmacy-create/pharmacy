@@ -459,6 +459,11 @@ var T = {
   noHistory:['لسه مفيش تواصل مسجّل','No contact logged yet'],
   saving:['بيحفظ…','Saving…'],
   saved:['اتحفظ','Saved'],
+  expLedgerNote:['فيه أيام إجماليها من النظام من غير تفاصيل بنود — مجموعها','Some days use the system daily total without line items — total'],
+  expFillTitle:['أرشيف المصروفات','Expense archive'],
+  expFillBtn:['استرجع النسخ القديمة','Recover old exports'],
+  versionsRead:['نسخ اتقرت','Versions read'],
+  entriesAdded:['حركات اتضافت','Entries added'],
   counts:['الجرد','Stocktake'],
   liveNow:['شغال دلوقتي','Counting now'],
   staffCounts:['جرد الموظفين','Staff counting'],
@@ -630,7 +635,14 @@ var T = {
 
   /* عملاء */
   customers:['العملاء','Customers'], messages:['الرسايل','Messages'],
-  agents:['المندوبين','Referrers'], sent:['اتبعتت','Sent'], msgFailed:['فشلت','Failed'],
+  agents:['المندوبين','Referrers'],
+  doctors:['دكاترة','Doctors'], docAdd:['إضافة دكتور','Add doctor'], docName:['اسم الدكتور','Doctor name'],
+  docSpec:['التخصص (اختياري)','Specialty (optional)'], docCode:['الكود','Code'],
+  docOrders:['طلبات الدكاترة','Doctor requests'], docMisses:['بيدوّروا عليه ومش عندنا','Searched, not in stock'],
+  docCopy:['نسخ رسالة الدعوة','Copy invite'], docOn:['فعّال','Active'], docOff:['موقوف','Stopped'],
+  docDone:['تم','Done'], docNone:['لسه مفيش دكاترة','No doctors yet'], docLast:['آخر دخول','Last login'],
+  docSave:['حفظ','Save'], docNew:['جديد','New'], docAuto:['سيبه فاضي = كود تلقائي','Empty = auto code'],
+  docTimes:['مرة','times'], docNoOrders:['مفيش طلبات','No requests'], docNoMiss:['مفيش حاجة ناقصة','Nothing missing'], sent:['اتبعتت','Sent'], msgFailed:['فشلت','Failed'],
   ignored:['متجاهلة','Ignored'], resend:['إعادة إرسال','Resend'], ignore:['تجاهل','Ignore'],
   active:['مفعّل','active'], pending:['معلّق','pending'], due:['مستحق','Due'],
   needFollow:['محتاجين متابعة','Need follow-up'],
@@ -1101,7 +1113,7 @@ var SECTIONS = {
   stock: [['aging', function(){ return tr('invAging'); }], ['short', function(){ return tr('shortages'); }],
           ['count', function(){ return tr('counts'); }]],
   cust:  [['msgs',  function(){ return tr('messages'); }], ['list', function(){ return tr('customers'); }],
-          ['agents',function(){ return tr('agents'); }]]
+          ['agents',function(){ return tr('agents'); }], ['docs', function(){ return tr('doctors'); }]]
 };
 var CUR = 'home', TAB = 0;
 
@@ -1130,7 +1142,94 @@ function render(sec, tab){
   var key = SECTIONS[sec][tab][0];
   ({ count:pgCounts, home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts,
      perf:pgStaffHub, aging:pgAging, short:pgShort,
-     msgs:pgMessages, list:pgCustomers, agents:pgAgents })[key](key);
+     msgs:pgMessages, list:pgCustomers, agents:pgAgents, docs:pgDoctors })[key](key);
+}
+
+
+/* ─────── الدكاترة: أكواد + طلبات + اللي بيدوّروا عليه ─────── */
+var DOC_URL = 'https://elsousypharmacy-create.github.io/pharmacy/doctors.html';
+var DOC_DATA = null;
+function pgDoctors(){
+  var box = document.getElementById('p-cust');
+  if (!DOC_DATA) busy(box); else drawDoctors(DOC_DATA);
+  api('doctorAdmin', { op: 'list' }).then(function(d){
+    if (!d || !d.ok){ oops(box, 'pgDoctors()'); return; }
+    DOC_DATA = d; if (CUR === 'cust') drawDoctors(d);
+  }).catch(function(){ if (!DOC_DATA) oops(box, 'pgDoctors()'); });
+}
+function drawDoctors(d){
+  var box = document.getElementById('p-cust');
+  var docs = d.doctors || [], ords = d.orders || [], mis = d.misses || [];
+  var newOrd = ords.filter(function(o){ return o.status !== 'تم'; });
+  var h = vitals(tr('doctors'), null, [
+    { value: num(docs.filter(function(x){ return x.active; }).length), label: tr('docOn'), tone: 'ok' },
+    { value: num(newOrd.length), label: tr('docOrders'), tone: newOrd.length ? 'warn' : 'brand' },
+    { value: num(mis.length), label: tr('docMisses'), tone: 'brand' }
+  ]);
+  h += card(tr('doctors'), null, docs.length ? docs.map(function(x, i){
+    return '<div class="row"><div class="row-main"><b>' + esc(x.name) + (x.spec ? ' · ' + esc(x.spec) : '') + '</b>' +
+      '<small>' + tr('docCode') + ': <span dir="ltr">' + esc(x.code) + '</span>' +
+      (x.last ? ' · ' + tr('docLast') + ': ' + ltr(esc(x.last)) : '') + '</small></div>' +
+      '<span style="display:flex;gap:6px;align-items:center">' +
+      '<button class="btn btn-quiet" style="padding:6px 10px" onclick="docInvite(' + i + ')">' + tr('docCopy') + '</button>' +
+      '<button class="btn ' + (x.active ? 'btn-quiet' : 'btn-danger') + '" style="padding:6px 10px" onclick="docToggle(' + x.row + ')">' +
+      (x.active ? tr('docOn') : tr('docOff')) + '</button></span></div>';
+  }).join('') : '<div class="state">' + tr('docNone') + '</div>',
+    '<button class="btn btn-primary" onclick="docForm()">+ ' + tr('docAdd') + '</button>');
+  h += card(tr('docOrders'), null, ords.length ? ords.map(function(o){
+    var isNew = o.status !== 'تم';
+    return '<div class="row"><div class="row-main"><b>' + esc(o.doctor) + '</b>' +
+      '<small style="white-space:pre-line">' + esc(o.items) + (o.note ? '\n📝 ' + esc(o.note) : '') + '</small>' +
+      '<small>' + ltr(esc(o.at)) + '</small></div>' +
+      (isNew ? '<button class="btn btn-primary" style="padding:6px 12px" onclick="docDone(' + o.row + ')">' + tr('docDone') + '</button>'
+             : '<span class="row-val" style="color:var(--ok)">✓</span>') + '</div>';
+  }).join('') : '<div class="state">' + tr('docNoOrders') + '</div>');
+  h += card(tr('docMisses'), null, mis.length ? mis.map(function(m){
+    return row(m.q, esc(m.result) + ' · ' + ltr(esc(m.last)), ltr(num(m.n)) + ' ' + tr('docTimes'));
+  }).join('') : '<div class="state">' + tr('docNoMiss') + '</div>');
+  box.innerHTML = h;
+}
+function docSheet(title, body){
+  document.getElementById('sheet-title').textContent = title;
+  document.getElementById('sheet-body').innerHTML = body;
+  document.getElementById('sheet').classList.add('on');
+}
+function docForm(){
+  docSheet(tr('docAdd'),
+    '<input id="dn" placeholder="' + tr('docName') + '" style="width:100%;margin-bottom:8px">' +
+    '<input id="ds" placeholder="' + tr('docSpec') + '" style="width:100%;margin-bottom:8px">' +
+    '<input id="dc" dir="ltr" placeholder="' + tr('docCode') + ' — ' + tr('docAuto') + '" style="width:100%;margin-bottom:12px">' +
+    '<div class="state err" id="derr"></div>' +
+    '<button class="btn btn-primary" id="dsave" onclick="docSave()">' + tr('docSave') + '</button>');
+}
+function docSave(){
+  var b = document.getElementById('dsave'); b.disabled = true;
+  api('doctorAdmin', { op: 'add', name: document.getElementById('dn').value, spec: document.getElementById('ds').value,
+                       code: document.getElementById('dc').value }).then(function(d){
+    if (d && d.ok){
+      DOC_DATA = null; closeSheet(); pgDoctors();
+      var i = -1; /* بعد التحميل نعرض رسالة الدعوة جاهزة للنسخ */
+      api('doctorAdmin', { op: 'list' }).then(function(l){
+        DOC_DATA = l; drawDoctors(l);
+        var k = (l.doctors || []).findIndex(function(x){ return x.code === d.code; });
+        if (k >= 0) docInvite(k);
+      });
+    } else { b.disabled = false; document.getElementById('derr').textContent = (d && d.msg) || 'خطأ'; }
+  }).catch(function(){ b.disabled = false; document.getElementById('derr').textContent = 'النت مش راضي'; });
+}
+function docInvite(i){
+  var x = DOC_DATA.doctors[i]; if (!x) return;
+  var msg = 'أهلاً د. ' + x.name + '\nصيدلية السوسي — بحث المتوفر من الأدوية:\n' + DOC_URL + '\nكود الدخول: ' + x.code;
+  DOC_MSG = msg;
+  docSheet(tr('docCopy'), '<div class="state" style="white-space:pre-line;text-align:start" dir="rtl">' + esc(msg) + '</div>' +
+    '<button class="btn btn-primary" onclick="copyTxt(DOC_MSG);closeSheet()">' + tr('docCopy') + '</button>');
+}
+var DOC_MSG = '';
+function docToggle(row){
+  api('doctorAdmin', { op: 'toggle', row: row }).then(function(){ DOC_DATA = null; pgDoctors(); });
+}
+function docDone(row){
+  api('doctorAdmin', { op: 'done', row: row }).then(function(){ DOC_DATA = null; pgDoctors(); });
 }
 
 /* ─────── عامة ─────── */
@@ -1503,6 +1602,12 @@ function drawExpenses(d, box){
     } else if (d.sourceError){
       warn = '<div class="state err" style="margin-bottom:10px">' +
         esc(d.sourceError) + '</div>';
+    }
+    /* أيام فيها مصروفات متنوعة من إجمالي النظام من غير تفاصيل — الرقم صح بس
+       مفيش بنود. بنقولها صراحة عشان محدش يدوّر على بند مش موجود. */
+    if (d.ledger_count){
+      warn += '<div class="state" style="padding:0 0 10px;text-align:start">' +
+        tr('expLedgerNote') + ' ' + ltr(num(d.ledger_total)) + ' ' + tr('egp') + '</div>';
     }
     var top = (d.byCategory || [])[0];
     var html = ctlBar(
@@ -2026,7 +2131,10 @@ function invOrderHtml(){
     Object.keys(comps).forEach(function(co){
       by[co] = by[co] || [];
       comps[co].forEach(function(it){
-        by[co].push({ code: it.code, name: it.name, qty: it.shortage, cat: cat });
+        /* كمية الطلب: تقريب لفوق (مفيش نص علبة) — ولو صفر/سالب/مش رقم نعرضها 1 كحد أدنى */
+        var q_ = Math.ceil(Number(it.shortage) - 1e-9);
+        if (!isFinite(q_) || q_ < 1) q_ = 1;
+        by[co].push({ code: it.code, name: it.name, qty: q_, cat: cat });
       });
     });
   });
@@ -3152,6 +3260,9 @@ function openSheet(kind){
       '<div class="group-title">' + tr('snapSpeed') + '</div>' +
       '<button class="btn btn-quiet" onclick="runSnapTime()">' + tr('measureSnap') + '</button>' +
       '<div id="snaptime"></div>' +
+      '<div class="group-title">' + tr('expFillTitle') + '</div>' +
+      '<button class="btn btn-quiet" onclick="runExpBackfill()">' + tr('expFillBtn') + '</button>' +
+      '<div id="expfill"></div>' +
       '<div class="group-title">' + tr('scanReady') + '</div>' +
       '<button class="btn btn-quiet" onclick="runScanReady()">' + tr('checkScan') + '</button>' +
       '<div id="scanbox"></div>' +
@@ -3576,6 +3687,20 @@ function runSnapTime(){
     logErr(e);
     box.innerHTML = '<div class="state err">' + tr('snapTimedOut') + '</div>';
   });
+}
+
+/* بيقرا كل النسخ القديمة من ملف المصروفات ويحفظ حركاتها في أرشيف دائم.
+   الملف بيشيل اللي اتقفل، فاللي مفيش نسخة منه مش ممكن يتجاب. */
+function runExpBackfill(){
+  var box = document.getElementById('expfill');
+  box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('measuring') + '</div>';
+  api('backfillExpenses').then(function(d){
+    if (!d || !d.ok){ box.innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + '</div>'; return; }
+    box.innerHTML =
+      row(tr('versionsRead'), null, ltr(num(d.read) + ' / ' + num(d.versions))) +
+      row(tr('entriesAdded'), null, ltr(num(d.added))) +
+      ((d.errors && d.errors.length) ? '<div class="state err">' + esc(d.errors.join(' | ')) + '</div>' : '');
+  }).catch(function(e){ logErr(e); box.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
 
 function runScanReady(){

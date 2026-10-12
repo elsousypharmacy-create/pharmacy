@@ -89,7 +89,24 @@ function load(force){
     else $('list').innerHTML = '<div class="state">' + esc((d && d.msg) || 'حصلت مشكلة، حاول تاني') + '</div>';
   }).catch(function(){ $('list').innerHTML = '<div class="state">النت مش راضي</div>'; });
 }
-function accept(d){ DATA = d; $('days').value = d.days; draw(); }
+/* بنعيد التجميع بالقسم (أدوية/تجميل/مستلزمات…) بدل الشركة — واسم الشركة بيفضل تحت كل صنف */
+function regroup(d){
+  ['zero', 'low'].forEach(function(sec){
+    var by = {};
+    (d[sec] || []).forEach(function(c){
+      c.items.forEach(function(it){
+        var cat = it.c || 'أخرى';
+        (by[cat] = by[cat] || []).push({ n: it.n, q: it.q, c: c.co });
+      });
+    });
+    d[sec] = Object.keys(by).map(function(cat){
+      by[cat].sort(function(a, b){ return a.c < b.c ? -1 : a.c > b.c ? 1 : (a.n < b.n ? -1 : 1); });
+      return { co: cat, items: by[cat] };
+    }).sort(function(a, b){ return b.items.length - a.items.length; });
+  });
+  return d;
+}
+function accept(d){ DATA = regroup(d); $('days').value = d.days; draw(); }
 
 function cnt(sec){ return (DATA[sec] || []).reduce(function(a, c){ return a + c.items.length; }, 0); }
 function setSec(s){ SEC = s; draw(); }
@@ -126,7 +143,7 @@ function mark(i, j, v){
 }
 function coText(c, onlyLeft){
   var items = c.items.filter(function(it){ return !onlyLeft || !DONE[key(c.co, it.n)]; });
-  return { n: items.length, t: '🛒 طلب — ' + c.co + '\n' + today() + '\n\n' + items.map(function(it){ return '• ' + it.n + ' × ' + it.q; }).join('\n') };
+  return { n: items.length, t: '🛒 طلب — قسم ' + c.co + '\n' + today() + '\n\n' + items.map(function(it){ return '• ' + it.n + ' × ' + it.q + ' (' + it.c + ')'; }).join('\n') };
 }
 function copyTxt(text){
   function fb(){ var ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select();

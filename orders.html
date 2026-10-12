@@ -38,6 +38,9 @@ button.q{background:var(--soft);color:var(--brand);border:1px solid var(--line)}
 .it .n{flex:1;font-size:14px;font-weight:600}.it.done .n{text-decoration:line-through;color:var(--mut)}
 .it .c{font-size:12px;color:var(--mut)}
 .qty{font-weight:700;background:var(--soft);border-radius:8px;padding:3px 10px;min-width:42px;text-align:center}
+.vals{display:flex;gap:8px;margin:0 0 12px}.vals div{flex:1;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:9px 10px;text-align:center}
+.vals small{display:block;color:var(--mut);font-size:12px}.vals b{font-size:17px;color:var(--brand)}
+.vn{color:var(--mut);font-size:12px;margin:-6px 4px 10px}
 .state{text-align:center;color:var(--mut);padding:28px 10px}.meta{color:var(--mut);font-size:12px;text-align:center;margin-top:10px}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#12302b;color:#fff;padding:10px 18px;border-radius:99px;font-size:14px;display:none;z-index:9}
 .lnk{background:none;color:var(--mut);font-size:12px;font-weight:400;padding:6px;margin-top:14px}
@@ -59,6 +62,7 @@ button.q{background:var(--soft);color:var(--brand);border:1px solid var(--line)}
       <button class="q" onclick="copyAll()">نسخ الكل</button>
       <button class="q" onclick="load(true)">تحديث</button>
     </div>
+    <div id="vals"></div>
     <div id="list"></div>
     <div class="meta" id="meta"></div>
   </div>
@@ -96,7 +100,7 @@ function regroup(d){
     (d[sec] || []).forEach(function(c){
       c.items.forEach(function(it){
         var cat = it.c || 'أخرى';
-        (by[cat] = by[cat] || []).push({ n: it.n, q: it.q, c: c.co });
+        (by[cat] = by[cat] || []).push({ n: it.n, q: it.q, c: c.co, p: it.p, k: it.k, e: it.e });
       });
     });
     d[sec] = Object.keys(by).map(function(cat){
@@ -108,6 +112,16 @@ function regroup(d){
 }
 function accept(d){ DATA = regroup(d); $('days').value = d.days; draw(); }
 
+function money(n){ return Math.round(n).toLocaleString('en-US'); }
+function val(items){
+  var r = { k: 0, p: 0, est: 0, miss: 0 };
+  items.forEach(function(it){
+    if (it.p == null && it.k == null){ r.miss++; return; }
+    r.p += (it.p || 0) * it.q; r.k += (it.k || 0) * it.q; if (it.e) r.est++;
+  });
+  return r;
+}
+function allItems(){ var a = []; (DATA[SEC] || []).forEach(function(c){ a = a.concat(c.items); }); return a; }
 function cnt(sec){ return (DATA[sec] || []).reduce(function(a, c){ return a + c.items.length; }, 0); }
 function setSec(s){ SEC = s; draw(); }
 function key(co, n){ return SEC + '|' + co + '|' + n; }
@@ -119,11 +133,16 @@ function draw(){
   $('t-zero').className = 'z' + (SEC === 'zero' ? ' on' : '');
   $('t-low').className = SEC === 'low' ? 'on' : '';
   var cos = DATA[SEC] || [];
+  var tv = val(allItems());
+  $('vals').innerHTML = '<div class="vals"><div><small>سعر الصيدلي</small><b>' + money(tv.k) + ' ج</b></div>' +
+    '<div><small>سعر الجمهور</small><b>' + money(tv.p) + ' ج</b></div></div>' +
+    '<div class="vn">قيمة الطلب لآخر ' + DATA.days + ' يوم' + (tv.est ? ' · سعر الصيدلي تقديري لـ ' + tv.est + ' صنف' : '') +
+    (tv.miss ? ' · ' + tv.miss + ' صنف بدون سعر' : '') + '</div>';
   if (!cos.length){ $('list').innerHTML = '<div class="state">🎉 مفيش نواقص في القسم ده</div>'; }
   else $('list').innerHTML = cos.map(function(c, i){
     var left = c.items.filter(function(it){ return !DONE[key(c.co, it.n)]; }).length;
     return '<div class="co' + (OPEN[SEC + c.co] ? ' open' : '') + '"><div class="ch" onclick="tog(' + i + ')">' +
-      '<div><b>' + esc(c.co) + '</b><small>' + left + ' من ' + c.items.length + ' لسه مطلبش</small></div><span class="arw">‹</span></div>' +
+      '<div><b>' + esc(c.co) + '</b><small>' + left + ' من ' + c.items.length + ' لسه مطلبش · صيدلي ' + money(val(c.items).k) + ' · جمهور ' + money(val(c.items).p) + '</small></div><span class="arw">‹</span></div>' +
       '<div class="cb"><div class="acts"><button onclick="copyCo(' + i + ')">نسخ الطلب</button>' +
       '<button class="q" onclick="waCo(' + i + ')">واتساب</button></div>' +
       c.items.map(function(it, j){
@@ -143,7 +162,7 @@ function mark(i, j, v){
 }
 function coText(c, onlyLeft){
   var items = c.items.filter(function(it){ return !onlyLeft || !DONE[key(c.co, it.n)]; });
-  return { n: items.length, t: '🛒 طلب — قسم ' + c.co + '\n' + today() + '\n\n' + items.map(function(it){ return '• ' + it.n + ' × ' + it.q + ' (' + it.c + ')'; }).join('\n') };
+  return { n: items.length, t: '🛒 طلب — قسم ' + c.co + '\n' + today() + '\n\n' + items.map(function(it){ return '• ' + it.n + ' × ' + it.q + ' (' + it.c + ')'; }).join('\n') + '\n\nسعر الصيدلي: ' + money(val(items).k) + ' ج | سعر الجمهور: ' + money(val(items).p) + ' ج' };
 }
 function copyTxt(text){
   function fb(){ var ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select();

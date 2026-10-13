@@ -1,6 +1,8 @@
 {
+  "id": "./orders.html",
   "name": "طلب النواقص — صيدلية السوسي",
   "short_name": "طلب النواقص",
+  "description": "قائمة نواقص صيدلية السوسي مجمّعة بالقسم، مع الرصيد وقيمة الطلب ونسخ اسم الصنف لبرنامج الطلبات.",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "./orders.html",
@@ -10,7 +12,21 @@
   "background_color": "#ffffff",
   "theme_color": "#0f7a6b",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "business",
+    "medical"
   ]
 }

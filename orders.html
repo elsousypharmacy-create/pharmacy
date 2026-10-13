@@ -40,9 +40,6 @@ button.q{background:var(--soft);color:var(--brand);border:1px solid var(--line)}
 .qty{font-weight:700;background:var(--soft);border-radius:8px;padding:3px 10px;min-width:42px;text-align:center}
 .vals{display:flex;gap:8px;margin:0 0 12px}.vals div{flex:1;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:9px 10px;text-align:center}
 .vals small{display:block;color:var(--mut);font-size:12px}.vals b{font-size:17px;color:var(--brand)}
-.lost{background:var(--badbg);border:1px solid #f0c9c3;border-radius:12px;padding:10px 12px;margin:0 0 12px;font-size:14px}
-.lost b{color:var(--bad)}.lost small{display:block;color:var(--mut);font-size:12px;margin-top:2px}
-.rk{font-size:12px;color:var(--bad);font-weight:600;white-space:nowrap}
 .vn{color:var(--mut);font-size:12px;margin:-6px 4px 10px}
 .state{text-align:center;color:var(--mut);padding:28px 10px}.meta{color:var(--mut);font-size:12px;text-align:center;margin-top:10px}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#12302b;color:#fff;padding:10px 18px;border-radius:99px;font-size:14px;display:none;z-index:9}
@@ -66,7 +63,6 @@ button.q{background:var(--soft);color:var(--brand);border:1px solid var(--line)}
       <button class="q" onclick="load(true)">تحديث</button>
     </div>
     <div id="vals"></div>
-    <div id="lost"></div>
     <div id="list"></div>
     <div class="meta" id="meta"></div>
   </div>
@@ -104,16 +100,13 @@ function regroup(d){
     (d[sec] || []).forEach(function(c){
       c.items.forEach(function(it){
         var cat = it.c || 'أخرى';
-        (by[cat] = by[cat] || []).push({ n: it.n, q: it.q, c: c.co, p: it.p, k: it.k, e: it.e, u: it.u, v: it.v, h: it.h });
+        (by[cat] = by[cat] || []).push({ n: it.n, q: it.q, c: c.co, p: it.p, k: it.k, e: it.e });
       });
     });
     d[sec] = Object.keys(by).map(function(cat){
-      by[cat].sort(function(a, b){ return (b.v || 0) - (a.v || 0) || (a.c < b.c ? -1 : a.c > b.c ? 1 : (a.n < b.n ? -1 : 1)); });
+      by[cat].sort(function(a, b){ return a.c < b.c ? -1 : a.c > b.c ? 1 : (a.n < b.n ? -1 : 1); });
       return { co: cat, items: by[cat] };
-    }).sort(function(a, b){
-      var va = a.items.reduce(function(s, x){ return s + (x.v || 0); }, 0), vb = b.items.reduce(function(s, x){ return s + (x.v || 0); }, 0);
-      return vb - va || b.items.length - a.items.length;
-    });
+    }).sort(function(a, b){ return b.items.length - a.items.length; });
   });
   return d;
 }
@@ -140,16 +133,7 @@ function draw(){
   $('t-zero').className = 'z' + (SEC === 'zero' ? ' on' : '');
   $('t-low').className = SEC === 'low' ? 'on' : '';
   var cos = DATA[SEC] || [];
-  var ai = allItems(), perDay = 0, gone = 0, known = 0, unk = 0;
-  ai.forEach(function(it){ if (it.v == null){ unk++; return; } known++; perDay += it.v; if (it.h != null) gone += it.v * it.h / 24; });
-  var sd = DATA.salesDays || 0;
-  $('lost').innerHTML = (known && SEC === 'zero')
-    ? '<div class="lost">💸 كل يوم نقص بيضيّع حوالي <b>' + money(perDay) + ' ج</b> من المبيعات' +
-      (gone >= 1 ? '<br>ضاع من أول ما اتسجّل: <b>≈ ' + money(gone) + ' ج</b>' : '') +
-      '<small>متوسط بيع كل صنف في آخر ' + sd + ' يوم × سعر الجمهور' + (sd < 7 ? ' · البيانات قليلة، التقدير تقريبي' : '') +
-      (unk ? ' · ' + unk + ' صنف مفيش له مبيعات' : '') + '</small></div>'
-    : (known ? '<div class="lost" style="background:var(--lowbg);border-color:#ecd9a8">🟡 لو خلصوا كلهم، الخسارة المتوقعة <b style="color:var(--low)">' + money(perDay) + ' ج / يوم</b><small>أصناف قربت تخلص · متوسط آخر ' + sd + ' يوم</small></div>' : '');
-  var tv = val(ai);
+  var tv = val(allItems());
   $('vals').innerHTML = '<div class="vals"><div><small>سعر الصيدلي</small><b>' + money(tv.k) + ' ج</b></div>' +
     '<div><small>سعر الجمهور</small><b>' + money(tv.p) + ' ج</b></div></div>' +
     '<div class="vn">قيمة الطلب لآخر ' + DATA.days + ' يوم' + (tv.est ? ' · سعر الصيدلي تقديري لـ ' + tv.est + ' صنف' : '') +
@@ -165,7 +149,7 @@ function draw(){
         var k = key(c.co, it.n);
         return '<label class="it' + (DONE[k] ? ' done' : '') + '"><input type="checkbox"' + (DONE[k] ? ' checked' : '') +
           ' onchange="mark(' + i + ',' + j + ',this.checked)"><span class="n">' + esc(it.n) + '<br><span class="c">' + esc(it.c) + '</span></span>' +
-          (it.v ? '<span class="rk">' + money(it.v) + ' ج/يوم</span>' : '') + '<span class="qty">' + it.q + '</span></label>';
+          '<span class="qty">' + it.q + '</span></label>';
       }).join('') + '</div></div>';
   }).join('');
   $('meta').textContent = 'اتحدّثت ' + (DATA.at || '') + ' · علامة "اتطلب" بتتحفظ على جهازك لحد آخر اليوم';

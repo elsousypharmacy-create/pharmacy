@@ -2,10 +2,11 @@
    والصفحة نفسها بتتجاب من النت الأول عشان أي تحديث يظهر فورًا.
    بيانات النواقص مبتتخزنش أبدًا (دايمًا من السيرفر). */
 var CACHE = 'sousy-shell-v1';
-var SHELL = ['./orders.html', './manifest-orders.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+/* الصفحة والملف الوصفي بس — الأيقونات بتتخزّن لوحدها أول ما تتطلب، فغيابها مايوقفش التثبيت */
+var SHELL = ['./orders.html', './manifest-orders.json'];
 
 self.addEventListener('install', function(e){
-  e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(SHELL); }).then(function(){ return self.skipWaiting(); }));
+  e.waitUntil(caches.open(CACHE).then(function(c){ return Promise.all(SHELL.map(function(u){ return c.add(u).catch(function(){}); })); }).then(function(){ return self.skipWaiting(); }));
 });
 self.addEventListener('activate', function(e){
   e.waitUntil(caches.keys().then(function(keys){

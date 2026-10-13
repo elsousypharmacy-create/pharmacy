@@ -37,9 +37,17 @@ button.q{background:var(--soft);color:var(--brand);border:1px solid var(--line)}
 .it input[type=checkbox]{width:22px;height:22px;flex:none;accent-color:var(--brand)}
 .it .n{flex:1;font-size:14px;font-weight:600}.it.done .n{text-decoration:line-through;color:var(--mut)}
 .it .c{font-size:12px;color:var(--mut)}
+.it .n{cursor:pointer}.it .nm{display:block}.it .n .c{display:block}.it .n:active{opacity:.55}
+.st{color:var(--ink);font-weight:700}.st.z{color:var(--bad)}
 .qty{font-weight:700;background:var(--soft);border-radius:8px;padding:3px 10px;min-width:42px;text-align:center}
 .vals{display:flex;gap:8px;margin:0 0 12px}.vals div{flex:1;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:9px 10px;text-align:center}
 .vals small{display:block;color:var(--mut);font-size:12px}.vals b{font-size:17px;color:var(--brand)}
+.lost{background:var(--badbg);border:1px solid #f0c9c3;border-radius:12px;padding:10px 12px;margin:0 0 12px;font-size:14px}
+.lost b{color:var(--bad)}.lost small{display:block;color:var(--mut);font-size:12px;margin-top:2px}
+.score{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 12px}
+.score .pct{font-size:26px;font-weight:700;min-width:84px;text-align:center}
+.score small{display:block;color:var(--mut);font-size:12px}
+.rk{font-size:12px;color:var(--bad);font-weight:600;white-space:nowrap}
 .vn{color:var(--mut);font-size:12px;margin:-6px 4px 10px}
 .state{text-align:center;color:var(--mut);padding:28px 10px}.meta{color:var(--mut);font-size:12px;text-align:center;margin-top:10px}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#12302b;color:#fff;padding:10px 18px;border-radius:99px;font-size:14px;display:none;z-index:9}
@@ -63,6 +71,8 @@ button.q{background:var(--soft);color:var(--brand);border:1px solid var(--line)}
       <button class="q" onclick="load(true)">تحديث</button>
     </div>
     <div id="vals"></div>
+    <div id="score"></div>
+    <div id="lost"></div>
     <div id="list"></div>
     <div class="meta" id="meta"></div>
   </div>
@@ -100,13 +110,16 @@ function regroup(d){
     (d[sec] || []).forEach(function(c){
       c.items.forEach(function(it){
         var cat = it.c || 'أخرى';
-        (by[cat] = by[cat] || []).push({ n: it.n, q: it.q, c: c.co, p: it.p, k: it.k, e: it.e });
+        (by[cat] = by[cat] || []).push({ n: it.n, q: it.q, c: c.co, p: it.p, k: it.k, e: it.e, u: it.u, v: it.v, h: it.h, s: it.s });
       });
     });
     d[sec] = Object.keys(by).map(function(cat){
-      by[cat].sort(function(a, b){ return a.c < b.c ? -1 : a.c > b.c ? 1 : (a.n < b.n ? -1 : 1); });
+      by[cat].sort(function(a, b){ return (b.v || 0) - (a.v || 0) || (a.c < b.c ? -1 : a.c > b.c ? 1 : (a.n < b.n ? -1 : 1)); });
       return { co: cat, items: by[cat] };
-    }).sort(function(a, b){ return b.items.length - a.items.length; });
+    }).sort(function(a, b){
+      var va = a.items.reduce(function(s, x){ return s + (x.v || 0); }, 0), vb = b.items.reduce(function(s, x){ return s + (x.v || 0); }, 0);
+      return vb - va || b.items.length - a.items.length;
+    });
   });
   return d;
 }
@@ -133,7 +146,30 @@ function draw(){
   $('t-zero').className = 'z' + (SEC === 'zero' ? ' on' : '');
   $('t-low').className = SEC === 'low' ? 'on' : '';
   var cos = DATA[SEC] || [];
-  var tv = val(allItems());
+  var ai = allItems(), perDay = 0, gone = 0, known = 0, unk = 0;
+  ai.forEach(function(it){ if (it.v == null){ unk++; return; } known++; perDay += it.v; if (it.h != null) gone += it.v * it.h / 24; });
+  var sd = DATA.salesDays || 0;
+  $('lost').innerHTML = (known && SEC === 'zero')
+    ? '<div class="lost">💸 كل يوم نقص بيضيّع حوالي <b>' + money(perDay) + ' ج</b> من المبيعات' +
+      (gone >= 1 ? '<br>ضاع من أول ما اتسجّل: <b>≈ ' + money(gone) + ' ج</b>' : '') +
+      '<small>متوسط بيع كل صنف في آخر ' + sd + ' يوم × سعر الجمهور' + (sd < 7 ? ' · البيانات قليلة، التقدير تقريبي' : '') +
+      (unk ? ' · ' + unk + ' صنف مفيش له مبيعات' : '') + '</small></div>'
+    : (known ? '<div class="lost" style="background:var(--lowbg);border-color:#ecd9a8">🟡 لو خلصوا كلهم، الخسارة المتوقعة <b style="color:var(--low)">' + money(perDay) + ' ج / يوم</b><small>أصناف قربت تخلص · متوسط آخر ' + sd + ' يوم</small></div>' : '');
+  /* نسبة التوافر: من مبيعاتنا اليومية، كام % أصنافها متوفرة (الناقص خالص بيتخصم) */
+  var sc = '';
+  if (SEC === 'zero' && DATA.revPerDay > 0 && sd >= 3){
+    var zr = 0, nh = 0, sh = 0;
+    (DATA.zero || []).forEach(function(c){ c.items.forEach(function(it){ if (it.v != null) zr += it.v; if (it.h != null){ nh++; sh += it.h; } }); });
+    var pct = Math.max(0, Math.min(100, 100 * (1 - zr / DATA.revPerDay)));
+    var tone = pct >= 97 ? ['ممتاز', 'var(--ok)'] : pct >= 93 ? ['جيد', 'var(--low)'] : ['محتاج تحسين', 'var(--bad)'];
+    var avgD = nh ? sh / nh / 24 : null;
+    sc = '<div class="score"><div class="pct" style="color:' + tone[1] + '">' + pct.toFixed(1) + '%</div><div>' +
+      '<b style="color:' + tone[1] + '">' + tone[0] + '</b><small>نسبة التوافر: الجزء من مبيعاتنا اليومية (≈ ' + money(DATA.revPerDay) + ' ج) اللي أصنافه متوفرة دلوقتي</small>' +
+      (avgD !== null ? '<small>متوسط بقاء الصنف ناقص: ' + (avgD < 1 ? Math.round(avgD * 24) + ' ساعة' : avgD.toFixed(1) + ' يوم') + ' (' + nh + ' صنف متسجّل)</small>' : '<small>مدة النقص بتظهر بعد ما سجل النواقص يشتغل يوم</small>') +
+      '</div></div>';
+  }
+  $('score').innerHTML = sc;
+  var tv = val(ai);
   $('vals').innerHTML = '<div class="vals"><div><small>سعر الصيدلي</small><b>' + money(tv.k) + ' ج</b></div>' +
     '<div><small>سعر الجمهور</small><b>' + money(tv.p) + ' ج</b></div></div>' +
     '<div class="vn">قيمة الطلب لآخر ' + DATA.days + ' يوم' + (tv.est ? ' · سعر الصيدلي تقديري لـ ' + tv.est + ' صنف' : '') +
@@ -147,9 +183,14 @@ function draw(){
       '<button class="q" onclick="waCo(' + i + ')">واتساب</button></div>' +
       c.items.map(function(it, j){
         var k = key(c.co, it.n);
-        return '<label class="it' + (DONE[k] ? ' done' : '') + '"><input type="checkbox"' + (DONE[k] ? ' checked' : '') +
-          ' onchange="mark(' + i + ',' + j + ',this.checked)"><span class="n">' + esc(it.n) + '<br><span class="c">' + esc(it.c) + '</span></span>' +
-          '<span class="qty">' + it.q + '</span></label>';
+        var stk = (it.s == null) ? '' : '<span class="st' + (it.s <= 0 ? ' z' : '') + '">الرصيد: ' + (Math.round(it.s * 10) / 10) + '</span>';
+        return '<div class="it' + (DONE[k] ? ' done' : '') + '"><input type="checkbox"' + (DONE[k] ? ' checked' : '') +
+          ' onchange="mark(' + i + ',' + j + ',this.checked)" aria-label="اتطلب">' +
+          '<div class="n" onclick="copyName(' + i + ',' + j + ')"><span class="nm">' + esc(it.n) + '</span>' +
+          '<span class="c">' + esc(it.c) + (stk ? ' · ' : '') + stk + '</span></div>' +
+          (it.h != null && SEC === 'zero' ? '<span class="c" style="flex:none">' + (it.h < 24 ? Math.round(it.h) + ' س' : (it.h / 24).toFixed(1) + ' يوم') + '</span>' : '') +
+          (it.v ? '<span class="rk">' + money(it.v) + ' ج/يوم</span>' : '') +
+          '<span class="qty">' + it.q + '</span></div>';
       }).join('') + '</div></div>';
   }).join('');
   $('meta').textContent = 'اتحدّثت ' + (DATA.at || '') + ' · علامة "اتطلب" بتتحفظ على جهازك لحد آخر اليوم';
@@ -168,6 +209,11 @@ function copyTxt(text){
   function fb(){ var ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select();
     try { document.execCommand('copy'); toast('اتنسخ ✓'); } catch(e){ toast('معرفتش أنسخ'); } document.body.removeChild(ta); }
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){ toast('اتنسخ ✓'); }, fb); else fb();
+}
+function copyName(i, j){
+  var it = DATA[SEC][i].items[j];
+  copyTxt(it.n);
+  toast('اتنسخ: ' + it.n);
 }
 function copyCo(i){ var r = coText(DATA[SEC][i], true); if (!r.n) return toast('كله اتطلب ✓'); copyTxt(r.t); }
 function waCo(i){ var r = coText(DATA[SEC][i], true); if (!r.n) return toast('كله اتطلب ✓'); window.open('https://wa.me/?text=' + encodeURIComponent(r.t), '_blank'); }

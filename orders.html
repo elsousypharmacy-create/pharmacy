@@ -211,9 +211,11 @@ function copyTxt(text){
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){ toast('اتنسخ ✓'); }, fb); else fb();
 }
 function copyName(i, j){
-  var it = DATA[SEC][i].items[j];
+  var c = DATA[SEC][i], it = c.items[j];
   copyTxt(it.n);
-  toast('اتنسخ: ' + it.n);
+  DONE[key(c.co, it.n)] = 1;      /* النسخ بيعلّمه ✓ "اتطلب" تلقائي */
+  saveDone();
+  var y = window.pageYOffset; draw(); window.scrollTo(0, y);
 }
 function copyCo(i){ var r = coText(DATA[SEC][i], true); if (!r.n) return toast('كله اتطلب ✓'); copyTxt(r.t); }
 function waCo(i){ var r = coText(DATA[SEC][i], true); if (!r.n) return toast('كله اتطلب ✓'); window.open('https://wa.me/?text=' + encodeURIComponent(r.t), '_blank'); }

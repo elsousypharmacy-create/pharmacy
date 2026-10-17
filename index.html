@@ -211,7 +211,7 @@ button{font-family:inherit}
 .secnav{position:fixed;bottom:0;left:0;right:0;z-index:90;
   background:color-mix(in srgb,var(--bg) 92%,transparent);
   backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
-  border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);
+  border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);
   padding:6px 2px calc(6px + env(safe-area-inset-bottom))}
 .secnav button{background:0;border:0;cursor:pointer;display:flex;flex-direction:column;
   align-items:center;gap:3px;color:var(--ink-3);font-size:10px;font-weight:600;padding:4px 0}
@@ -298,8 +298,8 @@ button{font-family:inherit}
 
 <div class="subtabs hide" id="subtabs"></div>
 
-<section class="screen on" id="sc-home"><div class="wrap" id="p-home"></div></section>
-<section class="screen" id="sc-sales"><div class="wrap" id="p-sales"></div></section>
+<section class="screen on" id="sc-sales"><div class="wrap" id="p-sales"></div></section>
+<section class="screen" id="sc-admin"><div class="wrap" id="p-admin"></div></section>
 <section class="screen" id="sc-money"><div class="wrap" id="p-money"></div></section>
 <section class="screen" id="sc-stock"><div class="wrap" id="p-stock"></div></section>
 <section class="screen" id="sc-cust"><div class="wrap" id="p-cust"></div></section>
@@ -314,11 +314,10 @@ button{font-family:inherit}
 <div class="toast" id="toast"></div>
 
 <nav class="secnav" id="secnav">
-  <button data-sec="home" onclick="go('home')"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg><span data-t="nav_home">عامة</span></button>
   <button data-sec="sales" onclick="go('sales')"><svg viewBox="0 0 24 24"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19H2"/></svg><span data-t="nav_sales">مبيعات</span></button>
-  <button data-sec="money" onclick="go('money')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2.5"/><circle cx="12" cy="12.5" r="2.6"/></svg><span data-t="nav_money">مالية</span></button>
-  <button data-sec="stock" onclick="go('stock')"><svg viewBox="0 0 24 24"><path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5"/><path d="M12 13v7"/></svg><span data-t="nav_stock">مخزون</span></button>
   <button data-sec="cust" onclick="go('cust')"><svg viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-11.6 7.1L4 20l1.5-5A8 8 0 1 1 21 11.5z"/></svg><span data-t="nav_cust">عملاء</span></button>
+  <button data-sec="stock" onclick="go('stock')"><svg viewBox="0 0 24 24"><path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5"/><path d="M12 13v7"/></svg><span data-t="nav_stock">مخزون</span></button>
+  <button data-sec="money" onclick="go('money')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2.5"/><circle cx="12" cy="12.5" r="2.6"/></svg><span data-t="nav_money">مالية</span></button>
 </nav>
 
 <script>
@@ -1122,16 +1121,17 @@ function shortMenu(){
 
 /* ═══════════ ٤) الأقسام ═══════════ */
 var SECTIONS = {
-  home:  [['home',  function(){ return tr('today'); }]],
-  sales: [['month', function(){ return tr('salesPerf'); }], ['perf', function(){ return tr('staffToday'); }]],
+  sales: [['home',  function(){ return tr('today'); }], ['month', function(){ return tr('rMonth'); }],
+          ['perf',  function(){ return tr('staffToday'); }]],
+  cust:  [['list',  function(){ return tr('customers'); }], ['msgs', function(){ return tr('messages'); }]],
+  stock: [['short', function(){ return tr('shortages'); }], ['aging', function(){ return tr('invAging'); }],
+          ['count', function(){ return tr('counts'); }]],
   money: [['pl',    function(){ return tr('pl'); }], ['exp', function(){ return tr('expenses'); }],
           ['debt',  function(){ return tr('debts'); }]],
-  stock: [['aging', function(){ return tr('invAging'); }], ['short', function(){ return tr('shortages'); }],
-          ['count', function(){ return tr('counts'); }]],
-  cust:  [['list',  function(){ return tr('customers'); }], ['msgs', function(){ return tr('messages'); }],
-          ['agents',function(){ return tr('agents'); }], ['docs', function(){ return tr('doctors'); }]]
+  /* الإدارة: مش في الشريط — بتتفتح من ⚙️ */
+  admin: [['agents',function(){ return tr('agents'); }], ['docs', function(){ return tr('doctors'); }]]
 };
-var CUR = 'home', TAB = 0;
+var CUR = 'sales', TAB = 0;
 
 function go(sec, tab){
   CUR = sec; TAB = tab || 0;
@@ -1166,15 +1166,15 @@ function render(sec, tab){
 var DOC_URL = 'https://elsousypharmacy-create.github.io/pharmacy/doctors.html';
 var DOC_DATA = null;
 function pgDoctors(){
-  var box = document.getElementById('p-cust');
+  var box = document.getElementById('p-admin');
   if (!DOC_DATA) busy(box); else drawDoctors(DOC_DATA);
   api('doctorAdmin', { op: 'list' }).then(function(d){
     if (!d || !d.ok){ oops(box, 'pgDoctors()'); return; }
-    DOC_DATA = d; if (CUR === 'cust') drawDoctors(d);
+    DOC_DATA = d; if (CUR === 'admin') drawDoctors(d);
   }).catch(function(){ if (!DOC_DATA) oops(box, 'pgDoctors()'); });
 }
 function drawDoctors(d){
-  var box = document.getElementById('p-cust');
+  var box = document.getElementById('p-admin');
   var docs = d.doctors || [], ords = d.orders || [], mis = d.misses || [];
   var newOrd = ords.filter(function(o){ return o.status !== 'تم'; });
   var h = vitals(tr('doctors'), null, [
@@ -1250,7 +1250,7 @@ function docDone(row){
 
 /* ─────── عامة ─────── */
 function pgHome(){
-  var box = document.getElementById('p-home');
+  var box = document.getElementById('p-sales');
   var seed = cacheGet('home', {});
   if (seed) drawHome(seed.b, seed.kpi, true); else busy(box);
 
@@ -1280,7 +1280,7 @@ function startAutoRefresh(){
   stopAutoRefresh();
   AUTO_TIMER = setInterval(function(){
     if (document.hidden) return;          // الشاشة مقفولة أو تبويب تاني
-    if (CUR !== 'home') { stopAutoRefresh(); return; }
+    if (CUR !== 'sales' || TAB !== 0) { stopAutoRefresh(); return; }
     Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }) ])
     .then(function(res){
       cacheSet('home', {}, { b: res[0], kpi: res[1] });
@@ -1296,11 +1296,11 @@ function stopAutoRefresh(){
 
 /* لما ترجع للتطبيق بعد ما كان مقفول، حدّث على طول من غير ما تستنى الدورة */
 document.addEventListener('visibilitychange', function(){
-  if (!document.hidden && CUR === 'home') pgHome();
+  if (!document.hidden && CUR === 'sales' && TAB === 0) pgHome();
 });
 
 function drawHome(b, kpi, isOld){
-  var box = document.getElementById('p-home');
+  var box = document.getElementById('p-sales');
   try{
     kpi = kpi || {};
     if (!b || !b.ok) throw new Error('bundle');
@@ -1377,12 +1377,12 @@ function drawHome(b, kpi, isOld){
       "go('money',2)"));
 
     if (ex.expired && ex.expired.count) acts.push(alertBox('bad', esc(tr('expiredNow')),
-      ltr(ex.expired.count) + ' ' + tr('items'), "go('stock',0)"));
+      ltr(ex.expired.count) + ' ' + tr('items'), "go('stock',1)"));
 
     var months = ex.months || [], soon = months.length ? months[0] : null;
     if (soon && soon.count) acts.push(alertBox('warn', esc(tr('expiringSoon')),
       ltr(soon.count) + ' ' + tr('items') + ' · ' + ltr(num(soon.totalCost)) + ' ' + tr('egp'),
-      "go('stock',0)"));
+      "go('stock',1)"));
 
     /* أضعف موظف في التسجيل — تنبيه بدل جدول كامل */
     var weak = emps.filter(function(e){ return e.invoices >= 3; })
@@ -1390,12 +1390,12 @@ function drawHome(b, kpi, isOld){
     if (weak && weak.reg_pct < 50) acts.push(alertBox('warn',
       esc(weak.name) + ' — ' + tr('regRate') + ' ' + weak.reg_pct + '%',
       tr('target') + ' ' + ltr('75%') + ' · ' + ltr(weak.invoices) + ' ' + tr('invoices'),
-      "go('sales',1)"));
+      "go('sales',2)"));
 
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
     if (dueAgents.length) acts.push(alertBox('warn', esc(tr('agentsDue')),
       ltr(dueAgents.length) + ' · ' + ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0))),
-      "go('cust',2)"));
+      "go('admin',0)"));
 
     var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
     html += card(tr('needsAction'), null,
@@ -1452,9 +1452,9 @@ function loadHomeMore(){
     if (fol) out.push(alertBox('warn', 'عملاء محتاجين متابعة', ltr(num(fol)) + ' ' + tr('customers'),
       "CUST_NEXT='follow';go('cust',0)"));
     var z = r[1] && r[1].zero && r[1].zero.summary ? (r[1].zero.summary.total || 0) : 0;
-    if (z) out.push(alertBox('bad', 'أصناف خلصانة', ltr(num(z)) + ' ' + tr('items'), "go('stock',1)"));
+    if (z) out.push(alertBox('bad', 'أصناف خلصانة', ltr(num(z)) + ' ' + tr('items'), "go('stock',0)"));
     var dn = r[2] && r[2].orders ? r[2].orders.filter(function(o){ return o.status !== 'تم'; }).length : 0;
-    if (dn) out.push(alertBox('warn', 'طلبات دكاترة جديدة', ltr(num(dn)), "go('cust',3)"));
+    if (dn) out.push(alertBox('warn', 'طلبات دكاترة جديدة', ltr(num(dn)), "go('admin',1)"));
     var e = r[3];
     if (e && (e.stale || (e.itemizedStaleDays != null && e.itemizedStaleDays > 2)))
       out.push(alertBox('bad', 'المصروفات واقفة', ltr(e.stale ? e.staleDays : e.itemizedStaleDays) + ' ' + tr('daysWord'), "go('money',1)"));
@@ -1499,7 +1499,7 @@ function loadTrends(){
       title: tr('regRate') + ' ' + (rNow > rOld ? tr('trendUp') : tr('trendDown')),
       sub: ltr(rOld + '%') + ' <span style="color:var(--ink-3)">→</span> ' + ltr(rNow + '%') +
            ' · ' + tr('regRate') + ' ' + ltr('75%'),
-      jump: "go('sales',1)"
+      jump: "go('sales',2)"
     });
 
     var nNow = avg(recent, function(x){ return x.new_c; }),
@@ -2063,7 +2063,7 @@ var INV_SEC = 'home';   /* home | neg | exp | dead | all */
 var INV_ACC = null;
 var ORD = { sec: 'zero' }, ORD_STAT = null, ORD_BY = {}, ORD_NAMES = [], ORD_CUR = null;
 
-function invOnTab(){ return CUR === 'stock' && TAB === 0; }
+function invOnTab(){ return CUR === 'stock' && TAB === 1; }
 
 function loadInvExtras(){
   api('countAccuracy', { range: 'all' }).then(function(d){
@@ -3365,7 +3365,7 @@ function toggleBlock(){
 
 /* ─────── عملاء: المندوبين ─────── */
 function pgAgents(){
-  var box = document.getElementById('p-cust');
+  var box = document.getElementById('p-admin');
   apiCached('getAgents', {}, box, drawAgents);
 }
 function drawAgents(d, box){
@@ -3394,6 +3394,9 @@ function openSheet(kind){
   if (kind === 'settings'){
     t.textContent = tr('settings');
     b.innerHTML =
+      '<div class="group-title">الإدارة</div>' +
+      '<div class="btn-row"><button class="btn btn-quiet" onclick="closeSheet();go(\'admin\',0)">' + tr('agents') + '</button>' +
+      '<button class="btn btn-quiet" onclick="closeSheet();go(\'admin\',1)">' + tr('doctors') + '</button></div>' +
       '<div id="snapbox" class="state"><div class="spin"></div></div>' +
       '<div class="btn-row"><button class="btn btn-quiet" onclick="snap(\'snapshotRefresh\')">' + tr('refreshNow') + '</button>' +
       '<button class="btn btn-primary" id="snapEnable" onclick="snap(\'snapshotEnable\')">' + tr('enableAuto') + '</button></div>' +
@@ -3895,7 +3898,7 @@ try{
     document.body.classList.contains('light') ? '#F4F5F7' : '#0A0B0D');
 }catch(e){}
 try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
-go('home');
+go('sales', 0);
 
 </script>
 </body>

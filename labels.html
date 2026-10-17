@@ -185,12 +185,17 @@ kbd{font-family:inherit;font-size:11px;background:rgba(255,255,255,.25);border-r
   <div class="sec">مقاس الملصق (مم)</div>
   <div class="opt" id="sizes"></div>
   <div class="cus">مقاس تاني: <input id="cw" type="number" min="20" max="120" placeholder="عرض"> × <input id="ch" type="number" min="15" max="120" placeholder="طول"> <button class="ib" onclick="customSize()">تمام</button></div>
+  <div class="sec">نوع الورق</div>
+  <div class="opt two" id="papers"></div>
+  <div class="muted" id="paperHelp" style="margin-bottom:12px"></div>
   <div class="sec">شكل الملصق</div>
   <div class="opt two" id="styles"></div>
   <div class="muted" id="styleHelp" style="margin-bottom:12px"></div>
   <div class="sec">معاينة</div>
   <div class="pv" id="pvSet" style="margin-bottom:12px"></div>
   <button class="btn p" style="width:100%" onclick="testPrint()">اطبع ملصق تجربة</button>
+  <button class="btn" style="width:100%;margin-top:8px" onclick="rulerPrint()">📏 اطبع مسطرة القياس</button>
+  <div class="muted" style="margin-top:6px">المسطرة بتطبع أرقام بالملّي على الستيكر: الرقم اللي عند آخر الستيكر من اليمين = العرض، واللي عند آخره من تحت = الطول. اكتبهم في "مقاس تاني".</div>
   <div class="note b" style="margin-top:14px">💡 عشان تطبع من غير ما يسألك كل مرة:<br>
     1) خلي طابعة الملصقات هي الافتراضية في ويندوز.<br>
     2) اعمل اختصار للكروم وزوّد في آخر Target: <b dir="ltr">--kiosk-printing</b><br>
@@ -212,6 +217,10 @@ var SINCE = parseInt(ls('lblSince'), 10) || 0, FIRST = !SINCE;
 var AI_IDX = [], AI_ND = {}, AI_KEY = '', AI_USED = false, AI_BUSY = false, AI_T = null;
 var INVS = [], QUEUE = [], CUR = null, PREG = '', UNIT = 'y';
 var SIZE = ls('lblSize') || '50x30', STYLE = ls('lblStyle') || 'full';
+/* ورق نصين (ستيكر الباركود اللي في نصه حز): المقاس = مقاس النص الواحد، وكل ستيكر بياخد ملصقين */
+var PAPER = ls('lblPaper') || 'single';
+var PAPERS = [['single','ملصق واحد','كل ستيكر عليه ملصق واحد بالمقاس اللي فوق'],
+              ['duo','ورق نصين','ستيكر الباركود اللي في نصه حز: ملصق في كل نص. المقاس فوق = مقاس النص الواحد']];
 
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function api(action, params){
@@ -514,35 +523,72 @@ function preview(){
 }
 
 function printLabels(items, age, wt){
-  var wh = sizeWH(), W = wh[0], H = wh[1];
+  var wh = sizeWH(), W = wh[0], H = wh[1], duo = PAPER === 'duo';
+  var body;
+  if (duo){
+    /* صفحة = الستيكر كله (نصين)، وكل نص فيه ملصق بعيد عن الحز */
+    body = '';
+    for (var i = 0; i < items.length; i += 2){
+      body += '<div class="pg">' + labelHTML(items[i], age, wt, W, H) +
+        (items[i + 1] ? labelHTML(items[i + 1], age, wt, W, H) : '<div class="l"></div>') + '</div>';
+    }
+  } else body = items.map(function(it){ return labelHTML(it, age, wt, W, H); }).join('');
+  var css = labelCSS(W, H) + (duo ? '@page{size:' + W + 'mm ' + (H * 2) + 'mm;margin:0}' +
+    '.pg{width:' + W + 'mm;height:' + (H * 2) + 'mm;page-break-after:always;overflow:hidden}' +
+    '.pg .l{page-break-after:auto;padding-top:2mm;padding-bottom:2mm}' : '');
   var html = '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">' +
     '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&display=swap" rel="stylesheet">' +
-    '<style>' + labelCSS(W, H) + '</style></head><body>' +
-    items.map(function(it){ return labelHTML(it, age, wt, W, H); }).join('') + '</body></html>';
+    '<style>' + css + '</style></head><body>' + body + '</body></html>';
+  printHTML(html, W, duo ? H * 2 : H, true);
+}
+function printHTML(html, W, H, fit){
   var f = document.getElementById('pf');
   f.style.width = W + 'mm'; f.style.height = H + 'mm';
   var d = f.contentWindow.document;
   d.open(); d.write(html); d.close();
   var done = false;
-  function go(){ if (done) return; done = true; fitAll(d); try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) {} }
+  function go(){ if (done) return; done = true; if (fit) fitAll(d); try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) {} }
   if (d.fonts && d.fonts.ready) d.fonts.ready.then(function(){ setTimeout(go, 150); });
   setTimeout(go, 1500);
 }
 
 /* ═══ الإعدادات ═══ */
 function zx(z){ return '\u2066' + z.replace('x', '×') + '\u2069'; }
-function setLabel(){ document.getElementById('setLbl').textContent = zx(SIZE) + ' · ' + (STYLE === 'compact' ? 'مختصر' : 'كامل'); }
+function setLabel(){ document.getElementById('setLbl').textContent = zx(SIZE) + (PAPER === 'duo' ? ' ×2' : '') + ' · ' + (STYLE === 'compact' ? 'مختصر' : 'كامل'); }
 function drawSet(){
   document.getElementById('sizes').innerHTML = SIZES.map(function(z){
     return '<button class="' + (z === SIZE ? 'on' : '') + '" onclick="setSize(\'' + z + '\')">' + zx(z) + '</button>'; }).join('') +
     (SIZES.indexOf(SIZE) === -1 ? '<button class="on">' + zx(SIZE) + '</button>' : '');
   document.getElementById('styles').innerHTML = STYLES.map(function(s){
     return '<button class="' + (s[0] === STYLE ? 'on' : '') + '" onclick="setStyle(\'' + s[0] + '\')">' + s[1] + '</button>'; }).join('');
+  document.getElementById('papers').innerHTML = PAPERS.map(function(s){
+    return '<button class="' + (s[0] === PAPER ? 'on' : '') + '" onclick="setPaper(\'' + s[0] + '\')">' + s[1] + '</button>'; }).join('');
+  document.getElementById('paperHelp').textContent = (PAPERS.filter(function(s){ return s[0] === PAPER; })[0] || [])[2] || '';
   document.getElementById('styleHelp').textContent = (STYLES.filter(function(s){ return s[0] === STYLE; })[0] || [])[2] || '';
   renderPreview('pvSet', [{ name: 'AUGMENTIN 457MG/5ML SYP', text: '5 مل كل 12 ساعة بعد الأكل لمدة 7 أيام' }], 4, 16);
   setLabel();
 }
 function setSize(v){ SIZE = v; ls('lblSize', v); drawSet(); preview(); }
+function setPaper(v){ PAPER = v; ls('lblPaper', v); drawSet(); preview(); }
+/* مسطرة بالملّي: بتطبع على مساحة كبيرة، والستيكر بيبيّن مقاسه الحقيقي من الأرقام اللي عند حروفه */
+function rulerPrint(){
+  var W = 110, H = 110, s = '';
+  for (var x = 0; x <= W; x += 1){
+    var big = x % 10 === 0, mid = x % 5 === 0;
+    s += '<i style="position:absolute;left:' + x + 'mm;top:0;width:.25mm;height:' + (big ? 4 : mid ? 2.6 : 1.4) + 'mm;background:#000"></i>';
+    if (mid && x) s += '<b style="position:absolute;left:' + (x - 2.5) + 'mm;top:' + (big ? 4.3 : 2.8) + 'mm;width:5mm;text-align:center;font:' + (big ? 800 : 600) + ' ' + (big ? 7 : 5.5) + 'pt Tahoma">' + x + '</b>';
+  }
+  for (var y = 0; y <= H; y += 1){
+    var bg = y % 10 === 0, md = y % 5 === 0;
+    s += '<i style="position:absolute;top:' + y + 'mm;left:0;height:.25mm;width:' + (bg ? 4 : md ? 2.6 : 1.4) + 'mm;background:#000"></i>';
+    if (md && y > 5) s += '<b style="position:absolute;top:' + (y - 1.5) + 'mm;left:' + (bg ? 4.5 : 3) + 'mm;font:' + (bg ? 800 : 600) + ' ' + (bg ? 7 : 5.5) + 'pt Tahoma">' + y + '</b>';
+  }
+  for (var g = 10; g < W; g += 10) s += '<i style="position:absolute;left:' + g + 'mm;top:9mm;bottom:0;border-left:.15mm dotted #000"></i>';
+  for (var k = 10; k < H; k += 10) s += '<i style="position:absolute;top:' + k + 'mm;left:9mm;right:0;border-top:.15mm dotted #000"></i>';
+  var html = '<!DOCTYPE html><html dir="ltr"><head><meta charset="utf-8"><style>@page{size:' + W + 'mm ' + H + 'mm;margin:0}body{margin:0}' +
+    '.r{position:relative;width:' + W + 'mm;height:' + H + 'mm;overflow:hidden}</style></head><body><div class="r">' + s + '</div></body></html>';
+  printHTML(html, W, H, false);
+}
 function setStyle(v){ STYLE = v; ls('lblStyle', v); drawSet(); preview(); }
 function customSize(){
   var w = parseInt(document.getElementById('cw').value, 10), h = parseInt(document.getElementById('ch').value, 10);
@@ -550,7 +596,11 @@ function customSize(){
 }
 function openSet(){ drawSet(); document.getElementById('drw').classList.add('on'); document.getElementById('shade').classList.add('on'); }
 function closeSet(){ document.getElementById('drw').classList.remove('on'); document.getElementById('shade').classList.remove('on'); }
-function testPrint(){ printLabels([{ name: 'PANADOL EXTRA', text: 'قرص كل 8 ساعات بعد الأكل عند اللزوم' }], 30, null); }
+function testPrint(){
+  var t = [{ name: 'PANADOL EXTRA', text: 'قرص كل 8 ساعات بعد الأكل عند اللزوم' }];
+  if (PAPER === 'duo') t.push({ name: 'AUGMENTIN 1G', text: 'قرص كل 12 ساعة بعد الأكل لمدة 7 أيام' });
+  printLabels(t, 30, null);
+}
 
 setLabel();
 poll();

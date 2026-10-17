@@ -741,7 +741,29 @@ function adminPin(){
   if (!p){ p = (prompt('الرقم السري') || '').trim(); if (p) try { localStorage.setItem('adminPin', p); } catch (e) {} }
   return p;
 }
+/* 🔒 لو اللوحة مقفولة: الرقم السري بيتطلب مرة واحدة على الجهاز ده ويتبعت مع كل طلب */
+function storedPin(){ try { return localStorage.getItem('adminPin') || ''; } catch (e) { return ''; } }
+var PIN_ASK = null;
+function askPinOnce(){
+  if (!PIN_ASK) PIN_ASK = new Promise(function(res){
+    setTimeout(function(){
+      var p = (prompt('🔒 اللوحة مقفولة — اكتب الرقم السري') || '').trim();
+      try { if (p) localStorage.setItem('adminPin', p); } catch (e) {}
+      setTimeout(function(){ PIN_ASK = null; }, 2000);
+      res(p);
+    }, 0);
+  });
+  return PIN_ASK;
+}
 function api(action, params, base){
+  if (!ADMIN_ACTIONS[action] && !base){
+    var pin0 = storedPin();
+    return api_(action, pin0 ? Object.assign({}, params || {}, { pin: pin0 }) : params, base).then(function(d){
+      if (!(d && d.lockError)) return d;
+      try { localStorage.removeItem('adminPin'); } catch (e) {}
+      return askPinOnce().then(function(p){ return p ? api_(action, Object.assign({}, params || {}, { pin: p }), base) : d; });
+    });
+  }
   if (ADMIN_ACTIONS[action] && !base){
     params = Object.assign({}, params || {}, { pin: adminPin() });
     return api_(action, params, base).then(function(d){
@@ -758,7 +780,13 @@ function api_(action, params, base){
   return fetch(url, { cache: 'no-store' }).then(function(r){ return r.json(); });
 }
 function post(body){
-  return fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(body) }).then(function(r){ return r.json(); });
+  var send = function(b){ return fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(b) }).then(function(r){ return r.json(); }); };
+  var b0 = Object.assign({}, body); if (!b0.pin && storedPin()) b0.pin = storedPin();
+  return send(b0).then(function(d){
+    if (!(d && d.lockError)) return d;
+    try { localStorage.removeItem('adminPin'); } catch (e) {}
+    return askPinOnce().then(function(p){ return p ? send(Object.assign({}, body, { pin: p })) : d; });
+  });
 }
 function busy(box){ box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>'; }
 function oops(box, again){
@@ -845,7 +873,7 @@ function cacheSet(a, p, d){
 
 /* بيرجّع المحفوظ فورًا (لو موجود) وبعدين الجديد */
 function apiFresh(action, params, base){
-  return api(action, params, base).then(function(d){ cacheSet(action, params, d); return d; });
+  return api(action, params, base).then(function(d){ if (!(d && d.lockError)) cacheSet(action, params, d); return d; });
 }
 /* ═══ الرسم الفوري ═══
    الصفحة بترسم المحفوظ من آخر مرة على طول، وبتحدّث ورا لما الرد ييجي.
@@ -3513,6 +3541,8 @@ function openSheet(kind){
       '<div class="btn-row"><button class="btn btn-quiet" onclick="runAiTest()">اختبر الرد</button>' +
       '<button class="btn btn-quiet" onclick="runBotStatus()">سرعة البوت</button></div>' +
       '<div id="aibox"></div>' +
+      '<div class="group-title">🛵 التوصيل وقفل اللوحة</div>' +
+      '<div id="botset"><div class="state"><div class="spin"></div></div></div>' +
       '<div class="group-title">تنظيف مساحة Drive</div>' +
       '<button class="btn btn-quiet" onclick="runClean(0)">احسب هيمسح كام</button>' +
       '<div id="cleanbox"></div>' +
@@ -3529,6 +3559,7 @@ function openSheet(kind){
     snapStatus();
     loadAiCfg();
     loadAiUsage();
+    loadBotSet();
   }
 }
 function closeSheet(){ document.getElementById('sheet').classList.remove('on'); }
@@ -3974,7 +4005,7 @@ function loadAiUsage(){
   api('getAiUsage').then(function(d){
     var box = document.getElementById('aiuse'); if (!box || !d || !d.ok) return;
     var t = (d.current && d.current.total) || {}, k = (d.current && d.current.kinds) || {}, td = d.today || {};
-    var KN = { bot: 'ردود البوت', dose: 'جرعات الملصقات', test: 'اختبارات' };
+    var KN = { bot: 'ردود البوت', dose: 'جرعات الملصقات', test: 'اختبارات', voice: 'رسايل صوتية' };
     var pct = d.budget ? Math.min(100, Math.round((t.cost || 0) / d.budget * 100)) : null;
     box.innerHTML = '<div class="card" style="margin:0 0 10px">' +
       row('استهلاك الشهر ده', ltr(num(t.calls || 0)) + ' طلب · ' + ltr(tok((t.in || 0) + (t.out || 0))) + ' توكن',
@@ -4012,6 +4043,33 @@ function saveAiCfg(pr){
   post({ action: 'setAiConfig', provider: pr, key: v('aiKey'), bot: v('aiBot'), dose: v('aiDose'), budget: v('aiBudget'), pin: v('aiPin') }).then(function(d){
     if (d && d.ok){ try { localStorage.setItem('adminPin', v('aiPin')); } catch (e) {}
       AI_CFG = d; drawAiCfg(d.provider); loadAiUsage(); toast('✓ اتحفظ — شغال على ' + d.provider); }
+    else toast((d && d.error) || tr('failed'));
+  }).catch(function(){ toast(tr('failed')); });
+}
+/* إعدادات البوت: رسوم التوصيل، المواعيد، أقصى مسافة، قفل اللوحة */
+var BOT_SET = null;
+function loadBotSet(){
+  api('getBotSettings').then(function(d){ if (d && d.ok){ BOT_SET = d; drawBotSet(); } })
+    .catch(function(){ var b = document.getElementById('botset'); if (b) b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+}
+function drawBotSet(){
+  var d = BOT_SET, box = document.getElementById('botset'); if (!box || !d) return;
+  box.innerHTML =
+    '<small style="color:var(--ink-2)">رسوم التوصيل بالجنيه (فاضي = البوت يقول إنها هتتأكد)</small>' + aiInp('bsFee', 'مثلًا 10', 'number', d.fee) +
+    '<small style="color:var(--ink-2)">مواعيد العمل (البوت بيقولها لو اتسأل)</small>' + aiInp('bsHours', 'مثلًا: كل يوم من 9 الصبح لـ 2 بالليل', 'text', d.hours) +
+    '<small style="color:var(--ink-2)">أقصى مسافة للتوصيل بالكيلو (0 = من غير حد)</small>' + aiInp('bsKm', '10', 'number', String(d.maxKm)) +
+    '<label style="display:flex;gap:8px;align-items:center;margin:6px 0 10px"><input type="checkbox" id="bsLock"' + (d.lock ? ' checked' : '') + '> ' +
+      '🔒 اقفل اللوحة بالرقم السري (المبيعات والعملاء والديون مش هتفتح من غيره)</label>' +
+    aiInp('bsPin', d.pinSet ? 'الرقم السري' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي فوق', 'password') +
+    '<button class="btn btn-primary" onclick="saveBotSet()"' + (d.pinSet ? '' : ' disabled') + '>احفظ</button>' +
+    '<div class="state" style="font-size:12px">' + (d.lock ? '🔒 اللوحة مقفولة دلوقتي.' : 'اللوحة مفتوحة لأي حد معاه الرابط.') + '</div>';
+  var hh = document.getElementById('bsHours'); if (hh) hh.dir = 'rtl';
+}
+function saveBotSet(){
+  var v = function(id){ return (document.getElementById(id) || {}).value || ''; };
+  var lock = document.getElementById('bsLock').checked ? '1' : '0', pin = v('bsPin') || storedPin();
+  post({ action: 'setBotSettings', fee: v('bsFee'), hours: v('bsHours'), maxKm: v('bsKm'), lock: lock, pin: pin }).then(function(d){
+    if (d && d.ok){ try { localStorage.setItem('adminPin', pin); } catch (e) {} BOT_SET = d; drawBotSet(); toast('✓ اتحفظ'); }
     else toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });
 }

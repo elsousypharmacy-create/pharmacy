@@ -353,7 +353,8 @@ function runAI(key, age, wt){
     if (CUR !== inv || AI_KEY !== key) return;
     AI_BUSY = false;
     if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {}
-    if (!d || !d.ok){ document.getElementById('aiAll').innerHTML = '<div class="note w">⚠️ ' + esc((d && d.error) || 'الذكاء الاصطناعي مردش') + ' — اكتب يدوي</div>'; check(); return; }
+    if (!d || !d.ok){ document.getElementById('aiAll').innerHTML = '<div class="note w">⚠️ ' + esc((d && d.error) || 'الذكاء الاصطناعي مردش') +
+      ' <button class="ib" style="margin-inline-start:8px" onclick="retryAI()">🔄 أعد التوليد</button> أو اكتب يدوي</div>'; check(); return; }
     AI_USED = false;
     (d.items || []).forEach(function(x){
       var j = (parseInt(x.n, 10) || 0) - 1; if (j < 0 || j >= AI_IDX.length) return; var i = AI_IDX[j];
@@ -370,12 +371,24 @@ function runAI(key, age, wt){
     });
     document.getElementById('aiAll').innerHTML =
       (d.interactions ? '<div class="note r">⚠️ ' + esc(d.interactions) + '</div>' : '') +
-      (AI_USED ? '<label class="note b" style="display:block;font-weight:700"><input type="checkbox" id="aiok" onchange="check()"> راجعت جرعات الذكاء الاصطناعي ومسؤول عنها</label>' : '');
+      (AI_USED ? '<label class="note b" style="display:block;font-weight:700"><input type="checkbox" id="aiok" onchange="check()"> راجعت جرعات الذكاء الاصطناعي ومسؤول عنها</label>' : '') +
+      '<button class="ib" style="margin-top:6px" onclick="retryAI()">🔄 أعد التوليد</button>';
     check(); preview();
   }).catch(function(){
     if (CUR !== inv) return;
-    AI_BUSY = false; document.getElementById('aiAll').innerHTML = '<div class="note w">⚠️ النت قطع — اكتب يدوي</div>'; check();
+    AI_BUSY = false; document.getElementById('aiAll').innerHTML = '<div class="note w">⚠️ النت قطع <button class="ib" onclick="retryAI()">🔄 أعد التوليد</button> أو اكتب يدوي</div>'; check();
   });
+}
+/* إعادة التوليد: بيمسح جرعات الذكاء الاصطناعي اللي متعدلتش ويطلب من جديد (اللي كتبته بإيدك بيفضل زي ما هو) */
+function retryAI(){
+  if (!CUR || AI_BUSY) return;
+  var age = ageYears(), wt = parseFloat(document.getElementById('wt').value);
+  if (isNaN(age) || !PREG) return;
+  CUR.items.forEach(function(it, i){
+    var t = document.getElementById('t' + i);
+    if (t && t.dataset.ai && !t.dataset.touched){ t.value = ''; delete t.dataset.ai; }
+  });
+  runAI(age + '|' + (isNaN(wt) ? '' : wt) + '|' + PREG + '|' + Date.now(), age, wt);
 }
 function setPreg(v, el){
   PREG = v;
@@ -455,14 +468,15 @@ function closeInv(){
    الخط بيكبر لأقصى حجم يملا الملصق من غير ما يقص (fit) */
 function labelCSS(W, H){
   return '@page{size:' + W + 'mm ' + H + 'mm;margin:0}*{box-sizing:border-box}' +
-    'body{margin:0;font-family:Cairo,Tahoma,sans-serif;color:#000;background:#fff}' +
-    '.l{width:' + W + 'mm;height:' + H + 'mm;padding:1.6mm 2.2mm;page-break-after:always;display:flex;flex-direction:column;overflow:hidden;position:relative}' +
+    'body{margin:0;font-family:Cairo,Tahoma,sans-serif;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+    '.l,.l *{color:#000!important}' +
+    '.l{width:' + W + 'mm;height:' + H + 'mm;padding:' + (H <= 20 ? '1mm 2mm' : '1.6mm 2.2mm') + ';page-break-after:always;display:flex;flex-direction:column;overflow:hidden;position:relative}' +
     '.h{display:flex;align-items:center;gap:1.2mm;font-weight:800;border-bottom:.35mm solid #000;padding-bottom:.7mm;white-space:nowrap}' +
     '.h img{height:1.25em;width:1.25em}.h .p{flex:1;overflow:hidden}.h .d{font-weight:600}' +
     '.n{direction:ltr;text-align:right;font-weight:800;margin-top:.8mm;white-space:nowrap;overflow:hidden;line-height:1.2}' +
     '.t{flex:1;min-height:0;font-weight:800;line-height:1.28;margin-top:.6mm;display:flex;align-items:center;overflow:hidden;word-break:break-word}' +
     '.f{display:flex;justify-content:space-between;gap:2mm;font-weight:700;border-top:.25mm solid #000;padding-top:.5mm;white-space:nowrap}' +
-    '.cp .t{justify-content:center;text-align:center}.cp .n{text-align:center}.cp .f{border-top:0;justify-content:center;font-weight:600;color:#222}';
+    '.cp .t{justify-content:center;text-align:center}.cp .n{text-align:center}.cp .f{border-top:0;justify-content:center;font-weight:800;color:#000}';
 }
 function labelHTML(it, age, wt, W, H){
   var date = new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'numeric', year: '2-digit' });
@@ -470,24 +484,59 @@ function labelHTML(it, age, wt, W, H){
   var logo = location.href.replace(/[^/]*$/, '') + 'icon-192.png';
   var s = Math.min(W, H * 1.6);   /* أساس أحجام الخط بالمقاس */
   if (STYLE === 'compact'){
-    return '<div class="l cp"><div class="n" data-max="' + (s * .32) + '">' + esc(it.name) + '</div>' +
-      '<div class="t" data-max="' + (s * .62) + '"><span>' + esc(it.text) + '</span></div>' +
-      '<div class="f" style="font-size:' + (s * .17) + 'pt">صيدلية السوسي · ' + date + '</div></div>';
+    return '<div class="l cp"><div class="n" data-max="' + (s * .4) + '"><span>' + esc(it.name) + '</span></div>' +
+      '<div class="t" data-max="' + (s * .52) + '"><span>' + esc(it.text) + '</span></div>' +
+      '<div class="f" data-max="7"><span>صيدلية السوسي · توصيل <b dir="ltr">' + PHONE + '</b></span></div></div>';
   }
   return '<div class="l"><div class="h" style="font-size:' + (s * .19) + 'pt"><img src="' + logo + '"><span class="p">صيدلية السوسي</span><span class="d">' + date + '</span></div>' +
-    '<div class="n" data-max="' + (s * .27) + '">' + esc(it.name) + '</div>' +
+    '<div class="n" data-max="' + (s * .27) + '"><span>' + esc(it.name) + '</span></div>' +
     '<div class="t" data-max="' + (s * .5) + '"><span>' + esc(it.text) + '</span></div>' +
     '<div class="f" style="font-size:' + (s * .16) + 'pt"><span>' + esc(who) + '</span><span dir="ltr">' + PHONE + '</span></div></div>';
 }
 /* بيكبّر الخط لحد ما يملا المكان بالظبط */
 function fitAll(doc){
-  [].forEach.call(doc.querySelectorAll('[data-max]'), function(el){
+  /* الأول كل حاجة بمقاسها الأقصى، وبعدين نظبط السطر الواحد (الاسم والتذييل) قبل الطريقة عشان الطريقة تاخد المكان الباقي */
+  var els = [].slice.call(doc.querySelectorAll('[data-max]'));
+  els.forEach(function(el){ el.style.fontSize = el.dataset.max + 'pt'; });
+  els.sort(function(a, b){ return (a.classList.contains('t') ? 1 : 0) - (b.classList.contains('t') ? 1 : 0); });
+  els.forEach(function(el){
     var max = parseFloat(el.dataset.max), min = 4, f = max;
     el.style.fontSize = f + 'pt';
     var multi = el.classList.contains('t');
-    function over(){ return multi ? (el.firstChild.offsetHeight > el.clientHeight * .94 || el.firstChild.offsetWidth > el.clientWidth) : el.scrollWidth > el.clientWidth; }
+    /* هامش أمان 10% عشان الطابعة الحرارية بتطبع أعرض شوية من الشاشة */
+    function over(){ return multi ? (el.firstChild.offsetHeight > el.clientHeight * .88 || el.scrollWidth > el.clientWidth)
+                                  : (el.firstChild && el.firstChild.offsetWidth !== undefined ? el.firstChild.offsetWidth : el.scrollWidth) > el.clientWidth * .95; }
     while (f > min && over()){ f -= .5; el.style.fontSize = f + 'pt'; }
   });
+  /* لو الملصق كله لسه أطول من مكانه → نصغّر الطريقة والاسم مع بعض */
+  [].forEach.call(doc.querySelectorAll('.l'), function(l){
+    var n = 0;
+    while (l.scrollHeight > l.clientHeight + 1 && n++ < 60){
+      /* نصغّر الطريقة الأول؛ الاسم يصغر بس لو بقى أكبر من الطريقة */
+      var tt = l.querySelector('.t'), nn = l.querySelector('.n'), ff = l.querySelector('.f[data-max]');
+      var ft = tt ? parseFloat(tt.style.fontSize) : 0, fn = nn ? parseFloat(nn.style.fontSize) : 0, fo = ff ? parseFloat(ff.style.fontSize) : 0;
+      if (ff && fo > 6 && ft <= 8.5) ff.style.fontSize = (fo - .5) + 'pt';
+      else if (tt && ft > 5 && ft >= fn * 1.15) tt.style.fontSize = (ft - .5) + 'pt';
+      else if (nn && fn > 5) nn.style.fontSize = (fn - .5) + 'pt';
+      else if (tt && ft > 4) tt.style.fontSize = (ft - .5) + 'pt';
+      else break;
+    }
+  });
+}
+/* بنستنى خط Cairo يحمّل فعلًا قبل القياس — من غيره القياس بيتعمل على خط تاني والطباعة تطلع مقصوصة */
+function fontsReady(d, cb){
+  var done = false; function fin(){ if (!done){ done = true; cb(); } }
+  try {
+    var f = d.fonts;
+    var link = d.querySelector('link[rel=stylesheet]');
+    var wait = function(){
+      if (!f || !f.load) return fin();
+      Promise.all([f.load('800 12pt Cairo'), f.load('700 12pt Cairo'), f.load('600 12pt Cairo')])
+        .then(function(){ return f.ready; }).then(function(){ setTimeout(fin, 120); }, fin);
+    };
+    if (link && !link.sheet) { link.addEventListener('load', wait); link.addEventListener('error', fin); } else wait();
+  } catch (e) { fin(); }
+  setTimeout(fin, 4000);
 }
 function sizeWH(){ var p = SIZE.split('x'); return [+p[0] || 50, +p[1] || 30]; }
 
@@ -497,7 +546,7 @@ function renderPreview(boxId, items, age, wt){
   var wh = sizeWH(), W = wh[0], H = wh[1];
   var scale = Math.min(300 / (W * 3.78), 2.6);
   box.innerHTML = '';
-  (items.length ? items : [{ name: 'PANADOL EXTRA', text: 'قرص كل 8 ساعات بعد الأكل عند اللزوم' }]).slice(0, 4).forEach(function(it){
+  (items.length ? items : [{ name: 'PANADOL EXTRA', text: 'قرص كل 8 ساعات بعد الأكل عند اللزوم' }]).slice(0, 15).forEach(function(it){
     var fr = document.createElement('iframe');
     fr.className = 'pv-l'; fr.setAttribute('title', 'preview');
     fr.style.cssText = 'border:0;width:' + (W * 3.78 * scale) + 'px;height:' + (H * 3.78 * scale) + 'px';
@@ -505,11 +554,10 @@ function renderPreview(boxId, items, age, wt){
     var d = fr.contentWindow.document;
     d.open(); d.write('<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&display=swap" rel="stylesheet"><style>' +
       labelCSS(W, H) + 'html{zoom:' + scale + '}</style></head><body>' + labelHTML(it, age, wt, W, H) + '</body></html>'); d.close();
-    var run = function(){ fitAll(d); };
-    if (d.fonts && d.fonts.ready) d.fonts.ready.then(run); setTimeout(run, 300);
+    fontsReady(d, function(){ fitAll(d); });
   });
   var cap = document.createElement('div'); cap.className = 'pv-cap';
-  cap.textContent = 'عرض ' + W + ' × طول ' + H + ' مم · ' + (STYLE === 'compact' ? 'مختصر' : 'كامل') + (items.length > 4 ? ' · +' + (items.length - 4) + ' ملصق' : '');
+  cap.textContent = 'عرض ' + W + ' × طول ' + H + ' مم · ' + (STYLE === 'compact' ? 'مختصر' : 'كامل') + ' · ' + items.length + ' ملصق' + (PAPER === 'duo' ? ' على ' + Math.ceil(items.length / 2) + ' ستيكر' : '');
   box.appendChild(cap);
 }
 var PV_T = null;
@@ -535,7 +583,7 @@ function printLabels(items, age, wt){
   } else body = items.map(function(it){ return labelHTML(it, age, wt, W, H); }).join('');
   var css = labelCSS(W, H) + (duo ? '@page{size:' + W + 'mm ' + (H * 2) + 'mm;margin:0}' +
     '.pg{width:' + W + 'mm;height:' + (H * 2) + 'mm;page-break-after:always;overflow:hidden}' +
-    '.pg .l{page-break-after:auto;padding-top:2mm;padding-bottom:2mm}' : '');
+    '.pg .l{page-break-after:auto;padding-top:1mm;padding-bottom:1mm}' : '');
   var html = '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">' +
     '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&display=swap" rel="stylesheet">' +
     '<style>' + css + '</style></head><body>' + body + '</body></html>';
@@ -548,8 +596,7 @@ function printHTML(html, W, H, fit){
   d.open(); d.write(html); d.close();
   var done = false;
   function go(){ if (done) return; done = true; if (fit) fitAll(d); try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) {} }
-  if (d.fonts && d.fonts.ready) d.fonts.ready.then(function(){ setTimeout(go, 150); });
-  setTimeout(go, 1500);
+  fontsReady(d, go);
 }
 
 /* ═══ الإعدادات ═══ */

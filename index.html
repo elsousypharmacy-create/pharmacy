@@ -3408,6 +3408,12 @@ function openSheet(kind){
       '<div class="group-title">' + tr('expFillTitle') + '</div>' +
       '<button class="btn btn-quiet" onclick="runExpBackfill()">' + tr('expFillBtn') + '</button>' +
       '<div id="expfill"></div>' +
+      '<div class="group-title">تنظيف مساحة Drive</div>' +
+      '<button class="btn btn-quiet" onclick="runClean(0)">احسب هيمسح كام</button>' +
+      '<div id="cleanbox"></div>' +
+      '<div class="group-title">فحص النسخة الاحتياطية (المصروفات)</div>' +
+      '<button class="btn btn-quiet" onclick="runBackupProbe()">افحص</button>' +
+      '<div id="bkbox"></div>' +
       '<div class="group-title">' + tr('scanReady') + '</div>' +
       '<button class="btn btn-quiet" onclick="runScanReady()">' + tr('checkScan') + '</button>' +
       '<div id="scanbox"></div>' +
@@ -3848,6 +3854,45 @@ function runExpBackfill(){
   }).catch(function(e){ logErr(e); box.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
 
+function runClean(apply){
+  var box = document.getElementById('cleanbox');
+  box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';
+  api('cleanBackups', apply ? { apply: 1 } : {}).then(function(d){
+    if (!d || !d.ok){ box.innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + '</div>'; return; }
+    var h = row('كل النسخ', null, ltr(num(d.total))) +
+      row('هيفضل', ltr(num(d.keepMB)) + ' MB', ltr(num(d.keep))) +
+      row('هيتمسح', ltr(num(d.freeMB)) + ' MB', badge(ltr(num(d.remove)), d.remove ? 'warn' : 'ok'));
+    if (apply){
+      h += '<div class="state">اتنقل لسلة المهملات: ' + ltr(num(d.trashed)) +
+        (d.remaining ? ' — فاضل ' + ltr(num(d.remaining)) + '، دوس "نفّذ" تاني' : ' ✓') + '</div>' +
+        (d.remaining ? '' : '<button class="btn btn-danger" onclick="runPurge()">امسح نهائي ورجّع المساحة</button>');
+    }
+    if (d.remove || (apply && d.remaining))
+      h += '<button class="btn btn-danger" onclick="runClean(1)">نفّذ — انقلهم لسلة المهملات</button>';
+    h += '<button class="btn btn-quiet" onclick="api(\'cleanBackupsAuto\').then(function(){toast(\'✓ هيتنضف كل يوم الساعة 5 الصبح\')})">تشغيل يومي تلقائي</button>';
+    box.innerHTML = h;
+  }).catch(function(e){ box.innerHTML = '<div class="state err">' + esc(String(e)) + '</div>'; });
+}
+function runPurge(){
+  if (!confirm('المسح النهائي مش بيرجع. هيمسح النسخ الاحتياطية اللي في السلة بس. متأكد؟')) return;
+  var box = document.getElementById('cleanbox');
+  box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';
+  api('purgeTrashedBackups').then(function(d){
+    if (!d || !d.ok){ box.innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + '</div>'; return; }
+    box.innerHTML = '<div class="state">اتمسح نهائي: ' + ltr(num(d.deleted)) + ' نسخة · رجع ' + ltr(num(d.freedMB)) + ' MB' +
+      (d.remaining ? '<br>فاضل ' + ltr(num(d.remaining)) + '</div><button class="btn btn-danger" onclick="runPurge()">كمّل</button>' : ' ✓</div>');
+  }).catch(function(e){ box.innerHTML = '<div class="state err">' + esc(String(e)) + '</div>'; });
+}
+function runBackupProbe(){
+  var box = document.getElementById('bkbox');
+  box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';
+  api('backupProbe').then(function(d){
+    BK_TXT = JSON.stringify(d, null, 1);
+    box.innerHTML = '<button class="btn btn-primary" onclick="copyTxt(BK_TXT)">انسخ النتيجة</button>' +
+      '<pre dir="ltr" style="white-space:pre-wrap;font-size:11px;max-height:300px;overflow:auto;text-align:left">' + esc(BK_TXT.slice(0, 4000)) + '</pre>';
+  }).catch(function(e){ box.innerHTML = '<div class="state err">' + esc(String(e)) + '</div>'; });
+}
+var BK_TXT = '';
 function runScanReady(){
   var box = document.getElementById('scanbox');
   box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';

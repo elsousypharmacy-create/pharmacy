@@ -3045,11 +3045,18 @@ function byDaysDesc(a, b){
   return y - x;
 }
 
+function custLast(c){
+  var ds = custDays(c);
+  if (ds === null) return 'آخر زيارة: —';
+  return ds === 0 ? 'آخر زيارة: النهاردة' : ('آخر زيارة: من ' + ltr(ds) + ' يوم');
+}
 function custRow(c, right){
   return '<div class="row" onclick="openCust(\'' + esc(String(c.phone)) + '\')" style="cursor:pointer">' +
-    '<div class="row-main"><b>' + esc(c.name || '—') + '</b><small>' + ltr(c.phone) +
-    (c.cls ? ' · ' + esc(c.cls) : '') + '</small></div>' + (right || daysBadge(c)) +
-    '<span style="opacity:.4;padding-inline-start:6px">›</span></div>';
+    '<div class="row-main" style="flex:1"><b>' + esc(c.name || '—') + '</b>' +
+    '<small>' + custLast(c) + (c.cls ? ' · ' + esc(c.cls) : '') + '</small>' +
+    '<small style="color:var(--ink-3)">' + ltr(c.phone) + '</small></div>' +
+    '<span style="display:flex;align-items:center;gap:8px;flex-shrink:0">' + (right || daysBadge(c)) +
+    '<span style="opacity:.4;font-size:16px">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></span></div>';
 }
 
 function custGroups(list){

@@ -2104,15 +2104,20 @@ function readPhoto_(fileIds) {
       return doseJson_((p || []).filter(function (x) { return x.text && !x.thought; }).map(function (x) { return x.text; }).join(''));
     }
     /* ⚡ كل صورة لوحدها بس كلهم في نفس الوقت (أدق من صورة واحدة فيها الكل، ومن غير وقت زيادة) */
-    var M1 = AI_DEFAULTS.gemini.bot, M2 = GEMINI_MODEL;
+    /* 👁️ الصور على Gemini 3.8 Flash (أدق في خط الإيد — مجاني 20 طلب/يوم)؛ لو خلص أو مش متاح → 3.5 Flash → Flash-Lite */
+    var M1 = aiKey_('PHOTO_MODEL') || 'gemini-3.8-flash', backups = [AI_DEFAULTS.gemini.bot, GEMINI_MODEL].filter(function (m, i, a) { return m && m !== M1 && a.indexOf(m) === i; });
     var outs = UrlFetchApp.fetchAll(imgs.map(function (im) { return req(M1, im); })).map(function (r) { return parse(r, M1); });
-    outs = outs.map(function (o, i) { return o || (M2 !== M1 ? parse(UrlFetchApp.fetchAll([req(M2, imgs[i])])[0], M2) : null); });
+    outs = outs.map(function (o, i) {
+      for (var b = 0; !o && b < backups.length; b++) o = parse(UrlFetchApp.fetchAll([req(backups[b], imgs[i])])[0], backups[b]);
+      return o;
+    });
     var good = outs.filter(Boolean);
     if (!good.length) return null;
     var seenN = {}, items = [];
     good.forEach(function (o) { (o.items || []).forEach(function (it) {
       var k = String(it.name || '').toLowerCase().replace(/[^a-z0-9؀-ۿ]/g, '');
       it.fromBox = o.kind === 'box';   /* اسم مطبوع على علبة (مش خط إيد) */
+      it.hand = o.kind === 'prescription';   /* من الروشتة (غالبًا خط إيد) */
       if (k && !seenN[k]) { seenN[k] = 1; items.push(it); }
     }); });
     var kinds = good.map(function (o) { return o.kind; });
@@ -2762,7 +2767,7 @@ function photoLine_(chatId) {
   if (!P) { try { P = JSON.parse(CacheService.getScriptCache().get('lastphoto_' + chatId) || 'null'); } catch (e) { P = null; } }
   if (!P || !P.items || !P.items.length) return '';
   var isRx = P.kind === 'prescription';
-  var names = P.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.use ? ' [استخدامه: ' + it.use + ']' : '') + (it.sure === false ? ' (مش واضح)' : ''); }).join('، ');
+  var names = P.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.use ? ' [استخدامه: ' + it.use + ']' : '') + (it.hand ? ' {من الروشتة}' : '') + (it.sure === false ? ' (مش واضح)' : ''); }).join('، ');
   var s = (fresh ? 'العميل بعت دلوقتي صورة ' : 'آخر صورة بعتها العميل من شوية كانت ') + (isRx ? 'روشتة' : 'علبة/منتج') + ' مكتوب فيها: ' + names + '.\n' +
     (fresh ? '' : '→ لو العميل قال "الصورة" أو "الورقة" أو "اسمه ايه" أو "الدوا ده" يبقى قصده على الصورة دي — قوله الاسم المكتوب فيها على طول ومتطلبش يبعتها تاني.\n') +
     '→ قاعدة الماركة (مهمة جدًا): ✅ تتكتب بس لو اسم الصنف في المخزون هو نفس الاسم التجاري اللي في الصورة. ' +
@@ -2771,6 +2776,7 @@ function photoLine_(chatId) {
   if (isRx) s += '→ دي روشتة' + ((P.n || 1) > 1 ? ' — وكل الأصناف اللي في الصور (حتى العلب) تعتبر من الروشتة' : '') + ': قوله المتوفر منها بالسعر والإجمالي، والمش متوفر قول "مش متوفر حاليًا والصيدلي هيتواصل مع حضرتك بخصوصه". ' +
     'ممنوع تمامًا تقترح بديل لأي صنف في الروشتة (البديل قرار الصيدلي بس). متقولش جرعات. وقوله إن الصيدلي هيراجع الروشتة بنفسه.\n' +
     '→ أي صنف مكتوب جنبه (مش واضح): اكتبه في سطر لوحده بالشكل ده: ❓ الاسم — مش واضح في الروشتة (الصيدلي هيأكده). متقولش عليه متوفر ولا مش متوفر.\n' +
+    '→ أي صنف متوفر ومكتوب جنبه {من الروشتة}: اكتب بعد سعره "(هيتأكد مع الصيدلي)" — لأن قراية خط الإيد ممكن تغلط.\n' +
     '→ اختم دايمًا بسؤال يقفل الطلب لو فيه حاجة متوفرة، زي: "تحب حضرتك نجهّز المتوفر ونوصّله؟"\n';
   else if (P.rx) s += '→ ده دوا بروشتة: متقولش جرعة. قول التوافر والسعر' + (P.label && fresh ? '، والمكتوب على العلبة (بالعربي بس): "' + P.label + '"' : '') +
     '. لو مش متوفر: البديل الوحيد المسموح هو نفس المادة الفعالة ونفس التركيز بالظبط، وقول إن الصيدلي هيأكده. ' +

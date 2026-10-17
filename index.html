@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0A0B0D">
 <title>صيدلية السوسي</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2">
+<link rel="manifest" href="manifest-index.json">
+<meta name="apple-mobile-web-app-title" content="صيدلية السوسي">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ══════════════════════════════════════════════════════════
    نظام التصميم — المصدر الوحيد لكل شكل في التطبيق.
@@ -35,7 +44,7 @@ body.light{
 html{-webkit-text-size-adjust:100%}
 body{
   background:var(--bg);color:var(--ink);
-  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;
+  font-family:'Cairo',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
   font-size:var(--t-body);line-height:1.5;padding-bottom:84px;
   -webkit-font-smoothing:antialiased;
 }
@@ -292,7 +301,6 @@ button{font-family:inherit}
 <section class="screen on" id="sc-home"><div class="wrap" id="p-home"></div></section>
 <section class="screen" id="sc-sales"><div class="wrap" id="p-sales"></div></section>
 <section class="screen" id="sc-money"><div class="wrap" id="p-money"></div></section>
-<section class="screen" id="sc-hr"><div class="wrap" id="p-hr"></div></section>
 <section class="screen" id="sc-stock"><div class="wrap" id="p-stock"></div></section>
 <section class="screen" id="sc-cust"><div class="wrap" id="p-cust"></div></section>
 
@@ -309,7 +317,6 @@ button{font-family:inherit}
   <button data-sec="home" onclick="go('home')"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg><span data-t="nav_home">عامة</span></button>
   <button data-sec="sales" onclick="go('sales')"><svg viewBox="0 0 24 24"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19H2"/></svg><span data-t="nav_sales">مبيعات</span></button>
   <button data-sec="money" onclick="go('money')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2.5"/><circle cx="12" cy="12.5" r="2.6"/></svg><span data-t="nav_money">مالية</span></button>
-  <button data-sec="hr" onclick="go('hr')"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.4 2.7-5.6 6-5.6s6 2.2 6 5.6"/><path d="M17 11.2a3 3 0 1 0-2-5.3"/><path d="M18 20c0-2.6-1-4.4-2.6-5.4"/></svg><span data-t="nav_hr">موظفين</span></button>
   <button data-sec="stock" onclick="go('stock')"><svg viewBox="0 0 24 24"><path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5"/><path d="M12 13v7"/></svg><span data-t="nav_stock">مخزون</span></button>
   <button data-sec="cust" onclick="go('cust')"><svg viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-11.6 7.1L4 20l1.5-5A8 8 0 1 1 21 11.5z"/></svg><span data-t="nav_cust">عملاء</span></button>
 </nav>
@@ -636,7 +643,17 @@ var T = {
   /* عملاء */
   customers:['العملاء','Customers'], messages:['الرسايل','Messages'],
   agents:['المندوبين','Referrers'],
-  doctors:['دكاترة','Doctors'], docAdd:['إضافة دكتور','Add doctor'], docName:['اسم الدكتور','Doctor name'],
+  doctors:['دكاترة','Doctors'],
+  effTitle:['كفاءة الطلبيات','Ordering efficiency'], effAvg:['متوسط مدة النقص','Avg shortage time'],
+  effStale:['ناقص +3 أيام','Short 3+ days'], effRepeat:['بيخلص بتكرار','Repeat stockouts'],
+  effOldest:['الأقدم نقصًا (لسه مطلبش)','Longest outstanding'], effRepeatT:['أكتر أصناف بتخلص تاني وتالت','Most repeated stockouts'],
+  effCollect:['بنجمع البيانات — الأرقام بتبان بعد ٣ أيام من أول تسجيل','Collecting data — numbers appear after ~3 days'],
+  effHours:['ساعة','h'], effDays:['يوم','d'], effTimes:['مرة','times'],
+  effTrend:['اتجاه النواقص','Shortage trend'],
+  effLost:['مبيعات ضايعة (تقدير)','Lost sales (est.)'], effLostT:['أكتر أصناف ضيّعت مبيعات','Top lost-sales items'],
+  effLostNote:['تقدير: أيام ما كان الصنف خالص × متوسط بيعه اليومي (آخر 28 يوم) × سعر البيع. الأصناف اللي معندهاش مبيعات أو اسمها مختلف مش محسوبة.','Estimate: days out × avg daily sales (28d) × price. Items with no matching sales are excluded.'],
+  effPerDay:['في اليوم','/day'], effDaysOut:['يوم خالص','days out'], effNone:['مفيش بيانات كفاية لسه','Not enough data yet'],
+  effSub:['من أول ظهور في قايمة النواقص لحد ما اتطلب أو اتوفّر','From first appearing on the list until ordered/restocked'], docAdd:['إضافة دكتور','Add doctor'], docName:['اسم الدكتور','Doctor name'],
   docSpec:['التخصص (اختياري)','Specialty (optional)'], docCode:['الكود','Code'],
   docOrders:['طلبات الدكاترة','Doctor requests'], docMisses:['بيدوّروا عليه ومش عندنا','Searched, not in stock'],
   docCopy:['نسخ رسالة الدعوة','Copy invite'], docOn:['فعّال','Active'], docOff:['موقوف','Stopped'],
@@ -955,7 +972,7 @@ function toPDF(rows, title){
   w.document.write(
     '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>' + title + '</title>' +
     '<style>@page{margin:14mm}' +
-    'body{font-family:-apple-system,"Segoe UI",Tahoma,sans-serif;color:#111;font-size:12px}' +
+    'body{font-family:Cairo,-apple-system,"Segoe UI",Tahoma,sans-serif;color:#111;font-size:12px}' +
     'h1{font-size:17px;margin:0 0 2px}' +
     '.sub{color:#666;font-size:11px;margin-bottom:14px}' +
     'table{width:100%;border-collapse:collapse}' +
@@ -1106,13 +1123,12 @@ function shortMenu(){
 /* ═══════════ ٤) الأقسام ═══════════ */
 var SECTIONS = {
   home:  [['home',  function(){ return tr('today'); }]],
-  sales: [['month', function(){ return tr('salesPerf'); }]],
+  sales: [['month', function(){ return tr('salesPerf'); }], ['perf', function(){ return tr('staffToday'); }]],
   money: [['pl',    function(){ return tr('pl'); }], ['exp', function(){ return tr('expenses'); }],
           ['debt',  function(){ return tr('debts'); }]],
-  hr:    [['perf',  function(){ return tr('staffToday'); }]],
   stock: [['aging', function(){ return tr('invAging'); }], ['short', function(){ return tr('shortages'); }],
           ['count', function(){ return tr('counts'); }]],
-  cust:  [['msgs',  function(){ return tr('messages'); }], ['list', function(){ return tr('customers'); }],
+  cust:  [['list',  function(){ return tr('customers'); }], ['msgs', function(){ return tr('messages'); }],
           ['agents',function(){ return tr('agents'); }], ['docs', function(){ return tr('doctors'); }]]
 };
 var CUR = 'home', TAB = 0;
@@ -1374,7 +1390,7 @@ function drawHome(b, kpi, isOld){
     if (weak && weak.reg_pct < 50) acts.push(alertBox('warn',
       esc(weak.name) + ' — ' + tr('regRate') + ' ' + weak.reg_pct + '%',
       tr('target') + ' ' + ltr('75%') + ' · ' + ltr(weak.invoices) + ' ' + tr('invoices'),
-      "go('hr',1)"));
+      "go('sales',1)"));
 
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
     if (dueAgents.length) acts.push(alertBox('warn', esc(tr('agentsDue')),
@@ -1383,7 +1399,8 @@ function drawHome(b, kpi, isOld){
 
     var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
     html += card(tr('needsAction'), null,
-      acts.length ? acts.join('') : '<div class="state">' + tr('allGood') + '</div>',
+      (acts.length ? acts.join('') : '') + '<div id="homeMore">' + (HOME_MORE || '') + '</div>' +
+      (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>'),
       null, stamp(tr('srcSnap'), snapAt || null, tr('hourly')));
 
     /* ── ٣) اللي اتغيّر (بيتحمّل بعدين) ── */
@@ -1413,7 +1430,38 @@ function drawHome(b, kpi, isOld){
 
     box.innerHTML = html;
     if (!isOld) loadTrends();
+    loadHomeMore();
   }catch(e){ logErr(e); if (!isOld) oops(box, "pgHome()"); }
+}
+
+/* مهام إضافية للرئيسية — بتتحمّل بعد الشاشة وبتتحدّث كل 10 دقايق بس */
+var HOME_MORE = '', HOME_MORE_AT = 0;
+function loadHomeMore(){
+  if (Date.now() - HOME_MORE_AT < 600000) return;
+  HOME_MORE_AT = Date.now();
+  function safe(p){ return p.then(function(x){ return x; }, function(e){ logErr(e); return null; }); }
+  Promise.all([
+    safe(api('getCustomers')),
+    safe(api('getShortages', { days: RANGE.short }, SHORTAGE_URL)),
+    safe(api('doctorAdmin', { op: 'list' })),
+    safe(api('getExpensesData', rangeParams('exp')))
+  ]).then(function(r){
+    var out = [];
+    var cl = Array.isArray(r[0]) ? r[0] : (r[0] && r[0].list) || [];
+    var fol = cl.filter(function(c){ return !c.is_blocked && c.status === ST_ALERT; }).length;
+    if (fol) out.push(alertBox('warn', 'عملاء محتاجين متابعة', ltr(num(fol)) + ' ' + tr('customers'),
+      "CUST_NEXT='follow';go('cust',0)"));
+    var z = r[1] && r[1].zero && r[1].zero.summary ? (r[1].zero.summary.total || 0) : 0;
+    if (z) out.push(alertBox('bad', 'أصناف خلصانة', ltr(num(z)) + ' ' + tr('items'), "go('stock',1)"));
+    var dn = r[2] && r[2].orders ? r[2].orders.filter(function(o){ return o.status !== 'تم'; }).length : 0;
+    if (dn) out.push(alertBox('warn', 'طلبات دكاترة جديدة', ltr(num(dn)), "go('cust',3)"));
+    var e = r[3];
+    if (e && (e.stale || (e.itemizedStaleDays != null && e.itemizedStaleDays > 2)))
+      out.push(alertBox('bad', 'المصروفات واقفة', ltr(e.stale ? e.staleDays : e.itemizedStaleDays) + ' ' + tr('daysWord'), "go('money',1)"));
+    HOME_MORE = out.join('');
+    var box = document.getElementById('homeMore');
+    if (box){ box.innerHTML = HOME_MORE; if (HOME_MORE){ var g = document.getElementById('homeAllGood'); if (g) g.remove(); } }
+  });
 }
 
 /* بيقارن آخر ٧ أيام باللي قبلهم ويقول إيه اللي اتحرّك.
@@ -1451,7 +1499,7 @@ function loadTrends(){
       title: tr('regRate') + ' ' + (rNow > rOld ? tr('trendUp') : tr('trendDown')),
       sub: ltr(rOld + '%') + ' <span style="color:var(--ink-3)">→</span> ' + ltr(rNow + '%') +
            ' · ' + tr('regRate') + ' ' + ltr('75%'),
-      jump: "go('hr',1)"
+      jump: "go('sales',1)"
     });
 
     var nNow = avg(recent, function(x){ return x.new_c; }),
@@ -1462,7 +1510,7 @@ function loadTrends(){
       title: tr('newCust') + ' ' + (nCh > 0 ? tr('trendUp') : tr('trendDown')) + ' ' + ltr(Math.abs(nCh) + '%'),
       sub: tr('avgDaily') + ' ' + ltr(nNow.toFixed(1)) +
            ' <span style="color:var(--ink-3)">(' + ltr(nOld.toFixed(1)) + ')</span>',
-      jump: "go('cust',1)"
+      jump: "go('cust',0)"
     });
 
     box.innerHTML = card(tr('whatChanged'), tr('last7vs'), items.length
@@ -1599,6 +1647,10 @@ function drawExpenses(d, box){
         tr('expStale') + ' ' + ltr(d.staleDays) + ' ' + tr('daysWord') +
         '<br><span style="opacity:.8;font-size:13px">' +
         tr('expStaleHint') + ' ' + esc(d.lastEntry || '') + '</span></div>';
+    } else if (d.itemizedStaleDays != null && d.itemizedStaleDays > 2){
+      warn = '<div class="state err" style="margin-bottom:10px">⚠️ تفاصيل المصروفات واقفة من ' +
+        ltr(d.itemizedStaleDays) + ' ' + tr('daysWord') +
+        '<br><span style="opacity:.8;font-size:13px">الإجمالي بيتكمّل من النظام، لكن التفاصيل ناقصة — اتأكد من تصدير Pharmaclick</span></div>';
     } else if (d.sourceError){
       warn = '<div class="state err" style="margin-bottom:10px">' +
         esc(d.sourceError) + '</div>';
@@ -1817,7 +1869,7 @@ var HR = { live: null, hist: null, kpi: null };
 function setHrRange(v){ setRange('perf', v, pgStaffHub); }
 
 function pgStaffHub(){
-  var box = document.getElementById('p-hr');
+  var box = document.getElementById('p-sales');
   var p = rangeParams('perf');
   var seed = cacheGet('hub', p);
   if (seed) { setHub(seed); drawStaffHub(true); } else busy(box);
@@ -1856,7 +1908,7 @@ function liveFor(name){
 }
 
 function drawStaffHub(isOld){
-  var box = document.getElementById('p-hr');
+  var box = document.getElementById('p-sales');
   var list = (HR.kpi.employees || []);
   var live = HR.live.live || [];
 
@@ -2562,7 +2614,7 @@ function expSheet(key){
 }
 
 /* ─────── مخزون: النواقص ─────── */
-var SHORT_DATA = null, SHORT_SEC = 'zero', SHORT_OPEN = {};
+var SHORT_DATA = null, SHORT_SEC = 'zero', SHORT_OPEN = {}, EFF = null;
 
 function setShortDays(v){ RANGE.short = v; SHORT_DATA = null; pgShort(); }
 function setShortSec(v){ SHORT_SEC = v; drawShort(); }
@@ -2578,6 +2630,37 @@ function pgShort(){
     cacheSet('getShortages', pr, d);
     SHORT_DATA = d; markSync(); drawShort();
   }).catch(function(e){ logErr(e); if (!seed) oops(box, "pgShort()"); });
+  api('orderEfficiency', { days: RANGE.short }).then(function(e){
+    if (e && e.ok){ EFF = e; if (SHORT_DATA && CUR === 'stock') drawShort(); }
+  }).catch(logErr);
+}
+
+function effHtml(){
+  var e = EFF;
+  if (!e) return '';
+  var dur = function(h){ return h == null ? '—' : (h >= 48 ? ltr(num(Math.round(h / 24 * 10) / 10)) + ' ' + tr('effDays') : ltr(num(h)) + ' ' + tr('effHours')); };
+  if (e.collectedDays < 3 || !e.episodes)
+    return card(tr('effTitle'), null, '<div class="state">' + tr('effCollect') + '</div>');
+  var tone = e.trend == null ? 'brand' : (e.trend > 0 ? 'bad' : 'ok');
+  var L = e.lost || {}, hasLost = L.matched > 0;
+  var h = vitals(tr('effTitle'), tr('effSub'), [
+    { value: hasLost ? num(L.value) + ' ' + tr('egp') : '—', label: tr('effLost'), tone: hasLost && L.value ? 'bad' : 'ok' },
+    { value: dur(e.avgHours), label: tr('effAvg'), tone: 'brand' },
+    { value: num(e.stale), label: tr('effStale'), tone: e.stale ? 'bad' : 'ok' }
+  ]);
+  if (e.trend != null) h += '<div class="state" style="padding:4px 0 10px">' + tr('effTrend') + ': <b style="color:var(--' + tone + ')" dir="ltr">' +
+    (e.trend > 0 ? '+' : '') + e.trend + '</b></div>';
+  if (hasLost && (L.items || []).length) h += card(tr('effLostT'), tr('effLostNote'), L.items.slice(0, 8).map(function(o){
+    return row(o.name, esc(o.co) + ' · ' + ltr(num(o.daysOut)) + ' ' + tr('effDaysOut') + ' × ' + ltr(num(o.perDay)) + ' ' + tr('effPerDay'),
+               ltr(num(o.value)) + ' ' + tr('egp'));
+  }).join(''));
+  if ((e.oldest || []).length) h += card(tr('effOldest'), null, e.oldest.slice(0, 6).map(function(o){
+    return row(o.name, esc(o.co), dur(o.hours));
+  }).join(''));
+  if ((e.repeat || []).length) h += card(tr('effRepeatT'), null, e.repeat.slice(0, 6).map(function(o){
+    return row(o.name, esc(o.co), ltr(num(o.n)) + ' ' + tr('effTimes'));
+  }).join(''));
+  return h;
 }
 
 function drawShort(){
@@ -2598,6 +2681,7 @@ function drawShort(){
     { value: num(sum.totalAfter || 0), label: tr('afterDisc'), tone: 'brand' }
   ]);
 
+  html += effHtml();
   var cats = Object.keys(sec.categories || {}).sort();
   if (!cats.length){ box.innerHTML = html + '<div class="card">' + emptyState() + '</div>'; return; }
 
@@ -2899,11 +2983,12 @@ var CUST = { sec: 'home', list: [], dash: null, news: null, q: '', cls: 'all',
 var CUST_LOG = { type: 'call', result: 'answered' };
 var ST_WAIT = 'تمت المتابعة - في الانتظار', ST_FAIL = 'محاولات استرجاع فشلت', ST_ALERT = 'تنبيه';
 
-function custOnTab(){ return CUR === 'cust' && TAB === 1; }
+function custOnTab(){ return CUR === 'cust' && TAB === 0; }
 
+var CUST_NEXT = null;
 function pgCustomers(){
   var box = document.getElementById('p-cust');
-  CUST.sec = 'home';
+  CUST.sec = CUST_NEXT || 'home'; CUST_NEXT = null;
   apiCached('getCustomers', {}, box, drawCustomers);
   loadCustDash();
 }
@@ -3140,15 +3225,62 @@ function openCust(phone){
   document.getElementById('sheet').classList.add('on');
   t.textContent = c.name || c.phone;
   b.innerHTML = custSheetHtml(c);
+  api('getCustomerProfile', { phone: String(c.phone) }).then(function(p){
+    var el = document.getElementById('custProf'); if (el) el.innerHTML = custProfHtml(c, p);
+  }).catch(function(e){ logErr(e); var el = document.getElementById('custProf'); if (el) el.innerHTML = ''; });
   api('getHistory', { phone: String(c.phone) }).then(function(rows){
     CUST.hist = Array.isArray(rows) ? rows : [];
     var el = document.getElementById('custHist'); if (el) el.innerHTML = histHtml();
   }).catch(function(e){ logErr(e); var el = document.getElementById('custHist'); if (el) el.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
 
+/* مشتريات العميل + الدين + إجراء مقترح */
+function custAdvice(c, p){
+  var ds = custDays(c), lim = parseFloat(c.alert_days) || 30;
+  var debt = (p && p.debt && p.debt.net) || 0, dp = p && p.debt ? p.debt.daysSincePaid : null;
+  var last = p && p.purchases && p.purchases[0];
+  var top = last ? last.items.slice(0, 2).map(function(i){ return i.name; }).join(' و') : '';
+  if (c.is_blocked) return { tone: 'slate', text: 'العميل محظور — مفيش إجراء.' };
+  if (debt > 0 && (dp === null || dp > 30))
+    return { tone: 'bad', text: 'عليه دين ' + num(debt) + ' ج' + (dp !== null ? ' وآخر سداد من ' + dp + ' يوم' : '') +
+      ' — كلّمه للسداد الأول قبل أي عرض.',
+      msg: 'أهلاً ' + (c.name || '') + '، صيدلية السوسي. حابين نفكّرك بالمبلغ المتبقي عليك ' + num(debt) + ' جنيه. تقدر تسدده في أي وقت، شكراً لتعاملك معانا.' };
+  if (ds !== null && ds > lim)
+    return { tone: 'warn', text: 'غايب ' + ds + ' يوم (حد التنبيه ' + lim + ')' + (top ? ' — اسأله لو محتاج ' + top : '') +
+      (debt > 0 ? ' · عليه دين ' + num(debt) + ' ج (ذكّره بلطف)' : '') + '.',
+      msg: 'أهلاً ' + (c.name || '') + '، صيدلية السوسي 🌿 وحشتنا!' + (top ? ' لو محتاج ' + top + ' أو أي حاجة تانية إحنا موجودين.' : ' لو محتاج أي حاجة إحنا موجودين.') };
+  if (debt > 0) return { tone: 'warn', text: 'عميل منتظم وعليه دين ' + num(debt) + ' ج — ذكّره عند الزيارة الجاية.' };
+  return { tone: 'ok', text: 'عميل منتظم — مفيش إجراء.' };
+}
+
+function custProfHtml(c, p){
+  if (!p || !p.ok) return '';
+  var A = custAdvice(c, p), h = '';
+  h += '<div class="state" style="text-align:start;padding:8px 0"><b>الإجراء المقترح:</b> ' + esc(A.text) + '</div>';
+  if (A.msg){
+    var ph = String(c.phone || '').replace(/\D/g, ''); if (ph.charAt(0) === '0') ph = '20' + ph.slice(1);
+    h += '<a class="btn btn-quiet" target="_blank" rel="noopener" href="https://wa.me/' + ph + '?text=' +
+      encodeURIComponent(A.msg) + '">واتساب برسالة جاهزة</a>';
+  }
+  if (p.debt && p.debt.net > 0)
+    h += row('الدين الحالي', p.debt.daysSincePaid !== null ? ('آخر حركة من ' + p.debt.daysSincePaid + ' يوم') : null,
+      badge(ltr(num(p.debt.net)) + ' ج', p.debt.daysSincePaid > 30 || p.debt.daysSincePaid === null ? 'bad' : 'warn'));
+  if (p.purchases && p.purchases.length){
+    h += '<div class="group-title">آخر مشتريات</div>' + p.purchases.map(function(x){
+      var names = x.items.slice(0, 6).map(function(i){ return esc(i.name) + (i.qty > 1 ? ' ×' + ltr(i.qty) : ''); }).join('، ');
+      return '<div class="row"><div class="row-main"><b>' + ltr(x.date) + '</b><small>' + names +
+        (x.items.length > 6 ? ' …' : '') + '</small></div>' + badge(ltr(num(Math.round(x.total))) + ' ج', 'brand') + '</div>';
+    }).join('');
+  } else {
+    h += '<div class="state" style="text-align:start">مفيش مشتريات بالرقم ده في آخر ' + p.scannedDays + ' يوم.</div>';
+  }
+  return h;
+}
+
 function custSheetHtml(c){
   return '<div class="state" style="padding:0 0 8px">' + ltr(c.phone) + '</div>' +
     row(tr('lastVisit'), null, daysBadge(c)) +
+    '<div id="custProf"><div class="state"><div class="spin"></div></div></div>' +
     row(tr('monthlyVisits'), null, ltr(num(c.monthly_visits || 0))) +
     row(tr('monthlySpend'), null, ltr(num(c.monthly_spend || 0))) +
     (c.cls ? row(tr('custClass'), null, esc(c.cls)) : '') +

@@ -2708,18 +2708,33 @@ function brainPrompt_(chatId, text, history, items, noSearch) {
     (addr ? 'آخر عنوان توصيل مسجل له: ' + addr + ' (اسأله يأكده قبل ما تستخدمه)\n' : '') +
     (dflow && dflow.address ? 'عنوان التوصيل اللي العميل أكده دلوقتي: ' + dflow.address + ' — استخدمه في order.address ومتسألش عن العنوان تاني.\n' : '') +
     safetyLine +
-    (PHOTO_CTX ? 'العميل بعت صورة ' + (PHOTO_CTX.kind === 'prescription' ? 'روشتة' : 'علبة دوا') + ' فيها: ' +
-      (PHOTO_CTX.items || []).map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (مش واضح)' : ''); }).join('، ') + '.\n' +
-      (PHOTO_CTX.kind === 'prescription'
-        ? '→ قوله المتوفر من الروشتة بسعر كل صنف والإجمالي، والمش متوفر، واسأله يحب نجهزها أو نوصلها. وقوله إن الصيدلي هيراجع الروشتة بنفسه. متقولش جرعات الروشتة.\n'
-        : (PHOTO_CTX.rx ? '→ ده دوا بروشتة: متقولش جرعة. قول التوافر والسعر، و' + (PHOTO_CTX.label ? 'المكتوب على العلبة (اكتبه بالعربي بس): "' + PHOTO_CTX.label + '"، و' : '') + 'إن الجرعة حسب الدكتور المعالج والصيدلي هيأكدها مع حضرتك (escalate=true لو سأل عن الاستعمال).\n'
-                        : '→ رد على سؤاله عن الصنف ده (التوافر والسعر، والاستعمال حسب قواعد الجرعات).\n')) : '') +
+    photoLine_(chatId) +
     '\nالمخزون المتاح (مطابق لكلام العميل):\n' + stock + '\n\n' +
     formatHistory(history || []) +
     'رسالة العميل الجديدة: "' + text + '"\n\n' +
     'رد بـ JSON بس من غير أي كلام قبله أو بعده:\n' +
     '{"reply":"ردك للعميل","search":"","escalate":false,"reason":"","order":null}\n' +
     'وorder لما يكتمل يبقى: {"items":"الأصناف والكميات","lines":[{"name":"اسم الصنف زي المخزون","q":1}],"phone":"...","address":"..."}';
+}
+
+/* 📷 سطر الصورة في البرومبت: الصورة اللي لسه واصلة، أو آخر صورة بعتها العميل (6 ساعات) */
+function photoLine_(chatId) {
+  var P = PHOTO_CTX, fresh = !!P;
+  if (!P) { try { P = JSON.parse(CacheService.getScriptCache().get('lastphoto_' + chatId) || 'null'); } catch (e) { P = null; } }
+  if (!P || !P.items || !P.items.length) return '';
+  var isRx = P.kind === 'prescription';
+  var names = P.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (مش واضح)' : ''); }).join('، ');
+  var s = (fresh ? 'العميل بعت دلوقتي صورة ' : 'آخر صورة بعتها العميل من شوية كانت ') + (isRx ? 'روشتة' : 'علبة/منتج') + ' مكتوب فيها: ' + names + '.\n' +
+    (fresh ? '' : '→ لو العميل قال "الصورة" أو "الورقة" أو "اسمه ايه" أو "الدوا ده" يبقى قصده على الصورة دي — قوله الاسم المكتوب فيها على طول ومتطلبش يبعتها تاني.\n') +
+    '→ قاعدة الماركة: لو الصنف اللي في المخزون مش نفس الماركة/الاسم اللي في الصورة، قول صراحة إن نفس المنتج مش موجود ' +
+    'واذكر اللي عندنا باسمه كبديل — ممنوع تقدّمه كأنه هو نفس المنتج.\n';
+  if (isRx) s += '→ دي روشتة: قوله المتوفر منها بالسعر والإجمالي، والمش متوفر قول "مش متوفر حاليًا والصيدلي هيتواصل مع حضرتك بخصوصه". ' +
+    'ممنوع تمامًا تقترح بديل لأي صنف في الروشتة (البديل قرار الصيدلي بس). متقولش جرعات. وقوله إن الصيدلي هيراجع الروشتة بنفسه.\n';
+  else if (P.rx) s += '→ ده دوا بروشتة: متقولش جرعة. قول التوافر والسعر' + (P.label && fresh ? '، والمكتوب على العلبة (بالعربي بس): "' + P.label + '"' : '') +
+    '. لو مش متوفر: البديل الوحيد المسموح هو نفس المادة الفعالة ونفس التركيز بالظبط، وقول إن الصيدلي هيأكده. ' +
+    'والجرعة حسب الدكتور المعالج والصيدلي هيأكدها (escalate=true لو سأل عن الاستعمال).\n';
+  else if (fresh) s += '→ رد على سؤاله عن الصنف ده (التوافر والسعر، والاستعمال حسب قواعد الجرعات).\n';
+  return s;
 }
 
 function brainParse_(raw) {
@@ -2869,8 +2884,9 @@ function handleCustomerMessage(chatId, message) {
         if (seen.kind === 'prescription')
           escalateToDoctor_(chatId, '[روشتة — الصورة فوق] قريت منها: ' + pnames + (message.caption ? '\nالعميل كتب: ' + message.caption : ''), 'روشتة — راجعها');
         PHOTO_CTX = seen;
+        try { CacheService.getScriptCache().put('lastphoto_' + chatId, JSON.stringify({ kind: seen.kind, items: seen.items, rx: !!seen.rx }), 21600); } catch (eP) {}
         var okp = false;
-        try { okp = smartCustomerReply_(chatId, ptxt + '\n[صورة: ' + pnames + ']', getConversationHistory(chatId)); } catch (e) {}
+        try { okp = smartCustomerReply_(chatId, ptxt + '\n[العميل بعت صورة ' + (seen.kind === 'prescription' ? 'روشتة' : 'منتج') + ' مكتوب فيها: ' + pnames + ']', getConversationHistory(chatId)); } catch (e) {}
         PHOTO_CTX = null;
         if (okp) return;
       }

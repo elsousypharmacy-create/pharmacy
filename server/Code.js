@@ -2106,7 +2106,7 @@ function readPhoto_(fileIds) {
     /* ⚡ كل صورة لوحدها بس كلهم في نفس الوقت (أدق من صورة واحدة فيها الكل، ومن غير وقت زيادة) */
     var M1 = AI_DEFAULTS.gemini.bot, M2 = GEMINI_MODEL;
     var outs = UrlFetchApp.fetchAll(imgs.map(function (im) { return req(M1, im); })).map(function (r) { return parse(r, M1); });
-    outs = outs.map(function (o, i) { return o || (M2 !== M1 ? parse(UrlFetchApp.fetch(req(M2, imgs[i]).url, req(M2, imgs[i])), M2) : null); });
+    outs = outs.map(function (o, i) { return o || (M2 !== M1 ? parse(UrlFetchApp.fetchAll([req(M2, imgs[i])])[0], M2) : null); });
     var good = outs.filter(Boolean);
     if (!good.length) return null;
     var seenN = {}, items = [];

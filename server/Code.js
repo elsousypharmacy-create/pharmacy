@@ -2085,7 +2085,9 @@ function readPhoto_(fileIds) {
     var key = aiKey_('GEMINI_API_KEY') || GEMINI_API_KEY;
     var prompt = 'You are a pharmacist assistant in Egypt. Look at this photo from a customer.\n' +
       'kind: "prescription" if it is a doctor prescription (printed or handwritten); "box" if it shows medicine/cosmetic package(s); otherwise "other".\n' +
-      'items: EVERY product you can read. For a prescription go line by line and list every prescribed item (drops, capsules, creams, washes…). ' +
+      'items: EVERY product you can read. For a prescription go line by line: EXACTLY ONE item per prescribed line (drops, capsules, creams, washes…). ' +
+      'If a line has a brand name plus a description/ingredient (e.g. "Sansovit — vitamin D drops"), that is ONE product: name = the brand only, and the description goes in "use". ' +
+      'Never split one line into two items, and ignore dosing instructions lines. ' +
       'Each as {"name":"trade name in English as printed","strength":"","form":"tablet/syrup/cream/...","use":"purpose in a few English words (e.g. oily skin facial wash, post-laser moisturizer, vitamin D drops)","sure":true}. ' +
       'For handwriting: "sure":true ONLY if every letter of the name is clearly legible; otherwise "sure":false (better unsure than a wrong confident name).\n' +
       'rx: true if the package says prescription only or it is a chronic/prescription drug (antidiabetic, antihypertensive, antibiotic...).\n' +

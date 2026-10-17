@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>مراجعة المصروفات — صيدلية السوسي</title>
+<link rel="icon" type="image/png" href="icon-192.png?v=2">
+<link rel="apple-touch-icon" href="icon-192.png?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF2; --line:#E1E4E9;
+  --ink:#14171A; --ink-2:#5A626C; --ink-3:#8B939D;
+  --brand:#1272A6; --brand-soft:#E3F0F8; --ok:#1E8A5F; --ok-soft:#E2F4EC; --warn:#9A6410; --warn-soft:#FBF0DD; --bad:#C33B47; --bad-soft:#FBE6E8;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0A0B0D; --surface:#141619; --surface-2:#1C1F24; --line:#25292F;
+    --ink:#F2F4F7; --ink-2:#9BA3AF; --ink-3:#5F6670;
+    --brand:#1B92D4; --brand-soft:#11283A; --ok:#3DBE8B; --ok-soft:#10291F; --warn:#E8A33D; --warn-soft:#2E2312; --bad:#E5646E; --bad-soft:#2E1518;
+  }
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--ink);font-family:'Cairo',system-ui,sans-serif;font-size:14px;line-height:1.5;padding-bottom:40px;-webkit-font-smoothing:antialiased}
+button,input,textarea{font-family:inherit;font-size:inherit;color:inherit}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px}
+header{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+header .wrap{display:flex;align-items:center;gap:12px;padding-top:12px;padding-bottom:12px}
+header img{width:40px;height:40px;border-radius:12px}
+header h1{font-size:18px;font-weight:800;line-height:1.2}
+header small{color:var(--ink-2);font-size:12px}
+.me{margin-inline-start:auto;border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:6px 12px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
+.seg{display:flex;gap:6px;overflow-x:auto;margin:16px 0 12px;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px;font-weight:700;cursor:pointer}
+.seg button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer}
+.kpi.on{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand) inset}
+.kpi span{color:var(--ink-2);font-size:12px;display:block}
+.kpi b{display:block;font-size:20px;font-weight:800;line-height:1.3;font-variant-numeric:tabular-nums}
+.kpi small{color:var(--ink-3);font-size:11px}
+.kpi.inc b{color:var(--ok)}
+.alert{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 12px;font-weight:700;margin-bottom:12px;font-size:13px}
+.tools{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.tools input{flex:1;min-width:160px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:9px 14px;outline:none}
+.tools input:focus{border-color:var(--brand)}
+.fl{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:8px 12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.fl.on{background:var(--warn-soft);border-color:transparent;color:var(--warn)}
+.day{margin:16px 2px 8px;display:flex;justify-content:space-between;color:var(--ink-2);font-weight:800;font-size:13px}
+.row{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px}
+.row.ok{border-inline-start:4px solid var(--ok)}
+.row.ask{border-inline-start:4px solid var(--warn)}
+.row .top{display:flex;justify-content:space-between;gap:10px}
+.row .nm{font-weight:800}
+.row .dt{color:var(--ink-2);font-size:12px;margin-top:2px;word-break:break-word}
+.row .am{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;font-size:15px}
+.row .am.inc{color:var(--ok)}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
+.tag{background:var(--surface-2);border-radius:8px;padding:1px 8px;font-size:11px;color:var(--ink-2);font-weight:700}
+.tag.w{background:var(--warn-soft);color:var(--warn)}
+.tag.b{background:var(--bad-soft);color:var(--bad)}
+.tag.g{background:var(--ok-soft);color:var(--ok)}
+.rv{margin-inline-start:auto;display:flex;gap:6px}
+.rv button{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:4px 10px;font-weight:700;cursor:pointer;font-size:12px}
+.rv button.ok.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.rv button.ask.on{background:var(--warn);border-color:var(--warn);color:#fff}
+.note{margin-top:8px;font-size:12px;color:var(--ink-2);background:var(--surface-2);border-radius:8px;padding:6px 10px}
+.state{text-align:center;color:var(--ink-2);padding:40px 10px}
+.state.err{color:var(--bad)}
+.spin{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:s 1s linear infinite;margin:0 auto 10px}
+@keyframes s{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:700;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+@media (max-width:600px){.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <img src="icon-192.png?v=2" alt="">
+  <div><h1>مراجعة المصروفات</h1><small id="upd">صيدلية السوسي</small></div>
+  <button class="me" id="me" onclick="setMe()">👤 —</button>
+</div></header>
+
+<div class="wrap">
+  <div class="seg" id="ranges"></div>
+  <div class="kpis" id="kpis"></div>
+  <div id="alerts"></div>
+  <div class="tools">
+    <input id="q" placeholder="ابحث في البند أو التفاصيل أو اسم الموظف…" oninput="draw()">
+    <button class="fl" id="fAsk" onclick="toggleF('flag')">⚠️ محتاج مراجعة</button>
+    <button class="fl" id="fNew" onclick="toggleF('new')">لسه متراجعش</button>
+    <button class="fl" onclick="copySummary()">📋 ملخص للمدير</button>
+  </div>
+  <div id="list"><div class="state"><div class="spin"></div>بيحمّل المصروفات…</div></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7ctTVJjckmbTxegDq7E3R3p6aEBzqt275HNL8SBfWg/exec';
+var RANGES = [['today', 'النهارده'], ['yesterday', 'أمس'], ['week', 'آخر أسبوع'], ['month', 'الشهر ده'], ['lastMonth', 'الشهر اللي فات']];
+/* الفئات زي ما بتيجي من Pharmaclick */
+var KINDS = [['misc', 'مصروفات متنوعة', function(c){ return c.indexOf('متنوعة') !== -1; }],
+             ['purch', 'مشتروات شركات', function(c){ return c.indexOf('مشتروات') !== -1; }],
+             ['sal', 'مرتبات', function(c){ return c.indexOf('مرتب') !== -1; }],
+             ['inc', 'تحصيل مديونيات', function(c){ return c.indexOf('ايراد') === 0; }]];
+var BIG = 300;   /* مصروف متنوع أكبر من كده من غير تفاصيل = يتراجع */
+
+var RANGE = ls('expRange') || 'month', DATA = null, REV = {}, KIND = '', FILTER = '';
+
+function ls(k, v){ try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function num(n){ return (Math.round((n || 0) * 100) / 100).toLocaleString('en-US'); }
+function toast(t){ var el = document.getElementById('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(function(){ el.classList.remove('on'); }, 2200); }
+function pin(){ return ls('adminPin') || ''; }
+function api(action, params){
+  var url = SCRIPT_URL + '?action=' + action;
+  params = params || {}; if (pin()) params.pin = pin();
+  for (var k in params) url += '&' + k + '=' + encodeURIComponent(params[k]);
+  return fetch(url + '&_ts=' + Date.now(), { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
+    if (d && d.lockError){ var p = (prompt('🔒 اكتب الرقم السري') || '').trim(); if (p){ ls('adminPin', p); return api(action, params); } }
+    return d;
+  });
+}
+function post(body){ if (pin()) body.pin = pin(); return fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(body) }).then(function(r){ return r.json(); }); }
+function me(){ return ls('staffName') || ''; }
+function setMe(){ var n = (prompt('اكتب اسمك (هيتسجل مع كل مراجعة)', me()) || '').trim(); if (n){ ls('staffName', n); drawMe(); } }
+function drawMe(){ document.getElementById('me').textContent = '👤 ' + (me() || 'اكتب اسمك'); }
+function kindOf(e){ for (var i = 0; i < KINDS.length; i++) if (KINDS[i][2](e.category || '')) return KINDS[i][0]; return 'other'; }
+var DAYS = ['الأحد','الاتنين','التلات','الأربع','الخميس','الجمعة','السبت'];
+function dayName(d){ var x = new Date(d + 'T12:00:00'); return DAYS[x.getDay()] + ' ' + x.getDate() + '/' + (x.getMonth() + 1); }
+
+function drawRanges(){
+  document.getElementById('ranges').innerHTML = RANGES.map(function(r){
+    return '<button class="' + (r[0] === RANGE ? 'on' : '') + '" onclick="setRange(\'' + r[0] + '\')">' + r[1] + '</button>'; }).join('');
+}
+function setRange(r){ RANGE = r; ls('expRange', r); drawRanges(); load(); }
+function toggleF(f){ FILTER = FILTER === f ? '' : f; draw(); }
+function setKind(k){ KIND = KIND === k ? '' : k; draw(); }
+
+function load(){
+  document.getElementById('list').innerHTML = '<div class="state"><div class="spin"></div>بيحمّل المصروفات…</div>';
+  Promise.all([api('getExpensesData', { range: RANGE }), api('getExpReviews')]).then(function(r){
+    var d = r[0];
+    if (!d || !d.ok) throw new Error((d && d.error) || 'مفيش بيانات');
+    DATA = d; REV = (r[1] && r[1].reviews) || {};
+    document.getElementById('upd').textContent = 'صيدلية السوسي · ' + (d.label || '');
+    flagAll(); draw();
+  }).catch(function(e){
+    document.getElementById('list').innerHTML = '<div class="state err">مقدرتش أحمّل — ' + esc(e.message || e) + '<br><br><button class="fl" onclick="load()">جرّب تاني</button></div>';
+  });
+}
+
+/* علامات تلقائية: حاجات تستاهل الموظف يسأل عليها */
+function flagAll(){
+  var seen = {};
+  DATA.items.forEach(function(e){
+    e.flags = [];
+    var k = kindOf(e);
+    if (e.fromLedger) e.flags.push(['إجمالي من النظام من غير تفاصيل', 'w']);
+    if (k === 'misc' && e.amount >= BIG && !String(e.detail || '').trim()) e.flags.push(['مبلغ كبير من غير تفاصيل', 'w']);
+    var key = e.date + '|' + e.amount + '|' + String(e.name || '').trim();
+    if (!e.fromLedger && !e.isIncome && seen[key]) { e.flags.push(['ممكن مكرر', 'b']); seen[key].flags.push(['ممكن مكرر', 'b']); }
+    else seen[key] = e;
+  });
+}
+
+function draw(){
+  if (!DATA) return;
+  var sums = { misc: 0, purch: 0, sal: 0, inc: 0, other: 0 }, cnt = { misc: 0, purch: 0, sal: 0, inc: 0, other: 0 };
+  DATA.items.forEach(function(e){ var k = kindOf(e); sums[k] += e.amount; cnt[k]++; });
+  document.getElementById('kpis').innerHTML = KINDS.map(function(k){
+    return '<div class="kpi' + (k[0] === 'inc' ? ' inc' : '') + (KIND === k[0] ? ' on' : '') + '" onclick="setKind(\'' + k[0] + '\')"><span>' + k[1] + '</span><b>' + num(sums[k[0]]) + '</b><small>' + cnt[k[0]] + ' حركة</small></div>';
+  }).join('');
+
+  var flagged = DATA.items.filter(function(e){ return e.flags.length && !(REV[e.id] && REV[e.id].status === 'ok'); }).length;
+  var notRev = DATA.items.filter(function(e){ return !REV[e.id] && !e.fromLedger; }).length;
+  document.getElementById('fAsk').textContent = '⚠️ محتاج مراجعة (' + flagged + ')';
+  document.getElementById('fNew').textContent = 'لسه متراجعش (' + notRev + ')';
+  document.getElementById('fAsk').classList.toggle('on', FILTER === 'flag');
+  document.getElementById('fNew').classList.toggle('on', FILTER === 'new');
+  document.getElementById('alerts').innerHTML =
+    (DATA.itemizedStaleDays > 2 ? '<div class="alert">⚠️ آخر حركة مفصّلة من ' + DATA.itemizedStaleDays + ' يوم — لو فيه مصروفات اتصرفت بعدها اتأكد إنها اتسجلت على Pharmaclick</div>' : '');
+
+  var q = document.getElementById('q').value.trim();
+  var L = DATA.items.filter(function(e){
+    if (KIND && kindOf(e) !== KIND) return false;
+    if (FILTER === 'flag' && !(e.flags.length && !(REV[e.id] && REV[e.id].status === 'ok'))) return false;
+    if (FILTER === 'new' && (REV[e.id] || e.fromLedger)) return false;
+    if (q && [e.name, e.detail, e.staff, e.category, e.company].join(' ').indexOf(q) === -1) return false;
+    return true;
+  });
+  var box = document.getElementById('list');
+  if (!L.length){ box.innerHTML = '<div class="state">مفيش حركات هنا ✅</div>'; return; }
+  var byDay = {};
+  L.forEach(function(e){ (byDay[e.date] = byDay[e.date] || []).push(e); });
+  box.innerHTML = Object.keys(byDay).sort().reverse().map(function(d){
+    var rows = byDay[d], tot = rows.reduce(function(s, e){ return s + (e.isIncome ? 0 : e.amount); }, 0);
+    return '<div class="day"><span>' + dayName(d) + '</span><span>' + num(tot) + ' ج</span></div>' + rows.map(rowHtml).join('');
+  }).join('');
+}
+function rowHtml(e){
+  var r = REV[e.id] || {}, st = r.status || '';
+  var kindName = (KINDS.filter(function(k){ return k[0] === kindOf(e); })[0] || [0, e.category])[1];
+  return '<div class="row ' + st + '"><div class="top"><div><div class="nm">' + esc(e.name || '—') + '</div>' +
+    (e.detail ? '<div class="dt">' + esc(e.detail) + '</div>' : '') + '</div>' +
+    '<div class="am' + (e.isIncome ? ' inc' : '') + '">' + (e.isIncome ? '+' : '') + num(e.amount) + ' ج</div></div>' +
+    '<div class="meta"><span class="tag">' + esc(kindName) + '</span>' +
+    (e.time ? '<span class="tag">' + esc(e.time) + '</span>' : '') +
+    (e.staff ? '<span class="tag">' + esc(e.staff) + '</span>' : '') +
+    (e.company ? '<span class="tag">' + esc(e.company) + '</span>' : '') +
+    e.flags.map(function(f){ return '<span class="tag ' + f[1] + '">' + f[0] + '</span>'; }).join('') +
+    (e.fromLedger || !e.id ? '' : '<span class="rv"><button class="ok' + (st === 'ok' ? ' on' : '') + '" onclick="review(\'' + esc(e.id) + '\',\'ok\')">✅ تمام</button>' +
+      '<button class="ask' + (st === 'ask' ? ' on' : '') + '" onclick="review(\'' + esc(e.id) + '\',\'ask\')">❓ محتاج توضيح</button></span>') + '</div>' +
+    (r.note || r.by ? '<div class="note">' + (r.note ? esc(r.note) + ' — ' : '') + 'راجعها ' + esc(r.by || '') + ' ' + esc(r.at || '') + '</div>' : '') +
+    '</div>';
+}
+function review(id, status){
+  if (!me()) { setMe(); if (!me()) return; }
+  var note = '';
+  if (status === 'ask'){ note = prompt('اكتب السؤال أو الملاحظة (هتوصل للمدير)', (REV[id] && REV[id].note) || ''); if (note === null) return; }
+  var prev = REV[id];
+  REV[id] = { status: status, note: note, by: me(), at: 'دلوقتي' }; draw();
+  post({ action: 'expReview', id: id, status: status, note: note, by: me() }).then(function(d){
+    if (!d || !d.ok){ REV[id] = prev; draw(); toast((d && d.error) || 'محفظش — جرّب تاني'); }
+  }).catch(function(){ REV[id] = prev; draw(); toast('النت فصل — جرّب تاني'); });
+}
+
+/* ملخص قصير يتبعت للمدير على واتساب */
+function copySummary(){
+  if (!DATA) return;
+  var sums = {}; DATA.items.forEach(function(e){ var k = kindOf(e); sums[k] = (sums[k] || 0) + e.amount; });
+  var asks = DATA.items.filter(function(e){ return REV[e.id] && REV[e.id].status === 'ask'; });
+  var flagged = DATA.items.filter(function(e){ return e.flags.length && !(REV[e.id] && REV[e.id].status === 'ok'); });
+  var t = '📊 مصروفات ' + (DATA.label || '') + '\n' +
+    KINDS.map(function(k){ return '• ' + k[1] + ': ' + num(sums[k[0]] || 0) + ' ج'; }).join('\n') +
+    (asks.length ? '\n\n❓ محتاج توضيح (' + asks.length + '):\n' + asks.slice(0, 10).map(function(e){ return '- ' + e.date + ' ' + e.name + ' ' + num(e.amount) + ' ج: ' + (REV[e.id].note || ''); }).join('\n') : '') +
+    (flagged.length ? '\n\n⚠️ علامات تلقائية لسه متراجعتش: ' + flagged.length : '') +
+    '\n\n— ' + (me() || '');
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){ toast('✓ اتنسخ — الصقه في واتساب'); }, function(){ prompt('انسخ الملخص:', t); });
+}
+
+drawMe(); drawRanges(); load();
+</script>
+</body>
+</html>

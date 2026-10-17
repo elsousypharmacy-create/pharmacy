@@ -211,7 +211,7 @@ button{font-family:inherit}
 .secnav{position:fixed;bottom:0;left:0;right:0;z-index:90;
   background:color-mix(in srgb,var(--bg) 92%,transparent);
   backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
-  border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(6,1fr);
+  border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);
   padding:6px 2px calc(6px + env(safe-area-inset-bottom))}
 .secnav button{background:0;border:0;cursor:pointer;display:flex;flex-direction:column;
   align-items:center;gap:3px;color:var(--ink-3);font-size:10px;font-weight:600;padding:4px 0}
@@ -3054,7 +3054,9 @@ function custGroups(list){
   return {
     blocked: blocked,
     follow:  live.filter(function(c){ return c.status === ST_ALERT; }).sort(byDaysDesc),
-    recover: live.filter(function(c){ return c.status === ST_WAIT || c.status === ST_FAIL; }).sort(byDaysDesc)
+    recover: live.filter(function(c){ return c.status === ST_WAIT || c.status === ST_FAIL; }).sort(byDaysDesc),
+    active:  live.filter(function(c){ return c.status !== ST_ALERT && c.status !== ST_WAIT && c.status !== ST_FAIL; })
+                 .sort(function(a, b){ return -byDaysDesc(a, b); })
   };
 }
 
@@ -3076,6 +3078,8 @@ function drawCustomers(res, box){
         label: tr('returnRate'), tone: 'brand', note: null, sub: tr('thisMonth') }
     ]);
 
+    html += secBtn('active', 'ok', 'نشطين', 'بيشتروا في معادهم — الأحدث فوق',
+      ltr(num(G.active.length)), tr('customers'), 'setCustSec');
     html += secBtn('follow', G.follow.length ? 'warn' : 'ok', tr('needFollow'), tr('followSub'),
       ltr(num(G.follow.length)), tr('customers'), 'setCustSec');
     html += secBtn('recover', G.recover.length ? 'warn' : 'ok', tr('recoverSec'),
@@ -3092,9 +3096,15 @@ function drawCustomers(res, box){
   }
 
   /* ── الأقسام ── */
-  var TITLES = { follow: tr('needFollow'), recover: tr('recoverSec'), new: tr('newSec'),
+  var TITLES = { active: 'نشطين', follow: tr('needFollow'), recover: tr('recoverSec'), new: tr('newSec'),
                  blocked: tr('blockedSec'), all: tr('allCust') };
   html += secHead(TITLES[CUST.sec] || '', 'custMenu()', 'setCustSec(\'home\')');
+
+  if (CUST.sec === 'active'){
+    CUST.cur = G.active; CUST.curTitle = 'نشطين';
+    html += card('نشطين', ltr(num(G.active.length)) + ' ' + tr('customers'),
+      G.active.length ? G.active.slice(0, 100).map(function(c){ return custRow(c); }).join('') : emptyState());
+  }
 
   if (CUST.sec === 'follow'){
     CUST.cur = G.follow; CUST.curTitle = tr('needFollow');

@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ملصقات الأدوية — صيدلية السوسي</title>
-<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png?v=2">
+<link rel="apple-touch-icon" href="icon-192.png?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -17,7 +18,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
 button{cursor:pointer}
 /* الهيدر */
 header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:10px 20px}
-header img{width:42px;height:42px;border-radius:50%;box-shadow:0 0 0 1px var(--line)}
+header img{width:48px;height:48px;object-fit:contain}header .ttl small{display:block;font-size:12px;color:#64748b;font-weight:600}
 .ttl{flex:1;min-width:0}
 .ttl b{display:block;font-size:18px;color:var(--brand2)}
 .pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);background:var(--soft);border:1px solid var(--line);border-radius:99px;padding:2px 10px}
@@ -119,8 +120,8 @@ kbd{font-family:inherit;font-size:11px;background:rgba(255,255,255,.25);border-r
 </head>
 <body>
 <header>
-  <img src="icon-192.png" alt="">
-  <div class="ttl"><b>ملصقات الأدوية</b><span class="pill"><span class="dot" id="dot"></span><span id="st">بيتوصل…</span></span></div>
+  <img src="icon-192.png?v=2" alt="صيدلية السوسي">
+  <div class="ttl"><b>صيدلية السوسي <small>ملصقات الأدوية</small></b><span class="pill"><span class="dot" id="dot"></span><span id="st">بيتوصل…</span></span></div>
   <button class="ib" onclick="openSet()">⚙️ <span id="setLbl"></span></button>
 </header>
 
@@ -207,6 +208,7 @@ kbd{font-family:inherit;font-size:11px;background:rgba(255,255,255,.25);border-r
 <script>
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7ctTVJjckmbTxegDq7E3R3p6aEBzqt275HNL8SBfWg/exec';
 var PHONE = '01143404023';
+var LOGO_BW = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAG0AAABuAQAAAAAFF6BVAAACRElEQVR42lWVMXLbMBBFH0CN6UITqlRH5QYq00lHSpnOuIGv4KMwN/ARWKRwyXg0E8hD8adYAARZ8c8ul9j/9y+QPYEXSRFDIzSSogeAN3gAWHQGuJTkCaArye8AN8AJwAG4hbuHUgXwALOVDwlGg0OC7wbHBAeDUzqGIVr7b4ap8pLeZ4PzNhqhXSzLW8XohhKFDs4ggyM/4ZncfnCJgdTvt/IVkrhIWgBFp4oC3T2o2Rxj2aXmnVU4bg95AuCKBw/zsIk6ezuxAw9fAApw/ATp36ukuY9cfkckdZJiuzgRfdbgyy0PqwwQFbgRkKZO0kSvkR/e2GbigzdAGjtJA26Bo4fRFJOHySeF8kGl0KwyZVECFc9wBeCIBHmU+IUEL2nQXEQK9KlWY7RP6U97K3UDzsDZ4CPA3jKkgfRxk0f0DxDYW0fAizRyUUywlWZsng/APdDIOooAvfRqw2/nk1pL9gC6GqO59XZpkjUCwN3lURkB6NvkoylNc0rem0iZK5scBTZeGLIlbb777MGmGMVnB9WWfOxqS9IEimTFz6v397VDq2yVTcGlJOchzvCp8i/gwiaa5C/wtIUHmCqYKxtxyZL+7/dQhwNd3lGdIrbGMvQqi8FKRdUfS/RVMgzTJjo1m+jzsp7Tw5PWjebBpeZyR8O7LZ5TcvctKWTw8DCirgafORUjSVpobKkYz47H9bNSwXpwWbKVVL+SusvwUMjzK4uHDHdFB6dkbBBpVFzIC52ifbveGrNdC+USCThVMBq78T+hua2VKck5nwAAAABJRU5ErkJggg==';
 var CHIPS = ['قرص كل 8 ساعات','قرص كل 12 ساعة','قرص مرة يوميًا','بعد الأكل','قبل الأكل','عند اللزوم','لمدة 5 أيام','لمدة 7 أيام','5 مل كل 8 ساعات','5 مل كل 12 ساعة','دهان مرتين يوميًا','نقطة 3 مرات يوميًا'];
 var SIZES = ['50x30','40x30','40x25','50x25','58x40','60x40','70x50','100x50'];
 var STYLES = [['full','كامل','لوجو + اسم الصيدلية + التاريخ + الدوا + الطريقة + العمر والوزن + التليفون'],
@@ -476,17 +478,17 @@ function labelCSS(W, H){
     '.n{direction:ltr;text-align:right;font-weight:800;margin-top:.8mm;white-space:nowrap;overflow:hidden;line-height:1.2}' +
     '.t{flex:1;min-height:0;font-weight:800;line-height:1.28;margin-top:.6mm;display:flex;align-items:center;overflow:hidden;word-break:break-word}' +
     '.f{display:flex;justify-content:space-between;gap:2mm;font-weight:700;border-top:.25mm solid #000;padding-top:.5mm;white-space:nowrap}' +
-    '.cp .t{justify-content:center;text-align:center;line-height:1.1;margin-top:.2mm}.cp .n{line-height:1.05;margin-top:0}.cp .f{line-height:1;padding-top:.2mm}.cp .n{text-align:center}.cp .f{border-top:0;justify-content:center;font-weight:800;color:#000}';
+    '.cp .t{justify-content:center;text-align:center;line-height:1.1;margin-top:.2mm}.t>span{display:block;width:88%;margin:0 auto}.cp .t>span{width:86%}.cp .n{line-height:1.05;margin-top:0}.cp .f{line-height:1;padding-top:.2mm}.lg{height:1.6em;width:1.6em;vertical-align:-.45em;margin-inline-end:.3em;object-fit:contain}.h img{object-fit:contain}.cp .n{text-align:center}.cp .f{border-top:0;justify-content:center;font-weight:800;color:#000}';
 }
 function labelHTML(it, age, wt, W, H){
   var date = new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'numeric', year: '2-digit' });
   var who = ageTxt(age) + (wt ? ' · ' + wt + ' كجم' : '');
-  var logo = location.href.replace(/[^/]*$/, '') + 'icon-192.png';
+  var logo = LOGO_BW;   /* لوجو أبيض وأسود صافي — الطابعة الحرارية بتطبع الرمادي نقط باهتة */
   var s = Math.min(W, H * 1.6);   /* أساس أحجام الخط بالمقاس */
   if (STYLE === 'compact'){
     return '<div class="l cp"><div class="n" data-max="' + (s * .3) + '"><span>' + esc(it.name) + '</span></div>' +
-      '<div class="t" data-max="' + (s * .7) + '"><span>' + esc(it.text) + '</span></div>' +
-      '<div class="f" data-max="6.5"><span>صيدلية السوسي · توصيل <b dir="ltr">' + PHONE + '</b></span></div></div>';
+      '<div class="t" data-max="' + (s * .52) + '"><span>' + esc(it.text) + '</span></div>' +
+      '<div class="f" data-max="6.5"><span><img class="lg" src="' + logo + '">صيدلية السوسي · توصيل <b dir="ltr">' + PHONE + '</b></span></div></div>';
   }
   return '<div class="l"><div class="h" style="font-size:' + (s * .19) + 'pt"><img src="' + logo + '"><span class="p">صيدلية السوسي</span><span class="d">' + date + '</span></div>' +
     '<div class="n" data-max="' + (s * .27) + '"><span>' + esc(it.name) + '</span></div>' +
@@ -504,8 +506,8 @@ function fitAll(doc){
     el.style.fontSize = f + 'pt';
     var multi = el.classList.contains('t');
     /* هامش أمان 10% عشان الطابعة الحرارية بتطبع أعرض شوية من الشاشة */
-    function over(){ return multi ? (el.firstChild.offsetHeight > el.clientHeight * .97 || el.scrollWidth > el.clientWidth)
-                                  : (el.firstChild && el.firstChild.offsetWidth !== undefined ? el.firstChild.offsetWidth : el.scrollWidth) > el.clientWidth * .92; }
+    function over(){ return multi ? (el.firstChild.offsetHeight > el.clientHeight * .97 || el.firstChild.scrollWidth > el.firstChild.clientWidth + 1)
+                                  : (el.firstChild && el.firstChild.offsetWidth !== undefined ? el.firstChild.offsetWidth : el.scrollWidth) > el.clientWidth * .86; }
     while (f > min && over()){ f -= .5; el.style.fontSize = f + 'pt'; }
   });
   /* لو الملصق كله لسه أطول من مكانه → نصغّر الطريقة والاسم مع بعض */

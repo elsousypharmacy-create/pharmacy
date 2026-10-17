@@ -2640,9 +2640,11 @@ const HARD_ESCALATE = ['حامل','مرضعة','مرضع','رضاعة','رضيع
 
 function brainCandidates_(text, history, extra) {
   var seen = {}, out = [];
-  function addQ(q) {
+  function addQ(q, mustHave) {
     q = String(q || '').trim(); if (q.length < 3) return;
     searchStock(q).forEach(function (it) {
+      /* صنف من صورة: لازم اسم الماركة نفسه يبقى في اسم الصنف — مش مجرد نفس التركيز أو المادة الفعالة */
+      if (mustHave && String(it.key || stockKey_(it.name)).indexOf(mustHave) === -1) return;
       var k = it.name + '|' + it.price;
       if (seen[k] || out.length >= 14) return;
       if (it.daysToExpire !== null && it.daysToExpire < MIN_EXPIRY_DAYS_TO_OFFER) return;
@@ -2652,8 +2654,11 @@ function brainCandidates_(text, history, extra) {
   if (extra) addQ(extra);
   if (PHOTO_CTX && PHOTO_CTX.items) PHOTO_CTX.items.forEach(function (it) {
     var n = String(it.name || '').trim(); if (!n) return;
-    addQ(n + (it.strength ? ' ' + it.strength : '')); addQ(n); addQ(n.split(/\s+/)[0]);
+    var brand = (stockKey_(n) || '').split(' ').filter(function (w) { return w.length >= 3; })[0] || '';
+    addQ(n + (it.strength ? ' ' + it.strength : ''), brand); addQ(n, brand); if (brand) addQ(brand, brand);
   });
+  /* في الصور: أسماء الصورة اتدوّر عليها فوق بفلتر الماركة — منكررش البحث بيها من غير فلتر */
+  if (PHOTO_CTX) text = String(text).replace(/\n?\[العميل بعت صورة[\s\S]*$/, '');
   var prod = extractProductLocally_(text);
   addQ(prod);
   prod.split(' ').forEach(function (w) { if (w.length >= 4) addQ(w); });

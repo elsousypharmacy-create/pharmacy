@@ -735,7 +735,7 @@ function logErr(e){
 /* ═══════════ ٣) الاتصال بالسيرفر ═══════════
    كل نداء بيعدّي من هنا — لو الرابط اتغيّر، يتغيّر في مكان واحد. */
 /* 🔒 الأوامر الحساسة بتاخد الرقم السري (بيتطلب مرة ويتحفظ على الجهاز ده) */
-var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1 };
+var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1 };
 function adminPin(){
   var p = ''; try { p = localStorage.getItem('adminPin') || ''; } catch (e) {}
   if (!p){ p = (prompt('الرقم السري') || '').trim(); if (p) try { localStorage.setItem('adminPin', p); } catch (e) {} }
@@ -3520,6 +3520,8 @@ function openSheet(kind){
   if (kind === 'settings'){
     t.textContent = tr('settings');
     b.innerHTML =
+      '<div class="group-title">🔄 تحديث السيرفر</div>' +
+      '<div id="srvup"><div class="state"><div class="spin"></div></div></div>' +
       '<div class="group-title">الإدارة</div>' +
       '<div class="btn-row"><button class="btn btn-quiet" onclick="closeSheet();go(\'admin\',0)">' + tr('agents') + '</button>' +
       '<button class="btn btn-quiet" onclick="closeSheet();go(\'admin\',1)">' + tr('doctors') + '</button></div>' +
@@ -3560,6 +3562,7 @@ function openSheet(kind){
     loadAiCfg();
     loadAiUsage();
     loadBotSet();
+    loadSrvUp();
   }
 }
 function closeSheet(){ document.getElementById('sheet').classList.remove('on'); }
@@ -4005,7 +4008,7 @@ function loadAiUsage(){
   api('getAiUsage').then(function(d){
     var box = document.getElementById('aiuse'); if (!box || !d || !d.ok) return;
     var t = (d.current && d.current.total) || {}, k = (d.current && d.current.kinds) || {}, td = d.today || {};
-    var KN = { bot: 'ردود البوت', dose: 'جرعات الملصقات', test: 'اختبارات', voice: 'رسايل صوتية' };
+    var KN = { bot: 'ردود البوت', dose: 'جرعات الملصقات', test: 'اختبارات', voice: 'رسايل صوتية', photo: 'قراية الصور' };
     var pct = d.budget ? Math.min(100, Math.round((t.cost || 0) / d.budget * 100)) : null;
     box.innerHTML = '<div class="card" style="margin:0 0 10px">' +
       row('استهلاك الشهر ده', ltr(num(t.calls || 0)) + ' طلب · ' + ltr(tok((t.in || 0) + (t.out || 0))) + ' توكن',
@@ -4045,6 +4048,23 @@ function saveAiCfg(pr){
       AI_CFG = d; drawAiCfg(d.provider); loadAiUsage(); toast('✓ اتحفظ — شغال على ' + d.provider); }
     else toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });
+}
+/* تحديث السيرفر: الكود الجديد بيترفع على Drive، والزرار ده بيركّبه ويعمل New version */
+function loadSrvUp(){
+  api('serverUpdateInfo').then(function(d){
+    var b = document.getElementById('srvup'); if (!b || !d || !d.ok) return;
+    b.innerHTML = (d.newer ? '<div class="state" style="font-size:13px;color:var(--ok)">✨ فيه نسخة جديدة جاهزة (' + esc(d.fileDate) + ')</div>'
+                           : '<div class="state" style="font-size:13px">السيرفر محدّث' + (d.lastUpdate ? ' — آخر تحديث ' + esc(d.lastUpdate) : '') + '</div>') +
+      '<button class="btn ' + (d.newer ? 'btn-primary' : 'btn-quiet') + '" onclick="runSrvUp()">🔄 حدّث السيرفر</button>';
+  }).catch(function(){});
+}
+function runSrvUp(){
+  var b = document.getElementById('srvup');
+  b.innerHTML = '<div class="state"><div class="spin"></div>بيحدّث… (حوالي نص دقيقة)</div>';
+  api('serverUpdate').then(function(d){
+    if (d && d.ok){ toast('✓ السيرفر اتحدث — نسخة ' + d.version); loadSrvUp(); }
+    else b.innerHTML = '<div class="state err" style="font-size:13px">' + esc((d && d.error) || tr('failed')) + '</div><button class="btn btn-quiet" onclick="runSrvUp()">جرّب تاني</button>';
+  }).catch(function(e){ b.innerHTML = '<div class="state err">' + esc(String(e)) + '</div>'; });
 }
 /* إعدادات البوت: رسوم التوصيل، المواعيد، أقصى مسافة، قفل اللوحة */
 var BOT_SET = null;

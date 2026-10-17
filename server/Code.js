@@ -4223,6 +4223,14 @@ function sendWeeklyDebtReminders() {
   }
 }
 
+/* 🔁 طلبات Drive أحيانًا بترجع "خطأ في الخدمة" — نستنى ونعيد بدل ما الحساب كله يقع */
+function driveRetry_(fn) {
+  for (var i = 0; i < 3; i++) {
+    try { return fn(); }
+    catch (e) { if (i === 2) throw e; Utilities.sleep(1500 * (i + 1)); }
+  }
+}
+
 function getDebtsData() {
   try {
     var folder = DriveApp.getFolderById(SALES_FOLDER);
@@ -4264,12 +4272,27 @@ function getDebtsData() {
 
     var totalNewDebt = 0, totalCollected = 0;
 
+    /* ⚡ قايمة ملفات الديون كلها في طلب واحد بدل 365 طلب (Drive كان بيرفض من كترهم) */
+    var idx = {};
+    driveRetry_(function () {
+      idx = {};
+      var it = folder.searchFiles("title contains 'debits' and trashed = false");
+      while (it.hasNext()) { var f = it.next(), n = f.getName(); if (!idx[n]) idx[n] = f; }
+    });
+    /* ملفات الأيام القديمة مش بتتغير — بنحفظها في الكاش 6 ساعات عشان منقراش 365 ملف كل ساعة */
+    var cache = CacheService.getScriptCache();
+    var recent = Utilities.formatDate(new Date(today.getTime() - 2 * 86400000), tz, 'yyyy-MM-dd');
+
     for (var i = daysBack - 1; i >= 0; i--) {
       var d = new Date(today.getTime() - i * 86400000);
       var dateStr = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
-      var files = folder.getFilesByName('debits' + dateStr + '.txt');
-      if (!files.hasNext()) continue;
-      var content = files.next().getBlob().getDataAsString('UTF-8');
+      var fname = 'debits' + dateStr + '.txt', file = idx[fname];
+      if (!file) continue;
+      var ck = 'dbt_' + dateStr, content = dateStr < recent ? cache.get(ck) : null;
+      if (content === null) {
+        content = driveRetry_(function () { return file.getBlob().getDataAsString('UTF-8'); });
+        if (dateStr < recent && content && content.length < 90000) { try { cache.put(ck, content, 21600); } catch (eC) {} }
+      }
       if (!content) continue;
 
       var events = [];   // بنجمع كل الأحداث بترتيب ظهورها في الملف

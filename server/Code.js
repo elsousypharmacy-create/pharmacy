@@ -2112,6 +2112,7 @@ function readPhoto_(fileIds) {
     var seenN = {}, items = [];
     good.forEach(function (o) { (o.items || []).forEach(function (it) {
       var k = String(it.name || '').toLowerCase().replace(/[^a-z0-9؀-ۿ]/g, '');
+      it.fromBox = o.kind === 'box';   /* اسم مطبوع على علبة (مش خط إيد) */
       if (k && !seenN[k]) { seenN[k] = 1; items.push(it); }
     }); });
     var kinds = good.map(function (o) { return o.kind; });
@@ -2654,7 +2655,8 @@ function brainCandidates_(text, history, extra) {
   if (extra) addQ(extra);
   if (PHOTO_CTX && PHOTO_CTX.items) PHOTO_CTX.items.forEach(function (it) {
     var n = String(it.name || '').trim(); if (!n) return;
-    var brand = (stockKey_(n) || '').split(' ').filter(function (w) { return w.length >= 3; })[0] || '';
+    /* فلتر الماركة للعلب بس: اسم مطبوع واضح. خط إيد الروشتة غالبًا اسم علمي (فيتامين د، ال-كارنيتين) وأي ماركة تنفع */
+    var brand = it.fromBox ? ((stockKey_(n) || '').split(' ').filter(function (w) { return w.length >= 3; })[0] || '') : '';
     addQ(n + (it.strength ? ' ' + it.strength : ''), brand); addQ(n, brand); if (brand) addQ(brand, brand);
   });
   /* في الصور: أسماء الصورة اتدوّر عليها فوق بفلتر الماركة — منكررش البحث بيها من غير فلتر */

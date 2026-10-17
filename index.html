@@ -45,7 +45,7 @@ html{-webkit-text-size-adjust:100%}
 body{
   background:var(--bg);color:var(--ink);
   font-family:'Cairo',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
-  font-size:var(--t-body);line-height:1.5;padding-bottom:84px;
+  font-size:var(--t-body);line-height:1.5;padding-bottom:calc(100px + env(safe-area-inset-bottom));
   -webkit-font-smoothing:antialiased;
 }
 button{font-family:inherit}
@@ -2982,6 +2982,10 @@ function sendCoupons(){
    متابعة · استرجاع · جدد · محظورين · الكل
    وكل صف بيوريك "من كام يوم آخر زيارة" — وبيتداس يفتح ملف العميل.
    ═══════════════════════════════════════════════════════════════ */
+var CUST_PERS = [[30, 'شهر'], [60, 'شهرين'], [90, '3 شهور'], [180, '6 شهور'], [365, 'سنة']];
+var CUST_PER = 30;
+try { CUST_PER = parseInt(localStorage.getItem('custPer'), 10) || 30; } catch (e) {}
+var CUST_VIS = null, CUST_VIS_LOADING = false;
 var CUST = { sec: 'home', list: [], dash: null, news: null, q: '', cls: 'all',
              cur: [], curTitle: '', one: null, hist: null, confirmBlock: false };
 var CUST_LOG = { type: 'call', result: 'answered' };
@@ -2995,6 +2999,7 @@ function pgCustomers(){
   CUST.sec = CUST_NEXT || 'home'; CUST_NEXT = null;
   apiCached('getCustomers', {}, box, drawCustomers);
   loadCustDash();
+  loadCustVisits();
 }
 
 /* أرقام الاسترجاع من السيرفر — بتوصل بعد القايمة، وبنعيد الرسم لما توصل */
@@ -3007,6 +3012,44 @@ function loadCustDash(){
         drawCustomers(CUST.list, document.getElementById('p-cust'));
     }
   }).catch(function(e){ logErr(e); });
+}
+
+/* زيارات الفترة — أول مرة بتتحسب على دفعات، فبنعيد النداء لحد ما تكمل */
+function loadCustVisits(tries){
+  tries = tries || 0;
+  if (CUST_VIS && CUST_VIS.days === CUST_PER && !CUST_VIS.missingDays) return;
+  CUST_VIS_LOADING = true;
+  api('getCustomerVisits', { days: CUST_PER }).then(function(d){
+    if (!d || !d.ok) throw new Error((d && d.error) || 'visits');
+    if (d.days !== CUST_PER) return;
+    CUST_VIS = d;
+    CUST_VIS_LOADING = !!d.missingDays && tries < 20;
+    if (custOnTab() && CUST.list.length) drawCustomers(CUST.list, document.getElementById('p-cust'));
+    if (d.missingDays && tries < 20) loadCustVisits(tries + 1);
+  }).catch(function(e){ logErr(e); CUST_VIS_LOADING = false; });
+}
+function setCustPer(n){
+  CUST_PER = n; CUST_VIS = null;
+  try { localStorage.setItem('custPer', String(n)); } catch (e) {}
+  drawCustomers(CUST.list, document.getElementById('p-cust'));
+  loadCustVisits();
+}
+function custVis(c){
+  if (!CUST_VIS || !CUST_VIS.customers) return null;
+  return CUST_VIS.customers[custPhone(c.phone)] || { v: 0, n: 0, s: 0, l: '' };
+}
+function custAvg(c){
+  var v = custVis(c); if (!v) return null;
+  return Math.round(v.v / (CUST_PER / 30) * 10) / 10;
+}
+function custPerBar(){
+  var h = '<div class="ctl"><div class="ctl-main">' + CUST_PERS.map(function(p){
+    return ctlBtn(p[1], CUST_PER === p[0], 'setCustPer(' + p[0] + ')');
+  }).join('') + '</div></div>';
+  if (CUST_VIS_LOADING) h += '<div class="state" style="padding:0 0 8px;font-size:12px">' +
+    '<span class="spin" style="width:12px;height:12px;display:inline-block;vertical-align:middle"></span> بيحسب الزيارات' +
+    (CUST_VIS && CUST_VIS.missingDays ? ' — فاضل ' + ltr(CUST_VIS.missingDays) + ' يوم' : '') + '</div>';
+  return h;
 }
 
 function setCustSec(k){
@@ -3048,6 +3091,7 @@ function byDaysDesc(a, b){
 /* الشيت بيخزّن الرقم كعدد فالصفر اللي في الأول بيضيع: 1224565199 → 01224565199 */
 function custPhone(p){
   p = String(p || '').replace(/\D/g, '');
+  if (p.length === 12 && p.indexOf('20') === 0) p = '0' + p.slice(2);
   return (p.length === 10 && p.charAt(0) === '1') ? '0' + p : p;
 }
 function custLast(c){
@@ -3059,6 +3103,8 @@ function custRow(c, right){
   return '<div class="row" onclick="openCust(\'' + esc(String(c.phone)) + '\')" style="cursor:pointer">' +
     '<div class="row-main" style="flex:1"><b>' + esc(c.name || '—') + '</b>' +
     '<small>' + custLast(c) + (c.cls ? ' · ' + esc(c.cls) : '') + '</small>' +
+    (custAvg(c) !== null ? '<small>متوسط ' + ltr(custAvg(c)) + ' زيارة/شهر' +
+      (custVis(c).s ? ' · ' + ltr(num(custVis(c).s)) + ' ج' : '') + '</small>' : '') +
     '<small style="color:var(--ink-3)">' + ltr(custPhone(c.phone)) + '</small></div>' +
     '<span style="display:flex;align-items:center;gap:8px;flex-shrink:0">' + (right || daysBadge(c)) +
     '<span style="opacity:.4;font-size:16px">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></span></div>';
@@ -3071,8 +3117,8 @@ function custGroups(list){
     blocked: blocked,
     follow:  live.filter(function(c){ return c.status === ST_ALERT; }).sort(byDaysDesc),
     recover: live.filter(function(c){ return c.status === ST_WAIT || c.status === ST_FAIL; }).sort(byDaysDesc),
-    active:  live.filter(function(c){ return c.status !== ST_ALERT && c.status !== ST_WAIT && c.status !== ST_FAIL; })
-                 .sort(function(a, b){ return -byDaysDesc(a, b); })
+    active:  live.filter(function(c){ var d = custDays(c); return d !== null && d <= CUST_PER; })
+                 .sort(function(a, b){ return ((custAvg(b) || 0) - (custAvg(a) || 0)) || -byDaysDesc(a, b); })
   };
 }
 
@@ -3083,6 +3129,7 @@ function drawCustomers(res, box){
   var G = custGroups(list), dash = CUST.dash, html = '';
 
   /* ── الشاشة الأولى ── */
+  html += custPerBar();
   if (CUST.sec === 'home'){
     var waitN = G.recover.filter(function(c){ return c.status === ST_WAIT; }).length;
     var failN = G.recover.length - waitN;
@@ -3094,7 +3141,10 @@ function drawCustomers(res, box){
         label: tr('returnRate'), tone: 'brand', note: null, sub: tr('thisMonth') }
     ]);
 
-    html += secBtn('active', 'ok', 'نشطين', 'بيشتروا في معادهم — الأحدث فوق',
+    var perName = CUST_PERS.filter(function(p){ return p[0] === CUST_PER; })[0][1];
+    var actAvg = G.active.length && CUST_VIS ? Math.round(G.active.reduce(function(a, c){ return a + (custAvg(c) || 0); }, 0) / G.active.length * 10) / 10 : null;
+    html += secBtn('active', 'ok', 'نشطين', 'زاروا خلال ' + perName +
+      (actAvg !== null ? ' · متوسط ' + ltr(actAvg) + ' زيارة/شهر' : ''),
       ltr(num(G.active.length)), tr('customers'), 'setCustSec');
     html += secBtn('follow', G.follow.length ? 'warn' : 'ok', tr('needFollow'), tr('followSub'),
       ltr(num(G.follow.length)), tr('customers'), 'setCustSec');
@@ -3114,19 +3164,19 @@ function drawCustomers(res, box){
   /* ── الأقسام ── */
   var TITLES = { active: 'نشطين', follow: tr('needFollow'), recover: tr('recoverSec'), new: tr('newSec'),
                  blocked: tr('blockedSec'), all: tr('allCust') };
-  html += secHead(TITLES[CUST.sec] || '', 'custMenu()', 'setCustSec(\'home\')');
+  html = secHead(TITLES[CUST.sec] || '', 'custMenu()', 'setCustSec(\'home\')') + html;
 
   if (CUST.sec === 'active'){
     CUST.cur = G.active; CUST.curTitle = 'نشطين';
     html += card('نشطين', ltr(num(G.active.length)) + ' ' + tr('customers'),
-      G.active.length ? G.active.slice(0, 100).map(function(c){ return custRow(c); }).join('') : emptyState());
+      G.active.length ? G.active.map(function(c){ return custRow(c); }).join('') : emptyState());
   }
 
   if (CUST.sec === 'follow'){
     CUST.cur = G.follow; CUST.curTitle = tr('needFollow');
     html += '<div class="state" style="padding:0 0 10px;text-align:start">' + tr('followNote') + '</div>';
     html += card(tr('needFollow'), ltr(num(G.follow.length)) + ' ' + tr('customers'),
-      G.follow.length ? G.follow.slice(0, 100).map(function(c){ return custRow(c); }).join('') : emptyState());
+      G.follow.length ? G.follow.map(function(c){ return custRow(c); }).join('') : emptyState());
   }
 
   if (CUST.sec === 'recover'){
@@ -3140,7 +3190,7 @@ function drawCustomers(res, box){
         row(tr('failedWord'), tr('failedSub'), ltr(num(dash.failed_followups || 0))));
     }
     html += card(tr('inRecovery'), ltr(num(G.recover.length)) + ' ' + tr('customers'),
-      G.recover.length ? G.recover.slice(0, 100).map(function(c){
+      G.recover.length ? G.recover.map(function(c){
         var failed = c.status === ST_FAIL;
         return custRow(c, badge(ltr(num(c.follow_up_count || 0)) + ' ' + tr('attemptsWord'), failed ? 'bad' : 'warn'));
       }).join('') : emptyState());
@@ -3160,7 +3210,7 @@ function drawCustomers(res, box){
         return row(e, null, ltr(num(byEmp[e])));
       }).join(''));
       html += card(tr('newSec'), ltr(num(N.length)) + ' ' + tr('customers'),
-        N.length ? N.slice(0, 100).map(function(x){
+        N.length ? N.map(function(x){
           return '<div class="row"><div class="row-main"><b>' + esc(x.name || '—') + '</b><small>' +
             ltr(x.phone) + ' · ' + esc(x.employee || '') + '</small></div>' +
             badge(ltr(String(x.date || '').substring(5)), 'brand') + '</div>';
@@ -3202,8 +3252,8 @@ function custListHtml(){
   }).sort(byDaysDesc);
   CUST.cur = rows; CUST.curTitle = tr('allCust');
   return card(tr('allCust'), ltr(num(rows.length)) + ' ' + tr('customers'),
-    rows.length ? rows.slice(0, 100).map(function(c){ return custRow(c); }).join('') +
-      (rows.length > 100 ? '<div class="state" style="padding:10px 0 0">' + tr('moreInExport') +
+    rows.length ? rows.map(function(c){ return custRow(c); }).join('') +
+      (false ? '<div class="state" style="padding:10px 0 0">' + tr('moreInExport') +
         ' (' + ltr(rows.length - 100) + ')</div>' : '') : emptyState());
 }
 function custFilter(){
@@ -3220,6 +3270,8 @@ function expCustList(k){
              'آخر زيارة (يوم)': ds === null ? '—' : ds,
              'زيارات الشهر': c.monthly_visits === undefined ? '' : c.monthly_visits,
              'إنفاق الشهر': c.monthly_spend === undefined ? '' : c.monthly_spend,
+             'متوسط زيارات/شهر': custAvg(c) === null ? '' : custAvg(c),
+             'إنفاق الفترة': custVis(c) ? custVis(c).s : '',
              'الحالة': c.status || '' };
   });
   k === 'x' ? toExcel(rows, 'customers') : toPDF(rows, CUST.curTitle || tr('customers'));

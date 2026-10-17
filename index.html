@@ -3476,6 +3476,12 @@ function openSheet(kind){
       '<div class="group-title">' + tr('expFillTitle') + '</div>' +
       '<button class="btn btn-quiet" onclick="runExpBackfill()">' + tr('expFillBtn') + '</button>' +
       '<div id="expfill"></div>' +
+      '<div class="group-title">الذكاء الاصطناعي — اختار اللي على مزاجك</div>' +
+      '<div id="aicfg"><div class="state"><div class="spin"></div></div></div>' +
+      '<div class="group-title">بوت العملاء (الذكاء الاصطناعي)</div>' +
+      '<div class="btn-row"><button class="btn btn-quiet" onclick="runAiTest()">اختبر الرد</button>' +
+      '<button class="btn btn-quiet" onclick="runBotStatus()">سرعة البوت</button></div>' +
+      '<div id="aibox"></div>' +
       '<div class="group-title">تنظيف مساحة Drive</div>' +
       '<button class="btn btn-quiet" onclick="runClean(0)">احسب هيمسح كام</button>' +
       '<div id="cleanbox"></div>' +
@@ -3490,6 +3496,7 @@ function openSheet(kind){
         return row(e.m, ltr(e.t));
       }).join('') : '<div class="state">' + tr('noErrors') + '</div>');
     snapStatus();
+    loadAiCfg();
   }
 }
 function closeSheet(){ document.getElementById('sheet').classList.remove('on'); }
@@ -3922,6 +3929,70 @@ function runExpBackfill(){
   }).catch(function(e){ logErr(e); box.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
 
+var AI_PROV = [['claude', 'Claude'], ['grok', 'Grok'], ['openai', 'ChatGPT'], ['gemini', 'Gemini']];
+var AI_CFG = null;
+function aiInp(id, ph, type, val){
+  return '<input id="' + id + '" type="' + (type || 'text') + '" dir="ltr" placeholder="' + esc(ph) + '" value="' + esc(val || '') + '" autocomplete="off" ' +
+    'style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);margin-bottom:8px;font-family:inherit">';
+}
+function loadAiCfg(){
+  api('getAiConfig').then(function(d){ if (d && d.ok){ AI_CFG = d; drawAiCfg(d.provider); } })
+    .catch(function(){ var b = document.getElementById('aicfg'); if (b) b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+}
+function drawAiCfg(pr){
+  var d = AI_CFG, box = document.getElementById('aicfg'); if (!box || !d) return;
+  var def = d.defaults[pr] || {}, same = pr === d.provider;
+  box.innerHTML =
+    '<div class="ctl"><div class="ctl-main">' + AI_PROV.map(function(p){
+      return ctlBtn(p[1] + (d.keys[p[0]] ? ' ✓' : ''), p[0] === pr, "drawAiCfg('" + p[0] + "')"); }).join('') + '</div></div>' +
+    (same ? '<div class="state" style="padding:0 0 6px;font-size:12px">ده الشغال دلوقتي</div>' : '') +
+    aiInp('aiKey', d.keys[pr] ? 'المفتاح محفوظ ' + d.keys[pr] + ' — سيبه فاضي لو مش هتغيّره' : 'الصق مفتاح API هنا', 'password') +
+    '<small style="color:var(--ink-2)">موديل البوت (سريع ورخيص)</small>' + aiInp('aiBot', def.bot, 'text', same ? (d.bot !== def.bot ? d.bot : '') : '') +
+    '<small style="color:var(--ink-2)">موديل الجرعات (أدق)</small>' + aiInp('aiDose', def.dose, 'text', same ? (d.dose !== def.dose ? d.dose : '') : '') +
+    aiInp('aiPin', d.pinSet ? 'الرقم السري' : 'اختار رقم سري جديد (4–8 أرقام)', 'password') +
+    '<button class="btn btn-primary" onclick="saveAiCfg(\'' + pr + '\')">احفظ واستخدم ' + esc((AI_PROV.filter(function(p){ return p[0] === pr; })[0] || [])[1] || pr) + '</button>' +
+    '<div class="state" style="font-size:12px">المفتاح بيتحفظ على السيرفر بس، ومش بيظهر في الصفحة. موديل فاضي = الافتراضي.</div>';
+}
+function saveAiCfg(pr){
+  var v = function(id){ return (document.getElementById(id) || {}).value || ''; };
+  post({ action: 'setAiConfig', provider: pr, key: v('aiKey'), bot: v('aiBot'), dose: v('aiDose'), pin: v('aiPin') }).then(function(d){
+    if (d && d.ok){ AI_CFG = d; drawAiCfg(d.provider); toast('✓ اتحفظ — شغال على ' + d.provider); }
+    else toast((d && d.error) || tr('failed'));
+  }).catch(function(){ toast(tr('failed')); });
+}
+function runBotStatus(){
+  var box = document.getElementById('aibox');
+  box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';
+  api('botStatus').then(function(d){
+    if (!d || !d.ok){ box.innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + '</div>'; return; }
+    var mode = d.polling ? 'بيسأل كل دقيقة (بطيء 1–3 دقايق)' : (d.viaRelay ? 'فوري عن طريق الوسيط ✓' : 'ويبهوك مباشر على جوجل');
+    var bad = d.polling || (!d.viaRelay && d.lastError);
+    box.innerHTML = row('طريقة الاستلام', null, badge(esc(mode), bad ? 'warn' : 'ok')) +
+      row('رسايل متأخرة في الطابور', null, badge(ltr(d.pending), d.pending ? 'bad' : 'ok')) +
+      (d.lastError ? row('آخر خطأ', ltr(esc(d.lastErrorAt)), '<small dir="ltr">' + esc(d.lastError) + '</small>') : '') +
+      row('الموديل', null, esc(d.provider) + (d.hasKey ? '' : ' — المفتاح مش متحط')) +
+      (bad ? '<div class="state" style="text-align:start;font-size:13px">عشان يبقى فوري: اعمل الوسيط على Cloudflare (ملف worker.js) وحط لينكه هنا:</div>' +
+        '<input id="relayUrl" dir="ltr" placeholder="https://....workers.dev" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);margin-bottom:8px">' +
+        '<button class="btn btn-primary" onclick="setRelay()">فعّل الوسيط</button>' : '');
+  }).catch(function(e){ box.innerHTML = '<div class="state err">' + esc(String(e)) + '</div>'; });
+}
+function setRelay(){
+  var u = (document.getElementById('relayUrl') || {}).value || '';
+  api('botSetRelay', { url: u.trim() }).then(function(d){
+    if (d && d.ok){ toast('✓ البوت بقى فوري'); runBotStatus(); }
+    else toast((d && d.error) || tr('failed'));
+  }).catch(function(){ toast(tr('failed')); });
+}
+function runAiTest(){
+  var box = document.getElementById('aibox');
+  box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';
+  api('aiTest', { q: 'عندكم بنادول؟' }).then(function(d){
+    box.innerHTML = row('الموديل اللي رد', null, esc(d.provider || '—')) +
+      (d.hasKey === false ? '<div class="state err">مفتاح الموديل مش متحط — البوت شغال على Gemini الاحتياطي</div>' : '') +
+      row('السرعة', null, ltr((d.ms / 1000).toFixed(1) + ' ث')) +
+      '<div class="state" style="text-align:start">' + esc(d.reply || '') + '</div>';
+  }).catch(function(e){ box.innerHTML = '<div class="state err">' + esc(String(e)) + '</div>'; });
+}
 function runClean(apply){
   var box = document.getElementById('cleanbox');
   box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';

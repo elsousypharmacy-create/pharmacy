@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ملصقات الأدوية — صيدلية السوسي</title>
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#111827;--ink2:#4b5563;--ink3:#9ca3af;--line:#e5e7eb;
+  --brand:#1d9bd7;--brand2:#14365f;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--r:14px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Cairo',system-ui,sans-serif;font-size:15px}
+button,input,select,textarea{font-family:inherit;font-size:inherit}
+header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:12px;padding:10px 16px}
+header img{width:40px;height:40px;border-radius:50%}
+header h1{font-size:18px;margin:0;flex:1}
+header small{display:block;font-size:12px;color:var(--ink2);font-weight:400}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--ink3);display:inline-block;margin-inline-end:6px}
+.dot.on{background:var(--ok)}.dot.err{background:var(--bad)}
+.wrap{max-width:860px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.card h2{font-size:16px;margin:0 0 8px}
+.inv{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.inv:last-child{border-bottom:0}
+.inv .m{flex:1;min-width:0}
+.inv b{display:block}
+.inv small{color:var(--ink2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn{border:0;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer;background:#eef2f7;color:var(--ink)}
+.btn.p{background:var(--brand);color:#fff}.btn.d{background:#fee2e2;color:var(--bad)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.tag{font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;background:#dcfce7;color:var(--ok);white-space:nowrap}
+.tag.s{background:#f3f4f6;color:var(--ink2)}
+.muted{color:var(--ink2);font-size:13px}
+/* النافذة */
+.ov{position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:20;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 12px}
+.ov.on{display:flex}
+.md{background:#fff;border-radius:18px;width:100%;max-width:760px;padding:18px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.md h3{margin:0 0 4px;font-size:20px}
+.row3{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.fld label{display:block;font-weight:700;font-size:13px;margin-bottom:4px}
+.fld input{width:100%;padding:12px;border:2px solid var(--line);border-radius:12px;font-size:20px;font-weight:700;text-align:center}
+.fld input:focus{outline:0;border-color:var(--brand)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;min-width:90px;padding:10px;border-radius:10px;border:2px solid var(--line);background:#fff;font-weight:700;cursor:pointer}
+.seg button.on{border-color:var(--brand);background:#e8f5fc;color:var(--brand2)}
+.seg button.on.w{border-color:var(--bad);background:#fee2e2;color:var(--bad)}
+.warn{background:#fef3c7;color:#92400e;border-radius:10px;padding:10px;font-size:13px;margin-top:8px;display:none}
+.item{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px}
+.item.off{opacity:.5}
+.item-h{display:flex;align-items:center;gap:8px}
+.item-h input{width:20px;height:20px}
+.item-h b{flex:1;direction:ltr;text-align:right}
+.item textarea{width:100%;margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px;min-height:44px;resize:vertical}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.chips button{border:1px solid var(--line);background:#f9fafb;border-radius:99px;padding:3px 10px;font-size:12px;cursor:pointer}
+.src{font-size:11px;color:var(--ok);margin-inline-start:6px}
+.ai{font-size:12px;margin-top:6px;color:var(--ink2)}
+.ai .w{color:var(--bad);font-weight:700;display:block}
+.ai .c{direction:ltr;text-align:right;display:block;color:var(--ink3)}
+.cf{font-size:11px;font-weight:700;padding:1px 7px;border-radius:99px;margin-inline-start:4px}
+.cf.high{background:#dcfce7;color:var(--ok)}.cf.medium{background:#fef3c7;color:#92400e}.cf.low{background:#fee2e2;color:var(--bad)}
+#aiAll{margin-top:10px}
+.aibar{background:#eef6fd;border-radius:10px;padding:10px;font-size:13px}
+.foot{display:flex;gap:8px;margin-top:16px;position:sticky;bottom:-18px;background:#fff;padding:12px 0}
+.foot .btn{flex:1;padding:14px;font-size:16px}
+.err{color:var(--bad);font-size:13px;min-height:18px;margin-top:6px}
+select{padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:#fff}
+@media (max-width:520px){.row3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <img src="icon-192.png" alt="">
+  <h1>ملصقات الأدوية<small><span class="dot" id="dot"></span><span id="st">بيتوصل…</span></small></h1>
+  <select id="size" onchange="setSize(this.value)" title="مقاس الملصق">
+    <option value="50x30">50×30 مم</option>
+    <option value="40x30">40×30 مم</option>
+    <option value="60x40">60×40 مم</option>
+    <option value="40x25">40×25 مم</option>
+  </select>
+</header>
+
+<div class="wrap">
+  <div class="card" id="hint">
+    <b>الصفحة دي بتفتح لوحدها أول ما فاتورة تتقفل.</b>
+    <div class="muted">سيبها مفتوحة على جهاز الكاشير. دوس في أي حتة مرة عشان صوت التنبيه يشتغل.</div>
+  </div>
+  <div class="card">
+    <h2>فواتير النهارده</h2>
+    <div id="list"><div class="muted">بيحمّل…</div></div>
+  </div>
+</div>
+
+<div class="ov" id="ov">
+  <div class="md">
+    <h3 id="mT"></h3>
+    <div class="muted" id="mS"></div>
+    <div class="row3">
+      <div class="fld"><label>العمر (سنة) *</label><input id="age" type="number" inputmode="decimal" min="0" max="120" oninput="onAge()"></div>
+      <div class="fld"><label id="wL">الوزن (كجم)</label><input id="wt" type="number" inputmode="decimal" min="1" max="250" oninput="maybeAI();check()"></div>
+    </div>
+    <div class="fld"><label>حامل أو مرضعة؟ *</label>
+      <div class="seg" id="preg">
+        <button onclick="setPreg('none',this)">لا</button>
+        <button onclick="setPreg('pregnant',this)">حامل</button>
+        <button onclick="setPreg('breast',this)">مرضعة</button>
+      </div>
+      <div class="warn" id="pw">⚠️ حامل/مرضعة: الصيدلي لازم يراجع أمان كل دوا قبل الطباعة.
+        <label style="display:block;margin-top:6px"><input type="checkbox" id="pok" onchange="check()"> راجعت الأمان</label></div>
+    </div>
+    <div id="items"></div>
+    <div id="aiAll"></div>
+    <div class="err" id="err"></div>
+    <div class="foot">
+      <button class="btn p" id="go" onclick="confirmPrint()" disabled>تأكيد واطبع</button>
+      <button class="btn" onclick="skipInv()">تخطي</button>
+    </div>
+  </div>
+</div>
+
+<iframe id="pf" style="position:fixed;width:0;height:0;border:0;left:-9999px" title="print"></iframe>
+
+<script>
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7ctTVJjckmbTxegDq7E3R3p6aEBzqt275HNL8SBfWg/exec';
+var PHONE = '01143404023';
+var CHIPS = ['قرص كل 8 ساعات','قرص كل 12 ساعة','قرص مرة يوميًا','بعد الأكل','قبل الأكل','على الريق','عند اللزوم','لمدة 5 أيام','لمدة 7 أيام','5 مل كل 8 ساعات','5 مل كل 12 ساعة','دهان مرتين يوميًا','نقطة في كل عين 3 مرات'];
+
+function ls(k, v){ try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+var SINCE = parseInt(ls('lblSince'), 10) || 0, FIRST = !SINCE;
+var AI_IDX = [], AI_ND = {}, AI_KEY = '', AI_USED = false, AI_BUSY = false, AI_T = null;
+var INVS = [], QUEUE = [], CUR = null, PREG = '', SIZE = ls('lblSize') || '50x30';
+document.getElementById('size').value = SIZE;
+
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function api(action, params){
+  var u = SCRIPT_URL + '?action=' + action;
+  for (var k in (params || {})) u += '&' + k + '=' + encodeURIComponent(params[k]);
+  return fetch(u + '&_ts=' + Date.now(), { cache: 'no-store' }).then(function(r){ return r.json(); });
+}
+function status(ok, txt){
+  document.getElementById('dot').className = 'dot ' + (ok ? 'on' : 'err');
+  document.getElementById('st').textContent = txt;
+}
+
+/* صوت تنبيه بسيط */
+var AC = null;
+document.addEventListener('click', function(){ if (!AC) try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }, { once: false });
+function beep(){
+  if (!AC) return;
+  try { var o = AC.createOscillator(), g = AC.createGain(); o.frequency.value = 880; o.connect(g); g.connect(AC.destination);
+    g.gain.setValueAtTime(.2, AC.currentTime); o.start(); o.stop(AC.currentTime + .25); } catch (e) {}
+}
+
+function poll(){
+  api('labelsFeed', { since: SINCE }).then(function(d){
+    if (!d || !d.ok) throw new Error((d && d.error) || 'feed');
+    status(true, 'شغال · آخر تحديث ' + new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }));
+    INVS = d.invoices || [];
+    if (FIRST){ FIRST = false; SINCE = d.maxId; ls('lblSince', String(SINCE)); }
+    else {
+      INVS.slice().reverse().forEach(function(inv){
+        if (inv.isNew && !inv.done && inv.hasDrug !== false && inv.items.length && !QUEUE.some(function(q){ return q.id === inv.id; }) && (!CUR || CUR.id !== inv.id))
+          QUEUE.push(inv);
+      });
+      if (d.maxId > SINCE){ SINCE = d.maxId; ls('lblSince', String(SINCE)); }
+    }
+    drawList();
+    if (!CUR && QUEUE.length){ beep(); openInv(QUEUE.shift()); }
+  }).catch(function(e){ status(false, 'مش متوصل — بيحاول تاني'); });
+}
+
+function drawList(){
+  var box = document.getElementById('list');
+  if (!INVS.length){ box.innerHTML = '<div class="muted">لسه مفيش فواتير النهارده.</div>'; return; }
+  box.innerHTML = INVS.map(function(inv, i){
+    return '<div class="inv"><div class="m"><b>#' + esc(inv.id) + ' — ' + esc(inv.cust || 'عميل نقدي') + '</b>' +
+      '<small>' + inv.items.map(function(x){ return esc(x.name); }).join('، ') + '</small></div>' +
+      (inv.done ? '<span class="tag">✓ اتعملت</span>' : '') +
+      '<button class="btn" onclick="openInv(INVS[' + i + '])">اطبع</button></div>';
+  }).join('');
+}
+
+function openInv(inv){
+  CUR = inv; PREG = '';
+  document.getElementById('mT').textContent = 'فاتورة #' + inv.id + ' — ' + (inv.cust || 'عميل نقدي');
+  document.getElementById('mS').textContent = (inv.employee ? 'الموظف: ' + inv.employee + ' · ' : '') + inv.items.length + ' صنف';
+  document.getElementById('age').value = ''; document.getElementById('wt').value = '';
+  document.getElementById('pok').checked = false; document.getElementById('pw').style.display = 'none';
+  [].forEach.call(document.querySelectorAll('#preg button'), function(b){ b.className = ''; });
+  document.getElementById('items').innerHTML = inv.items.map(function(it, i){
+    return '<div class="item' + (it.nondrug ? ' off' : '') + '" id="it' + i + '"><div class="item-h"><input type="checkbox" id="c' + i + '"' + (it.nondrug ? '' : ' checked') + ' onchange="toggleIt(' + i + ')">' +
+      '<b>' + esc(it.name) + '</b>' + (it.qty > 1 ? '<span class="tag s">×' + it.qty + '</span>' : '') + '</div>' +
+      (it.active ? '<div class="muted" style="direction:ltr;text-align:right">' + esc(it.active) + '</div>' : '') +
+      '<div class="ai" id="a' + i + '"></div>' +
+      '<textarea id="t' + i + '" placeholder="طريقة الاستخدام…" oninput="this.dataset.touched=1;check()"></textarea>' +
+      '<div class="chips" id="lc' + i + '"></div>' +
+      '<div class="chips">' + CHIPS.map(function(c){ return '<button onclick="addChip(' + i + ',\'' + c + '\')">' + c + '</button>'; }).join('') + '</div></div>';
+  }).join('');
+  AI_KEY = ''; AI_USED = false; AI_BUSY = false; AI_ND = {};
+  document.getElementById('aiAll').innerHTML = '';
+  document.getElementById('ov').classList.add('on');
+  setTimeout(function(){ document.getElementById('age').focus(); }, 50);
+  check();
+}
+
+function band(){ var a = parseFloat(document.getElementById('age').value); return (!isNaN(a) && a < 12) ? 'child' : 'adult'; }
+function onAge(){
+  var b = band(), child = b === 'child';
+  document.getElementById('wL').textContent = child ? 'الوزن (كجم) *' : 'الوزن (كجم)';
+  CUR.items.forEach(function(it, i){
+    var sug = child ? (it.child || '') : (it.adult || '');
+    document.getElementById('lc' + i).innerHTML = sug
+      ? '<button onclick="useLearned(' + i + ')" title="اللي الصيدلي كتبه آخر مرة">↩ آخر مرة: ' + esc(sug) + '</button>' : '';
+  });
+  maybeAI();
+  check();
+}
+function useLearned(i){
+  var it = CUR.items[i], t = document.getElementById('t' + i);
+  t.value = band() === 'child' ? it.child : it.adult; t.dataset.touched = 1; check();
+}
+
+/* 🤖 لما العمر (والوزن للطفل) وحامل/مرضعة يكتملوا → نطلب الجرعات */
+function maybeAI(){
+  clearTimeout(AI_T);
+  var age = parseFloat(document.getElementById('age').value), wt = parseFloat(document.getElementById('wt').value);
+  if (isNaN(age) || !PREG || (band() === 'child' && isNaN(wt))) return;
+  var key = age + '|' + (isNaN(wt) ? '' : wt) + '|' + PREG;
+  if (key === AI_KEY) return;
+  AI_T = setTimeout(function(){ runAI(key, age, wt); }, 900);
+}
+function runAI(key, age, wt){
+  if (!CUR) return;
+  var inv = CUR;
+  /* الأدوية بس: اللي متعلّم عليها ومش معروف إنها مش دوا */
+  AI_IDX = [];
+  inv.items.forEach(function(it, i){ if (!it.nondrug && document.getElementById('c' + i).checked) AI_IDX.push(i); });
+  if (!AI_IDX.length) return;
+  AI_KEY = key; AI_BUSY = true; check();
+  document.getElementById('aiAll').innerHTML = '<div class="aibar">🤖 الذكاء الاصطناعي بيحسب الجرعات…</div>';
+  api('aiDose', { data: JSON.stringify({ age: age, weight: isNaN(wt) ? '' : wt, preg: PREG,
+    items: AI_IDX.map(function(i){ var it = inv.items[i]; return { name: it.name, active: it.active, qty: it.qty }; }) }) })
+  .then(function(d){
+    if (CUR !== inv || AI_KEY !== key) return;
+    AI_BUSY = false;
+    if (!d || !d.ok){ document.getElementById('aiAll').innerHTML = '<div class="aibar">⚠️ ' + esc((d && d.error) || 'الذكاء الاصطناعي مردش') + ' — اكتب يدوي</div>'; check(); return; }
+    AI_USED = false;
+    (d.items || []).forEach(function(x){
+      var j = (parseInt(x.n, 10) || 0) - 1; if (j < 0 || j >= AI_IDX.length) return; var i = AI_IDX[j];
+      var t = document.getElementById('t' + i), box = document.getElementById('a' + i);
+      if (x.nondrug){
+        document.getElementById('c' + i).checked = false; toggleIt(i); AI_ND[i] = 1;
+        box.innerHTML = 'مش دوا — اتشال من الطباعة'; return;
+      }
+      var h = (x.active ? '<span class="c">' + esc(x.active) + '<span class="cf ' + esc(x.confidence || 'low') + '">' + esc(x.confidence || '') + '</span></span>' : '') +
+        (x.calc ? '<span class="c">' + esc(x.calc) + '</span>' : '') +
+        (x.warn ? '<span class="w">⚠️ ' + esc(x.warn) + '</span>' : '') +
+        (x.known === false ? '<span class="w">مش متأكد من تركيبه — اكتب الجرعة يدوي</span>' : '');
+      box.innerHTML = h;
+      if (!t.dataset.touched && x.label){ t.value = x.label; t.dataset.ai = 1; AI_USED = true; }
+    });
+    document.getElementById('aiAll').innerHTML =
+      (d.interactions ? '<div class="aibar" style="background:#fee2e2;color:#991b1b;margin-bottom:6px">⚠️ ' + esc(d.interactions) + '</div>' : '') +
+      (AI_USED ? '<label class="aibar" style="display:block"><input type="checkbox" id="aiok" onchange="check()"> راجعت جرعات الذكاء الاصطناعي ومسؤول عنها</label>' : '');
+    check();
+  }).catch(function(){
+    if (CUR !== inv) return;
+    AI_BUSY = false; document.getElementById('aiAll').innerHTML = '<div class="aibar">⚠️ النت قطع — اكتب يدوي</div>'; check();
+  });
+}
+function setPreg(v, el){
+  PREG = v;
+  [].forEach.call(document.querySelectorAll('#preg button'), function(b){ b.className = ''; });
+  el.className = 'on' + (v !== 'none' ? ' w' : '');
+  document.getElementById('pw').style.display = v === 'none' ? 'none' : 'block';
+  maybeAI();
+  check();
+}
+function toggleIt(i){ document.getElementById('it' + i).classList.toggle('off', !document.getElementById('c' + i).checked); check(); }
+function addChip(i, c){
+  var t = document.getElementById('t' + i);
+  t.value = (t.value.trim() ? t.value.trim() + ' — ' : '') + c; t.dataset.touched = 1; check();
+}
+
+function check(){
+  var err = '', age = parseFloat(document.getElementById('age').value), wt = parseFloat(document.getElementById('wt').value);
+  if (isNaN(age)) err = 'اكتب العمر';
+  else if (band() === 'child' && isNaN(wt)) err = 'الطفل لازم وزنه';
+  else if (!PREG) err = 'اختار حامل/مرضعة ولا لأ';
+  else if (PREG !== 'none' && !document.getElementById('pok').checked) err = 'لازم تأكد إنك راجعت الأمان';
+  else if (AI_BUSY) err = '🤖 استنى الذكاء الاصطناعي يخلص…';
+  else {
+    var any = false;
+    CUR.items.forEach(function(it, i){
+      if (!document.getElementById('c' + i).checked) return;
+      any = true;
+      if (!document.getElementById('t' + i).value.trim()) err = err || ('اكتب طريقة استخدام ' + it.name + ' أو شيل علامته');
+    });
+    if (!any && !err) err = 'مفيش ولا صنف متعلّم للطباعة';
+    if (!err && AI_USED && !(document.getElementById('aiok') || {}).checked) err = 'علّم إنك راجعت جرعات الذكاء الاصطناعي';
+  }
+  document.getElementById('err').textContent = err;
+  document.getElementById('go').disabled = !!err;
+}
+
+function chosen(){
+  var out = [];
+  CUR.items.forEach(function(it, i){
+    var t = document.getElementById('t' + i);
+    if (document.getElementById('c' + i).checked) out.push({ name: it.name, text: t.value.trim(), ai: !!t.dataset.ai && !t.dataset.touched });
+  });
+  return out;
+}
+
+function ageTxt(a){
+  if (a < 1) return Math.round(a * 12) + ' شهور';
+  return (a % 1 ? a : Math.round(a)) + ' سنة';
+}
+
+function confirmPrint(){
+  var age = parseFloat(document.getElementById('age').value), wt = parseFloat(document.getElementById('wt').value);
+  var items = chosen(), inv = CUR;
+  printLabels(items, age, isNaN(wt) ? null : wt);
+  var nd = inv.items.filter(function(it, i){ return AI_ND[i] && !document.getElementById('c' + i).checked; }).map(function(it){ return it.name; });
+  api('labelsSave', { data: JSON.stringify({ id: inv.id, age: age, weight: isNaN(wt) ? '' : wt, preg: PREG, band: band(), items: items, nondrug: nd }) })
+    .catch(function(){});
+  inv.done = true; closeInv();
+}
+function skipInv(){
+  var inv = CUR;
+  api('labelsSave', { data: JSON.stringify({ id: inv.id, skip: true }) }).catch(function(){});
+  inv.done = true; closeInv();
+}
+function closeInv(){
+  document.getElementById('ov').classList.remove('on'); CUR = null; drawList();
+  if (QUEUE.length) setTimeout(function(){ openInv(QUEUE.shift()); }, 400);
+}
+
+function setSize(v){ SIZE = v; ls('lblSize', v); }
+
+function printLabels(items, age, wt){
+  var wh = SIZE.split('x'), W = +wh[0], H = +wh[1], big = H >= 40;
+  var date = new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'numeric', year: 'numeric' });
+  var who = ageTxt(age) + (wt ? ' · ' + wt + ' كجم' : '');
+  var html = '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">' +
+    '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800&display=swap" rel="stylesheet">' +
+    '<style>@page{size:' + W + 'mm ' + H + 'mm;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Cairo,Tahoma,sans-serif;color:#000}' +
+    '.l{width:' + W + 'mm;height:' + H + 'mm;padding:1.5mm 2mm;page-break-after:always;display:flex;flex-direction:column;overflow:hidden}' +
+    '.h{display:flex;align-items:center;gap:1mm;font-size:' + (big ? 8 : 6.5) + 'pt;font-weight:800;border-bottom:.3mm solid #000;padding-bottom:.6mm}' +
+    '.h img{width:' + (big ? 5 : 4) + 'mm;height:' + (big ? 5 : 4) + 'mm}.h span{flex:1}' +
+    '.n{direction:ltr;text-align:right;font-weight:800;font-size:' + (big ? 9 : 7.5) + 'pt;margin-top:.6mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+    '.t{flex:1;font-weight:800;font-size:' + (big ? 11 : 9) + 'pt;line-height:1.25;margin-top:.4mm;overflow:hidden}' +
+    '.f{display:flex;justify-content:space-between;font-size:' + (big ? 7 : 6) + 'pt;font-weight:600}</style></head><body>' +
+    items.map(function(it){
+      return '<div class="l"><div class="h"><img src="' + location.href.replace(/[^/]*$/, '') + 'icon-192.png"><span>صيدلية السوسي</span><span style="flex:0">' + date + '</span></div>' +
+        '<div class="n">' + esc(it.name) + '</div><div class="t">' + esc(it.text) + '</div>' +
+        '<div class="f"><span>' + esc(who) + '</span><span dir="ltr">' + PHONE + '</span></div></div>';
+    }).join('') + '</body></html>';
+  var f = document.getElementById('pf'), d = f.contentWindow.document;
+  d.open(); d.write(html); d.close();
+  var done = false;
+  function go(){ if (done) return; done = true; try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) {} }
+  if (d.fonts && d.fonts.ready) d.fonts.ready.then(function(){ setTimeout(go, 150); });
+  setTimeout(go, 1500);
+}
+
+poll();
+setInterval(poll, 20000);
+</script>
+</body>
+</html>

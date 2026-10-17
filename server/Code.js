@@ -2083,7 +2083,7 @@ function readPhoto_(fileId) {
       'items: every medicine you can read, as {"name":"trade name in English as printed","strength":"","form":"tablet/syrup/...","sure":true}. ' +
       'For handwritten prescriptions only include names you can read with reasonable confidence, and set "sure":false if unsure.\n' +
       'rx: true if the package says prescription only or it is a chronic/prescription drug (antidiabetic, antihypertensive, antibiotic...).\n' +
-      'label: short Arabic usage notes PRINTED on the box only (e.g. "يتبلع صحيح ومتتكسرش") — never invent a dose.\n' +
+      'label: usage/storage notes PRINTED on the box only, TRANSLATED to simple Egyptian Arabic (never English), e.g. "Do not crush, cut or chew" → "يتبلع صحيح من غير كسر أو مضغ". Never invent a dose. Empty if none.\n' +
       'Reply JSON only: {"kind":"box","items":[{"name":"","strength":"","form":"","sure":true}],"rx":false,"label":""}';
     var models = [AI_DEFAULTS.gemini.bot, GEMINI_MODEL];
     for (var i = 0; i < models.length; i++) {
@@ -2712,7 +2712,7 @@ function brainPrompt_(chatId, text, history, items, noSearch) {
       (PHOTO_CTX.items || []).map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (مش واضح)' : ''); }).join('، ') + '.\n' +
       (PHOTO_CTX.kind === 'prescription'
         ? '→ قوله المتوفر من الروشتة بسعر كل صنف والإجمالي، والمش متوفر، واسأله يحب نجهزها أو نوصلها. وقوله إن الصيدلي هيراجع الروشتة بنفسه. متقولش جرعات الروشتة.\n'
-        : (PHOTO_CTX.rx ? '→ ده دوا بروشتة: متقولش جرعة. قول التوافر والسعر، و' + (PHOTO_CTX.label ? 'المكتوب على العلبة: "' + PHOTO_CTX.label + '"، و' : '') + 'إن الجرعة حسب الدكتور المعالج والصيدلي هيأكدها مع حضرتك (escalate=true لو سأل عن الاستعمال).\n'
+        : (PHOTO_CTX.rx ? '→ ده دوا بروشتة: متقولش جرعة. قول التوافر والسعر، و' + (PHOTO_CTX.label ? 'المكتوب على العلبة (اكتبه بالعربي بس): "' + PHOTO_CTX.label + '"، و' : '') + 'إن الجرعة حسب الدكتور المعالج والصيدلي هيأكدها مع حضرتك (escalate=true لو سأل عن الاستعمال).\n'
                         : '→ رد على سؤاله عن الصنف ده (التوافر والسعر، والاستعمال حسب قواعد الجرعات).\n')) : '') +
     '\nالمخزون المتاح (مطابق لكلام العميل):\n' + stock + '\n\n' +
     formatHistory(history || []) +
@@ -2860,6 +2860,7 @@ function handleCustomerMessage(chatId, message) {
       tgApi_('forwardMessage', { chat_id: PERSONAL_CHAT, from_chat_id: chatId, message_id: message.message_id });
       if (holdOn_(chatId)) { escalateToDoctor_(chatId, '[صورة]' + (message.caption ? ' ' + message.caption : ''), 'صورة'); return; }
       /* 📷 البوت يقرا الصورة: علبة دوا → يرد بالتوافر والسعر · روشتة → المتوفر والإجمالي + تتبعتلك تراجعها */
+      sendTelegram_(chatId, 'استلمنا الصورة 🌿 ثواني وبنشوفها لحضرتك');   /* القراية بتاخد دقيقة تقريبًا */
       sendTypingAction_(chatId);
       var seen = readPhoto_(message.photo[message.photo.length - 1].file_id);
       if (seen && (seen.kind === 'box' || seen.kind === 'prescription') && seen.items && seen.items.length) {

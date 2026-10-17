@@ -3083,7 +3083,18 @@ function loadCustNew(){
   }).catch(function(e){ logErr(e); CUST.news = []; });
 }
 
+/* آخر زيارة: من فواتير البيع الفعلية لو متاحة (أدق)، وإلا من الشيت */
+function custLastDate(c){
+  var v = (CUST_VIS && CUST_VIS.customers) ? CUST_VIS.customers[custPhone(c.phone)] : null;
+  return (v && v.l) ? v.l : '';
+}
 function custDays(c){
+  var ld = custLastDate(c);
+  if (ld){
+    var t = new Date(); t.setHours(0, 0, 0, 0);
+    var d = Math.round((t - new Date(ld + 'T00:00:00')) / 86400000);
+    if (!isNaN(d) && d >= 0) return d;
+  }
   var v = c.days_since;
   if (v === null || v === undefined || v === '') return null;
   v = parseFloat(v);
@@ -3112,9 +3123,11 @@ function custPhone(p){
   return (p.length === 10 && p.charAt(0) === '1') ? '0' + p : p;
 }
 function custLast(c){
-  var ds = custDays(c);
+  var ds = custDays(c), ld = custLastDate(c);
   if (ds === null) return 'آخر زيارة: —';
-  return ds === 0 ? 'آخر زيارة: النهاردة' : ('آخر زيارة: من ' + ltr(ds) + ' يوم');
+  var dt = '';
+  if (ld){ try { dt = new Date(ld + 'T00:00:00').toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' }) + ' · '; } catch (e) {} }
+  return 'آخر زيارة: ' + dt + (ds === 0 ? 'النهاردة' : ds === 1 ? 'إمبارح' : ('من ' + ltr(ds) + ' يوم'));
 }
 function custRow(c, right){
   return '<div class="row" onclick="openCust(\'' + esc(String(c.phone)) + '\')" style="cursor:pointer">' +
@@ -3494,6 +3507,7 @@ function openSheet(kind){
       '<button class="btn btn-quiet" onclick="runExpBackfill()">' + tr('expFillBtn') + '</button>' +
       '<div id="expfill"></div>' +
       '<div class="group-title">الذكاء الاصطناعي — اختار اللي على مزاجك</div>' +
+      '<div id="aiuse"></div>' +
       '<div id="aicfg"><div class="state"><div class="spin"></div></div></div>' +
       '<div class="group-title">بوت العملاء (الذكاء الاصطناعي)</div>' +
       '<div class="btn-row"><button class="btn btn-quiet" onclick="runAiTest()">اختبر الرد</button>' +
@@ -3514,6 +3528,7 @@ function openSheet(kind){
       }).join('') : '<div class="state">' + tr('noErrors') + '</div>');
     snapStatus();
     loadAiCfg();
+    loadAiUsage();
   }
 }
 function closeSheet(){ document.getElementById('sheet').classList.remove('on'); }
@@ -3952,6 +3967,27 @@ function aiInp(id, ph, type, val){
   return '<input id="' + id + '" type="' + (type || 'text') + '" dir="ltr" placeholder="' + esc(ph) + '" value="' + esc(val || '') + '" autocomplete="off" ' +
     'style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);margin-bottom:8px;font-family:inherit">';
 }
+/* استهلاك الذكاء الاصطناعي — الشهر ده والنهارده والشهر اللي فات */
+function usd(x){ return x == null ? '—' : ('$' + (x < 0.01 && x > 0 ? x.toFixed(4) : x.toFixed(2))); }
+function tok(n){ n = n || 0; return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'K' : String(n); }
+function loadAiUsage(){
+  api('getAiUsage').then(function(d){
+    var box = document.getElementById('aiuse'); if (!box || !d || !d.ok) return;
+    var t = (d.current && d.current.total) || {}, k = (d.current && d.current.kinds) || {}, td = d.today || {};
+    var KN = { bot: 'ردود البوت', dose: 'جرعات الملصقات', test: 'اختبارات' };
+    var pct = d.budget ? Math.min(100, Math.round((t.cost || 0) / d.budget * 100)) : null;
+    box.innerHTML = '<div class="card" style="margin:0 0 10px">' +
+      row('استهلاك الشهر ده', ltr(num(t.calls || 0)) + ' طلب · ' + ltr(tok((t.in || 0) + (t.out || 0))) + ' توكن',
+          badge(ltr(usd(t.cost || 0)) + (t.unpriced ? '+' : ''), pct !== null && pct >= 80 ? 'bad' : 'brand')) +
+      (pct !== null ? '<div class="bar" style="margin:0 0 8px"><i style="display:block;height:100%;width:' + pct + '%;background:var(--' + (pct >= 80 ? 'bad' : 'brand') + ')"></i></div>' +
+        '<div class="state" style="padding:0 0 6px;font-size:12px">' + pct + '% من الحد الأقصى ' + ltr(usd(d.budget)) + (pct >= 100 ? ' — الموديل المدفوع واقف لحد أول الشهر' : '') + '</div>' : '') +
+      Object.keys(k).map(function(x){ return row(KN[x] || x, ltr(num(k[x].calls || 0)) + ' طلب', ltr(usd(k[x].cost))); }).join('') +
+      row('النهارده', ltr(num(td.calls || 0)) + ' طلب', ltr(usd(td.cost || 0))) +
+      row('الشهر اللي فات', null, ltr(usd((d.lastMonth.total || {}).cost || 0))) +
+      '<div class="state" style="font-size:11px">التكلفة تقديرية من أسعار الموديل الرسمية. الرصيد الحقيقي في صفحة Billing عند المزوّد. ' +
+      (t.unpriced ? '(+) فيه موديلات مش معروف سعرها، محسوب توكنز بس.' : '') + '</div></div>';
+  }).catch(function(){});
+}
 function loadAiCfg(){
   api('getAiConfig').then(function(d){ if (d && d.ok){ AI_CFG = d; drawAiCfg(d.provider); } })
     .catch(function(){ var b = document.getElementById('aicfg'); if (b) b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
@@ -3966,15 +4002,16 @@ function drawAiCfg(pr){
     aiInp('aiKey', d.keys[pr] ? 'المفتاح محفوظ ' + d.keys[pr] + ' — سيبه فاضي لو مش هتغيّره' : 'الصق مفتاح API هنا', 'password') +
     '<small style="color:var(--ink-2)">موديل البوت (سريع ورخيص)</small>' + aiInp('aiBot', def.bot, 'text', same ? (d.bot !== def.bot ? d.bot : '') : '') +
     '<small style="color:var(--ink-2)">موديل الجرعات (أدق)</small>' + aiInp('aiDose', def.dose, 'text', same ? (d.dose !== def.dose ? d.dose : '') : '') +
+    '<small style="color:var(--ink-2)">حد أقصى للصرف في الشهر بالدولار (فاضي = من غير حد)</small>' + aiInp('aiBudget', 'مثلًا 10', 'number', '') +
     aiInp('aiPin', d.pinSet ? 'الرقم السري' : 'اختار رقم سري جديد (4–8 أرقام)', 'password') +
     '<button class="btn btn-primary" onclick="saveAiCfg(\'' + pr + '\')">احفظ واستخدم ' + esc((AI_PROV.filter(function(p){ return p[0] === pr; })[0] || [])[1] || pr) + '</button>' +
     '<div class="state" style="font-size:12px">المفتاح بيتحفظ على السيرفر بس، ومش بيظهر في الصفحة. موديل فاضي = الافتراضي.</div>';
 }
 function saveAiCfg(pr){
   var v = function(id){ return (document.getElementById(id) || {}).value || ''; };
-  post({ action: 'setAiConfig', provider: pr, key: v('aiKey'), bot: v('aiBot'), dose: v('aiDose'), pin: v('aiPin') }).then(function(d){
+  post({ action: 'setAiConfig', provider: pr, key: v('aiKey'), bot: v('aiBot'), dose: v('aiDose'), budget: v('aiBudget'), pin: v('aiPin') }).then(function(d){
     if (d && d.ok){ try { localStorage.setItem('adminPin', v('aiPin')); } catch (e) {}
-      AI_CFG = d; drawAiCfg(d.provider); toast('✓ اتحفظ — شغال على ' + d.provider); }
+      AI_CFG = d; drawAiCfg(d.provider); loadAiUsage(); toast('✓ اتحفظ — شغال على ' + d.provider); }
     else toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });
 }

@@ -9,117 +9,192 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--ink:#111827;--ink2:#4b5563;--ink3:#9ca3af;--line:#e5e7eb;
-  --brand:#1d9bd7;--brand2:#14365f;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--r:14px}
+:root{--bg:#f3f5f8;--card:#fff;--ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--line:#e2e8f0;--soft:#f8fafc;
+  --brand:#1d9bd7;--brand2:#14365f;--brandS:#e6f4fb;--ok:#16a34a;--okS:#dcfce7;--warn:#b45309;--warnS:#fef3c7;--bad:#dc2626;--badS:#fee2e2;--r:16px}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:'Cairo',system-ui,sans-serif;font-size:15px}
-button,input,select,textarea{font-family:inherit;font-size:inherit}
-header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);
-  display:flex;align-items:center;gap:12px;padding:10px 16px}
-header img{width:40px;height:40px;border-radius:50%}
-header h1{font-size:18px;margin:0;flex:1}
-header small{display:block;font-size:12px;color:var(--ink2);font-weight:400}
-.dot{width:10px;height:10px;border-radius:50%;background:var(--ink3);display:inline-block;margin-inline-end:6px}
-.dot.on{background:var(--ok)}.dot.err{background:var(--bad)}
-.wrap{max-width:860px;margin:0 auto;padding:16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
-.card h2{font-size:16px;margin:0 0 8px}
-.inv{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+/* الهيدر */
+header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:10px 20px}
+header img{width:42px;height:42px;border-radius:50%;box-shadow:0 0 0 1px var(--line)}
+.ttl{flex:1;min-width:0}
+.ttl b{display:block;font-size:18px;color:var(--brand2)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);background:var(--soft);border:1px solid var(--line);border-radius:99px;padding:2px 10px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink3)}.dot.on{background:var(--ok);box-shadow:0 0 0 3px var(--okS)}.dot.err{background:var(--bad)}
+.ib{border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px 14px;font-weight:700;display:inline-flex;gap:6px;align-items:center}
+.ib:hover{background:var(--soft)}
+/* الصفحة */
+.wrap{max-width:1100px;margin:0 auto;padding:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.card h2{font-size:16px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.card h2 span{margin-inline-start:auto;font-size:12px;color:var(--ink3);font-weight:600}
+.hero{display:flex;gap:14px;align-items:center;background:linear-gradient(135deg,#14365f,#1d9bd7);color:#fff;border:0}
+.hero .ic{font-size:30px}
+.hero small{display:block;opacity:.85;font-size:13px}
+.inv{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line)}
 .inv:last-child{border-bottom:0}
+.inv .no{font-weight:800;color:var(--brand2);min-width:64px;direction:ltr;text-align:right}
 .inv .m{flex:1;min-width:0}
-.inv b{display:block}
-.inv small{color:var(--ink2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.btn{border:0;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer;background:#eef2f7;color:var(--ink)}
-.btn.p{background:var(--brand);color:#fff}.btn.d{background:#fee2e2;color:var(--bad)}
+.inv b{display:block;font-size:14px}
+.inv small{color:var(--ink2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:right}
+.tag{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px;background:var(--okS);color:var(--ok);white-space:nowrap}
+.tag.s{background:var(--soft);color:var(--ink2);border:1px solid var(--line)}
+.btn{border:0;border-radius:12px;padding:10px 16px;font-weight:700;background:#eef2f7}
+.btn.p{background:var(--brand);color:#fff}.btn.p:hover{filter:brightness(.95)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-.tag{font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;background:#dcfce7;color:var(--ok);white-space:nowrap}
-.tag.s{background:#f3f4f6;color:var(--ink2)}
 .muted{color:var(--ink2);font-size:13px}
-/* النافذة */
-.ov{position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:20;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 12px}
+.empty{text-align:center;padding:30px 10px;color:var(--ink3)}
+/* شاشة الفاتورة */
+.ov{position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:20;display:none;align-items:center;justify-content:center;padding:16px}
 .ov.on{display:flex}
-.md{background:#fff;border-radius:18px;width:100%;max-width:760px;padding:18px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
-.md h3{margin:0 0 4px;font-size:20px}
-.row3{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
-.fld label{display:block;font-weight:700;font-size:13px;margin-bottom:4px}
-.fld input{width:100%;padding:12px;border:2px solid var(--line);border-radius:12px;font-size:20px;font-weight:700;text-align:center}
-.fld input:focus{outline:0;border-color:var(--brand)}
-.seg{display:flex;gap:6px;flex-wrap:wrap}
-.seg button{flex:1;min-width:90px;padding:10px;border-radius:10px;border:2px solid var(--line);background:#fff;font-weight:700;cursor:pointer}
-.seg button.on{border-color:var(--brand);background:#e8f5fc;color:var(--brand2)}
-.seg button.on.w{border-color:var(--bad);background:#fee2e2;color:var(--bad)}
-.warn{background:#fef3c7;color:#92400e;border-radius:10px;padding:10px;font-size:13px;margin-top:8px;display:none}
-.item{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px}
-.item.off{opacity:.5}
-.item-h{display:flex;align-items:center;gap:8px}
-.item-h input{width:20px;height:20px}
-.item-h b{flex:1;direction:ltr;text-align:right}
-.item textarea{width:100%;margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px;min-height:44px;resize:vertical}
-.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
-.chips button{border:1px solid var(--line);background:#f9fafb;border-radius:99px;padding:3px 10px;font-size:12px;cursor:pointer}
-.src{font-size:11px;color:var(--ok);margin-inline-start:6px}
-.ai{font-size:12px;margin-top:6px;color:var(--ink2)}
+.md{background:#fff;border-radius:20px;width:100%;max-width:1080px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;box-shadow:0 30px 60px rgba(0,0,0,.3);overflow:hidden}
+.md-h{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line)}
+.md-h h3{margin:0;font-size:19px;flex:1;min-width:0}
+.md-h small{display:block;color:var(--ink2);font-size:13px;font-weight:600}
+.md-b{display:grid;grid-template-columns:1fr 340px;flex:1;min-height:0}
+.form{overflow:auto;padding:18px 20px}
+.side{background:var(--soft);border-inline-start:1px solid var(--line);overflow:auto;padding:16px}
+.side h4{margin:0 0 10px;font-size:13px;color:var(--ink2)}
+.sec{font-size:12px;font-weight:800;color:var(--ink3);letter-spacing:.3px;margin:4px 0 8px}
+.pt{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;margin-bottom:12px}
+.fld label{display:block;font-weight:700;font-size:13px;margin-bottom:5px}
+.inp{display:flex;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+.inp:focus-within{border-color:var(--brand)}
+.inp input{flex:1;min-width:0;border:0;outline:0;padding:12px;font-size:22px;font-weight:800;text-align:center}
+.unit{display:flex;border-inline-start:1px solid var(--line)}
+.unit button{border:0;background:#fff;padding:0 12px;font-weight:700;color:var(--ink3)}
+.unit button.on{background:var(--brandS);color:var(--brand2)}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;padding:11px;border-radius:12px;border:2px solid var(--line);background:#fff;font-weight:700}
+.seg button.on{border-color:var(--brand);background:var(--brandS);color:var(--brand2)}
+.seg button.on.w{border-color:var(--bad);background:var(--badS);color:var(--bad)}
+.note{border-radius:12px;padding:10px 12px;font-size:13px;margin-top:8px}
+.note.w{background:var(--warnS);color:var(--warn)}
+.note.b{background:var(--brandS);color:var(--brand2)}
+.note.r{background:var(--badS);color:#991b1b}
+.item{border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:10px;background:#fff}
+.item.off{opacity:.45}
+.item-h{display:flex;align-items:center;gap:10px}
+.item-h input{width:20px;height:20px;accent-color:var(--brand)}
+.item-h b{flex:1;direction:ltr;text-align:right;font-size:15px}
+.item textarea{width:100%;margin-top:8px;border:2px solid var(--line);border-radius:12px;padding:10px;min-height:48px;resize:vertical;font-size:16px;font-weight:600}
+.item textarea:focus{outline:0;border-color:var(--brand)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chips button{border:1px solid var(--line);background:var(--soft);border-radius:99px;padding:4px 11px;font-size:12.5px;font-weight:600}
+.chips button:hover{background:var(--brandS);border-color:var(--brand)}
+.item:not(:focus-within) .chips.q{display:none}
+.item .hint{font-size:11.5px;color:var(--ink3);margin-top:4px}
+.item:focus-within .hint{display:none}
+.chips .lrn{background:var(--okS);border-color:#bbf7d0;color:var(--ok)}
+.ai{font-size:12.5px;margin-top:6px;color:var(--ink2)}
 .ai .w{color:var(--bad);font-weight:700;display:block}
 .ai .c{direction:ltr;text-align:right;display:block;color:var(--ink3)}
 .cf{font-size:11px;font-weight:700;padding:1px 7px;border-radius:99px;margin-inline-start:4px}
-.cf.high{background:#dcfce7;color:var(--ok)}.cf.medium{background:#fef3c7;color:#92400e}.cf.low{background:#fee2e2;color:var(--bad)}
-#aiAll{margin-top:10px}
-.aibar{background:#eef6fd;border-radius:10px;padding:10px;font-size:13px}
-.foot{display:flex;gap:8px;margin-top:16px;position:sticky;bottom:-18px;background:#fff;padding:12px 0}
-.foot .btn{flex:1;padding:14px;font-size:16px}
-.err{color:var(--bad);font-size:13px;min-height:18px;margin-top:6px}
-select{padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:#fff}
-@media (max-width:520px){.row3{grid-template-columns:1fr}}
+.cf.high{background:var(--okS);color:var(--ok)}.cf.medium{background:var(--warnS);color:var(--warn)}.cf.low{background:var(--badS);color:var(--bad)}
+.md-f{display:flex;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid var(--line);background:#fff}
+.md-f .err{flex:1;color:var(--bad);font-size:13px;font-weight:600}
+.md-f .btn{padding:13px 22px;font-size:16px}
+.md-f .btn.p{min-width:220px}
+kbd{font-family:inherit;font-size:11px;background:rgba(255,255,255,.25);border-radius:5px;padding:0 5px;margin-inline-start:6px}
+/* المعاينة */
+.pv{display:flex;flex-direction:column;align-items:center;gap:12px}
+.pv-l{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.12);border-radius:4px;overflow:hidden}
+.pv-cap{font-size:11px;color:var(--ink3)}
+/* الإعدادات */
+.drawer{position:fixed;top:0;bottom:0;inset-inline-start:0;width:min(380px,92vw);background:#fff;z-index:30;box-shadow:0 0 40px rgba(0,0,0,.2);transform:translateX(105%);transition:transform .2s;padding:18px;overflow:auto}
+[dir=rtl] .drawer{transform:translateX(105%)}
+.drawer.on{transform:none}
+.drawer h3{margin:0 0 14px;display:flex;align-items:center}
+.drawer h3 button{margin-inline-start:auto}
+.opt{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.opt button{border:2px solid var(--line);background:#fff;border-radius:10px;padding:8px 4px;font-weight:700;font-size:13px}
+.opt button.on{border-color:var(--brand);background:var(--brandS);color:var(--brand2)}
+.two{grid-template-columns:1fr 1fr}
+.cus{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.cus input{width:80px;padding:8px;border:2px solid var(--line);border-radius:10px;text-align:center;font-weight:700}
+.shade{position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:29;display:none}.shade.on{display:block}
+@media (max-width:860px){.md-b{grid-template-columns:1fr}.side{border-inline-start:0;border-top:1px solid var(--line)}.pt{grid-template-columns:1fr}.md-f .btn.p{min-width:0;flex:1}}
 </style>
 </head>
 <body>
 <header>
   <img src="icon-192.png" alt="">
-  <h1>ملصقات الأدوية<small><span class="dot" id="dot"></span><span id="st">بيتوصل…</span></small></h1>
-  <select id="size" onchange="setSize(this.value)" title="مقاس الملصق">
-    <option value="50x30">50×30 مم</option>
-    <option value="40x30">40×30 مم</option>
-    <option value="60x40">60×40 مم</option>
-    <option value="40x25">40×25 مم</option>
-  </select>
+  <div class="ttl"><b>ملصقات الأدوية</b><span class="pill"><span class="dot" id="dot"></span><span id="st">بيتوصل…</span></span></div>
+  <button class="ib" onclick="openSet()">⚙️ <span id="setLbl"></span></button>
 </header>
 
 <div class="wrap">
-  <div class="card" id="hint">
-    <b>الصفحة دي بتفتح لوحدها أول ما فاتورة تتقفل.</b>
-    <div class="muted">سيبها مفتوحة على جهاز الكاشير. دوس في أي حتة مرة عشان صوت التنبيه يشتغل.</div>
+  <div class="card hero">
+    <div class="ic">🏷️</div>
+    <div><b>الصفحة دي بتفتح الفاتورة لوحدها أول ما تتقفل.</b>
+      <small>سيبها مفتوحة على جهاز الكاشير، ودوس في أي حتة مرة عشان صوت التنبيه يشتغل.</small></div>
   </div>
   <div class="card">
-    <h2>فواتير النهارده</h2>
-    <div id="list"><div class="muted">بيحمّل…</div></div>
+    <h2>فواتير النهارده <span id="cnt"></span></h2>
+    <div id="list"><div class="empty">بيحمّل…</div></div>
   </div>
 </div>
 
+<!-- شاشة الفاتورة -->
 <div class="ov" id="ov">
   <div class="md">
-    <h3 id="mT"></h3>
-    <div class="muted" id="mS"></div>
-    <div class="row3">
-      <div class="fld"><label>العمر (سنة) *</label><input id="age" type="number" inputmode="decimal" min="0" max="120" oninput="onAge()"></div>
-      <div class="fld"><label id="wL">الوزن (كجم)</label><input id="wt" type="number" inputmode="decimal" min="1" max="250" oninput="maybeAI();check()"></div>
+    <div class="md-h">
+      <h3 id="mT"></h3>
+      <button class="ib" onclick="skipInv()">تخطي</button>
     </div>
-    <div class="fld"><label>حامل أو مرضعة؟ *</label>
-      <div class="seg" id="preg">
-        <button onclick="setPreg('none',this)">لا</button>
-        <button onclick="setPreg('pregnant',this)">حامل</button>
-        <button onclick="setPreg('breast',this)">مرضعة</button>
+    <div class="md-b">
+      <div class="form">
+        <div class="sec">المريض</div>
+        <div class="pt">
+          <div class="fld"><label>العمر *</label>
+            <div class="inp"><input id="age" type="number" inputmode="decimal" min="0" max="120" oninput="onAge()">
+              <div class="unit"><button id="uY" class="on" onclick="setUnit('y')">سنة</button><button id="uM" onclick="setUnit('m')">شهر</button></div></div></div>
+          <div class="fld"><label id="wL">الوزن (كجم)</label>
+            <div class="inp"><input id="wt" type="number" inputmode="decimal" min="1" max="250" oninput="maybeAI();check();preview()"></div></div>
+        </div>
+        <div class="fld"><label>حامل أو مرضعة؟ *</label>
+          <div class="seg" id="preg">
+            <button onclick="setPreg('none',this)">لا</button>
+            <button onclick="setPreg('pregnant',this)">حامل</button>
+            <button onclick="setPreg('breast',this)">مرضعة</button>
+          </div>
+          <div class="note w" id="pw" style="display:none">⚠️ حامل/مرضعة: الصيدلي لازم يراجع أمان كل دوا قبل الطباعة.
+            <label style="display:block;margin-top:6px;font-weight:700"><input type="checkbox" id="pok" onchange="check()"> راجعت الأمان</label></div>
+        </div>
+        <div class="sec" style="margin-top:16px">الأصناف</div>
+        <div id="items"></div>
+        <div id="aiAll"></div>
       </div>
-      <div class="warn" id="pw">⚠️ حامل/مرضعة: الصيدلي لازم يراجع أمان كل دوا قبل الطباعة.
-        <label style="display:block;margin-top:6px"><input type="checkbox" id="pok" onchange="check()"> راجعت الأمان</label></div>
+      <div class="side">
+        <h4>شكل الملصق</h4>
+        <div class="pv" id="pv"></div>
+      </div>
     </div>
-    <div id="items"></div>
-    <div id="aiAll"></div>
-    <div class="err" id="err"></div>
-    <div class="foot">
-      <button class="btn p" id="go" onclick="confirmPrint()" disabled>تأكيد واطبع</button>
-      <button class="btn" onclick="skipInv()">تخطي</button>
+    <div class="md-f">
+      <div class="err" id="err"></div>
+      <button class="btn p" id="go" onclick="confirmPrint()" disabled>تأكيد واطبع<kbd>Enter</kbd></button>
     </div>
   </div>
+</div>
+
+<!-- الإعدادات -->
+<div class="shade" id="shade" onclick="closeSet()"></div>
+<div class="drawer" id="drw">
+  <h3>إعدادات الطباعة <button class="ib" onclick="closeSet()">✕</button></h3>
+  <div class="sec">مقاس الملصق (مم)</div>
+  <div class="opt" id="sizes"></div>
+  <div class="cus">مقاس تاني: <input id="cw" type="number" min="20" max="120" placeholder="عرض"> × <input id="ch" type="number" min="15" max="120" placeholder="طول"> <button class="ib" onclick="customSize()">تمام</button></div>
+  <div class="sec">شكل الملصق</div>
+  <div class="opt two" id="styles"></div>
+  <div class="muted" id="styleHelp" style="margin-bottom:12px"></div>
+  <div class="sec">معاينة</div>
+  <div class="pv" id="pvSet" style="margin-bottom:12px"></div>
+  <button class="btn p" style="width:100%" onclick="testPrint()">اطبع ملصق تجربة</button>
+  <div class="note b" style="margin-top:14px">💡 عشان تطبع من غير ما يسألك كل مرة:<br>
+    1) خلي طابعة الملصقات هي الافتراضية في ويندوز.<br>
+    2) اعمل اختصار للكروم وزوّد في آخر Target: <b dir="ltr">--kiosk-printing</b><br>
+    3) افتح الصفحة من الاختصار ده.</div>
 </div>
 
 <iframe id="pf" style="position:fixed;width:0;height:0;border:0;left:-9999px" title="print"></iframe>
@@ -127,13 +202,16 @@ select{padding:6px 8px;border-radius:8px;border:1px solid var(--line);background
 <script>
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7ctTVJjckmbTxegDq7E3R3p6aEBzqt275HNL8SBfWg/exec';
 var PHONE = '01143404023';
-var CHIPS = ['قرص كل 8 ساعات','قرص كل 12 ساعة','قرص مرة يوميًا','بعد الأكل','قبل الأكل','على الريق','عند اللزوم','لمدة 5 أيام','لمدة 7 أيام','5 مل كل 8 ساعات','5 مل كل 12 ساعة','دهان مرتين يوميًا','نقطة في كل عين 3 مرات'];
+var CHIPS = ['قرص كل 8 ساعات','قرص كل 12 ساعة','قرص مرة يوميًا','بعد الأكل','قبل الأكل','عند اللزوم','لمدة 5 أيام','لمدة 7 أيام','5 مل كل 8 ساعات','5 مل كل 12 ساعة','دهان مرتين يوميًا','نقطة 3 مرات يوميًا'];
+var SIZES = ['50x30','40x30','40x25','50x25','58x40','60x40','70x50','100x50'];
+var STYLES = [['full','كامل','لوجو + اسم الصيدلية + التاريخ + الدوا + الطريقة + العمر والوزن + التليفون'],
+              ['compact','مختصر','اسم الدوا + طريقة الاستخدام بخط كبير + سطر صغير بالصيدلية والتاريخ']];
 
 function ls(k, v){ try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
 var SINCE = parseInt(ls('lblSince'), 10) || 0, FIRST = !SINCE;
 var AI_IDX = [], AI_ND = {}, AI_KEY = '', AI_USED = false, AI_BUSY = false, AI_T = null;
-var INVS = [], QUEUE = [], CUR = null, PREG = '', SIZE = ls('lblSize') || '50x30';
-document.getElementById('size').value = SIZE;
+var INVS = [], QUEUE = [], CUR = null, PREG = '', UNIT = 'y';
+var SIZE = ls('lblSize') || '50x30', STYLE = ls('lblStyle') || 'full';
 
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function api(action, params){
@@ -151,19 +229,20 @@ function status(ok, txt){
   document.getElementById('st').textContent = txt;
 }
 
-/* صوت تنبيه بسيط */
+/* صوت تنبيه */
 var AC = null;
-document.addEventListener('click', function(){ if (!AC) try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }, { once: false });
+document.addEventListener('click', function(){ if (!AC) try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} });
 function beep(){
   if (!AC) return;
-  try { var o = AC.createOscillator(), g = AC.createGain(); o.frequency.value = 880; o.connect(g); g.connect(AC.destination);
-    g.gain.setValueAtTime(.2, AC.currentTime); o.start(); o.stop(AC.currentTime + .25); } catch (e) {}
+  try { [880, 1175].forEach(function(f, i){ var o = AC.createOscillator(), g = AC.createGain(); o.frequency.value = f; o.connect(g); g.connect(AC.destination);
+    g.gain.setValueAtTime(.18, AC.currentTime + i * .18); o.start(AC.currentTime + i * .18); o.stop(AC.currentTime + i * .18 + .15); }); } catch (e) {}
 }
 
+/* ═══ الفواتير ═══ */
 function poll(){
   api('labelsFeed', { since: SINCE }).then(function(d){
     if (!d || !d.ok) throw new Error((d && d.error) || 'feed');
-    status(true, 'شغال · آخر تحديث ' + new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }));
+    status(true, 'شغال · ' + new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }));
     INVS = d.invoices || [];
     if (FIRST){ FIRST = false; SINCE = d.maxId; ls('lblSince', String(SINCE)); }
     else {
@@ -175,64 +254,77 @@ function poll(){
     }
     drawList();
     if (!CUR && QUEUE.length){ beep(); openInv(QUEUE.shift()); }
-  }).catch(function(e){ status(false, 'مش متوصل — بيحاول تاني'); });
+  }).catch(function(){ status(false, 'مش متوصل — بيحاول تاني'); });
 }
-
 function drawList(){
   var box = document.getElementById('list');
-  if (!INVS.length){ box.innerHTML = '<div class="muted">لسه مفيش فواتير النهارده.</div>'; return; }
+  document.getElementById('cnt').textContent = INVS.length ? INVS.length + ' فاتورة' : '';
+  if (!INVS.length){ box.innerHTML = '<div class="empty">لسه مفيش فواتير النهارده.</div>'; return; }
   box.innerHTML = INVS.map(function(inv, i){
-    return '<div class="inv"><div class="m"><b>#' + esc(inv.id) + ' — ' + esc(inv.cust || 'عميل نقدي') + '</b>' +
-      '<small>' + inv.items.map(function(x){ return esc(x.name); }).join('، ') + '</small></div>' +
-      (inv.done ? '<span class="tag">✓ اتعملت</span>' : '') +
-      '<button class="btn" onclick="openInv(INVS[' + i + '])">اطبع</button></div>';
+    return '<div class="inv"><span class="no">#' + esc(inv.id) + '</span><div class="m"><b>' + esc(inv.cust || 'عميل نقدي') + '</b>' +
+      '<small>' + inv.items.map(function(x){ return esc(x.name); }).join(' · ') + '</small></div>' +
+      (inv.done ? '<span class="tag">✓ اتعملت</span>' : (inv.hasDrug === false ? '<span class="tag s">مفيش أدوية</span>' : '')) +
+      '<button class="btn" onclick="openInv(INVS[' + i + '])">' + (inv.done ? 'اطبع تاني' : 'اطبع') + '</button></div>';
   }).join('');
 }
 
+/* ═══ شاشة الفاتورة ═══ */
 function openInv(inv){
-  CUR = inv; PREG = '';
-  document.getElementById('mT').textContent = 'فاتورة #' + inv.id + ' — ' + (inv.cust || 'عميل نقدي');
-  document.getElementById('mS').textContent = (inv.employee ? 'الموظف: ' + inv.employee + ' · ' : '') + inv.items.length + ' صنف';
+  CUR = inv; PREG = ''; setUnit('y', true);
+  document.getElementById('mT').innerHTML = 'فاتورة <span dir="ltr">#' + esc(inv.id) + '</span> — ' + esc(inv.cust || 'عميل نقدي') +
+    '<small>' + (inv.employee ? 'الموظف: ' + esc(inv.employee) + ' · ' : '') + inv.items.length + ' صنف</small>';
   document.getElementById('age').value = ''; document.getElementById('wt').value = '';
   document.getElementById('pok').checked = false; document.getElementById('pw').style.display = 'none';
   [].forEach.call(document.querySelectorAll('#preg button'), function(b){ b.className = ''; });
   document.getElementById('items').innerHTML = inv.items.map(function(it, i){
-    return '<div class="item' + (it.nondrug ? ' off' : '') + '" id="it' + i + '"><div class="item-h"><input type="checkbox" id="c' + i + '"' + (it.nondrug ? '' : ' checked') + ' onchange="toggleIt(' + i + ')">' +
+    return '<div class="item' + (it.nondrug ? ' off' : '') + '" id="it' + i + '"><div class="item-h">' +
+      '<input type="checkbox" id="c' + i + '"' + (it.nondrug ? '' : ' checked') + ' onchange="toggleIt(' + i + ')">' +
       '<b>' + esc(it.name) + '</b>' + (it.qty > 1 ? '<span class="tag s">×' + it.qty + '</span>' : '') + '</div>' +
       (it.active ? '<div class="muted" style="direction:ltr;text-align:right">' + esc(it.active) + '</div>' : '') +
       '<div class="ai" id="a' + i + '"></div>' +
-      '<textarea id="t' + i + '" placeholder="طريقة الاستخدام…" oninput="this.dataset.touched=1;check()"></textarea>' +
+      '<textarea id="t' + i + '" placeholder="طريقة الاستخدام…" oninput="this.dataset.touched=1;check();preview()"></textarea>' +
       '<div class="chips" id="lc' + i + '"></div>' +
-      '<div class="chips">' + CHIPS.map(function(c){ return '<button onclick="addChip(' + i + ',\'' + c + '\')">' + c + '</button>'; }).join('') + '</div></div>';
+      '<div class="hint">دوس على الخانة تظهرلك اختيارات سريعة</div>' +
+      '<div class="chips q">' + CHIPS.map(function(c){ return '<button onclick="addChip(' + i + ',\'' + c + '\')">' + c + '</button>'; }).join('') + '</div></div>';
   }).join('');
   AI_KEY = ''; AI_USED = false; AI_BUSY = false; AI_ND = {};
   document.getElementById('aiAll').innerHTML = '';
   document.getElementById('ov').classList.add('on');
   setTimeout(function(){ document.getElementById('age').focus(); }, 50);
-  check();
+  check(); preview();
 }
 
-function band(){ var a = parseFloat(document.getElementById('age').value); return (!isNaN(a) && a < 12) ? 'child' : 'adult'; }
+function setUnit(u, silent){
+  UNIT = u;
+  document.getElementById('uY').className = u === 'y' ? 'on' : '';
+  document.getElementById('uM').className = u === 'm' ? 'on' : '';
+  if (!silent) onAge();
+}
+function ageYears(){
+  var a = parseFloat(document.getElementById('age').value);
+  if (isNaN(a)) return NaN;
+  return UNIT === 'm' ? Math.round(a / 12 * 100) / 100 : a;
+}
+function band(){ var a = ageYears(); return (!isNaN(a) && a < 12) ? 'child' : 'adult'; }
 function onAge(){
-  var b = band(), child = b === 'child';
+  var child = band() === 'child';
   document.getElementById('wL').textContent = child ? 'الوزن (كجم) *' : 'الوزن (كجم)';
   CUR.items.forEach(function(it, i){
     var sug = child ? (it.child || '') : (it.adult || '');
     document.getElementById('lc' + i).innerHTML = sug
-      ? '<button onclick="useLearned(' + i + ')" title="اللي الصيدلي كتبه آخر مرة">↩ آخر مرة: ' + esc(sug) + '</button>' : '';
+      ? '<button class="lrn" onclick="useLearned(' + i + ')" title="اللي الصيدلي كتبه آخر مرة">↩ آخر مرة: ' + esc(sug) + '</button>' : '';
   });
-  maybeAI();
-  check();
+  maybeAI(); check(); preview();
 }
 function useLearned(i){
   var it = CUR.items[i], t = document.getElementById('t' + i);
-  t.value = band() === 'child' ? it.child : it.adult; t.dataset.touched = 1; check();
+  t.value = band() === 'child' ? it.child : it.adult; t.dataset.touched = 1; check(); preview();
 }
 
-/* 🤖 لما العمر (والوزن للطفل) وحامل/مرضعة يكتملوا → نطلب الجرعات */
+/* 🤖 الجرعات بالذكاء الاصطناعي */
 function maybeAI(){
   clearTimeout(AI_T);
-  var age = parseFloat(document.getElementById('age').value), wt = parseFloat(document.getElementById('wt').value);
+  var age = ageYears(), wt = parseFloat(document.getElementById('wt').value);
   if (isNaN(age) || !PREG || (band() === 'child' && isNaN(wt))) return;
   var key = age + '|' + (isNaN(wt) ? '' : wt) + '|' + PREG;
   if (key === AI_KEY) return;
@@ -241,19 +333,18 @@ function maybeAI(){
 function runAI(key, age, wt){
   if (!CUR) return;
   var inv = CUR;
-  /* الأدوية بس: اللي متعلّم عليها ومش معروف إنها مش دوا */
   AI_IDX = [];
   inv.items.forEach(function(it, i){ if (!it.nondrug && document.getElementById('c' + i).checked) AI_IDX.push(i); });
   if (!AI_IDX.length) return;
   AI_KEY = key; AI_BUSY = true; check();
-  document.getElementById('aiAll').innerHTML = '<div class="aibar">🤖 الذكاء الاصطناعي بيحسب الجرعات…</div>';
+  document.getElementById('aiAll').innerHTML = '<div class="note b">🤖 الذكاء الاصطناعي بيحسب الجرعات…</div>';
   api('aiDose', { data: JSON.stringify({ age: age, weight: isNaN(wt) ? '' : wt, preg: PREG,
     items: AI_IDX.map(function(i){ var it = inv.items[i]; return { name: it.name, active: it.active, qty: it.qty }; }) }) })
   .then(function(d){
     if (CUR !== inv || AI_KEY !== key) return;
     AI_BUSY = false;
     if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {}
-    if (!d || !d.ok){ document.getElementById('aiAll').innerHTML = '<div class="aibar">⚠️ ' + esc((d && d.error) || 'الذكاء الاصطناعي مردش') + ' — اكتب يدوي</div>'; check(); return; }
+    if (!d || !d.ok){ document.getElementById('aiAll').innerHTML = '<div class="note w">⚠️ ' + esc((d && d.error) || 'الذكاء الاصطناعي مردش') + ' — اكتب يدوي</div>'; check(); return; }
     AI_USED = false;
     (d.items || []).forEach(function(x){
       var j = (parseInt(x.n, 10) || 0) - 1; if (j < 0 || j >= AI_IDX.length) return; var i = AI_IDX[j];
@@ -262,20 +353,19 @@ function runAI(key, age, wt){
         document.getElementById('c' + i).checked = false; toggleIt(i); AI_ND[i] = 1;
         box.innerHTML = 'مش دوا — اتشال من الطباعة'; return;
       }
-      var h = (x.active ? '<span class="c">' + esc(x.active) + '<span class="cf ' + esc(x.confidence || 'low') + '">' + esc(x.confidence || '') + '</span></span>' : '') +
+      box.innerHTML = (x.active ? '<span class="c">' + esc(x.active) + '<span class="cf ' + esc(x.confidence || 'low') + '">' + esc(x.confidence || '') + '</span></span>' : '') +
         (x.calc ? '<span class="c">' + esc(x.calc) + '</span>' : '') +
         (x.warn ? '<span class="w">⚠️ ' + esc(x.warn) + '</span>' : '') +
         (x.known === false ? '<span class="w">مش متأكد من تركيبه — اكتب الجرعة يدوي</span>' : '');
-      box.innerHTML = h;
       if (!t.dataset.touched && x.label){ t.value = x.label; t.dataset.ai = 1; AI_USED = true; }
     });
     document.getElementById('aiAll').innerHTML =
-      (d.interactions ? '<div class="aibar" style="background:#fee2e2;color:#991b1b;margin-bottom:6px">⚠️ ' + esc(d.interactions) + '</div>' : '') +
-      (AI_USED ? '<label class="aibar" style="display:block"><input type="checkbox" id="aiok" onchange="check()"> راجعت جرعات الذكاء الاصطناعي ومسؤول عنها</label>' : '');
-    check();
+      (d.interactions ? '<div class="note r">⚠️ ' + esc(d.interactions) + '</div>' : '') +
+      (AI_USED ? '<label class="note b" style="display:block;font-weight:700"><input type="checkbox" id="aiok" onchange="check()"> راجعت جرعات الذكاء الاصطناعي ومسؤول عنها</label>' : '');
+    check(); preview();
   }).catch(function(){
     if (CUR !== inv) return;
-    AI_BUSY = false; document.getElementById('aiAll').innerHTML = '<div class="aibar">⚠️ النت قطع — اكتب يدوي</div>'; check();
+    AI_BUSY = false; document.getElementById('aiAll').innerHTML = '<div class="note w">⚠️ النت قطع — اكتب يدوي</div>'; check();
   });
 }
 function setPreg(v, el){
@@ -283,17 +373,17 @@ function setPreg(v, el){
   [].forEach.call(document.querySelectorAll('#preg button'), function(b){ b.className = ''; });
   el.className = 'on' + (v !== 'none' ? ' w' : '');
   document.getElementById('pw').style.display = v === 'none' ? 'none' : 'block';
-  maybeAI();
-  check();
+  maybeAI(); check();
 }
-function toggleIt(i){ document.getElementById('it' + i).classList.toggle('off', !document.getElementById('c' + i).checked); check(); }
+function toggleIt(i){ document.getElementById('it' + i).classList.toggle('off', !document.getElementById('c' + i).checked); check(); preview(); }
 function addChip(i, c){
   var t = document.getElementById('t' + i);
-  t.value = (t.value.trim() ? t.value.trim() + ' — ' : '') + c; t.dataset.touched = 1; check();
+  t.value = (t.value.trim() ? t.value.trim() + ' — ' : '') + c; t.dataset.touched = 1; check(); preview();
 }
 
 function check(){
-  var err = '', age = parseFloat(document.getElementById('age').value), wt = parseFloat(document.getElementById('wt').value);
+  if (!CUR) return;
+  var err = '', age = ageYears(), wt = parseFloat(document.getElementById('wt').value);
   if (isNaN(age)) err = 'اكتب العمر';
   else if (band() === 'child' && isNaN(wt)) err = 'الطفل لازم وزنه';
   else if (!PREG) err = 'اختار حامل/مرضعة ولا لأ';
@@ -312,23 +402,29 @@ function check(){
   document.getElementById('err').textContent = err;
   document.getElementById('go').disabled = !!err;
 }
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Enter' && CUR && e.target.tagName !== 'TEXTAREA' && !document.getElementById('go').disabled){ e.preventDefault(); confirmPrint(); }
+  if (e.key === 'Escape') closeSet();
+});
 
 function chosen(){
   var out = [];
+  if (!CUR) return out;
   CUR.items.forEach(function(it, i){
     var t = document.getElementById('t' + i);
     if (document.getElementById('c' + i).checked) out.push({ name: it.name, text: t.value.trim(), ai: !!t.dataset.ai && !t.dataset.touched });
   });
   return out;
 }
-
 function ageTxt(a){
+  if (isNaN(a)) return '';
   if (a < 1) return Math.round(a * 12) + ' شهور';
   return (a % 1 ? a : Math.round(a)) + ' سنة';
 }
 
 function confirmPrint(){
-  var age = parseFloat(document.getElementById('age').value), wt = parseFloat(document.getElementById('wt').value);
+  if (!CUR || document.getElementById('go').disabled) return;
+  var age = ageYears(), wt = parseFloat(document.getElementById('wt').value);
   var items = chosen(), inv = CUR;
   printLabels(items, age, isNaN(wt) ? null : wt);
   var nd = inv.items.filter(function(it, i){ return AI_ND[i] && !document.getElementById('c' + i).checked; }).map(function(it){ return it.name; });
@@ -337,7 +433,7 @@ function confirmPrint(){
   inv.done = true; closeInv();
 }
 function skipInv(){
-  var inv = CUR;
+  var inv = CUR; if (!inv) return;
   api('labelsSave', { data: JSON.stringify({ id: inv.id, skip: true }) }).catch(function(){});
   inv.done = true; closeInv();
 }
@@ -346,34 +442,117 @@ function closeInv(){
   if (QUEUE.length) setTimeout(function(){ openInv(QUEUE.shift()); }, 400);
 }
 
-function setSize(v){ SIZE = v; ls('lblSize', v); }
+/* ═══ الملصق: نفس الكود للمعاينة والطباعة ═══
+   الخط بيكبر لأقصى حجم يملا الملصق من غير ما يقص (fit) */
+function labelCSS(W, H){
+  return '@page{size:' + W + 'mm ' + H + 'mm;margin:0}*{box-sizing:border-box}' +
+    'body{margin:0;font-family:Cairo,Tahoma,sans-serif;color:#000;background:#fff}' +
+    '.l{width:' + W + 'mm;height:' + H + 'mm;padding:1.6mm 2.2mm;page-break-after:always;display:flex;flex-direction:column;overflow:hidden;position:relative}' +
+    '.h{display:flex;align-items:center;gap:1.2mm;font-weight:800;border-bottom:.35mm solid #000;padding-bottom:.7mm;white-space:nowrap}' +
+    '.h img{height:1.25em;width:1.25em}.h .p{flex:1;overflow:hidden}.h .d{font-weight:600}' +
+    '.n{direction:ltr;text-align:right;font-weight:800;margin-top:.8mm;white-space:nowrap;overflow:hidden;line-height:1.2}' +
+    '.t{flex:1;min-height:0;font-weight:800;line-height:1.28;margin-top:.6mm;display:flex;align-items:center;overflow:hidden;word-break:break-word}' +
+    '.f{display:flex;justify-content:space-between;gap:2mm;font-weight:700;border-top:.25mm solid #000;padding-top:.5mm;white-space:nowrap}' +
+    '.cp .t{justify-content:center;text-align:center}.cp .n{text-align:center}.cp .f{border-top:0;justify-content:center;font-weight:600;color:#222}';
+}
+function labelHTML(it, age, wt, W, H){
+  var date = new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'numeric', year: '2-digit' });
+  var who = ageTxt(age) + (wt ? ' · ' + wt + ' كجم' : '');
+  var logo = location.href.replace(/[^/]*$/, '') + 'icon-192.png';
+  var s = Math.min(W, H * 1.6);   /* أساس أحجام الخط بالمقاس */
+  if (STYLE === 'compact'){
+    return '<div class="l cp"><div class="n" data-max="' + (s * .32) + '">' + esc(it.name) + '</div>' +
+      '<div class="t" data-max="' + (s * .62) + '"><span>' + esc(it.text) + '</span></div>' +
+      '<div class="f" style="font-size:' + (s * .17) + 'pt">صيدلية السوسي · ' + date + '</div></div>';
+  }
+  return '<div class="l"><div class="h" style="font-size:' + (s * .19) + 'pt"><img src="' + logo + '"><span class="p">صيدلية السوسي</span><span class="d">' + date + '</span></div>' +
+    '<div class="n" data-max="' + (s * .27) + '">' + esc(it.name) + '</div>' +
+    '<div class="t" data-max="' + (s * .5) + '"><span>' + esc(it.text) + '</span></div>' +
+    '<div class="f" style="font-size:' + (s * .16) + 'pt"><span>' + esc(who) + '</span><span dir="ltr">' + PHONE + '</span></div></div>';
+}
+/* بيكبّر الخط لحد ما يملا المكان بالظبط */
+function fitAll(doc){
+  [].forEach.call(doc.querySelectorAll('[data-max]'), function(el){
+    var max = parseFloat(el.dataset.max), min = 4, f = max;
+    el.style.fontSize = f + 'pt';
+    var multi = el.classList.contains('t');
+    function over(){ return multi ? (el.firstChild.offsetHeight > el.clientHeight * .94 || el.firstChild.offsetWidth > el.clientWidth) : el.scrollWidth > el.clientWidth; }
+    while (f > min && over()){ f -= .5; el.style.fontSize = f + 'pt'; }
+  });
+}
+function sizeWH(){ var p = SIZE.split('x'); return [+p[0] || 50, +p[1] || 30]; }
+
+/* معاينة حيّة جوه iframe بنفس المقاس، ومكبّرة على الشاشة */
+function renderPreview(boxId, items, age, wt){
+  var box = document.getElementById(boxId); if (!box) return;
+  var wh = sizeWH(), W = wh[0], H = wh[1];
+  var scale = Math.min(300 / (W * 3.78), 2.6);
+  box.innerHTML = '';
+  (items.length ? items : [{ name: 'PANADOL EXTRA', text: 'قرص كل 8 ساعات بعد الأكل عند اللزوم' }]).slice(0, 4).forEach(function(it){
+    var fr = document.createElement('iframe');
+    fr.className = 'pv-l'; fr.setAttribute('title', 'preview');
+    fr.style.cssText = 'border:0;width:' + (W * 3.78 * scale) + 'px;height:' + (H * 3.78 * scale) + 'px';
+    box.appendChild(fr);
+    var d = fr.contentWindow.document;
+    d.open(); d.write('<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&display=swap" rel="stylesheet"><style>' +
+      labelCSS(W, H) + 'html{zoom:' + scale + '}</style></head><body>' + labelHTML(it, age, wt, W, H) + '</body></html>'); d.close();
+    var run = function(){ fitAll(d); };
+    if (d.fonts && d.fonts.ready) d.fonts.ready.then(run); setTimeout(run, 300);
+  });
+  var cap = document.createElement('div'); cap.className = 'pv-cap';
+  cap.textContent = 'عرض ' + W + ' × طول ' + H + ' مم · ' + (STYLE === 'compact' ? 'مختصر' : 'كامل') + (items.length > 4 ? ' · +' + (items.length - 4) + ' ملصق' : '');
+  box.appendChild(cap);
+}
+var PV_T = null;
+function preview(){
+  clearTimeout(PV_T);
+  PV_T = setTimeout(function(){
+    if (!CUR) return;
+    var wt = parseFloat(document.getElementById('wt').value);
+    renderPreview('pv', chosen().filter(function(x){ return x.text; }), ageYears(), isNaN(wt) ? null : wt);
+  }, 250);
+}
 
 function printLabels(items, age, wt){
-  var wh = SIZE.split('x'), W = +wh[0], H = +wh[1], big = H >= 40;
-  var date = new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'numeric', year: 'numeric' });
-  var who = ageTxt(age) + (wt ? ' · ' + wt + ' كجم' : '');
+  var wh = sizeWH(), W = wh[0], H = wh[1];
   var html = '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">' +
-    '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800&display=swap" rel="stylesheet">' +
-    '<style>@page{size:' + W + 'mm ' + H + 'mm;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Cairo,Tahoma,sans-serif;color:#000}' +
-    '.l{width:' + W + 'mm;height:' + H + 'mm;padding:1.5mm 2mm;page-break-after:always;display:flex;flex-direction:column;overflow:hidden}' +
-    '.h{display:flex;align-items:center;gap:1mm;font-size:' + (big ? 8 : 6.5) + 'pt;font-weight:800;border-bottom:.3mm solid #000;padding-bottom:.6mm}' +
-    '.h img{width:' + (big ? 5 : 4) + 'mm;height:' + (big ? 5 : 4) + 'mm}.h span{flex:1}' +
-    '.n{direction:ltr;text-align:right;font-weight:800;font-size:' + (big ? 9 : 7.5) + 'pt;margin-top:.6mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-    '.t{flex:1;font-weight:800;font-size:' + (big ? 11 : 9) + 'pt;line-height:1.25;margin-top:.4mm;overflow:hidden}' +
-    '.f{display:flex;justify-content:space-between;font-size:' + (big ? 7 : 6) + 'pt;font-weight:600}</style></head><body>' +
-    items.map(function(it){
-      return '<div class="l"><div class="h"><img src="' + location.href.replace(/[^/]*$/, '') + 'icon-192.png"><span>صيدلية السوسي</span><span style="flex:0">' + date + '</span></div>' +
-        '<div class="n">' + esc(it.name) + '</div><div class="t">' + esc(it.text) + '</div>' +
-        '<div class="f"><span>' + esc(who) + '</span><span dir="ltr">' + PHONE + '</span></div></div>';
-    }).join('') + '</body></html>';
-  var f = document.getElementById('pf'), d = f.contentWindow.document;
+    '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&display=swap" rel="stylesheet">' +
+    '<style>' + labelCSS(W, H) + '</style></head><body>' +
+    items.map(function(it){ return labelHTML(it, age, wt, W, H); }).join('') + '</body></html>';
+  var f = document.getElementById('pf');
+  f.style.width = W + 'mm'; f.style.height = H + 'mm';
+  var d = f.contentWindow.document;
   d.open(); d.write(html); d.close();
   var done = false;
-  function go(){ if (done) return; done = true; try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) {} }
+  function go(){ if (done) return; done = true; fitAll(d); try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) {} }
   if (d.fonts && d.fonts.ready) d.fonts.ready.then(function(){ setTimeout(go, 150); });
   setTimeout(go, 1500);
 }
 
+/* ═══ الإعدادات ═══ */
+function zx(z){ return '\u2066' + z.replace('x', '×') + '\u2069'; }
+function setLabel(){ document.getElementById('setLbl').textContent = zx(SIZE) + ' · ' + (STYLE === 'compact' ? 'مختصر' : 'كامل'); }
+function drawSet(){
+  document.getElementById('sizes').innerHTML = SIZES.map(function(z){
+    return '<button class="' + (z === SIZE ? 'on' : '') + '" onclick="setSize(\'' + z + '\')">' + zx(z) + '</button>'; }).join('') +
+    (SIZES.indexOf(SIZE) === -1 ? '<button class="on">' + zx(SIZE) + '</button>' : '');
+  document.getElementById('styles').innerHTML = STYLES.map(function(s){
+    return '<button class="' + (s[0] === STYLE ? 'on' : '') + '" onclick="setStyle(\'' + s[0] + '\')">' + s[1] + '</button>'; }).join('');
+  document.getElementById('styleHelp').textContent = (STYLES.filter(function(s){ return s[0] === STYLE; })[0] || [])[2] || '';
+  renderPreview('pvSet', [{ name: 'AUGMENTIN 457MG/5ML SYP', text: '5 مل كل 12 ساعة بعد الأكل لمدة 7 أيام' }], 4, 16);
+  setLabel();
+}
+function setSize(v){ SIZE = v; ls('lblSize', v); drawSet(); preview(); }
+function setStyle(v){ STYLE = v; ls('lblStyle', v); drawSet(); preview(); }
+function customSize(){
+  var w = parseInt(document.getElementById('cw').value, 10), h = parseInt(document.getElementById('ch').value, 10);
+  if (w >= 20 && w <= 120 && h >= 15 && h <= 120) setSize(w + 'x' + h);
+}
+function openSet(){ drawSet(); document.getElementById('drw').classList.add('on'); document.getElementById('shade').classList.add('on'); }
+function closeSet(){ document.getElementById('drw').classList.remove('on'); document.getElementById('shade').classList.remove('on'); }
+function testPrint(){ printLabels([{ name: 'PANADOL EXTRA', text: 'قرص كل 8 ساعات بعد الأكل عند اللزوم' }], 30, null); }
+
+setLabel();
 poll();
 setInterval(poll, 20000);
 </script>

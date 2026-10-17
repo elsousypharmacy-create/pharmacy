@@ -470,7 +470,7 @@ function labelCSS(W, H){
   return '@page{size:' + W + 'mm ' + H + 'mm;margin:0}*{box-sizing:border-box}' +
     'body{margin:0;font-family:Cairo,Tahoma,sans-serif;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
     '.l,.l *{color:#000!important}' +
-    '.l{width:' + W + 'mm;height:' + H + 'mm;padding:' + (H <= 20 ? '1mm 2mm' : '1.6mm 2.2mm') + ';page-break-after:always;display:flex;flex-direction:column;overflow:hidden;position:relative}' +
+    '.l{width:' + W + 'mm;height:' + H + 'mm;padding:' + (H <= 20 ? '1mm 3.2mm' : '1.6mm 3mm') + ';page-break-after:always;display:flex;flex-direction:column;overflow:hidden;position:relative}' +
     '.h{display:flex;align-items:center;gap:1.2mm;font-weight:800;border-bottom:.35mm solid #000;padding-bottom:.7mm;white-space:nowrap}' +
     '.h img{height:1.25em;width:1.25em}.h .p{flex:1;overflow:hidden}.h .d{font-weight:600}' +
     '.n{direction:ltr;text-align:right;font-weight:800;margin-top:.8mm;white-space:nowrap;overflow:hidden;line-height:1.2}' +
@@ -505,7 +505,7 @@ function fitAll(doc){
     var multi = el.classList.contains('t');
     /* هامش أمان 10% عشان الطابعة الحرارية بتطبع أعرض شوية من الشاشة */
     function over(){ return multi ? (el.firstChild.offsetHeight > el.clientHeight * .97 || el.scrollWidth > el.clientWidth)
-                                  : (el.firstChild && el.firstChild.offsetWidth !== undefined ? el.firstChild.offsetWidth : el.scrollWidth) > el.clientWidth * .95; }
+                                  : (el.firstChild && el.firstChild.offsetWidth !== undefined ? el.firstChild.offsetWidth : el.scrollWidth) > el.clientWidth * .92; }
     while (f > min && over()){ f -= .5; el.style.fontSize = f + 'pt'; }
   });
   /* لو الملصق كله لسه أطول من مكانه → نصغّر الطريقة والاسم مع بعض */

@@ -3954,7 +3954,29 @@ function serverSrc_() {
 function serverUpdateInfo() {
   var s = serverSrc_(), P = PropertiesService.getScriptProperties();
   return { ok: true, available: !!s, newer: !!s && P.getProperty('SERVER_SRC_SIG') !== s.sig,
-           lastUpdate: P.getProperty('SERVER_UPDATED_AT') || '' };
+           lastUpdate: P.getProperty('SERVER_UPDATED_AT') || '', autoOn: autoUpdateOn_() };
+}
+/* 🔁 التحديث التلقائي: كل 15 دقيقة يشوف GitHub — لو فيه نسخة جديدة يركّبها ويبعتلك على تيليجرام */
+function autoUpdateOn_() {
+  return ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'autoServerUpdate'; });
+}
+function setAutoUpdate(on) {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'autoServerUpdate') ScriptApp.deleteTrigger(t); });
+  if (on) ScriptApp.newTrigger('autoServerUpdate').timeBased().everyMinutes(15).create();
+  return { ok: true, autoOn: !!on };
+}
+function autoServerUpdate() {
+  var s = serverSrc_(), P = PropertiesService.getScriptProperties();
+  if (!s || P.getProperty('SERVER_SRC_SIG') === s.sig) return;
+  if (P.getProperty('SERVER_FAILED_SIG') === s.sig) return;          /* النسخة دي فشلت قبل كده — منحاولش كل ربع ساعة */
+  var r = serverUpdate();
+  if (r && r.ok) {
+    P.deleteProperty('SERVER_FAILED_SIG');
+    sendTelegramStaff('🔄 السيرفر اتحدّث تلقائي — نسخة ' + r.version + ' (' + r.at + ')', PERSONAL_CHAT);
+  } else {
+    P.setProperty('SERVER_FAILED_SIG', s.sig);
+    sendTelegramStaff('⚠️ التحديث التلقائي للسيرفر فشل:\n' + ((r && r.error) || 'سبب مش معروف') + '\nالنسخة الحالية شغالة عادي.', PERSONAL_CHAT);
+  }
 }
 function serverUpdate() {
   var s = serverSrc_();
@@ -4071,7 +4093,7 @@ function doGet(e) {
   if (action === 'getCustomerVisits') return jsonResponseStaff(getCustomerVisits(e.parameter.days));
   /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
   var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
-                        purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1 };
+                        purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1 };
   if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
     return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
   if (action === 'aiTest') return jsonResponseStaff(aiTest(e.parameter.q));
@@ -4081,6 +4103,7 @@ function doGet(e) {
   if (action === 'botSetRelay') return jsonResponseStaff(botSetRelay(e.parameter.url));
   if (action === 'backupProbe') return jsonResponseStaff(backupProbe());
   if (action === 'serverUpdate') return jsonResponseStaff(serverUpdate());
+  if (action === 'setAutoUpdate') return jsonResponseStaff(setAutoUpdate(e.parameter.on === '1'));
   if (action === 'cleanBackups') return jsonResponseStaff(cleanBackups(e.parameter.apply === '1'));
   if (action === 'cleanBackupsAuto') return jsonResponseStaff(cleanBackupsAuto());
   if (action === 'purgeTrashedBackups') return jsonResponseStaff(purgeTrashedBackups());

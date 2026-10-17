@@ -2083,28 +2083,41 @@ function readPhoto_(fileIds) {
     });
     if (!imgs.length) return null;
     var key = aiKey_('GEMINI_API_KEY') || GEMINI_API_KEY;
-    var prompt = 'You are a pharmacist assistant in Egypt. Look at ' + (imgs.length > 1 ? 'these ' + imgs.length + ' photos sent together by one customer (one request).' : 'this photo from a customer.') + '\n' +
-      'kind: "prescription" if ANY photo is a doctor prescription (printed or handwritten); else "box" if they show medicine/cosmetic package(s); otherwise "other".\n' +
-      'List every product from ALL photos once (no duplicates). For each also give "use": its purpose in a few English words (e.g. "oily skin facial wash", "post-laser moisturizer").\n' +
-      'items: every medicine you can read, as {"name":"trade name in English as printed","strength":"","form":"tablet/syrup/...","sure":true}. ' +
-      'For handwritten prescriptions only include names you can read with reasonable confidence, and set "sure":false if unsure.\n' +
+    var prompt = 'You are a pharmacist assistant in Egypt. Look at this photo from a customer.\n' +
+      'kind: "prescription" if it is a doctor prescription (printed or handwritten); "box" if it shows medicine/cosmetic package(s); otherwise "other".\n' +
+      'items: EVERY product you can read. For a prescription go line by line and list every prescribed item (drops, capsules, creams, washes…). ' +
+      'Each as {"name":"trade name in English as printed","strength":"","form":"tablet/syrup/cream/...","use":"purpose in a few English words (e.g. oily skin facial wash, post-laser moisturizer, vitamin D drops)","sure":true}. ' +
+      'For handwriting set "sure":false when unsure.\n' +
       'rx: true if the package says prescription only or it is a chronic/prescription drug (antidiabetic, antihypertensive, antibiotic...).\n' +
       'label: usage/storage notes PRINTED on the box only, TRANSLATED to simple Egyptian Arabic (never English), e.g. "Do not crush, cut or chew" → "يتبلع صحيح من غير كسر أو مضغ". Never invent a dose. Empty if none.\n' +
       'Reply JSON only: {"kind":"box","items":[{"name":"","strength":"","form":"","use":"","sure":true}],"rx":false,"label":""}';
-    var models = [AI_DEFAULTS.gemini.bot, GEMINI_MODEL];
-    for (var i = 0; i < models.length; i++) {
-      var res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent', {
+    function req(model, img) {
+      return { url: 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent',
         method: 'post', contentType: 'application/json', muteHttpExceptions: true, headers: { 'x-goog-api-key': key },
-        payload: JSON.stringify({ contents: [{ parts: imgs.concat([{ text: prompt }]) }],
-                                  generationConfig: { temperature: 0, responseMimeType: 'application/json' } }) });
-      if (res.getResponseCode() !== 200) { Logger.log('photo ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 200)); continue; }
-      var d = JSON.parse(res.getContentText());
-      if (d.usageMetadata) aiTrack_('photo', models[i], d.usageMetadata.promptTokenCount || 0, d.usageMetadata.candidatesTokenCount || 0);
-      var p = d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts;
-      var txt = (p || []).filter(function (x) { return x.text && !x.thought; }).map(function (x) { return x.text; }).join('');
-      var out = doseJson_(txt);
-      if (out) return out;
+        payload: JSON.stringify({ contents: [{ parts: [img, { text: prompt }] }], generationConfig: { temperature: 0, responseMimeType: 'application/json' } }) };
     }
+    function parse(res, model) {
+      if (res.getResponseCode() !== 200) { Logger.log('photo ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 200)); return null; }
+      var d = JSON.parse(res.getContentText());
+      if (d.usageMetadata) aiTrack_('photo', model, d.usageMetadata.promptTokenCount || 0, d.usageMetadata.candidatesTokenCount || 0);
+      var p = d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts;
+      return doseJson_((p || []).filter(function (x) { return x.text && !x.thought; }).map(function (x) { return x.text; }).join(''));
+    }
+    /* ⚡ كل صورة لوحدها بس كلهم في نفس الوقت (أدق من صورة واحدة فيها الكل، ومن غير وقت زيادة) */
+    var M1 = AI_DEFAULTS.gemini.bot, M2 = GEMINI_MODEL;
+    var outs = UrlFetchApp.fetchAll(imgs.map(function (im) { return req(M1, im); })).map(function (r) { return parse(r, M1); });
+    outs = outs.map(function (o, i) { return o || (M2 !== M1 ? parse(UrlFetchApp.fetch(req(M2, imgs[i]).url, req(M2, imgs[i])), M2) : null); });
+    var good = outs.filter(Boolean);
+    if (!good.length) return null;
+    var seenN = {}, items = [];
+    good.forEach(function (o) { (o.items || []).forEach(function (it) {
+      var k = String(it.name || '').toLowerCase().replace(/[^a-z0-9؀-ۿ]/g, '');
+      if (k && !seenN[k]) { seenN[k] = 1; items.push(it); }
+    }); });
+    var kinds = good.map(function (o) { return o.kind; });
+    return { kind: kinds.indexOf('prescription') !== -1 ? 'prescription' : (kinds.indexOf('box') !== -1 ? 'box' : 'other'),
+             items: items, rx: good.some(function (o) { return o.rx; }),
+             label: (good.filter(function (o) { return o.label; })[0] || {}).label || '' };
   } catch (e) { Logger.log('خطأ readPhoto_: ' + e.message); }
   return null;
 }
@@ -2686,7 +2699,8 @@ function brainPrompt_(chatId, text, history, items, noSearch) {
     '- لو اسمه معروف ناديه باسمه الأول (أو اللقب + الاسم لو مكتوب زي دكتور/الحاج) أحيانًا، مش في كل رسالة. ممنوع تكتب "أستاذ/ة".\n' +
     '- لو العميل تعبان: تعاطف بجملة قصيرة مهذبة ("ألف سلامة على حضرتك") وبعدين كمّل.\n' +
     '- التنسيق: لو بتذكر أكتر من صنف، اكتب جملة قصيرة، وبعدين كل صنف في سطر لوحده بالشكل ده:\n' +
-    '  ✅ الاسم — السعر جنيه   (للمتوفر)\n  ❌ الاسم — مش متوفر   (للمش متوفر، ولو فيه بديل: ↩️ البديل — السعر جنيه في السطر اللي بعده)\n' +
+    '  ✅ الاسم — السعر جنيه   (للمتوفر)\n  ❌ الاسم — مش متوفر   (بس كده، من غير شرح في نفس السطر. ولو فيه بديل: ↩️ البديل — السعر جنيه في السطر اللي بعده)\n' +
+    '  وجملة "الصيدلي هيتواصل/هيراجع" تتقال مرة واحدة بس في الآخر، مش جنب كل صنف.\n' +
     '  وبعدهم سطر "الإجمالي: … جنيه" لو فيه أكتر من صنف متوفر، وفي الآخر سؤال قصير. ممنوع تحط الأصناف في جملة طويلة واحدة. القايمة دي مش محسوبة في حد الـ4 سطور.\n' +
     '- نوّع جملك ومتكررش نفس الجملة. إيموجي واحد خفيف بالكتير في الرسالة (زي 🌿 ✨ 💙 😊 🌷)، ونوّع بينهم ومتكررش نفس اللي في رسالتك اللي فاتت.\n' +
     '- اسأل سؤال يكمّل الكلام لما يكون مفيد، واعرض التوصيل لما يناسب ("تحب حضرتك نوصلهولك؟").\n\n' +

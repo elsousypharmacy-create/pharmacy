@@ -3045,6 +3045,11 @@ function byDaysDesc(a, b){
   return y - x;
 }
 
+/* الشيت بيخزّن الرقم كعدد فالصفر اللي في الأول بيضيع: 1224565199 → 01224565199 */
+function custPhone(p){
+  p = String(p || '').replace(/\D/g, '');
+  return (p.length === 10 && p.charAt(0) === '1') ? '0' + p : p;
+}
 function custLast(c){
   var ds = custDays(c);
   if (ds === null) return 'آخر زيارة: —';
@@ -3054,7 +3059,7 @@ function custRow(c, right){
   return '<div class="row" onclick="openCust(\'' + esc(String(c.phone)) + '\')" style="cursor:pointer">' +
     '<div class="row-main" style="flex:1"><b>' + esc(c.name || '—') + '</b>' +
     '<small>' + custLast(c) + (c.cls ? ' · ' + esc(c.cls) : '') + '</small>' +
-    '<small style="color:var(--ink-3)">' + ltr(c.phone) + '</small></div>' +
+    '<small style="color:var(--ink-3)">' + ltr(custPhone(c.phone)) + '</small></div>' +
     '<span style="display:flex;align-items:center;gap:8px;flex-shrink:0">' + (right || daysBadge(c)) +
     '<span style="opacity:.4;font-size:16px">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></span></div>';
 }

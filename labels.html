@@ -476,7 +476,7 @@ function labelCSS(W, H){
     '.n{direction:ltr;text-align:right;font-weight:800;margin-top:.8mm;white-space:nowrap;overflow:hidden;line-height:1.2}' +
     '.t{flex:1;min-height:0;font-weight:800;line-height:1.28;margin-top:.6mm;display:flex;align-items:center;overflow:hidden;word-break:break-word}' +
     '.f{display:flex;justify-content:space-between;gap:2mm;font-weight:700;border-top:.25mm solid #000;padding-top:.5mm;white-space:nowrap}' +
-    '.cp .t{justify-content:center;text-align:center}.cp .n{text-align:center}.cp .f{border-top:0;justify-content:center;font-weight:800;color:#000}';
+    '.cp .t{justify-content:center;text-align:center;line-height:1.1;margin-top:.2mm}.cp .n{line-height:1.05;margin-top:0}.cp .f{line-height:1;padding-top:.2mm}.cp .n{text-align:center}.cp .f{border-top:0;justify-content:center;font-weight:800;color:#000}';
 }
 function labelHTML(it, age, wt, W, H){
   var date = new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'numeric', year: '2-digit' });
@@ -484,9 +484,9 @@ function labelHTML(it, age, wt, W, H){
   var logo = location.href.replace(/[^/]*$/, '') + 'icon-192.png';
   var s = Math.min(W, H * 1.6);   /* أساس أحجام الخط بالمقاس */
   if (STYLE === 'compact'){
-    return '<div class="l cp"><div class="n" data-max="' + (s * .4) + '"><span>' + esc(it.name) + '</span></div>' +
-      '<div class="t" data-max="' + (s * .52) + '"><span>' + esc(it.text) + '</span></div>' +
-      '<div class="f" data-max="7"><span>صيدلية السوسي · توصيل <b dir="ltr">' + PHONE + '</b></span></div></div>';
+    return '<div class="l cp"><div class="n" data-max="' + (s * .3) + '"><span>' + esc(it.name) + '</span></div>' +
+      '<div class="t" data-max="' + (s * .7) + '"><span>' + esc(it.text) + '</span></div>' +
+      '<div class="f" data-max="6.5"><span>صيدلية السوسي · توصيل <b dir="ltr">' + PHONE + '</b></span></div></div>';
   }
   return '<div class="l"><div class="h" style="font-size:' + (s * .19) + 'pt"><img src="' + logo + '"><span class="p">صيدلية السوسي</span><span class="d">' + date + '</span></div>' +
     '<div class="n" data-max="' + (s * .27) + '"><span>' + esc(it.name) + '</span></div>' +
@@ -504,7 +504,7 @@ function fitAll(doc){
     el.style.fontSize = f + 'pt';
     var multi = el.classList.contains('t');
     /* هامش أمان 10% عشان الطابعة الحرارية بتطبع أعرض شوية من الشاشة */
-    function over(){ return multi ? (el.firstChild.offsetHeight > el.clientHeight * .88 || el.scrollWidth > el.clientWidth)
+    function over(){ return multi ? (el.firstChild.offsetHeight > el.clientHeight * .97 || el.scrollWidth > el.clientWidth)
                                   : (el.firstChild && el.firstChild.offsetWidth !== undefined ? el.firstChild.offsetWidth : el.scrollWidth) > el.clientWidth * .95; }
     while (f > min && over()){ f -= .5; el.style.fontSize = f + 'pt'; }
   });
@@ -515,8 +515,10 @@ function fitAll(doc){
       /* نصغّر الطريقة الأول؛ الاسم يصغر بس لو بقى أكبر من الطريقة */
       var tt = l.querySelector('.t'), nn = l.querySelector('.n'), ff = l.querySelector('.f[data-max]');
       var ft = tt ? parseFloat(tt.style.fontSize) : 0, fn = nn ? parseFloat(nn.style.fontSize) : 0, fo = ff ? parseFloat(ff.style.fontSize) : 0;
-      if (ff && fo > 6 && ft <= 8.5) ff.style.fontSize = (fo - .5) + 'pt';
-      else if (tt && ft > 5 && ft >= fn * 1.15) tt.style.fontSize = (ft - .5) + 'pt';
+      var cp = l.classList.contains('cp');
+      if (cp && nn && fn > 6.5 && fn > ft * .8) nn.style.fontSize = (fn - .5) + 'pt';
+      else if (ff && fo > 5.5 && ft <= 9) ff.style.fontSize = (fo - .5) + 'pt';
+      else if (tt && ft > 5 && (cp || ft >= fn * 1.15)) tt.style.fontSize = (ft - .5) + 'pt';
       else if (nn && fn > 5) nn.style.fontSize = (fn - .5) + 'pt';
       else if (tt && ft > 4) tt.style.fontSize = (ft - .5) + 'pt';
       else break;

@@ -2071,25 +2071,31 @@ function transcribeVoice_(fileId, mime) {
 
 /* 📷 قراية صورة العميل (علبة دوا أو روشتة) بـ Gemini المجاني */
 var PHOTO_CTX = null;   /* بيتملى أثناء الرد على صورة — العقل بيدوّر بالأسماء اللي فيها */
-function readPhoto_(fileId) {
+function readPhoto_(fileIds) {
   try {
-    var f = tgApi_('getFile', { file_id: fileId });
-    if (!f || !f.ok || !f.result || !f.result.file_path) return null;
-    var blob = UrlFetchApp.fetch('https://api.telegram.org/file/bot' + BOT_TOKEN + '/' + f.result.file_path, { muteHttpExceptions: true }).getBlob();
-    var b64 = Utilities.base64Encode(blob.getBytes());
+    fileIds = [].concat(fileIds).slice(0, 6);
+    var imgs = [];
+    fileIds.forEach(function (fid) {
+      var f = tgApi_('getFile', { file_id: fid });
+      if (!f || !f.ok || !f.result || !f.result.file_path) return;
+      var blob = UrlFetchApp.fetch('https://api.telegram.org/file/bot' + BOT_TOKEN + '/' + f.result.file_path, { muteHttpExceptions: true }).getBlob();
+      imgs.push({ inline_data: { mime_type: 'image/jpeg', data: Utilities.base64Encode(blob.getBytes()) } });
+    });
+    if (!imgs.length) return null;
     var key = aiKey_('GEMINI_API_KEY') || GEMINI_API_KEY;
-    var prompt = 'You are a pharmacist assistant in Egypt. Look at this photo from a customer.\n' +
-      'kind: "box" if it shows medicine package(s); "prescription" if it is a doctor prescription (printed or handwritten); otherwise "other".\n' +
+    var prompt = 'You are a pharmacist assistant in Egypt. Look at ' + (imgs.length > 1 ? 'these ' + imgs.length + ' photos sent together by one customer (one request).' : 'this photo from a customer.') + '\n' +
+      'kind: "prescription" if ANY photo is a doctor prescription (printed or handwritten); else "box" if they show medicine/cosmetic package(s); otherwise "other".\n' +
+      'List every product from ALL photos once (no duplicates). For each also give "use": its purpose in a few English words (e.g. "oily skin facial wash", "post-laser moisturizer").\n' +
       'items: every medicine you can read, as {"name":"trade name in English as printed","strength":"","form":"tablet/syrup/...","sure":true}. ' +
       'For handwritten prescriptions only include names you can read with reasonable confidence, and set "sure":false if unsure.\n' +
       'rx: true if the package says prescription only or it is a chronic/prescription drug (antidiabetic, antihypertensive, antibiotic...).\n' +
       'label: usage/storage notes PRINTED on the box only, TRANSLATED to simple Egyptian Arabic (never English), e.g. "Do not crush, cut or chew" → "يتبلع صحيح من غير كسر أو مضغ". Never invent a dose. Empty if none.\n' +
-      'Reply JSON only: {"kind":"box","items":[{"name":"","strength":"","form":"","sure":true}],"rx":false,"label":""}';
+      'Reply JSON only: {"kind":"box","items":[{"name":"","strength":"","form":"","use":"","sure":true}],"rx":false,"label":""}';
     var models = [AI_DEFAULTS.gemini.bot, GEMINI_MODEL];
     for (var i = 0; i < models.length; i++) {
       var res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent', {
         method: 'post', contentType: 'application/json', muteHttpExceptions: true, headers: { 'x-goog-api-key': key },
-        payload: JSON.stringify({ contents: [{ parts: [{ inline_data: { mime_type: 'image/jpeg', data: b64 } }, { text: prompt }] }],
+        payload: JSON.stringify({ contents: [{ parts: imgs.concat([{ text: prompt }]) }],
                                   generationConfig: { temperature: 0, responseMimeType: 'application/json' } }) });
       if (res.getResponseCode() !== 200) { Logger.log('photo ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 200)); continue; }
       var d = JSON.parse(res.getContentText());
@@ -2679,11 +2685,15 @@ function brainPrompt_(chatId, text, history, items, noSearch) {
     '- ممنوع تكتب "يا" + أي اسم مش هو "اسم العميل (مؤكد)". ومتفترضش إن العميل راجل أو ست: استخدم صيغة محايدة مع "حضرتك" (زي "حضرتك بتاخد أدوية تانية؟").\n' +
     '- لو اسمه معروف ناديه باسمه الأول (أو اللقب + الاسم لو مكتوب زي دكتور/الحاج) أحيانًا، مش في كل رسالة. ممنوع تكتب "أستاذ/ة".\n' +
     '- لو العميل تعبان: تعاطف بجملة قصيرة مهذبة ("ألف سلامة على حضرتك") وبعدين كمّل.\n' +
+    '- التنسيق: لو بتذكر أكتر من صنف، اكتب جملة قصيرة، وبعدين كل صنف في سطر لوحده بالشكل ده:\n' +
+    '  ✅ الاسم — السعر جنيه   (للمتوفر)\n  ❌ الاسم — مش متوفر   (للمش متوفر، ولو فيه بديل: ↩️ البديل — السعر جنيه في السطر اللي بعده)\n' +
+    '  وبعدهم سطر "الإجمالي: … جنيه" لو فيه أكتر من صنف متوفر، وفي الآخر سؤال قصير. ممنوع تحط الأصناف في جملة طويلة واحدة. القايمة دي مش محسوبة في حد الـ4 سطور.\n' +
     '- نوّع جملك ومتكررش نفس الجملة. إيموجي واحد خفيف بالكتير في الرسالة (زي 🌿 ✨ 💙 😊 🌷)، ونوّع بينهم ومتكررش نفس اللي في رسالتك اللي فاتت.\n' +
     '- اسأل سؤال يكمّل الكلام لما يكون مفيد، واعرض التوصيل لما يناسب ("تحب حضرتك نوصلهولك؟").\n\n' +
     'القواعد (لازم):\n' +
     '1. التوافر والأسعار من "المخزون المتاح" تحت بس. السعر يتكتب زي ما هو بالظبط. ممنوع تخترع صنف أو سعر.\n' +
-    '2. لو سأل عن صنف مش في القايمة: قول إنه مش متوفر دلوقتي واعرض إن الدكتور يشوفله بديل، وخلّي escalate=true.\n' +
+    '2. لو سأل عن صنف مش في القايمة: قول إنه مش متوفر دلوقتي واعرض إن الدكتور يشوفله بديل، وخلّي escalate=true. ' +
+    'ولو عرضت بديل من المخزون لازم يكون لنفس الاستخدام بالظبط (غسول بشرة دهنية ↔ غسول بشرة دهنية، مش تفتيح) وقول إنه بديل.\n' +
     '3. اتصرّف زي صيدلي شاطر مش منيو:\n' +
     '   أ) لو كتب الاسم بالظبط (زي "بنادول اكسترا") أو فيه نوع واحد بس: أكّده بسعره على طول.\n' +
     '   ب) لو سأل عن صنف ليه أنواع كتير من غير ما يحدد (زي "عندك بنادول؟"): متعرضش القايمة. قول إنه متوفر واسأل سؤال واحد قصير: لمين وبيشتكي من إيه (صداع/سخونية/برد/ألم)؟ — إلا لو قال ده قبل كده في المحادثة.\n' +
@@ -2731,17 +2741,18 @@ function photoLine_(chatId) {
   if (!P) { try { P = JSON.parse(CacheService.getScriptCache().get('lastphoto_' + chatId) || 'null'); } catch (e) { P = null; } }
   if (!P || !P.items || !P.items.length) return '';
   var isRx = P.kind === 'prescription';
-  var names = P.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (مش واضح)' : ''); }).join('، ');
+  var names = P.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.use ? ' [استخدامه: ' + it.use + ']' : '') + (it.sure === false ? ' (مش واضح)' : ''); }).join('، ');
   var s = (fresh ? 'العميل بعت دلوقتي صورة ' : 'آخر صورة بعتها العميل من شوية كانت ') + (isRx ? 'روشتة' : 'علبة/منتج') + ' مكتوب فيها: ' + names + '.\n' +
     (fresh ? '' : '→ لو العميل قال "الصورة" أو "الورقة" أو "اسمه ايه" أو "الدوا ده" يبقى قصده على الصورة دي — قوله الاسم المكتوب فيها على طول ومتطلبش يبعتها تاني.\n') +
     '→ قاعدة الماركة: لو الصنف اللي في المخزون مش نفس الماركة/الاسم اللي في الصورة، قول صراحة إن نفس المنتج مش موجود ' +
     'واذكر اللي عندنا باسمه كبديل — ممنوع تقدّمه كأنه هو نفس المنتج.\n';
-  if (isRx) s += '→ دي روشتة: قوله المتوفر منها بالسعر والإجمالي، والمش متوفر قول "مش متوفر حاليًا والصيدلي هيتواصل مع حضرتك بخصوصه". ' +
+  if (isRx) s += '→ دي روشتة' + ((P.n || 1) > 1 ? ' — وكل الأصناف اللي في الصور (حتى العلب) تعتبر من الروشتة' : '') + ': قوله المتوفر منها بالسعر والإجمالي، والمش متوفر قول "مش متوفر حاليًا والصيدلي هيتواصل مع حضرتك بخصوصه". ' +
     'ممنوع تمامًا تقترح بديل لأي صنف في الروشتة (البديل قرار الصيدلي بس). متقولش جرعات. وقوله إن الصيدلي هيراجع الروشتة بنفسه.\n';
   else if (P.rx) s += '→ ده دوا بروشتة: متقولش جرعة. قول التوافر والسعر' + (P.label && fresh ? '، والمكتوب على العلبة (بالعربي بس): "' + P.label + '"' : '') +
     '. لو مش متوفر: البديل الوحيد المسموح هو نفس المادة الفعالة ونفس التركيز بالظبط، وقول إن الصيدلي هيأكده. ' +
     'والجرعة حسب الدكتور المعالج والصيدلي هيأكدها (escalate=true لو سأل عن الاستعمال).\n';
-  else if (fresh) s += '→ رد على سؤاله عن الصنف ده (التوافر والسعر، والاستعمال حسب قواعد الجرعات).\n';
+  else if (fresh) s += '→ رد على سؤاله عن الأصناف دي (التوافر والسعر، والاستعمال حسب قواعد الجرعات). ' +
+    'لو صنف مش متوفر: البديل لازم يكون لنفس الاستخدام بالظبط (نفس نوع البشرة/نفس المشكلة/نفس الفئة) — لو مفيش، قول "مش متوفر والصيدلي هيشوفلك البديل المناسب" وescalate=true.\n';
   return s;
 }
 
@@ -2784,6 +2795,11 @@ function smartCustomerReply_(chatId, text, history) {
     (toAsciiDigits_(text).match(/\d+(?:\.\d+)?/g) || []).forEach(function (n) { allowed.push(Math.round(parseFloat(n))); });
     var bs = botSettings_();
     if (bs.fee) allowed.push(Math.round(parseFloat(bs.fee)));
+    /* الإجمالي: أي مجموع لأسعار الأصناف اللي قدامه (+ التوصيل) مسموح */
+    var ps = items.slice(0, 12).map(function (it) { return Math.round(it.price); }), sums = [0];
+    ps.forEach(function (pr) { sums = sums.concat(sums.map(function (s) { return s + pr; })); });
+    var feeN = bs.fee ? Math.round(parseFloat(bs.fee)) || 0 : 0;
+    sums.forEach(function (s) { if (s) { allowed.push(s); if (feeN) allowed.push(s + feeN); } });
     var phones = [getCustomerPhone_(chatId), extractPhone_(text), PHARMACY_PHONE];
     (history || []).forEach(function (h) { if (h.role === 'user') phones.push(extractPhone_(toAsciiDigits_(h.text))); });
     var bad = brainPriceGuard_(reply, allowed, phones.filter(Boolean));
@@ -2890,18 +2906,32 @@ function handleCustomerMessage(chatId, message) {
     if (message.photo) {
       /* الصورة نفسها بتتبعتلك (قبل كده كانت بتوصلك رسالة بس من غير الصورة) */
       tgApi_('forwardMessage', { chat_id: PERSONAL_CHAT, from_chat_id: chatId, message_id: message.message_id });
-      if (holdOn_(chatId)) { escalateToDoctor_(chatId, '[صورة]' + (message.caption ? ' ' + message.caption : ''), 'صورة'); return; }
+      var pfids = [message.photo[message.photo.length - 1].file_id];
+      /* 🖼️ ألبوم (كذا صورة مع بعض): كل صورة بتوصل لوحدها — بنستنى ثواني ونجمّعهم،
+         وأصغر رسالة في الألبوم هي اللي ترد مرة واحدة على الكل */
+      if (message.media_group_id) {
+        var MC = CacheService.getScriptCache(), gk = 'mg_' + message.media_group_id + '_', mid = message.message_id;
+        MC.put(gk + mid, pfids[0], 600);
+        if (message.caption) MC.put(gk + 'cap', String(message.caption), 600);
+        Utilities.sleep(4000);
+        var keys = []; for (var q = mid - 10; q <= mid + 10; q++) keys.push(gk + q);
+        var got = MC.getAll(keys), ids = Object.keys(got).map(function (k) { return +k.slice(gk.length); }).sort(function (a, b) { return a - b; });
+        if (ids.length && ids[0] !== mid) return;               /* صورة تانية في نفس الألبوم هترد */
+        pfids = ids.map(function (n) { return got[gk + n]; });
+        if (!message.caption) message.caption = MC.get(gk + 'cap') || '';
+      }
+      if (holdOn_(chatId)) { escalateToDoctor_(chatId, '[' + (pfids.length > 1 ? pfids.length + ' صور' : 'صورة') + ']' + (message.caption ? ' ' + message.caption : ''), 'صورة'); return; }
       /* 📷 البوت يقرا الصورة: علبة دوا → يرد بالتوافر والسعر · روشتة → المتوفر والإجمالي + تتبعتلك تراجعها */
-      sendTelegram_(chatId, 'استلمنا الصورة 🌿 ثواني وبنشوفها لحضرتك');   /* القراية بتاخد دقيقة تقريبًا */
+      sendTelegram_(chatId, pfids.length > 1 ? 'استلمنا الصور (' + pfids.length + ') 🌿 ثواني وبنشوفها لحضرتك' : 'استلمنا الصورة 🌿 ثواني وبنشوفها لحضرتك');
       sendTypingAction_(chatId);
-      var seen = readPhoto_(message.photo[message.photo.length - 1].file_id);
+      var seen = readPhoto_(pfids);
       if (seen && (seen.kind === 'box' || seen.kind === 'prescription') && seen.items && seen.items.length) {
-        var pnames = seen.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : ''); }).join('، ');
+        var pnames = seen.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.use ? ' (' + it.use + ')' : ''); }).join('، ');
         var ptxt = toAsciiDigits_(String(message.caption || '').trim()) || (seen.kind === 'prescription' ? 'عايز الروشتة دي' : 'عندكم الدوا ده؟');
         if (seen.kind === 'prescription')
           escalateToDoctor_(chatId, '[روشتة — الصورة فوق] قريت منها: ' + pnames + (message.caption ? '\nالعميل كتب: ' + message.caption : ''), 'روشتة — راجعها');
         PHOTO_CTX = seen;
-        try { CacheService.getScriptCache().put('lastphoto_' + chatId, JSON.stringify({ kind: seen.kind, items: seen.items, rx: !!seen.rx }), 21600); } catch (eP) {}
+        try { CacheService.getScriptCache().put('lastphoto_' + chatId, JSON.stringify({ kind: seen.kind, items: seen.items, rx: !!seen.rx, n: pfids.length }), 21600); } catch (eP) {}
         var okp = false;
         try { okp = smartCustomerReply_(chatId, ptxt + '\n[العميل بعت صورة ' + (seen.kind === 'prescription' ? 'روشتة' : 'منتج') + ' مكتوب فيها: ' + pnames + ']', getConversationHistory(chatId)); } catch (e) {}
         PHOTO_CTX = null;

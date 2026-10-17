@@ -298,7 +298,7 @@ button{font-family:inherit}
 
 <div class="subtabs hide" id="subtabs"></div>
 
-<section class="screen on" id="sc-sales"><div class="wrap" id="p-sales"></div></section>
+<section class="screen on" id="sc-sales"><div class="wrap" id="p-home"></div><div class="wrap" id="p-sales" style="display:none"></div><div class="wrap" id="p-hr" style="display:none"></div></section>
 <section class="screen" id="sc-admin"><div class="wrap" id="p-admin"></div></section>
 <section class="screen" id="sc-money"><div class="wrap" id="p-money"></div></section>
 <section class="screen" id="sc-stock"><div class="wrap" id="p-stock"></div></section>
@@ -1121,7 +1121,7 @@ function shortMenu(){
 
 /* ═══════════ ٤) الأقسام ═══════════ */
 var SECTIONS = {
-  sales: [['home',  function(){ return tr('today'); }], ['month', function(){ return tr('rMonth'); }],
+  sales: [['home',  function(){ return tr('today'); }], ['month', function(){ return tr('salesPerf'); }],
           ['perf',  function(){ return tr('staffToday'); }]],
   cust:  [['list',  function(){ return tr('customers'); }], ['msgs', function(){ return tr('messages'); }]],
   stock: [['short', function(){ return tr('shortages'); }], ['aging', function(){ return tr('invAging'); }],
@@ -1156,6 +1156,10 @@ function renderTabs(sec, tab){
 }
 function render(sec, tab){
   var key = SECTIONS[sec][tab][0];
+  /* كل تاب في المبيعات ليه صندوقه — عشان رد متأخر من تاب ميكتبش فوق تاب تاني */
+  if (sec === 'sales') ['p-home', 'p-sales', 'p-hr'].forEach(function(id, i){
+    var el = document.getElementById(id); if (el) el.style.display = (i === tab) ? '' : 'none';
+  });
   ({ count:pgCounts, home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts,
      perf:pgStaffHub, aging:pgAging, short:pgShort,
      msgs:pgMessages, list:pgCustomers, agents:pgAgents, docs:pgDoctors })[key](key);
@@ -1250,7 +1254,7 @@ function docDone(row){
 
 /* ─────── عامة ─────── */
 function pgHome(){
-  var box = document.getElementById('p-sales');
+  var box = document.getElementById('p-home');
   var seed = cacheGet('home', {});
   if (seed) drawHome(seed.b, seed.kpi, true); else busy(box);
 
@@ -1300,7 +1304,7 @@ document.addEventListener('visibilitychange', function(){
 });
 
 function drawHome(b, kpi, isOld){
-  var box = document.getElementById('p-sales');
+  var box = document.getElementById('p-home');
   try{
     kpi = kpi || {};
     if (!b || !b.ok) throw new Error('bundle');
@@ -1869,7 +1873,7 @@ var HR = { live: null, hist: null, kpi: null };
 function setHrRange(v){ setRange('perf', v, pgStaffHub); }
 
 function pgStaffHub(){
-  var box = document.getElementById('p-sales');
+  var box = document.getElementById('p-hr');
   var p = rangeParams('perf');
   var seed = cacheGet('hub', p);
   if (seed) { setHub(seed); drawStaffHub(true); } else busy(box);
@@ -1908,7 +1912,7 @@ function liveFor(name){
 }
 
 function drawStaffHub(isOld){
-  var box = document.getElementById('p-sales');
+  var box = document.getElementById('p-hr');
   var list = (HR.kpi.employees || []);
   var live = HR.live.live || [];
 

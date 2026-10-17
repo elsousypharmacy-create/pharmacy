@@ -2087,7 +2087,7 @@ function readPhoto_(fileIds) {
       'kind: "prescription" if it is a doctor prescription (printed or handwritten); "box" if it shows medicine/cosmetic package(s); otherwise "other".\n' +
       'items: EVERY product you can read. For a prescription go line by line and list every prescribed item (drops, capsules, creams, washes…). ' +
       'Each as {"name":"trade name in English as printed","strength":"","form":"tablet/syrup/cream/...","use":"purpose in a few English words (e.g. oily skin facial wash, post-laser moisturizer, vitamin D drops)","sure":true}. ' +
-      'For handwriting set "sure":false when unsure.\n' +
+      'For handwriting: "sure":true ONLY if every letter of the name is clearly legible; otherwise "sure":false (better unsure than a wrong confident name).\n' +
       'rx: true if the package says prescription only or it is a chronic/prescription drug (antidiabetic, antihypertensive, antibiotic...).\n' +
       'label: usage/storage notes PRINTED on the box only, TRANSLATED to simple Egyptian Arabic (never English), e.g. "Do not crush, cut or chew" → "يتبلع صحيح من غير كسر أو مضغ". Never invent a dose. Empty if none.\n' +
       'Reply JSON only: {"kind":"box","items":[{"name":"","strength":"","form":"","use":"","sure":true}],"rx":false,"label":""}';
@@ -2761,10 +2761,12 @@ function photoLine_(chatId) {
     '→ قاعدة الماركة: لو الصنف اللي في المخزون مش نفس الماركة/الاسم اللي في الصورة، قول صراحة إن نفس المنتج مش موجود ' +
     'واذكر اللي عندنا باسمه كبديل — ممنوع تقدّمه كأنه هو نفس المنتج.\n';
   if (isRx) s += '→ دي روشتة' + ((P.n || 1) > 1 ? ' — وكل الأصناف اللي في الصور (حتى العلب) تعتبر من الروشتة' : '') + ': قوله المتوفر منها بالسعر والإجمالي، والمش متوفر قول "مش متوفر حاليًا والصيدلي هيتواصل مع حضرتك بخصوصه". ' +
-    'ممنوع تمامًا تقترح بديل لأي صنف في الروشتة (البديل قرار الصيدلي بس). متقولش جرعات. وقوله إن الصيدلي هيراجع الروشتة بنفسه.\n';
+    'ممنوع تمامًا تقترح بديل لأي صنف في الروشتة (البديل قرار الصيدلي بس). متقولش جرعات. وقوله إن الصيدلي هيراجع الروشتة بنفسه.\n' +
+    '→ أي صنف مكتوب جنبه (مش واضح): اكتبه في سطر لوحده بالشكل ده: ❓ الاسم — مش واضح في الروشتة (الصيدلي هيأكده). متقولش عليه متوفر ولا مش متوفر.\n' +
+    '→ اختم دايمًا بسؤال يقفل الطلب لو فيه حاجة متوفرة، زي: "تحب حضرتك نجهّز المتوفر ونوصّله؟"\n';
   else if (P.rx) s += '→ ده دوا بروشتة: متقولش جرعة. قول التوافر والسعر' + (P.label && fresh ? '، والمكتوب على العلبة (بالعربي بس): "' + P.label + '"' : '') +
     '. لو مش متوفر: البديل الوحيد المسموح هو نفس المادة الفعالة ونفس التركيز بالظبط، وقول إن الصيدلي هيأكده. ' +
-    'والجرعة حسب الدكتور المعالج والصيدلي هيأكدها (escalate=true لو سأل عن الاستعمال).\n';
+    'والجرعة حسب الدكتور المعالج والصيدلي هيأكدها (escalate=true لو سأل عن الاستعمال). ولو متوفر اختم بسؤال: "تحب حضرتك نجهّزه أو نوصّله؟"\n';
   else if (fresh) s += '→ رد على سؤاله عن الأصناف دي (التوافر والسعر، والاستعمال حسب قواعد الجرعات). ' +
     'لو صنف مش متوفر: البديل لازم يكون لنفس الاستخدام بالظبط (نفس نوع البشرة/نفس المشكلة/نفس الفئة) — لو مفيش، قول "مش متوفر والصيدلي هيشوفلك البديل المناسب" وescalate=true.\n';
   return s;

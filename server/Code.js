@@ -3872,8 +3872,9 @@ function serverUpdate() {
   var r = UrlFetchApp.fetch(api + '/content', { headers: H, muteHttpExceptions: true });
   if (r.getResponseCode() !== 200) {
     var msg = r.getContentText();
-    return { ok: false, error: /has not been used|disabled|SERVICE_DISABLED|PERMISSION_DENIED/i.test(msg)
-      ? 'شغّل Google Apps Script API الأول من script.google.com/home/usersettings' : 'Apps Script API: ' + r.getResponseCode() + ' ' + msg.slice(0, 200) };
+    var em = ''; try { em = JSON.parse(msg).error.message; } catch (e) { em = msg; }
+    return { ok: false, error: (/insufficient|scope/i.test(em) ? 'الصلاحيات الجديدة لسه متوافقش عليها — اعمل New version ووافق. ' : '') +
+      'Apps Script API ' + r.getResponseCode() + ': ' + String(em).slice(0, 300) };
   }
   var content = JSON.parse(r.getContentText()), done = false;
   (content.files || []).forEach(function (file) {

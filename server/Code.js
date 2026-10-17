@@ -9080,7 +9080,8 @@ function xlsxToRows_(file) {
       payload: JSON.stringify({ name: '__tmp_exp_' + Date.now(), mimeType: MimeType.GOOGLE_SHEETS }),
       muteHttpExceptions: true });
   if (res.getResponseCode() !== 200) {
-    return { ok: false, error: 'تحويل الملف فشل: ' + res.getResponseCode() };
+    var why = ''; try { why = JSON.parse(res.getContentText()).error.message; } catch (e) { why = res.getContentText().slice(0, 150); }
+    return { ok: false, error: 'تحويل الملف فشل: ' + res.getResponseCode() + (why ? ' — ' + why : '') };
   }
   var tmpId = JSON.parse(res.getContentText()).id, rows = [];
   try {

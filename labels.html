@@ -137,6 +137,11 @@ document.getElementById('size').value = SIZE;
 
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function api(action, params){
+  if (action === 'aiDose'){
+    var pin = ls('adminPin');
+    if (!pin){ pin = (prompt('الرقم السري (مرة واحدة على الجهاز ده)') || '').trim(); if (pin) ls('adminPin', pin); }
+    params = Object.assign({}, params, { pin: pin || '' });
+  }
   var u = SCRIPT_URL + '?action=' + action;
   for (var k in (params || {})) u += '&' + k + '=' + encodeURIComponent(params[k]);
   return fetch(u + '&_ts=' + Date.now(), { cache: 'no-store' }).then(function(r){ return r.json(); });
@@ -247,6 +252,7 @@ function runAI(key, age, wt){
   .then(function(d){
     if (CUR !== inv || AI_KEY !== key) return;
     AI_BUSY = false;
+    if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {}
     if (!d || !d.ok){ document.getElementById('aiAll').innerHTML = '<div class="aibar">⚠️ ' + esc((d && d.error) || 'الذكاء الاصطناعي مردش') + ' — اكتب يدوي</div>'; check(); return; }
     AI_USED = false;
     (d.items || []).forEach(function(x){

@@ -734,7 +734,24 @@ function logErr(e){
 
 /* ═══════════ ٣) الاتصال بالسيرفر ═══════════
    كل نداء بيعدّي من هنا — لو الرابط اتغيّر، يتغيّر في مكان واحد. */
+/* 🔒 الأوامر الحساسة بتاخد الرقم السري (بيتطلب مرة ويتحفظ على الجهاز ده) */
+var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1 };
+function adminPin(){
+  var p = ''; try { p = localStorage.getItem('adminPin') || ''; } catch (e) {}
+  if (!p){ p = (prompt('الرقم السري') || '').trim(); if (p) try { localStorage.setItem('adminPin', p); } catch (e) {} }
+  return p;
+}
 function api(action, params, base){
+  if (ADMIN_ACTIONS[action] && !base){
+    params = Object.assign({}, params || {}, { pin: adminPin() });
+    return api_(action, params, base).then(function(d){
+      if (d && d.pinError){ try { localStorage.removeItem('adminPin'); } catch (e) {} toast(d.error); }
+      return d;
+    });
+  }
+  return api_(action, params, base);
+}
+function api_(action, params, base){
   var url = (base || SCRIPT_URL) + '?action=' + action;
   for (var k in (params || {})) if (params[k] != null) url += '&' + k + '=' + encodeURIComponent(params[k]);
   url += '&_ts=' + Date.now();
@@ -3956,7 +3973,8 @@ function drawAiCfg(pr){
 function saveAiCfg(pr){
   var v = function(id){ return (document.getElementById(id) || {}).value || ''; };
   post({ action: 'setAiConfig', provider: pr, key: v('aiKey'), bot: v('aiBot'), dose: v('aiDose'), pin: v('aiPin') }).then(function(d){
-    if (d && d.ok){ AI_CFG = d; drawAiCfg(d.provider); toast('✓ اتحفظ — شغال على ' + d.provider); }
+    if (d && d.ok){ try { localStorage.setItem('adminPin', v('aiPin')); } catch (e) {}
+      AI_CFG = d; drawAiCfg(d.provider); toast('✓ اتحفظ — شغال على ' + d.provider); }
     else toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });
 }

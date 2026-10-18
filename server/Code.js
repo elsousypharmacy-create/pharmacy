@@ -2092,7 +2092,8 @@ function readPhoto_(fileIds) {
       'For handwriting: "sure":true ONLY if every letter of the name is clearly legible; otherwise "sure":false (better unsure than a wrong confident name).\n' +
       'rx: true if the package says prescription only or it is a chronic/prescription drug (antidiabetic, antihypertensive, antibiotic...).\n' +
       'label: usage/storage notes PRINTED on the box only, TRANSLATED to simple Egyptian Arabic (never English), e.g. "Do not crush, cut or chew" → "يتبلع صحيح من غير كسر أو مضغ". Never invent a dose. Empty if none.\n' +
-      'Reply JSON only: {"kind":"box","items":[{"name":"","strength":"","form":"","use":"","sure":true}],"rx":false,"label":""}';
+      'handwritten: true if it is a prescription written by hand (even partly), false if fully printed/typed.\n' +
+      'Reply JSON only: {"kind":"box","handwritten":false,"items":[{"name":"","strength":"","form":"","use":"","sure":true}],"rx":false,"label":""}';
     function req(model, img) {
       return { url: 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent',
         method: 'post', contentType: 'application/json', muteHttpExceptions: true, headers: { 'x-goog-api-key': key },
@@ -2124,6 +2125,7 @@ function readPhoto_(fileIds) {
     }); });
     var kinds = good.map(function (o) { return o.kind; });
     return { kind: kinds.indexOf('prescription') !== -1 ? 'prescription' : (kinds.indexOf('box') !== -1 ? 'box' : 'other'),
+             handwritten: good.some(function (o) { return o.kind === 'prescription' && o.handwritten !== false; }),
              items: items, rx: good.some(function (o) { return o.rx; }),
              label: (good.filter(function (o) { return o.label; })[0] || {}).label || '' };
   } catch (e) { Logger.log('خطأ readPhoto_: ' + e.message); }
@@ -2979,6 +2981,16 @@ function handleCustomerMessage(chatId, message) {
       sendTelegram_(chatId, pfids.length > 1 ? 'استلمنا الصور (' + pfids.length + ') 🌿 ثواني وبنشوفها لحضرتك' : 'استلمنا الصورة 🌿 ثواني وبنشوفها لحضرتك');
       sendTypingAction_(chatId);
       var seen = readPhoto_(pfids);
+      /* ✍️ روشتة مكتوبة بخط الإيد → الصيدلي بس اللي يقراها ويرد (البوت ميخمّنش أسماء) */
+      if (seen && seen.kind === 'prescription' && seen.handwritten) {
+        var guess = (seen.items || []).map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (؟)' : ''); }).join('، ');
+        escalateToDoctor_(chatId, '[روشتة بخط الإيد — ' + (pfids.length > 1 ? pfids.length + ' صور فوق' : 'الصورة فوق') + ']' +
+          (guess ? '\nقراية تقريبية من البوت (للمساعدة بس): ' + guess : '') + (message.caption ? '\nالعميل كتب: ' + message.caption : ''), '✍️ روشتة بخط الإيد — اقراها ورد على العميل');
+        var rr = 'استلمنا الروشتة 🌿 الصيدلي هيقراها بنفسه ويرد على حضرتك هنا بالمتوفر والأسعار في أقرب وقت.';
+        sendTelegram_(chatId, rr);
+        saveConversationTurn(chatId, '[روشتة بخط الإيد' + (message.caption ? ': ' + message.caption : '') + ']', rr);
+        return;
+      }
       if (seen && (seen.kind === 'box' || seen.kind === 'prescription') && seen.items && seen.items.length) {
         var pnames = seen.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.use ? ' (' + it.use + ')' : ''); }).join('، ');
         var ptxt = toAsciiDigits_(String(message.caption || '').trim()) || (seen.kind === 'prescription' ? 'عايز الروشتة دي' : 'عندكم الدوا ده؟');

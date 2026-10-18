@@ -4252,8 +4252,20 @@ function loadWa(){
       '<button class="btn btn-quiet" style="width:auto;margin:0;padding:6px 10px" onclick="navigator.clipboard.writeText(\'' + esc(v) + '\');toast(\'✓ اتنسخ\')">نسخ</button></div>'; };
     b.innerHTML = cp('Callback URL', d.callbackUrl) + cp('Verify token', d.verifyToken) +
       row('التوكن', d.hasToken ? '✅ متحط' : '❌ لسه — حطه في Script Properties باسم WA_TOKEN') +
-      row('آخر رسالة وصلت', d.lastIn || 'لسه') + (d.lastErr ? row('آخر خطأ', esc(d.lastErr)) : '');
+      row('آخر رسالة وصلت', d.lastIn || 'لسه') + (d.lastErr ? row('آخر خطأ', esc(d.lastErr)) : '') +
+      '<div class="group-title">' + (d.hasToken ? 'تغيير التوكن' : 'حط التوكن') + '</div>' +
+      '<input id="waTok" type="password" autocomplete="off" placeholder="الصق التوكن (بيبدأ بـ EAA)" class="chat-search" dir="ltr">' +
+      '<input id="waPid" inputmode="numeric" placeholder="Phone number ID (سيبه فاضي لو مش هتغيّره)" class="chat-search" dir="ltr">' +
+      '<button class="btn btn-primary" onclick="saveWa()">💾 احفظ</button>';
   }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+}
+function saveWa(){
+  var tok = (document.getElementById('waTok').value || '').trim(), pid = (document.getElementById('waPid').value || '').trim();
+  if (!tok && !pid){ toast('مفيش حاجة تتحفظ'); return; }
+  post({ action: 'setWaConfig', token: tok, phoneId: pid, pin: adminPin() }).then(function(d){
+    if (d && d.ok){ toast('✓ اتحفظ'); loadWa(); }
+    else { if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} toast((d && d.error) || tr('failed')); }
+  }).catch(function(){ toast(tr('failed')); });
 }
 function setAutoUp(on){
   var b = document.getElementById('srvup');

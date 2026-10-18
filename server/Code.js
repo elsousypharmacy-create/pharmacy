@@ -1254,13 +1254,22 @@ function waToken_() { return aiKey_('WA_TOKEN'); }
 function isWa_(id) { return String(id || '').indexOf('wa_') === 0; }
 function waVerifyToken_() {
   var P = PropertiesService.getScriptProperties(), v = P.getProperty('WA_VERIFY');
-  if (!v) { v = 'elsousy-' + Utilities.getUuid().slice(0, 8); P.setProperty('WA_VERIFY', v); }
+  if (!v) { v = 'elsousy2026wa'; P.setProperty('WA_VERIFY', v); }
   return v;
 }
 function waInfo() {   /* للوحة: الحالة + اللي تحطه في Meta */
   return { ok: true, hasToken: !!waToken_(), phoneId: waPhoneId_(), verifyToken: waVerifyToken_(),
            callbackUrl: WEB_APP_URL, relayUrl: aiKey_('TG_RELAY_URL') || '',
            lastIn: aiKey_('WA_LAST_IN') || '', lastErr: aiKey_('WA_LAST_ERR') || '' };
+}
+/* حفظ التوكن من اللوحة (بالرقم السري) — التوكن بيتكتب بس، عمره ما بيرجع للوحة */
+function setWaConfig(d) {
+  var P = PropertiesService.getScriptProperties();
+  var tok = String(d.token || '').trim(), pid = String(d.phoneId || '').trim();
+  if (tok) { if (!/^EAA[\w-]{20,}$/.test(tok)) return { ok: false, error: 'التوكن شكله غلط — لازم يبدأ بـ EAA' }; P.setProperty('WA_TOKEN', tok); }
+  if (pid) { if (!/^\d{8,20}$/.test(pid)) return { ok: false, error: 'Phone number ID أرقام بس' }; P.setProperty('WA_PHONE_ID', pid); }
+  P.deleteProperty('WA_LAST_ERR');
+  return { ok: true };
 }
 function waCall_(path, body) {
   var tok = waToken_();
@@ -4462,6 +4471,7 @@ function doPost(e) {
 
     if (LOCKED_POST[data.action] && dashLocked_(data.pin)) return lockedResp_();
     if (data.action === 'setBotSettings') return jsonResponseStaff(setBotSettings(data));
+    if (data.action === 'setWaConfig') return jsonResponseStaff(adminPinOk_(data.pin) ? setWaConfig(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'expReview') return jsonResponseStaff(expReview(data));
     if (data.action === 'log') saveHistory(data);
     if (data.action === 'block') setCustomerBlocked(data.phone, true);

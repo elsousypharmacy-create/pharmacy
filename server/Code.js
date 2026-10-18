@@ -1415,6 +1415,10 @@ function escalateToDoctor_(customerChatId, customerText, reason) {
     '↩️ اعمل Reply على الرسالة دي وأنا هوصّل ردك للعميل.\n' +
     '[#c' + customerChatId + ']';
   const r = tgApi_('sendMessage', { chat_id: PERSONAL_CHAT, text: txt, reply_markup: holdKb_(customerChatId, holdOn_(customerChatId)) });
+  try {   /* 🔴 محتاج رد — بيظهر في صفحة المحادثات لحد ما ترد */
+    PropertiesService.getScriptProperties().setProperty('escp_' + customerChatId, Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm'));
+    logChatRows_(customerChatId, [['sys', '⚕️ اتحوّل للصيدلي — ' + reason]]);
+  } catch (eL) {}
   if (!r || !r.ok) sendTelegramStaff(txt, PERSONAL_CHAT);
 }
 
@@ -1430,7 +1434,8 @@ function relayDoctorReply_(msg) {
     if (!doctorText) return false;
 
     sendTelegramStaff('👨‍⚕️ رد الدكتور:\n\n' + doctorText, customerChatId);
-    saveConversationTurn(customerChatId, '[سؤال محوّل للدكتور]', doctorText);
+    saveConversationTurn(customerChatId, '[سؤال محوّل للدكتور]', doctorText, 'pharm');
+    PropertiesService.getScriptProperties().deleteProperty('escp_' + customerChatId);
     sendTelegramStaff('✅ اتبعت للعميل.', PERSONAL_CHAT);
     return true;
   } catch (e) {
@@ -2180,7 +2185,38 @@ function getConversationHistory(chatId) {
   } catch (e) { return []; }
 }
 
-function saveConversationTurn(chatId, userText, botText) {
+/* ═══ 💬 سجل محادثات البوت — شيت دائم بتقراه صفحة المحادثات في اللوحة ═══ */
+var CHAT_LOG_SHEET = 'محادثات البوت';
+function chatLogSheet_() {
+  var ss = SpreadsheetApp.openById(STAFF_SHEET_ID), sh = ss.getSheetByName(CHAT_LOG_SHEET);
+  if (!sh) { sh = ss.insertSheet(CHAT_LOG_SHEET); sh.appendRow(['الوقت', 'chat', 'الاسم', 'الموبايل', 'من', 'الرسالة']); sh.setFrozenRows(1); }
+  return sh;
+}
+function chatWho_(chatId) {
+  var c = CacheService.getScriptCache(), k = 'who_' + chatId, v = c.get(k);
+  if (v) { try { return JSON.parse(v); } catch (e) {} }
+  var w = { n: '', p: '' };
+  try { w.n = getKnownCustomerName_(chatId) || ''; } catch (e) {}
+  try { w.p = getVerifiedPhone_(chatId) || getCustomerPhone_(chatId) || ''; } catch (e) {}
+  c.put(k, JSON.stringify(w), 3600);
+  return w;
+}
+/* role: user = العميل · bot = البوت · pharm = الصيدلي · sys = ملاحظة (تحويل/مسك) */
+function logChatRows_(chatId, rows) {
+  try {
+    if (!rows.length || String(chatId) === String(PERSONAL_CHAT)) return;
+    var w = chatWho_(chatId), now = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss');
+    var sh = chatLogSheet_(), vals = rows.filter(function (r) { return r[1]; }).map(function (r) {
+      return [now, String(chatId), w.n, w.p ? "'" + w.p : '', r[0], String(r[1]).slice(0, 4000)];
+    });
+    if (vals.length) sh.getRange(sh.getLastRow() + 1, 1, vals.length, 6).setValues(vals);
+  } catch (e) { Logger.log('خطأ سجل المحادثات: ' + e.message); }
+}
+
+function saveConversationTurn(chatId, userText, botText, botRole) {
+  var skipUser = /^\[(سؤال محوّل للدكتور|مستني تأكيد الطلب)\]/.test(String(userText || ''));
+  var skipBot = /^\[الصيدلي بيرد بنفسه\]/.test(String(botText || ''));
+  logChatRows_(chatId, (skipUser ? [] : [['user', userText]]).concat(skipBot ? [] : [[botRole || 'bot', botText]]));
   try {
     const history = getConversationHistory(chatId);
     history.push({ role: 'user', text: userText });
@@ -3037,6 +3073,7 @@ function handleCustomerMessage(chatId, message) {
       tgApi_('sendMessage', { chat_id: PERSONAL_CHAT, reply_markup: holdKb_(chatId, true),
         text: '💬 ' + (getKnownCustomerName_(chatId) || 'العميل') + (fromVoice ? ' (فويس)' : '') + ':\n"' + text.slice(0, 2500) + '"\n\n↩️ اعمل Reply عشان ترد.\n[#c' + chatId + ']' });
       saveConversationTurn(chatId, text, '[الصيدلي بيرد بنفسه]');
+      try { PropertiesService.getScriptProperties().setProperty('escp_' + chatId, Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm')); } catch (eH) {}
       return;
     }
 
@@ -4051,6 +4088,55 @@ function serverUpdate() {
   return { ok: true, version: ver, at: stamp };
 }
 
+/* 💬 صفحة المحادثات */
+function chatLogRows_(maxRows) {
+  var sh = chatLogSheet_(), n = sh.getLastRow() - 1;
+  if (n < 1) return [];
+  var take = Math.min(n, maxRows || 6000);
+  return sh.getRange(sh.getLastRow() - take + 1, 1, take, 6).getDisplayValues();
+}
+function getBotChats() {
+  var rows = chatLogRows_(6000), by = {}, P = PropertiesService.getScriptProperties().getProperties();
+  rows.forEach(function (r) {
+    var id = r[1]; if (!id) return;
+    var c = by[id] || (by[id] = { id: id, name: '', phone: '', count: 0, last: '', lastText: '', lastRole: '' });
+    if (r[2]) c.name = r[2]; if (r[3]) c.phone = r[3];
+    c.count++;
+    if (r[0] >= c.last) { c.last = r[0]; c.lastText = String(r[5]).slice(0, 120); c.lastRole = r[4]; }
+  });
+  var list = Object.keys(by).map(function (id) {
+    var c = by[id]; c.pending = P['escp_' + id] || ''; c.hold = holdOn_(id); return c;
+  });
+  list.sort(function (a, b) { return (b.pending ? 1 : 0) - (a.pending ? 1 : 0) || (a.last < b.last ? 1 : -1); });
+  return { ok: true, chats: list.slice(0, 300) };
+}
+function getBotChat(id) {
+  id = String(id || '');
+  var msgs = chatLogRows_(8000).filter(function (r) { return r[1] === id; }).slice(-300)
+    .map(function (r) { return { t: r[0], role: r[4], text: r[5] }; });
+  var w = chatWho_(id);
+  return { ok: true, id: id, name: w.n, phone: w.p, hold: holdOn_(id),
+           pending: PropertiesService.getScriptProperties().getProperty('escp_' + id) || '', msgs: msgs };
+}
+function botReply(id, text) {
+  id = String(id || ''); text = String(text || '').trim();
+  if (!id || !text) return { ok: false, error: 'الرسالة فاضية' };
+  var r = tgApi_('sendMessage', { chat_id: id, text: '👨‍⚕️ رد الصيدلي:\n\n' + text });
+  if (!r || !r.ok) return { ok: false, error: 'تيليجرام رفض الرسالة' + (r && r.description ? ': ' + r.description : '') };
+  saveConversationTurn(id, '[سؤال محوّل للدكتور]', text, 'pharm');
+  PropertiesService.getScriptProperties().deleteProperty('escp_' + id);
+  return { ok: true };
+}
+function botHold(id, on) {
+  holdSet_(String(id), !!on);
+  logChatRows_(id, [['sys', on ? '🤫 الصيدلي مسك المحادثة — البوت ساكت' : '▶️ البوت رجع يرد']]);
+  return { ok: true, hold: !!on };
+}
+function botDone(id) {
+  PropertiesService.getScriptProperties().deleteProperty('escp_' + String(id));
+  return { ok: true };
+}
+
 /* 🔒 قفل اللوحة (بيتفعّل من الإعدادات): بيانات المبيعات والعملاء والديون محتاجة الرقم السري.
    الصفحات التانية (الملصقات، الجرد، الدكاترة، الطلبيات) والـ SMS والتليجرام مش بتتأثر. */
 var LOCKED_GET = { getHomeBundle: 1, getSMSLogFast: 1, getSMSLog: 1, getCustomers: 1, getHistory: 1, getCustomerProfile: 1,
@@ -4124,7 +4210,8 @@ function doGet(e) {
   if (action === 'getCustomerVisits') return jsonResponseStaff(getCustomerVisits(e.parameter.days));
   /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
   var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
-                        purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1 };
+                        purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1,
+                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1 };
   if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
     return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
   if (action === 'aiTest') return jsonResponseStaff(aiTest(e.parameter.q));
@@ -4135,6 +4222,11 @@ function doGet(e) {
   if (action === 'backupProbe') return jsonResponseStaff(backupProbe());
   if (action === 'serverUpdate') return jsonResponseStaff(serverUpdate());
   if (action === 'setAutoUpdate') return jsonResponseStaff(setAutoUpdate(e.parameter.on === '1'));
+  if (action === 'getBotChats') return jsonResponseStaff(getBotChats());
+  if (action === 'getBotChat') return jsonResponseStaff(getBotChat(e.parameter.id));
+  if (action === 'botReply') return jsonResponseStaff(botReply(e.parameter.id, e.parameter.text));
+  if (action === 'botHold') return jsonResponseStaff(botHold(e.parameter.id, e.parameter.on === '1'));
+  if (action === 'botDone') return jsonResponseStaff(botDone(e.parameter.id));
   if (action === 'cleanBackups') return jsonResponseStaff(cleanBackups(e.parameter.apply === '1'));
   if (action === 'cleanBackupsAuto') return jsonResponseStaff(cleanBackupsAuto());
   if (action === 'purgeTrashedBackups') return jsonResponseStaff(purgeTrashedBackups());

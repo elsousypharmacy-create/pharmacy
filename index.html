@@ -211,13 +211,50 @@ button{font-family:inherit}
 .secnav{position:fixed;bottom:0;left:0;right:0;z-index:90;
   background:color-mix(in srgb,var(--bg) 92%,transparent);
   backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
-  border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);
   padding:6px 2px calc(6px + env(safe-area-inset-bottom))}
 .secnav button{background:0;border:0;cursor:pointer;display:flex;flex-direction:column;
   align-items:center;gap:3px;color:var(--ink-3);font-size:10px;font-weight:600;padding:4px 0}
 .secnav button svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9;
   stroke-linecap:round;stroke-linejoin:round}
 .secnav button.on{color:var(--brand)}
+
+/* ── 💬 محادثات البوت ── */
+.chat-search{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:var(--r2);border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);font:inherit;font-size:var(--t-body);margin-bottom:var(--s3)}
+.chat-row{cursor:pointer}
+.chat-top{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s3)}
+.chat-top .btn{width:auto;margin:0;padding:8px 12px;flex-shrink:0}
+.chat-top>div{flex:1;min-width:0}
+.chat-top b{display:block;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-top small{color:var(--ink-2);font-size:var(--t-small)}
+.chat-pend{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--r2);
+  margin-bottom:var(--s3);font-size:var(--t-small);background:color-mix(in srgb,var(--bad) 10%,transparent);color:var(--bad)}
+.chat-pend u{cursor:pointer;color:var(--ink-2)}
+.chat-thread{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;padding:var(--s3);
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);margin-bottom:var(--s3)}
+.bub{max-width:86%;padding:9px 12px;border-radius:14px;font-size:var(--t-body);line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.bub small{display:block;font-size:10.5px;color:var(--ink-3);margin-top:4px}
+.bub.u{align-self:flex-start;background:var(--surface-2)}
+.bub.b{align-self:flex-end;background:color-mix(in srgb,var(--brand) 14%,transparent)}
+.bub.p{align-self:flex-end;background:color-mix(in srgb,var(--ok) 20%,transparent)}
+.bub-sys{align-self:center;font-size:11.5px;color:var(--ink-3);background:var(--surface-2);padding:4px 10px;border-radius:99px;text-align:center}
+.chat-send{display:flex;gap:var(--s2);align-items:flex-end}
+.chat-send textarea{flex:1;min-width:0;box-sizing:border-box;padding:10px 12px;border-radius:var(--r2);border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);font:inherit;font-size:var(--t-body);resize:vertical}
+.chat-send .btn{width:auto;margin:0;padding:12px 16px}
+/* ── ☰ المزيد ── */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2);margin-bottom:var(--s3)}
+.tile{background:var(--surface-2);border:0;border-radius:var(--r2);padding:14px 4px;display:flex;flex-direction:column;
+  align-items:center;gap:6px;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;text-decoration:none;text-align:center}
+.tile i{font-style:normal;font-size:24px;line-height:1}
+/* ── أقسام الإعدادات ── */
+details.setg{border:1px solid var(--line);border-radius:var(--r2);margin-bottom:var(--s2);padding:0 var(--s3)}
+details.setg>summary{cursor:pointer;padding:14px 0;font-weight:650;list-style:none;display:flex;justify-content:space-between}
+details.setg>summary::-webkit-details-marker{display:none}
+details.setg>summary::after{content:'▾';color:var(--ink-3)}
+details.setg[open]>summary::after{content:'▴'}
+details.setg[open]{padding-bottom:var(--s3)}
 
 .screen{display:none}
 .screen.on{display:block;animation:in .2s ease}
@@ -317,6 +354,7 @@ button{font-family:inherit}
   <button data-sec="sales" onclick="go('sales')"><svg viewBox="0 0 24 24"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19H2"/></svg><span data-t="nav_sales">مبيعات</span></button>
   <button data-sec="cust" onclick="go('cust')"><svg viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-11.6 7.1L4 20l1.5-5A8 8 0 1 1 21 11.5z"/></svg><span data-t="nav_cust">عملاء</span></button>
   <button data-sec="stock" onclick="go('stock')"><svg viewBox="0 0 24 24"><path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5"/><path d="M12 13v7"/></svg><span data-t="nav_stock">مخزون</span></button>
+  <button onclick="openSheet('more')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>المزيد</span></button>
   <button data-sec="money" onclick="go('money')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2.5"/><circle cx="12" cy="12.5" r="2.6"/></svg><span data-t="nav_money">مالية</span></button>
 </nav>
 
@@ -735,7 +773,8 @@ function logErr(e){
 /* ═══════════ ٣) الاتصال بالسيرفر ═══════════
    كل نداء بيعدّي من هنا — لو الرابط اتغيّر، يتغيّر في مكان واحد. */
 /* 🔒 الأوامر الحساسة بتاخد الرقم السري (بيتطلب مرة ويتحفظ على الجهاز ده) */
-var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1 };
+var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1,
+                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1 };
 function adminPin(){
   var p = ''; try { p = localStorage.getItem('adminPin') || ''; } catch (e) {}
   if (!p){ p = (prompt('الرقم السري') || '').trim(); if (p) try { localStorage.setItem('adminPin', p); } catch (e) {} }
@@ -1168,7 +1207,8 @@ function shortMenu(){
 var SECTIONS = {
   sales: [['home',  function(){ return tr('today'); }], ['month', function(){ return tr('salesPerf'); }],
           ['perf',  function(){ return tr('staffToday'); }]],
-  cust:  [['list',  function(){ return tr('customers'); }], ['msgs', function(){ return tr('messages'); }]],
+  cust:  [['list',  function(){ return tr('customers'); }], ['msgs', function(){ return tr('messages'); }],
+          ['chats', function(){ return '💬 محادثات البوت'; }]],
   stock: [['short', function(){ return tr('shortages'); }], ['aging', function(){ return tr('invAging'); }],
           ['count', function(){ return tr('counts'); }]],
   money: [['pl',    function(){ return tr('pl'); }], ['exp', function(){ return tr('expenses'); }],
@@ -1207,9 +1247,113 @@ function render(sec, tab){
   });
   ({ count:pgCounts, home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts,
      perf:pgStaffHub, aging:pgAging, short:pgShort,
-     msgs:pgMessages, list:pgCustomers, agents:pgAgents, docs:pgDoctors })[key](key);
+     msgs:pgMessages, list:pgCustomers, agents:pgAgents, docs:pgDoctors, chats:pgChats })[key](key);
 }
 
+
+/* ─────── 💬 محادثات البوت: كل اللي العملاء قالوه والبوت رد بيه، وترد من هنا ─────── */
+var CHATS = null, CHAT_Q = '', CHAT_OPEN = null;
+function chatWhen(t){
+  t = String(t || ''); var d = new Date(), today = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  return t.slice(0, 10) === today ? t.slice(11, 16) : t.slice(8, 10) + '/' + t.slice(5, 7) + ' ' + t.slice(11, 16);
+}
+function chatName(c){ return c.name || c.phone || ('عميل ' + String(c.id).slice(-4)); }
+function pgChats(){
+  CHAT_OPEN = null;
+  var box = document.getElementById('p-cust');
+  if (!CHATS) busy(box); else drawChats();
+  api('getBotChats').then(function(d){
+    if (!d || !d.ok){ if (!CHATS) box.innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + ' — <u onclick="pgChats()">' + tr('retry') + '</u></div>'; return; }
+    CHATS = d.chats || [];
+    if (CUR === 'cust' && SECTIONS.cust[TAB][0] === 'chats' && !CHAT_OPEN) drawChats();
+  }).catch(function(){ if (!CHATS) oops(box, 'pgChats()'); });
+}
+function drawChats(){
+  var box = document.getElementById('p-cust'), all = CHATS || [];
+  var pend = all.filter(function(c){ return c.pending; }).length;
+  box.innerHTML = vitals('💬 محادثات البوت', null, [
+      { value: num(all.length), label: 'محادثات', tone: 'brand' },
+      { value: num(pend), label: 'محتاجة ردك', tone: pend ? 'bad' : 'ok' },
+      { value: num(all.filter(function(c){ return c.hold; }).length), label: 'ماسكها بنفسك', tone: 'warn' }
+    ]) +
+    '<input class="chat-search" placeholder="🔍 دوّر بالاسم أو الرقم أو الكلام" value="' + esc(CHAT_Q) + '" oninput="CHAT_Q=this.value;drawChatList()">' +
+    '<div id="chatlist"></div>';
+  drawChatList();
+}
+function drawChatList(){
+  var el = document.getElementById('chatlist'); if (!el) return;
+  var q = CHAT_Q.trim().toLowerCase();
+  var list = (CHATS || []).filter(function(c){ return !q || (chatName(c) + ' ' + c.phone + ' ' + c.lastText).toLowerCase().indexOf(q) !== -1; });
+  if (!list.length){ el.innerHTML = '<div class="state">' + ((CHATS || []).length ? 'مفيش نتايج' : 'لسه مفيش محادثات متسجلة — أول ما عميل يكلّم البوت هتظهر هنا') + '</div>'; return; }
+  var icon = { user: '👤', bot: '🤖', pharm: '👨‍⚕️', sys: '⚕️' };
+  el.innerHTML = card('المحادثات', 'الأحدث فوق — اللي محتاجة ردك الأول', list.slice(0, 150).map(function(c){
+    var id = String(c.id).replace(/[^\d-]/g, '');
+    return '<div class="row chat-row" onclick="openChat(\'' + id + '\')"><div class="row-main"><b>' +
+      (c.pending ? '🔴 ' : '') + (c.hold ? '🤫 ' : '') + esc(chatName(c)) + '</b>' +
+      '<small>' + (icon[c.lastRole] || '') + ' ' + esc(c.lastText) + '</small></div>' +
+      '<span class="row-val" style="font-size:var(--t-small);color:var(--ink-3)">' + ltr(esc(chatWhen(c.last))) + '</span></div>';
+  }).join(''));
+}
+function openChat(id){
+  CHAT_OPEN = id;
+  busy(document.getElementById('p-cust'));
+  loadChat(id);
+}
+function loadChat(id){
+  return api('getBotChat', { id: id }).then(function(d){
+    if (CHAT_OPEN !== id || CUR !== 'cust') return;
+    if (!d || !d.ok){ document.getElementById('p-cust').innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + ' — <u onclick="openChat(\'' + id + '\')">' + tr('retry') + '</u></div>'; return; }
+    drawChat(d);
+  }).catch(function(){ if (CHAT_OPEN === id) oops(document.getElementById('p-cust'), 'openChat(\'' + id + '\')'); });
+}
+function drawChat(d){
+  var box = document.getElementById('p-cust'), id = d.id;
+  var inp = document.getElementById('chatInput'), draft = inp ? inp.value : '';
+  var th = document.getElementById('chatThread'), atEnd = !th || (th.scrollHeight - th.scrollTop - th.clientHeight < 60);
+  var who = { u: 'العميل', b: '🤖 البوت', p: '👨‍⚕️ الصيدلي' };
+  var h = '<div class="chat-top"><button class="btn btn-quiet" onclick="pgChats()">→ رجوع</button>' +
+    '<div><b>' + esc(d.name || d.phone || ('عميل ' + String(id).slice(-4))) + '</b>' +
+    '<small>' + (d.phone ? ltr(esc(d.phone)) : 'الرقم مش متسجل') + '</small></div>' +
+    '<button class="btn ' + (d.hold ? 'btn-primary' : 'btn-quiet') + '" onclick="chatHold(\'' + id + '\',' + (d.hold ? 0 : 1) + ')">' +
+      (d.hold ? '▶️ رجّع البوت' : '🤫 امسكها') + '</button></div>';
+  if (d.pending) h += '<div class="chat-pend"><span>🔴 محتاجة ردك (من ' + ltr(esc(d.pending)) + ')</span><u onclick="chatDone(\'' + id + '\')">اتعاملت معاها ✓</u></div>';
+  h += '<div class="chat-thread" id="chatThread">' + (d.msgs.length ? d.msgs.map(function(m){
+    var txt = esc(m.text);
+    if (m.role === 'sys') return '<div class="bub-sys">' + txt + ' · ' + ltr(esc(chatWhen(m.t))) + '</div>';
+    var k = m.role === 'user' ? 'u' : (m.role === 'pharm' ? 'p' : 'b');
+    return '<div class="bub ' + k + '">' + txt + '<small>' + (k === 'u' ? '' : who[k] + ' · ') + ltr(esc(chatWhen(m.t))) + '</small></div>';
+  }).join('') : '<div class="state">مفيش رسايل متسجلة</div>') + '</div>';
+  h += '<div class="chat-send"><textarea id="chatInput" rows="2" placeholder="اكتب ردك — هيوصل للعميل من البوت باسم الصيدلي"></textarea>' +
+    '<button class="btn btn-primary" id="chatSendBtn" onclick="chatSend(\'' + id + '\')">إرسال</button></div>' +
+    '<div class="state" style="font-size:12px">بتتحدّث لوحدها كل ٢٠ ثانية وإنت فاتحها</div>';
+  box.innerHTML = h;
+  var inp2 = document.getElementById('chatInput'); if (inp2 && draft) inp2.value = draft;
+  var th2 = document.getElementById('chatThread'); if (th2 && atEnd) th2.scrollTop = th2.scrollHeight;
+}
+function chatSend(id){
+  var inp = document.getElementById('chatInput'), txt = inp ? inp.value.trim() : '';
+  if (!txt) return;
+  var btn = document.getElementById('chatSendBtn'); if (btn) btn.disabled = true;
+  api('botReply', { id: id, text: txt }).then(function(d){
+    if (d && d.ok){ toast('✓ اتبعت للعميل'); var i2 = document.getElementById('chatInput'); if (i2) i2.value = ''; loadChat(id); }
+    else { toast((d && d.error) || tr('failed')); if (btn) btn.disabled = false; }
+  }).catch(function(){ toast(tr('failed')); if (btn) btn.disabled = false; });
+}
+function chatHold(id, on){
+  api('botHold', { id: id, on: on ? '1' : '0' }).then(function(d){
+    toast(d && d.ok ? (on ? '🤫 البوت ساكت — إنت اللي بترد' : '▶️ البوت رجع يرد') : ((d && d.error) || tr('failed')));
+    loadChat(id);
+  });
+}
+function chatDone(id){
+  api('botDone', { id: id }).then(function(){
+    (CHATS || []).forEach(function(c){ if (String(c.id) === String(id)) c.pending = ''; });
+    loadChat(id);
+  });
+}
+setInterval(function(){
+  if (CHAT_OPEN && CUR === 'cust' && SECTIONS.cust[TAB][0] === 'chats' && document.visibilityState === 'visible') loadChat(CHAT_OPEN);
+}, 20000);
 
 /* ─────── الدكاترة: أكواد + طلبات + اللي بيدوّروا عليه ─────── */
 var DOC_URL = 'https://elsousypharmacy-create.github.io/pharmacy/doctors.html';
@@ -3517,47 +3661,70 @@ function openSheet(kind){
   var s = document.getElementById('sheet'), t = document.getElementById('sheet-title'),
       b = document.getElementById('sheet-body');
   s.classList.add('on');
+  if (kind === 'more'){
+    t.textContent = 'المزيد';
+    var tile = function(icon, name, act){ return '<button class="tile" onclick="' + act + '"><i>' + icon + '</i>' + name + '</button>'; };
+    var link = function(icon, name, url){ return '<a class="tile" href="' + url + '" target="_blank" rel="noopener"><i>' + icon + '</i>' + name + '</a>'; };
+    b.innerHTML =
+      '<div class="group-title">في اللوحة</div><div class="tiles">' +
+        tile('💬', 'محادثات البوت', 'closeSheet();go(\'cust\',2)') +
+        tile('👥', tr('agents'), 'closeSheet();go(\'admin\',0)') +
+        tile('👨‍⚕️', tr('doctors'), 'closeSheet();go(\'admin\',1)') +
+      '</div><div class="group-title">صفحات الموظفين</div><div class="tiles">' +
+        link('🏷️', 'الملصقات', 'labels.html') +
+        link('📞', 'متابعة العملاء', 'follow.html') +
+        link('💸', 'مراجعة المصروفات', 'expenses.html') +
+        link('🛵', 'الطلبات', 'orders.html') +
+        link('📷', 'الماسح', 'scan.html') +
+        link('🩺', 'صفحة الدكاترة', 'doctors.html') +
+      '</div>' +
+      '<button class="btn btn-quiet" onclick="openSheet(\'settings\')">⚙️ ' + tr('settings') + '</button>';
+    return;
+  }
   if (kind === 'settings'){
     t.textContent = tr('settings');
     b.innerHTML =
-      '<div class="group-title">🔄 تحديث السيرفر</div>' +
-      '<div id="srvup"><div class="state"><div class="spin"></div></div></div>' +
-      '<div class="group-title">الإدارة</div>' +
-      '<div class="btn-row"><button class="btn btn-quiet" onclick="closeSheet();go(\'admin\',0)">' + tr('agents') + '</button>' +
-      '<button class="btn btn-quiet" onclick="closeSheet();go(\'admin\',1)">' + tr('doctors') + '</button></div>' +
-      '<div id="snapbox" class="state"><div class="spin"></div></div>' +
-      '<div class="btn-row"><button class="btn btn-quiet" onclick="snap(\'snapshotRefresh\')">' + tr('refreshNow') + '</button>' +
-      '<button class="btn btn-primary" id="snapEnable" onclick="snap(\'snapshotEnable\')">' + tr('enableAuto') + '</button></div>' +
-      '<button class="btn btn-quiet" onclick="runDiag()">' + tr('startCheck') + '</button>' +
-      '<div id="diagbox"></div>' +
-      '<div class="group-title">' + tr('snapSpeed') + '</div>' +
-      '<button class="btn btn-quiet" onclick="runSnapTime()">' + tr('measureSnap') + '</button>' +
-      '<div id="snaptime"></div>' +
-      '<div class="group-title">' + tr('expFillTitle') + '</div>' +
-      '<button class="btn btn-quiet" onclick="runExpBackfill()">' + tr('expFillBtn') + '</button>' +
-      '<div id="expfill"></div>' +
-      '<div class="group-title">الذكاء الاصطناعي — اختار اللي على مزاجك</div>' +
-      '<div id="aiuse"></div>' +
-      '<div id="aicfg"><div class="state"><div class="spin"></div></div></div>' +
-      '<div class="group-title">بوت العملاء (الذكاء الاصطناعي)</div>' +
-      '<div class="btn-row"><button class="btn btn-quiet" onclick="runAiTest()">اختبر الرد</button>' +
-      '<button class="btn btn-quiet" onclick="runBotStatus()">سرعة البوت</button></div>' +
-      '<div id="aibox"></div>' +
-      '<div class="group-title">🛵 التوصيل وقفل اللوحة</div>' +
-      '<div id="botset"><div class="state"><div class="spin"></div></div></div>' +
-      '<div class="group-title">تنظيف مساحة Drive</div>' +
-      '<button class="btn btn-quiet" onclick="runClean(0)">احسب هيمسح كام</button>' +
-      '<div id="cleanbox"></div>' +
-      '<div class="group-title">فحص النسخة الاحتياطية (المصروفات)</div>' +
-      '<button class="btn btn-quiet" onclick="runBackupProbe()">افحص</button>' +
-      '<div id="bkbox"></div>' +
-      '<div class="group-title">' + tr('scanReady') + '</div>' +
-      '<button class="btn btn-quiet" onclick="runScanReady()">' + tr('checkScan') + '</button>' +
-      '<div id="scanbox"></div>' +
-      '<div class="group-title">' + tr('errorLog') + '</div>' +
-      (ERRORS.length ? ERRORS.slice().reverse().map(function(e){
-        return row(e.m, ltr(e.t));
-      }).join('') : '<div class="state">' + tr('noErrors') + '</div>');
+      '<details class="setg" open><summary>🛵 التشغيل — التوصيل وقفل اللوحة</summary>' +
+        '<div id="botset"><div class="state"><div class="spin"></div></div></div>' +
+      '</details>' +
+      '<details class="setg"><summary>🤖 البوت والذكاء الاصطناعي</summary>' +
+        '<button class="btn btn-quiet" onclick="closeSheet();go(\'cust\',2)">💬 محادثات البوت</button>' +
+        '<div class="btn-row"><button class="btn btn-quiet" onclick="runAiTest()">اختبر الرد</button>' +
+        '<button class="btn btn-quiet" onclick="runBotStatus()">سرعة البوت</button></div>' +
+        '<div id="aibox"></div>' +
+        '<div class="group-title">الموديل — اختار اللي على مزاجك</div>' +
+        '<div id="aiuse"></div>' +
+        '<div id="aicfg"><div class="state"><div class="spin"></div></div></div>' +
+      '</details>' +
+      '<details class="setg"><summary>🛠️ الصيانة</summary>' +
+        '<div class="group-title">🔄 تحديث السيرفر</div>' +
+        '<div id="srvup"><div class="state"><div class="spin"></div></div></div>' +
+        '<div class="group-title">التحديث التلقائي للبيانات</div>' +
+        '<div id="snapbox" class="state"><div class="spin"></div></div>' +
+        '<div class="btn-row"><button class="btn btn-quiet" onclick="snap(\'snapshotRefresh\')">' + tr('refreshNow') + '</button>' +
+        '<button class="btn btn-primary" id="snapEnable" onclick="snap(\'snapshotEnable\')">' + tr('enableAuto') + '</button></div>' +
+        '<button class="btn btn-quiet" onclick="runDiag()">' + tr('startCheck') + '</button>' +
+        '<div id="diagbox"></div>' +
+        '<div class="group-title">' + tr('snapSpeed') + '</div>' +
+        '<button class="btn btn-quiet" onclick="runSnapTime()">' + tr('measureSnap') + '</button>' +
+        '<div id="snaptime"></div>' +
+        '<div class="group-title">' + tr('expFillTitle') + '</div>' +
+        '<button class="btn btn-quiet" onclick="runExpBackfill()">' + tr('expFillBtn') + '</button>' +
+        '<div id="expfill"></div>' +
+        '<div class="group-title">فحص النسخة الاحتياطية (المصروفات)</div>' +
+        '<button class="btn btn-quiet" onclick="runBackupProbe()">افحص</button>' +
+        '<div id="bkbox"></div>' +
+        '<div class="group-title">تنظيف مساحة Drive</div>' +
+        '<button class="btn btn-quiet" onclick="runClean(0)">احسب هيمسح كام</button>' +
+        '<div id="cleanbox"></div>' +
+        '<div class="group-title">' + tr('scanReady') + '</div>' +
+        '<button class="btn btn-quiet" onclick="runScanReady()">' + tr('checkScan') + '</button>' +
+        '<div id="scanbox"></div>' +
+        '<div class="group-title">' + tr('errorLog') + '</div>' +
+        (ERRORS.length ? ERRORS.slice().reverse().map(function(e){
+          return row(e.m, ltr(e.t));
+        }).join('') : '<div class="state">' + tr('noErrors') + '</div>') +
+      '</details>';
     snapStatus();
     loadAiCfg();
     loadAiUsage();

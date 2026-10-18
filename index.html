@@ -777,7 +777,7 @@ function logErr(e){
    كل نداء بيعدّي من هنا — لو الرابط اتغيّر، يتغيّر في مكان واحد. */
 /* 🔒 الأوامر الحساسة بتاخد الرقم السري (بيتطلب مرة ويتحفظ على الجهاز ده) */
 var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1,
-                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1 };
+                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1 };
 function adminPin(){
   var p = ''; try { p = localStorage.getItem('adminPin') || ''; } catch (e) {}
   if (!p){ p = (prompt('الرقم السري') || '').trim(); if (p) try { localStorage.setItem('adminPin', p); } catch (e) {} }
@@ -1291,9 +1291,9 @@ function drawChatList(){
   if (!list.length){ el.innerHTML = '<div class="state">' + ((CHATS || []).length ? 'مفيش نتايج' : 'لسه مفيش محادثات متسجلة — أول ما عميل يكلّم البوت هتظهر هنا') + '</div>'; return; }
   var icon = { user: '👤', bot: '🤖', pharm: '👨‍⚕️', sys: '⚕️' };
   el.innerHTML = card('المحادثات', 'الأحدث فوق — اللي محتاجة ردك الأول', list.slice(0, 150).map(function(c){
-    var id = String(c.id).replace(/[^\d-]/g, '');
+    var id = String(c.id).replace(/[^\w-]/g, '');
     return '<div class="row chat-row" onclick="openChat(\'' + id + '\')"><div class="row-main"><b>' +
-      (c.pending ? '🔴 ' : '') + (c.hold ? '🤫 ' : '') + esc(chatName(c)) + '</b>' +
+      (c.pending ? '🔴 ' : '') + (c.hold ? '🤫 ' : '') + (String(c.id).indexOf('wa_') === 0 ? '🟢 ' : '✈️ ') + esc(chatName(c)) + '</b>' +
       '<small>' + (icon[c.lastRole] || '') + ' ' + esc(c.lastText) + '</small></div>' +
       '<span class="row-val" style="font-size:var(--t-small);color:var(--ink-3)">' + ltr(esc(chatWhen(c.last))) + '</span></div>';
   }).join(''));
@@ -3706,6 +3706,8 @@ function openSheet(kind){
         '<div class="btn-row"><button class="btn btn-quiet" onclick="runAiTest()">اختبر الرد</button>' +
         '<button class="btn btn-quiet" onclick="runBotStatus()">سرعة البوت</button></div>' +
         '<div id="aibox"></div>' +
+        '<div class="group-title">🟢 واتساب</div>' +
+        '<button class="btn btn-quiet" onclick="loadWa()">اعرض بيانات ربط واتساب</button><div id="wabox"></div>' +
         '<div class="group-title">الموديل — اختار اللي على مزاجك</div>' +
         '<div id="aiuse"></div>' +
         '<div id="aicfg"><div class="state"><div class="spin"></div></div></div>' +
@@ -4241,6 +4243,17 @@ function loadSrvUp(){
         '<div class="state" style="font-size:12.5px;margin-top:8px">' + (d.autoOn ? '🟢 التحديث التلقائي شغّال — بيشيّك كل ربع ساعة ويبعتلك على تيليجرام لما يحدّث' : '⚪ التحديث التلقائي واقف') + '</div>' +
         '<button class="btn btn-quiet" onclick="setAutoUp(' + (d.autoOn ? 0 : 1) + ')">' + (d.autoOn ? '⏸️ وقّف التحديث التلقائي' : '▶️ شغّل التحديث التلقائي') + '</button>');
   }).catch(function(){});
+}
+function loadWa(){
+  var b = document.getElementById('wabox'); b.innerHTML = '<div class="state"><div class="spin"></div></div>';
+  api('waInfo').then(function(d){
+    if (!d || !d.ok){ b.innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + '</div>'; return; }
+    var cp = function(label, v){ return '<div class="row"><div class="row-main"><b>' + label + '</b><small dir="ltr" style="user-select:all;word-break:break-all">' + esc(v) + '</small></div>' +
+      '<button class="btn btn-quiet" style="width:auto;margin:0;padding:6px 10px" onclick="navigator.clipboard.writeText(\'' + esc(v) + '\');toast(\'✓ اتنسخ\')">نسخ</button></div>'; };
+    b.innerHTML = cp('Callback URL', d.callbackUrl) + cp('Verify token', d.verifyToken) +
+      row('التوكن', d.hasToken ? '✅ متحط' : '❌ لسه — حطه في Script Properties باسم WA_TOKEN') +
+      row('آخر رسالة وصلت', d.lastIn || 'لسه') + (d.lastErr ? row('آخر خطأ', esc(d.lastErr)) : '');
+  }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
 function setAutoUp(on){
   var b = document.getElementById('srvup');

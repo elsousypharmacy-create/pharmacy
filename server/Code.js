@@ -1243,6 +1243,150 @@ const ESCALATE_KEYWORDS = [
 // ===================================================================
 
 // بيتنادى من doPost لما تليجرام يبعت update (الوضع السريع)
+
+/* ═══════════════════ 🟢 واتساب (WhatsApp Cloud API) ═══════════════════
+   نفس البوت بالظبط: رسالة الواتساب بتتحوّل لشكل رسالة تليجرام وتدخل نفس المعالج،
+   وأي رد رايح لشات بيبدأ بـ wa_ بيتبعت على الواتساب بدل تليجرام.
+   الإعدادات في Script Properties: WA_TOKEN (التوكن — محدش يشوفه) · WA_PHONE_ID (اختياري). */
+var WA_API = 'https://graph.facebook.com/v21.0/';
+function waPhoneId_() { return aiKey_('WA_PHONE_ID') || '1321594684378624'; }
+function waToken_() { return aiKey_('WA_TOKEN'); }
+function isWa_(id) { return String(id || '').indexOf('wa_') === 0; }
+function waVerifyToken_() {
+  var P = PropertiesService.getScriptProperties(), v = P.getProperty('WA_VERIFY');
+  if (!v) { v = 'elsousy-' + Utilities.getUuid().slice(0, 8); P.setProperty('WA_VERIFY', v); }
+  return v;
+}
+function waInfo() {   /* للوحة: الحالة + اللي تحطه في Meta */
+  return { ok: true, hasToken: !!waToken_(), phoneId: waPhoneId_(), verifyToken: waVerifyToken_(),
+           callbackUrl: WEB_APP_URL, relayUrl: aiKey_('TG_RELAY_URL') || '',
+           lastIn: aiKey_('WA_LAST_IN') || '', lastErr: aiKey_('WA_LAST_ERR') || '' };
+}
+function waCall_(path, body) {
+  var tok = waToken_();
+  if (!tok) return { ok: false, description: 'WA_TOKEN مش متحط في إعدادات السيرفر' };
+  try {
+    var r = UrlFetchApp.fetch(WA_API + path, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      headers: { Authorization: 'Bearer ' + tok }, payload: JSON.stringify(body) });
+    var d = {}; try { d = JSON.parse(r.getContentText()); } catch (e) {}
+    if (r.getResponseCode() !== 200) {
+      var why = (d.error && (d.error.error_user_msg || d.error.message)) || ('HTTP ' + r.getResponseCode());
+      if (d.error && d.error.code === 131047) why = 'فات أكتر من 24 ساعة على آخر رسالة من العميل — واتساب مش بيسمح برسالة عادية';
+      PropertiesService.getScriptProperties().setProperty('WA_LAST_ERR', Utilities.formatDate(new Date(), 'Africa/Cairo', 'MM-dd HH:mm') + ' ' + why);
+      return { ok: false, description: why };
+    }
+    return { ok: true, result: { message_id: (d.messages && d.messages[0] && d.messages[0].id) || '' } };
+  } catch (e) { return { ok: false, description: e.message }; }
+}
+/* بيبعت نص (ومعاه أزرار تليجرام بعد تحويلها لأزرار واتساب) */
+function waSend_(chatId, text, markup) {
+  var to = String(chatId).slice(3), body = String(text == null ? '' : text).slice(0, 4000), btns = [], extra = '';
+  if (markup && markup.inline_keyboard) markup.inline_keyboard.forEach(function (row) { row.forEach(function (b) {
+    if (b.callback_data) btns.push({ id: b.callback_data, title: b.text });
+    else if (b.url) extra += '\n' + b.text + ': ' + b.url;
+  }); });
+  if (markup && markup.keyboard) markup.keyboard.forEach(function (row) { row.forEach(function (b) {
+    var tx = typeof b === 'string' ? b : b.text;
+    if (b.request_location) extra += '\n📍 لإرسال موقعك: دوس 📎 ← الموقع (Location)';
+    else if (!b.request_contact && tx) btns.push({ id: 'kb:' + tx, title: tx });
+  }); });
+  body = (body + extra).trim() || '.';
+  var clean = function (s, n) { return String(s).replace(/\s+/g, ' ').trim().slice(0, n); };
+  if (btns.length && btns.length <= 3)
+    return waCall_(waPhoneId_() + '/messages', { messaging_product: 'whatsapp', to: to, type: 'interactive',
+      interactive: { type: 'button', body: { text: body.slice(0, 1024) },
+        action: { buttons: btns.map(function (b) { return { type: 'reply', reply: { id: String(b.id).slice(0, 256), title: clean(b.title, 20) } }; }) } } });
+  if (btns.length)
+    return waCall_(waPhoneId_() + '/messages', { messaging_product: 'whatsapp', to: to, type: 'interactive',
+      interactive: { type: 'list', body: { text: body.slice(0, 1024) },
+        action: { button: 'اختار من هنا', sections: [{ title: 'الاختيارات', rows: btns.slice(0, 10).map(function (b) { return { id: String(b.id).slice(0, 200), title: clean(b.title, 24) }; }) }] } } });
+  return waCall_(waPhoneId_() + '/messages', { messaging_product: 'whatsapp', to: to, type: 'text', text: { body: body, preview_url: true } });
+}
+/* "بيكتب..." + علامة القراية على آخر رسالة من العميل */
+function waTyping_(chatId) {
+  var mid = CacheService.getScriptCache().get('walast_' + chatId);
+  if (mid) waCall_(waPhoneId_() + '/messages', { messaging_product: 'whatsapp', status: 'read', message_id: mid, typing_indicator: { type: 'text' } });
+}
+/* تحميل صورة/فويس من واتساب */
+function waMediaBlob_(mediaId) {
+  var tok = waToken_(); if (!tok) return null;
+  try {
+    var m = JSON.parse(UrlFetchApp.fetch(WA_API + mediaId, { headers: { Authorization: 'Bearer ' + tok }, muteHttpExceptions: true }).getContentText());
+    if (!m.url) return null;
+    return UrlFetchApp.fetch(m.url, { headers: { Authorization: 'Bearer ' + tok }, muteHttpExceptions: true }).getBlob();
+  } catch (e) { Logger.log('waMedia: ' + e.message); return null; }
+}
+/* ملف من تليجرام أو واتساب (file_id بيبدأ بـ wa: لو واتساب) */
+function tgFileBlob_(fileId) {
+  if (String(fileId).indexOf('wa:') === 0) return waMediaBlob_(String(fileId).slice(3));
+  var f = tgApi_('getFile', { file_id: fileId });
+  if (!f || !f.ok || !f.result || !f.result.file_path) return null;
+  return UrlFetchApp.fetch('https://api.telegram.org/file/bot' + BOT_TOKEN + '/' + f.result.file_path, { muteHttpExceptions: true }).getBlob();
+}
+/* صورة العميل من واتساب → تتبعتلك على تليجرام (بدل forwardMessage) */
+function waForwardToStaff_(chatId, n) {
+  var mid = CacheService.getScriptCache().get('wamid_' + chatId + '_' + n); if (!mid) return { ok: false };
+  var blob = waMediaBlob_(mid); if (!blob) return { ok: false };
+  try {
+    UrlFetchApp.fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/sendPhoto', { method: 'post', muteHttpExceptions: true,
+      payload: { chat_id: String(PERSONAL_CHAT), caption: '🟢 صورة من واتساب — ' + (getKnownCustomerName_(chatId) || '+' + chatId.slice(3)) + '\n[#c' + chatId + ']', photo: blob.setName('p.jpg') } });
+  } catch (e) {}
+  return { ok: true };
+}
+function waSeq_(chatId) {   /* رقم مسلسل لكل رسالة (الألبومات محتاجة أرقام متتالية) */
+  var c = CacheService.getScriptCache(), k = 'waseq_' + chatId, n = (parseInt(c.get(k), 10) || 1000) + 1;
+  c.put(k, String(n), 21600); return n;
+}
+
+function handleWhatsAppWebhook_(data) {
+  (data.entry || []).forEach(function (en) { (en.changes || []).forEach(function (ch) {
+    var v = ch.value || {}, names = {};
+    (v.contacts || []).forEach(function (c) { names[c.wa_id] = c.profile && c.profile.name; });
+    (v.messages || []).forEach(function (m) { try { waOne_(m, names[m.from] || ''); } catch (e) { Logger.log('خطأ واتساب: ' + e.message); } });
+  }); });
+}
+function waOne_(m, pname) {
+  var cache = CacheService.getScriptCache();
+  if (cache.get('wam_' + m.id)) return;                    /* ميتا بتعيد نفس الرسالة أحيانًا */
+  cache.put('wam_' + m.id, '1', 21600);
+  var chatId = 'wa_' + m.from, P = PropertiesService.getScriptProperties();
+  P.setProperty('WA_LAST_IN', Utilities.formatDate(new Date(), 'Africa/Cairo', 'MM-dd HH:mm') + ' ' + m.type);
+  cache.put('walast_' + chatId, m.id, 86400);
+  /* رقم العميل معروف ومتأكد منه من واتساب نفسه — مفيش "سجّل رقمك" */
+  if (!P.getProperty('vphone_' + chatId)) {
+    var vp = canonicalEgyptPhone_('+' + m.from) || ('+' + m.from);
+    P.setProperty('vphone_' + chatId, vp); saveCustomerPhone_(chatId, vp);
+  }
+  var lock = LockService.getScriptLock(); try { lock.waitLock(5000); } catch (e) {}
+  var n = waSeq_(chatId);
+  try { lock.releaseLock(); } catch (e) {}
+  var msg = { message_id: n, chat: { id: chatId, type: 'private' }, from: { id: chatId, first_name: pname || '' } };
+  if (m.type === 'text') msg.text = m.text.body;
+  else if (m.type === 'button') msg.text = m.button.text;
+  else if (m.type === 'interactive') {
+    var r = m.interactive.button_reply || m.interactive.list_reply || {};
+    if (String(r.id).indexOf('kb:') === 0) msg.text = String(r.id).slice(3);
+    else { handleCallback_({ id: 'wa', data: r.id, from: { id: chatId }, message: { chat: { id: chatId }, message_id: n } }); return; }
+  }
+  else if (m.type === 'image' || (m.type === 'document' && /^image\//.test(m.document.mime_type || ''))) {
+    var md = m.image || m.document;
+    cache.put('wamid_' + chatId + '_' + n, md.id, 21600);
+    msg.photo = [{ file_id: 'wa:' + md.id }];
+    if (md.caption) msg.caption = md.caption;
+    /* الصور اللي بتيجي ورا بعض في أقل من 20 ثانية = ألبوم واحد */
+    var gk = 'wagrp_' + chatId, g = cache.get(gk) || (chatId + '_' + n);
+    cache.put(gk, g, 20); msg.media_group_id = g;
+  }
+  else if (m.type === 'audio') msg.voice = { file_id: 'wa:' + m.audio.id, mime_type: m.audio.mime_type || 'audio/ogg', duration: 0 };
+  else if (m.type === 'location') msg.location = { latitude: m.location.latitude, longitude: m.location.longitude };
+  else if (m.type === 'reaction' || m.type === 'unsupported') return;
+  else {
+    waSend_(chatId, 'وصلنا 🌿 للأسف مش بنقدر نفتح النوع ده من الملفات — ممكن حضرتك تكتب طلبك أو تبعت صورة؟');
+    return;
+  }
+  handleCustomerMessage(chatId, msg);
+}
+
 function handleTelegramWebhook_(update) {
   try {
     // 🧹 تنظيف تلقائي مرة واحدة بعد كل نسخة جديدة:
@@ -1426,7 +1570,7 @@ function escalateToDoctor_(customerChatId, customerText, reason) {
 function relayDoctorReply_(msg) {
   try {
     const original = msg.reply_to_message.text || '';
-    const m = original.match(/\[#c(-?\d+)\]/);
+    const m = original.match(/\[#c(-?\d+|wa_\d+)\]/);
     if (!m) return false;
 
     const customerChatId = m[1];
@@ -2049,9 +2193,8 @@ function distKm_(a1, o1, a2, o2) {
 /* 🎤 الرسايل الصوتية → كلام مكتوب (Gemini المجاني) */
 function transcribeVoice_(fileId, mime) {
   try {
-    var f = tgApi_('getFile', { file_id: fileId });
-    if (!f || !f.ok || !f.result || !f.result.file_path) return '';
-    var blob = UrlFetchApp.fetch('https://api.telegram.org/file/bot' + BOT_TOKEN + '/' + f.result.file_path, { muteHttpExceptions: true }).getBlob();
+    var blob = tgFileBlob_(fileId);
+    if (!blob) return '';
     var b64 = Utilities.base64Encode(blob.getBytes());
     var key = aiKey_('GEMINI_API_KEY') || GEMINI_API_KEY;
     var prompt = 'اكتب الكلام اللي في التسجيل الصوتي ده بالظبط زي ما اتقال (عامية مصرية)، من غير أي إضافة أو شرح. ' +
@@ -2081,9 +2224,8 @@ function readPhoto_(fileIds) {
     fileIds = [].concat(fileIds).slice(0, 6);
     var imgs = [];
     fileIds.forEach(function (fid) {
-      var f = tgApi_('getFile', { file_id: fid });
-      if (!f || !f.ok || !f.result || !f.result.file_path) return;
-      var blob = UrlFetchApp.fetch('https://api.telegram.org/file/bot' + BOT_TOKEN + '/' + f.result.file_path, { muteHttpExceptions: true }).getBlob();
+      var blob = tgFileBlob_(fid);
+      if (!blob) return;
       imgs.push({ inline_data: { mime_type: 'image/jpeg', data: Utilities.base64Encode(blob.getBytes()) } });
     });
     if (!imgs.length) return null;
@@ -2249,6 +2391,7 @@ function getVerifiedPhone_(chatId) {
 function sendTelegramMarkup_(chatId, text, markup) {
   try {
     text = varyEmoji_(chatId, text);
+    if (isWa_(chatId)) { waSend_(String(chatId), text, markup); return; }
     UrlFetchApp.fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage', {
       method: 'post', contentType: 'application/json', muteHttpExceptions: true,
       payload: JSON.stringify({ chat_id: chatId, text: text, reply_markup: markup }) });
@@ -2286,6 +2429,14 @@ function varyEmoji_(chatId, text) {
 function tgApi_(method, payload) {
   try {
     if (method === 'sendMessage' && payload && payload.text) payload.text = varyEmoji_(payload.chat_id, payload.text);
+    /* 🟢 واتساب */
+    if (payload && method === 'forwardMessage' && isWa_(payload.from_chat_id)) return waForwardToStaff_(String(payload.from_chat_id), payload.message_id);
+    if (payload && method === 'answerCallbackQuery' && payload.callback_query_id === 'wa') return { ok: true };
+    if (payload && isWa_(payload.chat_id)) {
+      if (method === 'sendMessage') return waSend_(String(payload.chat_id), payload.text, payload.reply_markup);
+      if (method === 'sendChatAction') { waTyping_(String(payload.chat_id)); return { ok: true }; }
+      return { ok: true };
+    }
     var r = UrlFetchApp.fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/' + method, {
       method: 'post', contentType: 'application/json', muteHttpExceptions: true, payload: JSON.stringify(payload) });
     return JSON.parse(r.getContentText());
@@ -2398,7 +2549,7 @@ function handleCallback_(cq) {
   var chatId = String(cq.message && cq.message.chat && cq.message.chat.id || cq.from.id), d = cq.data || '';
   tgApi_('answerCallbackQuery', { callback_query_id: cq.id });
   /* أزرار الصيدلي: يمسك المحادثة / يرجّع البوت */
-  var hm = d.match(/^h_(on|off)_(-?\d+)$/);
+  var hm = d.match(/^h_(on|off)_(-?\d+|wa_\d+)$/);
   if (hm) {
     if (chatId !== String(PERSONAL_CHAT)) return;
     var on = hm[1] === 'on';
@@ -3344,6 +3495,7 @@ function handleOrderIntent_(chatId, text, history) {
 /* تليجرام سقفه 4096 حرف للرسالة — الأطول بتتقسّم هنا تلقائي على حدود الأسطر،
    فأي رسالة طويلة (نواقص، تقارير) توصل كاملة بدل ما تترفض. */
 function sendTelegramStaff(message, chatId) {
+  if (isWa_(chatId)) { waSend_(String(chatId), message); return; }
   const url = 'https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage';
   var text = String(message == null ? '' : message), MAX = 3800, parts = [];
   if (text.length <= MAX) {
@@ -3378,6 +3530,7 @@ function sendTelegram_(chatId, message) {
 
 // مؤشر "بيكتب دلوقتي..."
 function sendTypingAction_(chatId) {
+  if (isWa_(chatId)) { try { waTyping_(String(chatId)); } catch (e) {} return; }
   try {
     UrlFetchApp.fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/sendChatAction', {
       method: 'post',
@@ -4159,6 +4312,9 @@ function dashLocked_(pin) {
 function lockedResp_() { return jsonResponseStaff({ ok: false, lockError: true, error: 'اللوحة مقفولة — اكتب الرقم السري' }); }
 
 function doGet(e) {
+  /* 🟢 تأكيد ويبهوك واتساب من ميتا */
+  if (e.parameter['hub.mode'] === 'subscribe')
+    return ContentService.createTextOutput(e.parameter['hub.verify_token'] === waVerifyToken_() ? String(e.parameter['hub.challenge'] || '') : 'bad token');
   var action = e.parameter.action;
   if (LOCKED_GET[action] && dashLocked_(e.parameter.pin)) return lockedResp_();
   if (action === 'getBotSettings') return jsonResponseStaff(getBotSettings());
@@ -4212,7 +4368,7 @@ function doGet(e) {
   /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
   var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
                         purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1,
-                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1 };
+                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1 };
   if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
     return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
   if (action === 'aiTest') return jsonResponseStaff(aiTest(e.parameter.q));
@@ -4224,6 +4380,7 @@ function doGet(e) {
   if (action === 'serverUpdate') return jsonResponseStaff(serverUpdate());
   if (action === 'setAutoUpdate') return jsonResponseStaff(setAutoUpdate(e.parameter.on === '1'));
   if (action === 'getBotChats') return jsonResponseStaff(getBotChats());
+  if (action === 'waInfo') return jsonResponseStaff(waInfo());
   if (action === 'getBotChat') return jsonResponseStaff(getBotChat(e.parameter.id));
   if (action === 'botReply') return jsonResponseStaff(botReply(e.parameter.id, e.parameter.text));
   if (action === 'botHold') return jsonResponseStaff(botHold(e.parameter.id, e.parameter.on === '1'));
@@ -4292,6 +4449,11 @@ function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
 
+    /* 🟢 واتساب */
+    if (data.object === 'whatsapp_business_account') {
+      handleWhatsAppWebhook_(data);
+      return ContentService.createTextOutput('ok');
+    }
     // 🆕 لو دي رسالة جاية من تليجرام (ويبهوك) — نعالجها ونخرج
     if (data.update_id !== undefined) {
       handleTelegramWebhook_(data);

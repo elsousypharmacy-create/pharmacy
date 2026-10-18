@@ -777,7 +777,7 @@ function logErr(e){
    كل نداء بيعدّي من هنا — لو الرابط اتغيّر، يتغيّر في مكان واحد. */
 /* 🔒 الأوامر الحساسة بتاخد الرقم السري (بيتطلب مرة ويتحفظ على الجهاز ده) */
 var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1,
-                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1 };
+                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1 };
 function adminPin(){
   var p = ''; try { p = localStorage.getItem('adminPin') || ''; } catch (e) {}
   if (!p){ p = (prompt('الرقم السري') || '').trim(); if (p) try { localStorage.setItem('adminPin', p); } catch (e) {} }
@@ -4256,7 +4256,15 @@ function loadWa(){
       '<div class="group-title">' + (d.hasToken ? 'تغيير التوكن' : 'حط التوكن') + '</div>' +
       '<input id="waTok" type="password" autocomplete="off" placeholder="الصق التوكن (بيبدأ بـ EAA)" class="chat-search" dir="ltr">' +
       '<input id="waPid" inputmode="numeric" placeholder="Phone number ID (سيبه فاضي لو مش هتغيّره)" class="chat-search" dir="ltr">' +
-      '<button class="btn btn-primary" onclick="saveWa()">💾 احفظ</button>';
+      '<button class="btn btn-primary" onclick="saveWa()">💾 احفظ</button>' +
+      '<button class="btn btn-quiet" onclick="waSub()">🔗 اربط حساب الواتساب بالبوت</button><div id="wasub"></div>';
+  }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+}
+function waSub(){
+  var b = document.getElementById('wasub'); b.innerHTML = '<div class="state"><div class="spin"></div></div>';
+  api('waSubscribe').then(function(d){
+    b.innerHTML = d && d.ok ? '<div class="state" style="color:var(--ok)">✅ اتربط' + (d.apps && d.apps.length ? ' — مربوط بـ: ' + esc(d.apps.join('، ')) : '') + '</div>'
+                            : '<div class="state err">' + esc((d && d.error) || tr('failed')) + '</div>';
   }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
 function saveWa(){

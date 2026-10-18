@@ -1271,6 +1271,16 @@ function setWaConfig(d) {
   P.deleteProperty('WA_LAST_ERR');
   return { ok: true };
 }
+/* ربط حساب الواتساب (WABA) بالتطبيق عشان ميتا تبعت الرسايل للويبهوك + فحص */
+function waSubscribe() {
+  var tok = waToken_(); if (!tok) return { ok: false, error: 'التوكن مش متحط' };
+  var waba = aiKey_('WA_WABA_ID') || '1121417500291242', H = { Authorization: 'Bearer ' + tok };
+  var r = UrlFetchApp.fetch(WA_API + waba + '/subscribed_apps', { method: 'post', headers: H, muteHttpExceptions: true });
+  var g = UrlFetchApp.fetch(WA_API + waba + '/subscribed_apps', { headers: H, muteHttpExceptions: true });
+  var ok = r.getResponseCode() === 200, list = [];
+  try { list = (JSON.parse(g.getContentText()).data || []).map(function (a) { return (a.whatsapp_business_api_data && a.whatsapp_business_api_data.name) || a.name || '?'; }); } catch (e) {}
+  return { ok: ok, apps: list, error: ok ? '' : r.getContentText().slice(0, 300) };
+}
 function waCall_(path, body) {
   var tok = waToken_();
   if (!tok) return { ok: false, description: 'WA_TOKEN مش متحط في إعدادات السيرفر' };
@@ -4377,7 +4387,7 @@ function doGet(e) {
   /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
   var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
                         purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1,
-                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1 };
+                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1 };
   if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
     return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
   if (action === 'aiTest') return jsonResponseStaff(aiTest(e.parameter.q));
@@ -4390,6 +4400,7 @@ function doGet(e) {
   if (action === 'setAutoUpdate') return jsonResponseStaff(setAutoUpdate(e.parameter.on === '1'));
   if (action === 'getBotChats') return jsonResponseStaff(getBotChats());
   if (action === 'waInfo') return jsonResponseStaff(waInfo());
+  if (action === 'waSubscribe') return jsonResponseStaff(waSubscribe());
   if (action === 'getBotChat') return jsonResponseStaff(getBotChat(e.parameter.id));
   if (action === 'botReply') return jsonResponseStaff(botReply(e.parameter.id, e.parameter.text));
   if (action === 'botHold') return jsonResponseStaff(botHold(e.parameter.id, e.parameter.on === '1'));

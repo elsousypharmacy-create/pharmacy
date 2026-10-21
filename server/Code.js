@@ -1601,7 +1601,24 @@ function escalateToDoctor_(customerChatId, customerText, reason) {
     '"' + String(customerText || '').slice(0, 2500) + '"\n\n' +
     '↩️ اعمل Reply على الرسالة دي وأنا هوصّل ردك للعميل.\n' +
     '[#c' + customerChatId + ']';
+  var PR = PropertiesService.getScriptProperties();
+  try {   /* لو فيه تنبيه لنفس العميل لسه من غير رد (آخر 15 دقيقة): بنضيف الرسالة الجديدة عليه بدل تنبيه جديد */
+    var st = JSON.parse(PR.getProperty('escmid_' + customerChatId) || 'null');
+    var urgent = /🚨|صورة|روشتة/.test(String(reason));
+    if (st && st.mid && !urgent && PR.getProperty('escp_' + customerChatId) && (Date.now() - st.at) < 15 * 60000) {
+      var nt = st.txt + '\n➕ ' + Utilities.formatDate(new Date(), 'Africa/Cairo', 'HH:mm') + ' — "' + String(customerText || '').slice(0, 300) + '"  (' + reason + ')';
+      if (nt.length < 3800) {
+        var er = tgApi_('editMessageText', { chat_id: PERSONAL_CHAT, message_id: st.mid, text: nt, reply_markup: holdKb_(customerChatId, holdOn_(customerChatId)) });
+        if (er && er.ok) {
+          st.txt = nt; PR.setProperty('escmid_' + customerChatId, JSON.stringify(st));
+          logChatRows_(customerChatId, [['sys', '⚕️ اتضاف لنفس التنبيه — ' + reason]]);
+          return;
+        }
+      }
+    }
+  } catch (eM) {}
   const r = tgApi_('sendMessage', { chat_id: PERSONAL_CHAT, text: txt, reply_markup: holdKb_(customerChatId, holdOn_(customerChatId)) });
+  try { if (r && r.ok && r.result) PR.setProperty('escmid_' + customerChatId, JSON.stringify({ mid: r.result.message_id, at: Date.now(), txt: txt })); } catch (eS) {}
   try {   /* 🔴 محتاج رد — بيظهر في صفحة المحادثات لحد ما ترد */
     PropertiesService.getScriptProperties().setProperty('escp_' + customerChatId, Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm'));
     logChatRows_(customerChatId, [['sys', '⚕️ اتحوّل للصيدلي — ' + reason]]);
@@ -1623,6 +1640,7 @@ function relayDoctorReply_(msg) {
     sendTelegramStaff('👨‍⚕️ رد الدكتور:\n\n' + doctorText, customerChatId);
     saveConversationTurn(customerChatId, '[سؤال محوّل للدكتور]', doctorText, 'pharm');
     PropertiesService.getScriptProperties().deleteProperty('escp_' + customerChatId);
+    PropertiesService.getScriptProperties().deleteProperty('escmid_' + customerChatId);
     sendTelegramStaff('✅ اتبعت للعميل.', PERSONAL_CHAT);
     return true;
   } catch (e) {
@@ -1668,6 +1686,10 @@ var STOP_WORDS_ = ['عندك','عندكم','عايز','عاوز','محتاج','�
 // كلمات كلام عادي مش أسماء أصناف ("اعرض" اتطابقت مع صنف "صن سويت عرض" لأن stockKey_ بيشيل الألف).
 // بتتشال من البحث ومن استخراج اسم الصنف — بتتقارن بعد توحيد الألف زي بالظبط مفتاح المخزون.
 var GENERIC_QUERY_WORDS_ = ['عرض','اعرض','اعرضلي','اعرضها','عروض','غالي','غاليه','رخيص','ارخص','اقتصادي','اقتصاديه','بديل','البديل','بدايل','حاجه','حاجة','زيه','زيها','زي','تاني','ايه','لا','تمام','ماشي','اه','ايوه','اوكي','شكرا','خلاص','معلش','قصدي','دا','ده','دي'];
+// كلمات منتجات من حرفين (بتتشال عادةً لأن الكلمات القصيرة ملهاش لازمة) — "في رز طيب؟" كانت بترجع بحث فاضي وتاخد اللي قبلها
+var SHORT_PRODUCT_WORDS_ = ['رز','بن','خل'];
+// "هيكل" الكلمة من غير حروف العلة: سيرلاك = سيريلاك ، برفلجان = بيرفالجان (الألف بتتشال من stockKey_ قبل كده)
+function skel_(w) { return String(w).replace(/[يو]/g, ''); }
 var GENERIC_KEYS_ = null;
 function isGenericWord_(w) {
   if (!GENERIC_KEYS_) {
@@ -1791,13 +1813,14 @@ function searchStock(query) {
     });
     if (!qWords.length) return [];
 
+    const qSk = qWords.map(skel_);
     const scored = [];
     for (var i = 0; i < rows.length; i++) {
       const it = rows[i];
       const toks = it.key.split(' ').filter(function(t){ return t; });
       var score = 0, hit = 0;
 
-      if (it.key.indexOf(qKey) !== -1) score += 60;   // العبارة كلها موجودة
+      if (qKey.length >= 3 ? it.key.indexOf(qKey) !== -1 : toks.indexOf(qKey) !== -1) score += 60;   // العبارة كلها موجودة
 
       for (var w = 0; w < qWords.length; w++) {
         const qw = qWords[w];
@@ -1805,8 +1828,15 @@ function searchStock(query) {
         for (var t = 0; t < toks.length; t++) {
           const tok = toks[t];
           if (tok === qw) best = Math.max(best, 40);                                   // تطابق تام
-          else if (tok.indexOf(qw) === 0) best = Math.max(best, Math.round(40 * qw.length / tok.length)); // بداية الكلمة
-          else if (tok.indexOf(qw) !== -1) best = Math.max(best, Math.round(28 * qw.length / tok.length));
+          else if (qw.length >= 3 && tok.indexOf(qw) === 0) best = Math.max(best, Math.round(40 * qw.length / tok.length)); // بداية الكلمة
+          else if (qw.length >= 3 && tok.indexOf(qw) !== -1) best = Math.max(best, Math.round(28 * qw.length / tok.length));
+        }
+        if (best === 0 && qSk[w].length >= 3) {   // اختلاف إملاء بسيط (سيرلاك/سيريلاك): بنقارن من غير ي و و
+          for (var t2 = 0; t2 < toks.length; t2++) {
+            const ts = skel_(toks[t2]);
+            if (ts === qSk[w]) best = Math.max(best, 34);
+            else if (qSk[w].length >= 4 && ts.indexOf(qSk[w]) === 0) best = Math.max(best, Math.round(30 * qSk[w].length / ts.length));
+          }
         }
         if (best === 0 && it.activeKey && it.activeKey.indexOf(qw) !== -1) best = 12;   // المادة الفعالة
         if (best > 0) hit++;
@@ -2790,7 +2820,7 @@ function extractProductLocally_(text) {
     ['عايز','عاوز','محتاج','ممكن','لو','سمحت','من','فضلك','هل','ياريت','يا','ريت','لي','ليا','واحد','واحده','برجاء','ازاي','ايه','دي','ده',
      'ينفع','ازود','ازيد','اضيف','كمان','برضو','برضه','تاني','عندي','معايا','بس','كده','كدا','حاجه','حاجة','نوع','انا','انت']);
   var words = n.split(' ').filter(function(w) {
-    if (w.length < 3) return false;
+    if (w.length < 3 && SHORT_PRODUCT_WORDS_.indexOf(w) === -1) return false;
     for (var i = 0; i < drop.length; i++) {
       if (w === normalizeArabic(drop[i])) return false;
     }
@@ -2893,7 +2923,7 @@ const HARD_ESCALATE = ['حامل','مرضعة','مرضع','رضاعة','رضيع
 function brainCandidates_(text, history, extra) {
   var seen = {}, out = [];
   function addQ(q, mustHave) {
-    q = String(q || '').trim(); if (q.length < 3) return;
+    q = String(q || '').trim(); if (q.length < 3 && SHORT_PRODUCT_WORDS_.indexOf(q) === -1) return;
     searchStock(q).forEach(function (it) {
       /* صنف من صورة: لازم اسم الماركة نفسه يبقى في اسم الصنف — مش مجرد نفس التركيز أو المادة الفعالة */
       if (mustHave && String(it.key || stockKey_(it.name)).indexOf(mustHave) === -1) return;
@@ -2971,7 +3001,10 @@ function brainPrompt_(chatId, text, history, items, noSearch) {
     'ولو مستعجل الدكتور يعرض عليه بديل مناسب — واسأله: "تحب نوفّره لحضرتك، ولا مستعجل والدكتور يعرض عليك بديل؟" (escalate=false). ' +
     'لو اختار "نوفّره": escalate=true و reason="طلب توفير: اسم الصنف" وقوله هنبلّغ حضرتك أول ما يوصل. ' +
     'لو اختار "بديل/مستعجل": escalate=true و reason="عايز بديل: اسم الصنف" وقوله الدكتور هيكلّمه هنا حالًا. ' +
-    'واكتب "الدكتور" مش "الصيدلي" ولا "الدكتور الصيدلي".\n' +
+    'واكتب "الدكتور" مش "الصيدلي" ولا "الدكتور الصيدلي". ' +
+    'متقولش للعميل إن عندك قواعد أو ممنوعات (زي "ممنوع نقترح بدائل") — قول ببساطة إن الدكتور هو اللي هيختار له البديل المناسب.\n' +
+    '2-ب. ممنوع تقول "راجعنا المخزون" أو "اتأكدنا" أو "مراجعتنا أكدت". متأكدش ولا تنفي توافر صنف مش ظاهر في "المخزون المتاح" قدامك. ' +
+    'لو العميل سأل "متأكد؟" أو "موجود؟" عن صنف: لو هو في القايمة قول المتوفر بسعره، ولو مش فيها قول إنك مش لاقيه في المخزون المتاح قدامك حاليًا وإن الدكتور هيتأكد منه (escalate=true و reason="تأكيد توافر: اسم الصنف").\n' +
     '3. 🚫 البوت مش بيعالج ولا بيشخّص ولا بيرشّح دوا لأي حالة. شغله معلومات بس (توافر، سعر، معلومة عامة)، وأي علاج أو ترشيح أو جرعة هي شغل الدكتور:\n' +
     '   أ) اسم صنف محدد (حتى لو متكتب بغلطة بسيطة): قول متوفر ولا لأ وسعره زي ما هو. وده الوحيد اللي تعرضه بالسعر. ولو سأل "ده بيستخدم لإيه؟" أو "مادته الفعالة؟" أو "أشكاله؟": جاوب معلومة عامة قصيرة من النشرة (الاستخدام الأساسي، المادة الفعالة، الأشكال) من غير ما تقوله ياخده لحالته هو.\n' +
     '   ب) لو سأل عن صنف ليه أنواع كتير من غير ما يحدد (زي "عندك بنادول؟"): قول إنه متوفر بأنواعه واسأله يحدد النوع أو الشكل اللي يقصده. متسألوش بيشتكي من إيه ومتختارش له.\n' +
@@ -4328,6 +4361,7 @@ function botReply(id, text) {
   if (!r || !r.ok) return { ok: false, error: 'تيليجرام رفض الرسالة' + (r && r.description ? ': ' + r.description : '') };
   saveConversationTurn(id, '[سؤال محوّل للدكتور]', text, 'pharm');
   PropertiesService.getScriptProperties().deleteProperty('escp_' + id);
+  PropertiesService.getScriptProperties().deleteProperty('escmid_' + id);
   return { ok: true };
 }
 function botHold(id, on) {
@@ -4337,6 +4371,7 @@ function botHold(id, on) {
 }
 function botDone(id) {
   PropertiesService.getScriptProperties().deleteProperty('escp_' + String(id));
+  PropertiesService.getScriptProperties().deleteProperty('escmid_' + String(id));
   return { ok: true };
 }
 

@@ -1252,6 +1252,19 @@ var WA_API = 'https://graph.facebook.com/v21.0/';
 function waPhoneId_() { return aiKey_('WA_PHONE_ID') || '1321594684378624'; }
 function waToken_() { return aiKey_('WA_TOKEN'); }
 function isWa_(id) { return String(id || '').indexOf('wa_') === 0; }
+/* ميتا بتشيل from (رقم الموبايل) لأصحاب اليوزرنيم وبتبعت from_user_id (BSUID زي US.1349...) بدله.
+   معرّف العميل = الرقم لو موجود، وإلا الـ BSUID. */
+function waSenderId_(m) { return String((m && (m.from || m.from_user_id)) || '').trim(); }
+function waIsPhoneId_(id) { return /^\d{6,20}$/.test(String(id || '')); }
+/* رقم → to ، BSUID → recipient */
+function waTarget_(chatId) {
+  var id = String(chatId).slice(3);
+  return waIsPhoneId_(id) ? { to: id } : { recipient_type: 'individual', recipient: id };
+}
+function waChatLabel_(chatId) {
+  var id = String(chatId).slice(3);
+  return waIsPhoneId_(id) ? '+' + id : 'يوزرنيم واتساب (من غير رقم)';
+}
 function waVerifyToken_() {
   var P = PropertiesService.getScriptProperties(), v = P.getProperty('WA_VERIFY');
   if (!v) { v = 'elsousy2026wa'; P.setProperty('WA_VERIFY', v); }
@@ -1299,7 +1312,7 @@ function waCall_(path, body) {
 }
 /* بيبعت نص (ومعاه أزرار تليجرام بعد تحويلها لأزرار واتساب) */
 function waSend_(chatId, text, markup) {
-  var to = String(chatId).slice(3), body = String(text == null ? '' : text).slice(0, 4000), btns = [], extra = '';
+  var tgt = waTarget_(chatId), body = String(text == null ? '' : text).slice(0, 4000), btns = [], extra = '';
   if (markup && markup.inline_keyboard) markup.inline_keyboard.forEach(function (row) { row.forEach(function (b) {
     if (b.callback_data) btns.push({ id: b.callback_data, title: b.text });
     else if (b.url) extra += '\n' + b.text + ': ' + b.url;
@@ -1311,15 +1324,16 @@ function waSend_(chatId, text, markup) {
   }); });
   body = (body + extra).trim() || '.';
   var clean = function (s, n) { return String(s).replace(/\s+/g, ' ').trim().slice(0, n); };
+  var mk = function (o) { o.messaging_product = 'whatsapp'; Object.keys(tgt).forEach(function (k) { o[k] = tgt[k]; }); return o; };
   if (btns.length && btns.length <= 3)
-    return waCall_(waPhoneId_() + '/messages', { messaging_product: 'whatsapp', to: to, type: 'interactive',
+    return waCall_(waPhoneId_() + '/messages', mk({ type: 'interactive',
       interactive: { type: 'button', body: { text: body.slice(0, 1024) },
-        action: { buttons: btns.map(function (b) { return { type: 'reply', reply: { id: String(b.id).slice(0, 256), title: clean(b.title, 20) } }; }) } } });
+        action: { buttons: btns.map(function (b) { return { type: 'reply', reply: { id: String(b.id).slice(0, 256), title: clean(b.title, 20) } }; }) } } }));
   if (btns.length)
-    return waCall_(waPhoneId_() + '/messages', { messaging_product: 'whatsapp', to: to, type: 'interactive',
+    return waCall_(waPhoneId_() + '/messages', mk({ type: 'interactive',
       interactive: { type: 'list', body: { text: body.slice(0, 1024) },
-        action: { button: 'اختار من هنا', sections: [{ title: 'الاختيارات', rows: btns.slice(0, 10).map(function (b) { return { id: String(b.id).slice(0, 200), title: clean(b.title, 24) }; }) }] } } });
-  return waCall_(waPhoneId_() + '/messages', { messaging_product: 'whatsapp', to: to, type: 'text', text: { body: body, preview_url: true } });
+        action: { button: 'اختار من هنا', sections: [{ title: 'الاختيارات', rows: btns.slice(0, 10).map(function (b) { return { id: String(b.id).slice(0, 200), title: clean(b.title, 24) }; }) }] } } }));
+  return waCall_(waPhoneId_() + '/messages', mk({ type: 'text', text: { body: body, preview_url: true } }));
 }
 /* "بيكتب..." + علامة القراية على آخر رسالة من العميل */
 function waTyping_(chatId) {
@@ -1348,7 +1362,7 @@ function waForwardToStaff_(chatId, n) {
   var blob = waMediaBlob_(mid); if (!blob) return { ok: false };
   try {
     UrlFetchApp.fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/sendPhoto', { method: 'post', muteHttpExceptions: true,
-      payload: { chat_id: String(PERSONAL_CHAT), caption: '🟢 صورة من واتساب — ' + (getKnownCustomerName_(chatId) || '+' + chatId.slice(3)) + '\n[#c' + chatId + ']', photo: blob.setName('p.jpg') } });
+      payload: { chat_id: String(PERSONAL_CHAT), caption: '🟢 صورة من واتساب — ' + (getKnownCustomerName_(chatId) || waChatLabel_(chatId)) + '\n[#c' + chatId + ']', photo: blob.setName('p.jpg') } });
   } catch (e) {}
   return { ok: true };
 }
@@ -1360,20 +1374,30 @@ function waSeq_(chatId) {   /* رقم مسلسل لكل رسالة (الألبو
 function handleWhatsAppWebhook_(data) {
   (data.entry || []).forEach(function (en) { (en.changes || []).forEach(function (ch) {
     var v = ch.value || {}, names = {};
-    (v.contacts || []).forEach(function (c) { names[c.wa_id] = c.profile && c.profile.name; });
-    (v.messages || []).forEach(function (m) { try { waOne_(m, names[m.from] || ''); } catch (e) { Logger.log('خطأ واتساب: ' + e.message); } });
+    (v.contacts || []).forEach(function (c) {
+      var nm = c.profile && (c.profile.name || c.profile.username);
+      if (c.wa_id) names[c.wa_id] = nm;
+      if (c.user_id) names[c.user_id] = nm;
+    });
+    (v.messages || []).forEach(function (m) { try { waOne_(m, names[waSenderId_(m)] || names[m.from_user_id] || ''); } catch (e) { Logger.log('خطأ واتساب: ' + e.message); } });
   }); });
 }
 function waOne_(m, pname) {
   var cache = CacheService.getScriptCache();
   if (cache.get('wam_' + m.id)) return;                    /* ميتا بتعيد نفس الرسالة أحيانًا */
   cache.put('wam_' + m.id, '1', 21600);
-  var chatId = 'wa_' + m.from, P = PropertiesService.getScriptProperties();
+  var sid = waSenderId_(m), P = PropertiesService.getScriptProperties();
+  if (!sid) {   /* مفيش رقم ولا BSUID — منحفظ الشكل عشان نشخّصه، ومنعملش شات اسمه wa_undefined */
+    P.setProperty('WA_LAST_ERR', Utilities.formatDate(new Date(), 'Africa/Cairo', 'MM-dd HH:mm') + ' رسالة من غير from/from_user_id: ' + JSON.stringify(m).slice(0, 300));
+    return;
+  }
+  var chatId = 'wa_' + sid;
   P.setProperty('WA_LAST_IN', Utilities.formatDate(new Date(), 'Africa/Cairo', 'MM-dd HH:mm') + ' ' + m.type);
   cache.put('walast_' + chatId, m.id, 86400);
-  /* رقم العميل معروف ومتأكد منه من واتساب نفسه — مفيش "سجّل رقمك" */
-  if (!P.getProperty('vphone_' + chatId)) {
-    var vp = canonicalEgyptPhone_('+' + m.from) || ('+' + m.from);
+  /* رقم العميل معروف ومتأكد منه من واتساب نفسه — مفيش "سجّل رقمك".
+     لو العميل بيوزرنيم ومفيش رقم (BSUID بس) بنسيب البوت يطلب الرقم بالطريقة العادية. */
+  if (waIsPhoneId_(sid) && !P.getProperty('vphone_' + chatId)) {
+    var vp = canonicalEgyptPhone_('+' + sid) || ('+' + sid);
     P.setProperty('vphone_' + chatId, vp); saveCustomerPhone_(chatId, vp);
   }
   var lock = LockService.getScriptLock(); try { lock.waitLock(5000); } catch (e) {}
@@ -1589,7 +1613,7 @@ function escalateToDoctor_(customerChatId, customerText, reason) {
 function relayDoctorReply_(msg) {
   try {
     const original = msg.reply_to_message.text || '';
-    const m = original.match(/\[#c(-?\d+|wa_\d+)\]/);
+    const m = original.match(/\[#c(-?\d+|wa_[\w.]+)\]/);
     if (!m) return false;
 
     const customerChatId = m[1];
@@ -1640,6 +1664,18 @@ function stockKey_(s) {
 
 // كلمات منتشرة مش بتفيد في البحث
 var STOP_WORDS_ = ['عندك','عندكم','عايز','عاوز','محتاج','ممكن','فيه','في','هل','لو','سمحت','من','فضلك','سعر','كام','بكام','علبه','علبة','شريط','برشام','دوا','دواء','صنف','طيب','طب','وفيه','وعندكم','موجود','متوفر','لسه','حضرتك','برضو','كمان'];
+
+// كلمات كلام عادي مش أسماء أصناف ("اعرض" اتطابقت مع صنف "صن سويت عرض" لأن stockKey_ بيشيل الألف).
+// بتتشال من البحث ومن استخراج اسم الصنف — بتتقارن بعد توحيد الألف زي بالظبط مفتاح المخزون.
+var GENERIC_QUERY_WORDS_ = ['عرض','اعرض','اعرضلي','اعرضها','عروض','غالي','غاليه','رخيص','ارخص','اقتصادي','اقتصاديه','بديل','البديل','بدايل','حاجه','حاجة','زيه','زيها','زي','تاني','ايه','لا','تمام','ماشي','اه','ايوه','اوكي','شكرا','خلاص','معلش','قصدي','دا','ده','دي'];
+var GENERIC_KEYS_ = null;
+function isGenericWord_(w) {
+  if (!GENERIC_KEYS_) {
+    GENERIC_KEYS_ = {};
+    GENERIC_QUERY_WORDS_.forEach(function (g) { GENERIC_KEYS_[stockKey_(g)] = true; });
+  }
+  return GENERIC_KEYS_[w] === true || GENERIC_KEYS_[stockKey_(w)] === true;
+}
 
 // بيقرا أعمدة المخزون المطلوبة بس (أسرع)، بالاسم مش بالرقم
 function readStockRowsFresh_() {
@@ -1751,7 +1787,7 @@ function searchStock(query) {
     if (!qKey) return [];
 
     const qWords = qKey.split(' ').filter(function(w) {
-      return w.length >= 2 && STOP_WORDS_.indexOf(w) === -1;
+      return w.length >= 2 && STOP_WORDS_.indexOf(w) === -1 && !isGenericWord_(w);
     });
     if (!qWords.length) return [];
 
@@ -2568,7 +2604,7 @@ function handleCallback_(cq) {
   var chatId = String(cq.message && cq.message.chat && cq.message.chat.id || cq.from.id), d = cq.data || '';
   tgApi_('answerCallbackQuery', { callback_query_id: cq.id });
   /* أزرار الصيدلي: يمسك المحادثة / يرجّع البوت */
-  var hm = d.match(/^h_(on|off)_(-?\d+|wa_\d+)$/);
+  var hm = d.match(/^h_(on|off)_(-?\d+|wa_[\w.]+)$/);
   if (hm) {
     if (chatId !== String(PERSONAL_CHAT)) return;
     var on = hm[1] === 'on';
@@ -2758,6 +2794,7 @@ function extractProductLocally_(text) {
     for (var i = 0; i < drop.length; i++) {
       if (w === normalizeArabic(drop[i])) return false;
     }
+    if (isGenericWord_(w)) return false;
     return true;
   });
   return words.join(' ').trim();

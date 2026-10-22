@@ -4961,6 +4961,7 @@ function setAutoUpdate(on) {
   return { ok: true, autoOn: !!on };
 }
 function autoServerUpdate() {
+  try { maybeEnsureTriggers_(); } catch (eT) {}
   var s = serverSrc_(), P = PropertiesService.getScriptProperties();
   if (!s || P.getProperty('SERVER_SRC_SIG') === s.sig) return;
   if (P.getProperty('SERVER_FAILED_SIG') === s.sig) return;          /* النسخة دي فشلت قبل كده — منحاولش كل ربع ساعة */
@@ -5012,6 +5013,7 @@ function serverUpdate() {
   var P = PropertiesService.getScriptProperties();
   P.setProperty('SERVER_SRC_SIG', s.sig);
   P.setProperty('SERVER_UPDATED_AT', stamp);
+  try { maybeEnsureTriggers_(); } catch (eT) {}
   return { ok: true, version: ver, at: stamp };
 }
 
@@ -5139,12 +5141,74 @@ function remindPendingHandoffs() {
     try { P.setProperty('escr_' + chatId, JSON.stringify({ n: n + 1, at: now })); } catch (eS) {}
   });
 }
-function setupHandoffReminderTrigger() {
-  ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction() === 'remindPendingHandoffs') ScriptApp.deleteTrigger(t);
+/* تريجرز كانت بتتظبط من المحرر. التنبيه بتاع التحويل بيتظبط لوحده.
+   التانيين (ديون / كوبونات) من زرار في الصيانة بس، عشان واحد بيبعت SMS والتاني بيعدّل حالات. */
+var EDITOR_TRIGGERS_ = {
+  remindPendingHandoffs: {
+    label: 'تنبيه التحويل للصيدلي كل ١٠ دقايق',
+    auto: true,
+    install: function () { ScriptApp.newTrigger('remindPendingHandoffs').timeBased().everyMinutes(10).create(); }
+  },
+  sendWeeklyDebtReminders: {
+    label: 'تذكير الديون كل سبت الساعة ١١',
+    auto: false,
+    install: function () { ScriptApp.newTrigger('sendWeeklyDebtReminders').timeBased().onWeekDay(ScriptApp.WeekDay.SATURDAY).atHour(11).create(); }
+  },
+  checkExpiredCoupons: {
+    label: 'فحص الكوبونات كل يوم الساعة ٩',
+    auto: false,
+    install: function () { ScriptApp.newTrigger('checkExpiredCoupons').timeBased().atHour(9).everyDays(1).create(); }
+  }
+};
+var TRIGGERS_ENSURED_MARK_ = 'handoff10';
+function ensureTriggers_(opts) {
+  opts = opts || {};
+  var which = String(opts.which || '');
+  var names = [];
+  if (which) {
+    if (!EDITOR_TRIGGERS_[which]) return { ok: false, error: 'التنبيه ده مش معروف' };
+    names = [which];
+  } else {
+    Object.keys(EDITOR_TRIGGERS_).forEach(function (k) { if (EDITOR_TRIGGERS_[k].auto) names.push(k); });
+  }
+  var have = {};
+  try {
+    ScriptApp.getProjectTriggers().forEach(function (t) {
+      var n = t.getHandlerFunction();
+      have[n] = (have[n] || 0) + 1;
+    });
+  } catch (e) {
+    return { ok: false, error: 'مقدرتش أقرأ التريجرز. لو جوجل طلب موافقة، اقبلها مرة واحدة — نفس صلاحية التحديث التلقائي واللقطة.', message: String(e.message || e).slice(0, 240) };
+  }
+  var created = [], existed = [], errors = [];
+  names.forEach(function (name) {
+    var spec = EDITOR_TRIGGERS_[name];
+    if (have[name]) { existed.push(spec.label); return; }
+    try { spec.install(); created.push(spec.label); have[name] = 1; }
+    catch (e2) { errors.push(spec.label + ': ' + String(e2.message || e2).slice(0, 180)); }
   });
-  ScriptApp.newTrigger('remindPendingHandoffs').timeBased().everyMinutes(10).create();
-  Logger.log('تذكير التحويل اتفعّل كل 10 دقايق');
+  var msg = errors.length ? ('مقدرتش أفعّل: ' + errors.join(' — '))
+    : (created.length ? ('اتفعّل: ' + created.join('، ') + (existed.length ? '. وكان موجود: ' + existed.join('، ') : ''))
+       : ('شغالة أصلًا: ' + existed.join('، ')));
+  var ok = !errors.length;
+  if (ok && (!which || which === 'remindPendingHandoffs')) {
+    try { PropertiesService.getScriptProperties().setProperty('TRIGGERS_ENSURED', TRIGGERS_ENSURED_MARK_); } catch (eP) {}
+  }
+  return { ok: ok, created: created, existed: existed, errors: errors, message: msg, error: errors.length ? msg : '' };
+}
+function maybeEnsureTriggers_() {
+  var P = PropertiesService.getScriptProperties();
+  if (P.getProperty('TRIGGERS_ENSURED') === TRIGGERS_ENSURED_MARK_) return;
+  var failAt = parseInt(P.getProperty('TRIGGERS_ENSURED_FAIL') || '0', 10);
+  if (failAt && (Date.now() - failAt) < 6 * 3600000) return;
+  var r = ensureTriggers_();
+  if (r && r.ok) { try { P.deleteProperty('TRIGGERS_ENSURED_FAIL'); } catch (e) {} }
+  else { try { P.setProperty('TRIGGERS_ENSURED_FAIL', String(Date.now())); } catch (e2) {} }
+}
+function setupHandoffReminderTrigger() {
+  var r = ensureTriggers_({ which: 'remindPendingHandoffs' });
+  Logger.log(r.message || r.error || '');
+  return r;
 }
 
 /* 🔒 قفل اللوحة (بيتفعّل من الإعدادات): بيانات المبيعات والعملاء والديون محتاجة الرقم السري.
@@ -5171,6 +5235,7 @@ function doGet(e) {
   /* 🟢 تأكيد ويبهوك واتساب من ميتا */
   if (e.parameter['hub.mode'] === 'subscribe')
     return ContentService.createTextOutput(e.parameter['hub.verify_token'] === waVerifyToken_() ? String(e.parameter['hub.challenge'] || '') : 'bad token');
+  try { maybeEnsureTriggers_(); } catch (eT) {}
   var action = e.parameter.action;
   if (LOCKED_GET[action] && dashLocked_(e.parameter.pin)) return lockedResp_();
   if (action === 'getBotSettings') return jsonResponseStaff(getBotSettings());
@@ -5223,7 +5288,7 @@ function doGet(e) {
   if (action === 'getCustomerVisits') return jsonResponseStaff(getCustomerVisits(e.parameter.days));
   /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
   var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
-                        purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1,
+                        purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
                         getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1 };
   if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
     return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
@@ -5235,6 +5300,7 @@ function doGet(e) {
   if (action === 'backupProbe') return jsonResponseStaff(backupProbe());
   if (action === 'serverUpdate') return jsonResponseStaff(serverUpdate());
   if (action === 'setAutoUpdate') return jsonResponseStaff(setAutoUpdate(e.parameter.on === '1'));
+  if (action === 'ensureTriggers') return jsonResponseStaff(ensureTriggers_({ which: e.parameter.which || '' }));
   if (action === 'getBotChats') return jsonResponseStaff(getBotChats());
   if (action === 'waInfo') return jsonResponseStaff(waInfo());
   if (action === 'waSubscribe') return jsonResponseStaff(waSubscribe());
@@ -5436,13 +5502,9 @@ function sendDebtReminderSMS_(phone, name, amount) {
   }
 }
 
-// شغّلها مرة واحدة عشان تفعّل الإرسال التلقائي الأسبوعي
+/* من زرار الصيانة. مش بيتفعّل لوحده عشان بيبعت SMS للعملاء. */
 function setupDebtReminderTrigger() {
-  ScriptApp.getProjectTriggers().forEach(function(t) {
-    if (t.getHandlerFunction() === 'sendWeeklyDebtReminders') ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger('sendWeeklyDebtReminders').timeBased().onWeekDay(ScriptApp.WeekDay.SATURDAY).atHour(11).create();
-  Logger.log('✅ التذكير الأسبوعي اتفعّل — هيبعت كل سبت الساعة 11 ص');
+  return ensureTriggers_({ which: 'sendWeeklyDebtReminders' });
 }
 
 // بتشتغل أوتوماتيك أسبوعيًا — بتبعت لكل عميل متأخر أكتر من 30 يوم ومبعتلوش خلال آخر 7 أيام
@@ -6630,12 +6692,9 @@ function checkExpiredCoupons() {
   }
 }
 
+/* من زرار الصيانة. مش بيتفعّل لوحده عشان بيعدّل حالة متابعة العملاء. */
 function setupCouponExpiryTrigger() {
-  ScriptApp.getProjectTriggers().forEach(function(t) {
-    if (t.getHandlerFunction() === 'checkExpiredCoupons') ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger('checkExpiredCoupons').timeBased().atHour(9).everyDays(1).create();
-  Logger.log('✅ فحص انتهاء الكوبونات هيشتغل يوميًا الساعة 9 ص');
+  return ensureTriggers_({ which: 'checkExpiredCoupons' });
 }
 
 function sendCouponSMS_(phone, name, message, expiryIso) {

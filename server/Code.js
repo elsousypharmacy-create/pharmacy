@@ -1501,9 +1501,12 @@ function waOne_(m, pname) {
     var vp = canonicalEgyptPhone_('+' + sid) || ('+' + sid);
     P.setProperty('vphone_' + chatId, vp); saveCustomerPhone_(chatId, vp);
   }
-  var lock = LockService.getScriptLock(); try { lock.waitLock(5000); } catch (e) {}
+  /* تسلسل الألبوم بس. منستناش قفل السكربت خمس ثواني: التريجر الحي بيمسكه وهو بيقرأ المبيعات.
+     لو القفل مش فاضي الرسالة بتكمل وتتسجل — مش بتترمي. */
+  var lock = LockService.getScriptLock(), gotSeq = false;
+  try { gotSeq = lock.tryLock(250); } catch (eL) {}
   var n = waSeq_(chatId);
-  try { lock.releaseLock(); } catch (e) {}
+  if (gotSeq) { try { lock.releaseLock(); } catch (e) {} }
   var msg = { message_id: n, chat: { id: chatId, type: 'private' }, from: { id: chatId, first_name: pname || '' } };
   if (m.timestamp) {
     var ts = parseInt(m.timestamp, 10);
@@ -1530,7 +1533,10 @@ function waOne_(m, pname) {
   else if (m.type === 'location') msg.location = { latitude: m.location.latitude, longitude: m.location.longitude };
   else if (m.type === 'reaction' || m.type === 'unsupported') return;
   else {
-    if (!holdOn_(chatId)) waSend_(chatId, 'وصلنا 🌿 للأسف مش بنقدر نفتح النوع ده من الملفات — ممكن حضرتك تكتب طلبك أو تبعت صورة؟');
+    var fileLabel = '[' + (m.type || 'ملف') + ']';
+    var fileNote = 'وصلنا 🌿 للأسف مش بنقدر نفتح النوع ده من الملفات — ممكن حضرتك تكتب طلبك أو تبعت صورة؟';
+    if (!holdOn_(chatId)) waSend_(chatId, fileNote);
+    saveConversationTurn(chatId, fileLabel, holdOn_(chatId) ? '[الصيدلي بيرد بنفسه]' : fileNote, 'bot', msg.date);
     return;
   }
   handleCustomerMessage(chatId, msg);
@@ -2906,10 +2912,19 @@ function logChatRows_(chatId, rows) {
     if (!rows || !rows.length || String(chatId) === String(PERSONAL_CHAT)) return;
     if (badChatId_(chatId)) { noteBadChatId_('logChat', chatId, rows[0] && rows[0][1]); return; }
     var w = chatWho_(chatId), now = cairoStamp_();
-    var sh = chatLogSheet_(), vals = rows.filter(function (r) { return r[1]; }).map(function (r) {
-      return [r[2] || now, String(chatId), w.n, w.p ? "'" + w.p : '', r[0], String(r[1]).slice(0, 4000)];
+    var vals = rows.filter(function (r) { return r[1]; }).map(function (r) {
+      /* الاقتباس يخليه نص. من غيره الشيت أحيانًا بيحوّل yyyy-MM-dd لتاريخ والعرض بيتلخبط. */
+      return ["'" + (r[2] || now), String(chatId), w.n, w.p ? "'" + w.p : '', r[0], String(r[1]).slice(0, 4000)];
     });
-    if (vals.length) sh.getRange(sh.getLastRow() + 1, 1, vals.length, 6).setValues(vals);
+    if (!vals.length) return;
+    /* قفل المستخدم مش قفل السكربت. قفل السكربت بيمسكه التريجر الحي واللقطة دقايق.
+       هنا بس عشان رسالتين في نفس اللحظة متكتبوش على نفس الصف. لو القفل اتأخر بنكتب برضه. */
+    var lock = LockService.getUserLock(), got = false;
+    try { got = lock.tryLock(8000); } catch (eL) {}
+    try {
+      var sh = chatLogSheet_();
+      sh.getRange(sh.getLastRow() + 1, 1, vals.length, 6).setValues(vals);
+    } finally { if (got) { try { lock.releaseLock(); } catch (e2) {} } }
   } catch (e) { Logger.log('خطأ سجل المحادثات: ' + e.message); }
 }
 
@@ -2931,6 +2946,11 @@ function saveConversationTurn(chatId, userText, botText, botRole, arrivalUnix) {
     CacheService.getScriptCache().put('convo_' + chatId, json, 21600);
     PropertiesService.getScriptProperties().setProperty('convo_' + chatId, json);
   } catch (e) { Logger.log('خطأ saveConversationTurn: ' + e.message); }
+}
+
+/* sentOk=false يعني الرد ماتبعّتش لأن الصيدلي ماسك الشات. رسالة العميل تتسجل برضه. */
+function logDeliveredTurn_(chatId, userText, botText, arrivalUnix, sentOk) {
+  saveConversationTurn(chatId, userText, sentOk === false ? '[الصيدلي بيرد بنفسه]' : botText, 'bot', arrivalUnix);
 }
 
 function formatHistory(history) {
@@ -3134,7 +3154,10 @@ function handleCallback_(cq) {
     return;
   }
   /* الصيدلي ماسك المحادثة: زرار العميل ميبعتش رد من البوت ومبيأكدش طلب */
-  if (String(chatId) !== String(PERSONAL_CHAT) && holdOn_(chatId)) return;
+  if (String(chatId) !== String(PERSONAL_CHAT) && holdOn_(chatId)) {
+    logChatRows_(chatId, [['user', '[زرار ' + String(d).slice(0, 24) + ']']]);
+    return;
+  }
   try { tgApi_('editMessageReplyMarkup', { chat_id: chatId, message_id: cq.message.message_id, reply_markup: { inline_keyboard: [] } }); } catch (e) {}
   if (d === 'o_ok' || d === 'o_edit') {
     if (d === 'o_edit') {
@@ -3797,6 +3820,7 @@ function handleCustomerMessage(chatId, message) {
   try {
     // 📱 العميل شارك رقمه بالزرار — نتأكد إنه رقمه هو مش رقم حد تاني
     if (message.contact) {
+      logChatRows_(chatId, [['user', '[مشاركة رقم]', message.date ? cairoStamp_(message.date) : '']]);
       var ct = message.contact;
       if (ct.user_id && message.from && String(ct.user_id) === String(message.from.id)) {
         var vp = canonicalEgyptPhone_(ct.phone_number);
@@ -3817,6 +3841,7 @@ function handleCustomerMessage(chatId, message) {
 
     // 📍 العميل بعت موقعه
     if (message.location) {
+      logChatRows_(chatId, [['user', '[موقع]', message.date ? cairoStamp_(message.date) : '']]);
       var lf = delFlow_(chatId);
       var la = message.location.latitude, lo = message.location.longitude;
       var pn = placeName_(la, lo);
@@ -3869,7 +3894,11 @@ function handleCustomerMessage(chatId, message) {
         pfids = ids.map(function (n) { return got[gk + n]; });
         if (!message.caption) message.caption = MC.get(gk + 'cap') || '';
       }
-      if (holdOn_(chatId)) { escalateToDoctor_(chatId, '[' + (pfids.length > 1 ? pfids.length + ' صور' : 'صورة') + ']' + (message.caption ? ' ' + message.caption : ''), 'صورة'); return; }
+      if (holdOn_(chatId)) {
+        escalateToDoctor_(chatId, '[' + (pfids.length > 1 ? pfids.length + ' صور' : 'صورة') + ']' + (message.caption ? ' ' + message.caption : ''), 'صورة');
+        saveConversationTurn(chatId, '[صورة]' + (message.caption ? ' ' + message.caption : ''), '[الصيدلي بيرد بنفسه]', 'bot', message.date);
+        return;
+      }
       /* 📷 البوت يقرا الصورة: علبة دوا → يرد بالتوافر والسعر · روشتة → المتوفر والإجمالي + تتبعتلك تراجعها */
       sendTelegram_(chatId, pfids.length > 1 ? 'استلمنا الصور (' + pfids.length + ') 🌿 ثواني وبنشوفها لحضرتك' : 'استلمنا الصورة 🌿 ثواني وبنشوفها لحضرتك');
       sendTypingAction_(chatId);
@@ -3882,7 +3911,7 @@ function handleCustomerMessage(chatId, message) {
         var rxUser = '[روشتة بخط الإيد' + (message.caption ? ': ' + message.caption : '') + ']';
         if (holdOn_(chatId)) { saveConversationTurn(chatId, rxUser, '[الصيدلي بيرد بنفسه]', 'bot', message.date); return; }
         var rr = 'استلمنا الروشتة 🌿 الصيدلي هيقراها بنفسه ويرد على حضرتك هنا بالمتوفر والأسعار في أقرب وقت.';
-        if (sendTelegram_(chatId, rr) !== false) saveConversationTurn(chatId, rxUser, rr, 'bot', message.date);
+        logDeliveredTurn_(chatId, rxUser, rr, message.date, sendTelegram_(chatId, rr) !== false);
         return;
       }
       if (seen && (seen.kind === 'box' || seen.kind === 'prescription') && seen.items && seen.items.length) {
@@ -3893,7 +3922,7 @@ function handleCustomerMessage(chatId, message) {
         PHOTO_CTX = seen;
         try { CacheService.getScriptCache().put('lastphoto_' + chatId, JSON.stringify({ kind: seen.kind, items: seen.items, rx: !!seen.rx, n: pfids.length }), 21600); } catch (eP) {}
         var okp = false;
-        if (holdOn_(chatId)) return;
+        if (holdOn_(chatId)) { saveConversationTurn(chatId, '[صورة]' + (message.caption ? ' ' + message.caption : ''), '[الصيدلي بيرد بنفسه]', 'bot', message.date); return; }
         try { okp = smartCustomerReply_(chatId, ptxt + '\n[العميل بعت صورة ' + (seen.kind === 'prescription' ? 'روشتة' : 'منتج') + ' مكتوب فيها: ' + pnames + ']', getConversationHistory(chatId), message.date); } catch (e) {}
         PHOTO_CTX = null;
         if (okp) return;
@@ -3901,7 +3930,7 @@ function handleCustomerMessage(chatId, message) {
       escalateToDoctor_(chatId, '[صورة/روشتة — الصورة فوق الرسالة دي]' + (message.caption ? ' ' + message.caption : ''), 'صورة/روشتة');
       if (holdOn_(chatId)) { saveConversationTurn(chatId, '[صورة]', '[الصيدلي بيرد بنفسه]', 'bot', message.date); return; }
       const r = 'استلمنا الصورة 🌿 الصيدلي هيراجعها ويرد على حضرتك هنا في أقرب وقت.';
-      if (sendTelegram_(chatId, r) !== false) saveConversationTurn(chatId, '[صورة]', r, 'bot', message.date);
+      logDeliveredTurn_(chatId, '[صورة]', r, message.date, sendTelegram_(chatId, r) !== false);
       return;
     }
 
@@ -3910,14 +3939,16 @@ function handleCustomerMessage(chatId, message) {
     if ((message.voice || message.audio) && !message.text) {
       var va = message.voice || message.audio;
       if ((va.duration || 0) > 180) {
-        sendTelegram_(chatId, 'الرسالة الصوتية طويلة شوية 🙏 ممكن حضرتك تبعتها في رسايل أقصر (أقل من 3 دقايق) أو تكتبها.');
+        var longV = 'الرسالة الصوتية طويلة شوية 🙏 ممكن حضرتك تبعتها في رسايل أقصر (أقل من 3 دقايق) أو تكتبها.';
+        logDeliveredTurn_(chatId, '[صوت طويل]', longV, message.date, sendTelegram_(chatId, longV) !== false);
         return;
       }
       sendTypingAction_(chatId);
       var heard = transcribeVoice_(va.file_id, va.mime_type || 'audio/ogg');
       if (!heard) {
+        var badV = 'معلش الصوت مش واضح عندي 🙏 ممكن حضرتك تعيده أو تكتب طلبك؟';
         if (holdOn_(chatId)) tgApi_('forwardMessage', { chat_id: PERSONAL_CHAT, from_chat_id: chatId, message_id: message.message_id });
-        else sendTelegram_(chatId, 'معلش الصوت مش واضح عندي 🙏 ممكن حضرتك تعيده أو تكتب طلبك؟');
+        logDeliveredTurn_(chatId, '[صوت]', badV, message.date, holdOn_(chatId) ? false : sendTelegram_(chatId, badV) !== false);
         return;
       }
       message = { text: heard, from: message.from, chat: message.chat, message_id: message.message_id, date: message.date };
@@ -4054,14 +4085,14 @@ function handleCustomerMessage(chatId, message) {
       if (drugW) {
         var rd = 'الدوا ده من أدوية الجدول ومش بنقدر نصرفه ولا نسعّره من الشات. الدكتور هيكلم حضرتك هنا في أقرب وقت.';
         escalateToDoctor_(chatId, text, 'دوا جدول: ' + drugW);
-        if (sendTelegram_(chatId, rd) !== false) saveConversationTurn(chatId, text, rd, 'bot', message.date);
+        logDeliveredTurn_(chatId, text, rd, message.date, sendTelegram_(chatId, rd) !== false);
         return;
       }
       var compW = keywordHit_(nText, COMPLAINT_MARKERS_);
       if (compW) {
         var rcpl = 'معلش يا حضرتك، وآسفين على اللي حصل. الدكتور هيكلم حضرتك هنا في أقرب وقت.';
         escalateToDoctor_(chatId, text, 'شكوى: ' + compW);
-        if (sendTelegram_(chatId, rcpl) !== false) saveConversationTurn(chatId, text, rcpl, 'bot', message.date);
+        logDeliveredTurn_(chatId, text, rcpl, message.date, sendTelegram_(chatId, rcpl) !== false);
         return;
       }
       try { safetyCapture_(chatId, text, history); } catch (e) {}
@@ -4074,14 +4105,14 @@ function handleCustomerMessage(chatId, message) {
       if (fbRes.length) {
         var fbAns = buildProductAnswer_(fbRes, fbProd);
         logQuote_(chatId, fbAns.items || []); quotedAdd_(chatId, fbAns.items || []);
-        if (sendTelegram_(chatId, fbAns.text) !== false) saveConversationTurn(chatId, text, fbAns.text, 'bot', message.date);
+        logDeliveredTurn_(chatId, text, fbAns.text, message.date, sendTelegram_(chatId, fbAns.text) !== false);
         return;
       }
       escalateToDoctor_(chatId, text, 'البوت مقدرش يرد — يفضّل ترد بنفسك');
       var fbs = ['ثواني وأرجع لحضرتك بالرد 🙏', 'وصلت رسالة حضرتك، الصيدلي هيرد على حضرتك هنا في أقرب وقت 🌸',
                  'تمام، بنراجع طلب حضرتك وهنرد هنا حالًا 🙏'];
       var fb = fbs[Math.floor(Math.random() * fbs.length)];
-      if (sendTelegram_(chatId, fb) !== false) saveConversationTurn(chatId, text, fb, 'bot', message.date);
+      logDeliveredTurn_(chatId, text, fb, message.date, sendTelegram_(chatId, fb) !== false);
       return;
     }
 
@@ -4090,7 +4121,7 @@ function handleCustomerMessage(chatId, message) {
       if (nText.indexOf(normalizeArabic(ESCALATE_KEYWORDS[k])) !== -1) {
         escalateToDoctor_(chatId, text, 'كلمة تستدعي مراجعة: ' + ESCALATE_KEYWORDS[k]);
         const r = 'سؤالك ده محتاج رأي الدكتور شخصيًا 🙏 حوّلته له دلوقتي وهيرد عليك بنفسه هنا.';
-        if (sendTelegram_(chatId, r) !== false) saveConversationTurn(chatId, text, r, 'bot', message.date);
+        logDeliveredTurn_(chatId, text, r, message.date, sendTelegram_(chatId, r) !== false);
         return;
       }
     }
@@ -4104,7 +4135,7 @@ function handleCustomerMessage(chatId, message) {
     // --- ⚡ الرد المحلي السريع: تحية / صنف / سعر / نقاط ---
     const quick = tryLocalReply_(chatId, text, history);
     if (quick) {
-      if (sendTelegram_(chatId, quick) !== false) saveConversationTurn(chatId, text, quick, 'bot', message.date);
+      logDeliveredTurn_(chatId, text, quick, message.date, sendTelegram_(chatId, quick) !== false);
       return;
     }
 
@@ -4114,7 +4145,7 @@ function handleCustomerMessage(chatId, message) {
     if (cls.type === 'MEDICAL') {
       escalateToDoctor_(chatId, text, 'سؤال طبي');
       const r = 'سؤالك محتاج رأي الدكتور 🙏 حوّلته له وهيرد عليك بنفسه هنا.';
-      if (sendTelegram_(chatId, r) !== false) saveConversationTurn(chatId, text, r, 'bot', message.date);
+      logDeliveredTurn_(chatId, text, r, message.date, sendTelegram_(chatId, r) !== false);
       return;
     }
 
@@ -4151,7 +4182,7 @@ function handleCustomerMessage(chatId, message) {
       escalateToDoctor_(chatId, text, 'الذكاء الاصطناعي مردش — يفضّل ترد بنفسك');
     }
 
-    if (sendTelegram_(chatId, reply) !== false) saveConversationTurn(chatId, text, reply, 'bot', message.date);
+    logDeliveredTurn_(chatId, text, reply, message.date, sendTelegram_(chatId, reply) !== false);
 
   } catch (e) {
     Logger.log('خطأ handleCustomerMessage: ' + e.message);
@@ -4176,7 +4207,7 @@ function handleProductQuery_(chatId, text, product, history, arrivalUnix) {
       msg = 'للأسف "' + product + '" مش متوفر عندنا دلوقتي.\n' +
             'ممكن نوفّره لحضرتك، ولو مستعجل الدكتور يعرض عليك بديل مناسب. تحب أنهي؟';
     }
-    if (sendTelegram_(chatId, msg) !== false) saveConversationTurn(chatId, text, msg, 'bot', arrivalUnix);
+    logDeliveredTurn_(chatId, text, msg, arrivalUnix, sendTelegram_(chatId, msg) !== false);
     return;
   }
 
@@ -5026,17 +5057,19 @@ function chatLogRows_(maxRows) {
 }
 function getBotChats() {
   var rows = chatLogRows_(6000), by = {}, P = PropertiesService.getScriptProperties().getProperties();
-  rows.forEach(function (r) {
+  rows.forEach(function (r, i) {
     var id = r[1]; if (!id) return;
-    var c = by[id] || (by[id] = { id: id, name: '', phone: '', count: 0, last: '', lastText: '', lastRole: '' });
+    var c = by[id] || (by[id] = { id: id, name: '', phone: '', count: 0, last: '', lastText: '', lastRole: '', ord: -1 });
     if (r[2]) c.name = r[2]; if (r[3]) c.phone = r[3];
     c.count++;
-    if (r[0] >= c.last) { c.last = r[0]; c.lastText = String(r[5]).slice(0, 120); c.lastRole = r[4]; }
+    /* آخر صف اتكتب هو الأحدث. مقارنة نص الوقت بتغلط لو الشيت عارض التاريخ بشكل تاني. */
+    if (i >= c.ord) { c.ord = i; c.last = r[0]; c.lastText = String(r[5]).slice(0, 120); c.lastRole = r[4]; }
   });
   var list = Object.keys(by).map(function (id) {
     var c = by[id]; c.pending = P['escp_' + id] || ''; c.hold = holdOn_(id); return c;
   });
-  list.sort(function (a, b) { return (b.pending ? 1 : 0) - (a.pending ? 1 : 0) || (a.last < b.last ? 1 : -1); });
+  list.sort(function (a, b) { return (b.pending ? 1 : 0) - (a.pending ? 1 : 0) || (b.ord - a.ord); });
+  list.forEach(function (c) { delete c.ord; });
   return { ok: true, chats: list.slice(0, 300) };
 }
 function getBotChat(id) {
@@ -9211,7 +9244,7 @@ function ordMarksLoad_() {
 function ordMarksRead_() {
   var r = ordMarksLoad_();
   if (!r.stale) return r;
-  var lock = LockService.getScriptLock();
+  var lock = LockService.getUserLock();
   try {
     if (lock.tryLock(4000)) {
       r = ordMarksLoad_();
@@ -9265,7 +9298,10 @@ function markOrdered_(p, viaBot) {
   } else list = [p];
   if (!list.length) return { ok: false, msg: 'ابعت كود الصنف أو اسمه' };
 
-  var lock = LockService.getScriptLock();
+  /* قفل المستخدم، مش قفل السكربت. قفل السكربت واحد وبيتمسك دقايق في التريجر الحي
+     (checkStaffOrders) ولقطة الساعة وقراية ملفات الدرايف، فـ tryLock(15000) كان بيرجع
+     "مشغول — جرب تاني" حتى والمفتاح صح. علامات الطلب كتابة قصيرة، والقفل هنا يمنع كتابتين مع بعض. */
+  var lock = LockService.getUserLock();
   try { if (!lock.tryLock(15000)) return { ok: false, msg: 'مشغول — جرب تاني' }; }
   catch (eL) { return { ok: false, msg: 'مشغول' }; }
   try {

@@ -5106,6 +5106,17 @@ function parseCairoMinute_(s) {
   try { return Utilities.parseDate(String(s || ''), 'Africa/Cairo', 'yyyy-MM-dd HH:mm').getTime(); }
   catch (e) { return 0; }
 }
+function maskPhone_(phone) {
+  var d = String(phone || '').replace(/\D/g, '');
+  if (!d) return '';
+  return '…' + d.slice(-3);
+}
+function maskPhonesInText_(text) {
+  return String(text || '').replace(/(?:\+?2)?0?1[0125]\d{8}/g, function (m) {
+    var d = m.replace(/\D/g, '');
+    return '…' + d.slice(-3);
+  });
+}
 function remindPendingHandoffs() {
   var P = PropertiesService.getScriptProperties(), all = {};
   try { all = P.getProperties() || {}; } catch (e) { return; }
@@ -5138,6 +5149,14 @@ function remindPendingHandoffs() {
     } catch (eH) {}
     sendTelegramStaff('⏰ لسه مستني رد\n' + (name || 'عميل') + (phone ? ' · ' + phone : '') +
       '\nمستني من ' + waitMin + ' دقيقة' + (last ? '\n"' + last + '"' : '') + '\n[#c' + chatId + ']', PERSONAL_CHAT);
+    /* نسخة الجروب: آخر ٣ أرقام بس، ومن غير [#c] عشان الرقم متبقاش جوه العلامة والرد من الجروب مش بيتوصّل. */
+    if (String(STAFF_GROUP) && String(STAFF_GROUP) !== String(PERSONAL_CHAT)) {
+      var masked = maskPhone_(phone);
+      var groupLast = maskPhonesInText_(last);
+      sendTelegramStaff('⏰ لسه مستني رد\n' + (name || 'عميل') + (masked ? ' · ' + masked : '') +
+        '\nمستني من ' + waitMin + ' دقيقة' + (groupLast ? '\n"' + groupLast + '"' : '') +
+        '\nالرد على العميل من الشات الخاص، مش من الجروب.', STAFF_GROUP);
+    }
     try { P.setProperty('escr_' + chatId, JSON.stringify({ n: n + 1, at: now })); } catch (eS) {}
   });
 }

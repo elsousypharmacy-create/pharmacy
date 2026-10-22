@@ -4301,20 +4301,26 @@ function loadBotSet(){
 function drawBotSet(){
   var d = BOT_SET, box = document.getElementById('botset'); if (!box || !d) return;
   box.innerHTML =
-    '<small style="color:var(--ink-2)">رسوم التوصيل بالجنيه (فاضي = البوت يقول إنها هتتأكد)</small>' + aiInp('bsFee', 'مثلًا 10', 'number', d.fee) +
-    '<small style="color:var(--ink-2)">مواعيد العمل (البوت بيقولها لو اتسأل)</small>' + aiInp('bsHours', 'مثلًا: كل يوم من 9 الصبح لـ 2 بالليل', 'text', d.hours) +
+    '<small style="color:var(--ink-2)">رسوم التوصيل بالجنيه (فاضي = هتتأكد، و0 = مجاني)</small>' + aiInp('bsFee', 'مثلًا 10', 'number', d.fee) +
+    '<label style="display:flex;gap:8px;align-items:center;margin:6px 0 10px"><input type="checkbox" id="bsFree"' + (d.freeDelivery ? ' checked' : '') + '> ' +
+      'التوصيل مجاني (البوت يقول «التوصيل مجاني» ومش هيقول إن الرسوم هتتأكد)</label>' +
+    '<small style="color:var(--ink-2)">مناطق التوصيل (كل منطقة في سطر أو مفصولة بفاصلة. فاضي = من غير فحص بالاسم، واللوكيسن لسه بالمسافة)</small>' +
+    '<textarea id="bsAreas" dir="rtl" placeholder="محلة كيل&#10;المحلة الكبرى" style="width:100%;min-height:72px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);margin-bottom:8px;font-family:inherit">' + esc(d.areas || '') + '</textarea>' +
+    '<small style="color:var(--ink-2)">مواعيد العمل (البوت بيقولها لو اتسأل، وتذكير التحويل يسكت برهها لو اتقرأت)</small>' + aiInp('bsHours', 'مثلًا: كل يوم من 9 الصبح لـ 2 بالليل', 'text', d.hours) +
     '<small style="color:var(--ink-2)">أقصى مسافة للتوصيل بالكيلو (0 = من غير حد)</small>' + aiInp('bsKm', '10', 'number', String(d.maxKm)) +
     '<label style="display:flex;gap:8px;align-items:center;margin:6px 0 10px"><input type="checkbox" id="bsLock"' + (d.lock ? ' checked' : '') + '> ' +
       '🔒 اقفل اللوحة بالرقم السري (المبيعات والعملاء والديون مش هتفتح من غيره)</label>' +
     aiInp('bsPin', d.pinSet ? 'الرقم السري' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي فوق', 'password') +
     '<button class="btn btn-primary" onclick="saveBotSet()"' + (d.pinSet ? '' : ' disabled') + '>احفظ</button>' +
-    '<div class="state" style="font-size:12px">' + (d.lock ? '🔒 اللوحة مقفولة دلوقتي.' : 'اللوحة مفتوحة لأي حد معاه الرابط.') + '</div>';
+    '<div class="state" style="font-size:12px">' + (d.lock ? '🔒 اللوحة مقفولة دلوقتي.' : 'اللوحة مفتوحة لأي حد معاه الرابط.') +
+      (d.freeDelivery ? ' التوصيل مجاني.' : '') + '</div>';
   var hh = document.getElementById('bsHours'); if (hh) hh.dir = 'rtl';
 }
 function saveBotSet(){
   var v = function(id){ return (document.getElementById(id) || {}).value || ''; };
   var lock = document.getElementById('bsLock').checked ? '1' : '0', pin = v('bsPin') || storedPin();
-  post({ action: 'setBotSettings', fee: v('bsFee'), hours: v('bsHours'), maxKm: v('bsKm'), lock: lock, pin: pin }).then(function(d){
+  var free = document.getElementById('bsFree').checked ? '1' : '0';
+  post({ action: 'setBotSettings', fee: v('bsFee'), hours: v('bsHours'), maxKm: v('bsKm'), lock: lock, pin: pin, free: free, areas: v('bsAreas') }).then(function(d){
     if (d && d.ok){ try { localStorage.setItem('adminPin', pin); } catch (e) {} BOT_SET = d; drawBotSet(); toast('✓ اتحفظ'); }
     else toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });

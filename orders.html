@@ -89,26 +89,146 @@ button.q{background:var(--soft);color:var(--brand);border:1px solid var(--line)}
 
 <script>
 var API = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7ctTVJjckmbTxegDq7E3R3p6aEBzqt275HNL8SBfWg/exec';
-var DATA = null, SEC = 'zero', OPEN = {}, DONE = {};
+var DATA = null, SEC = 'zero', OPEN = {}, DONE = {}, MARKS = [], MARK_SRC = 'local';
 function $(i){ return document.getElementById(i); }
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
 function lsSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
 function lsDel(k){ try { localStorage.removeItem(k); } catch(e){} }
-function today(){ return new Date().toLocaleDateString('en-CA'); }
-function toast(m){ var t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(function(){ t.style.display = 'none'; }, 1800); }
+function storedPin(){ try { return localStorage.getItem('adminPin') || ''; } catch(e){ return ''; } }
+function cairoToday(){
+  try {
+    var p = new Intl.DateTimeFormat('en-US', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    var y, m, d;
+    p.forEach(function(x){ if (x.type === 'year') y = x.value; if (x.type === 'month') m = x.value; if (x.type === 'day') d = x.value; });
+    if (y && m && d) return y + '-' + m + '-' + d;
+  } catch (e) {}
+  return new Date().toLocaleDateString('en-CA');
+}
+function today(){ return cairoToday(); }
+function toast(m){ var t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(function(){ t.style.display = 'none'; }, 2200); }
+function normAr(s){
+  return String(s || '')
+    .replace(/[\u0640]/g, '')
+    .replace(/[\u064B-\u0652]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
+    .replace(/ء/g, '')
+    .replace(/ة/g, 'ه')
+    .replace(/[^\u0621-\u064Aa-zA-Z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim().toLowerCase();
+}
+function itemKey(it){
+  var c = String((it && it.code) || '').replace(/\D/g, '');
+  if (c) return 'c:' + c;
+  var n = normAr(it && it.n);
+  return n ? ('n:' + n) : '';
+}
+function askPin(){
+  var p = (prompt('اللوحة مقفولة — اكتب الرقم السري') || '').trim();
+  if (p){ try { localStorage.setItem('adminPin', p); } catch (e) {} }
+  else { try { localStorage.removeItem('adminPin'); } catch (e2) {} }
+  return p;
+}
+function withPin(params){
+  var p = storedPin();
+  var o = {};
+  Object.keys(params || {}).forEach(function(k){ if (params[k] != null) o[k] = params[k]; });
+  if (p) o.pin = p;
+  return o;
+}
+function apiGet(action, params, retry){
+  var o = withPin(params);
+  var q = Object.keys(o).map(function(k){ return encodeURIComponent(k) + '=' + encodeURIComponent(o[k]); });
+  q.push('_=' + Date.now());
+  return fetch(API + '?action=' + action + '&' + q.join('&'), { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
+    if (d && d.lockError && !retry){
+      try { localStorage.removeItem('adminPin'); } catch (e) {}
+      if (!askPin()) return d;
+      return apiGet(action, params, true);
+    }
+    return d;
+  });
+}
+function apiPost(body, retry){
+  var o = withPin(body);
+  return fetch(API, { method: 'POST', body: JSON.stringify(o) }).then(function(r){ return r.json(); }).then(function(d){
+    if (d && d.lockError && !retry){
+      try { localStorage.removeItem('adminPin'); } catch (e) {}
+      if (!askPin()) return d;
+      return apiPost(body, true);
+    }
+    return d;
+  });
+}
 
-function loadDone(){ try { var o = JSON.parse(lsGet('ordDone') || '{}'); DONE = (o.d === today()) ? (o.m || {}) : {}; } catch(e){ DONE = {}; } }
-function saveDone(){ lsSet('ordDone', JSON.stringify({ d: today(), m: DONE })); }
+function loadDone(){
+  try {
+    var o = JSON.parse(lsGet('ordDone') || '{}');
+    DONE = (o.d === cairoToday()) ? (o.m || {}) : {};
+  } catch (e) { DONE = {}; }
+  Object.keys(DONE).forEach(function(k){ if (DONE[k] === 1) DONE[k] = { on: 1 }; });
+}
+function saveDone(){ lsSet('ordDone', JSON.stringify({ d: cairoToday(), m: DONE })); }
+function loadPending(){ try { var o = JSON.parse(lsGet('ordPending') || '{}'); return (o.d === cairoToday()) ? (o.m || {}) : {}; } catch (e) { return {}; } }
+function savePending(m){ lsSet('ordPending', JSON.stringify({ d: cairoToday(), m: m || {} })); }
 
-function call(k, days){
-  return fetch(API + '?action=ordersPage&days=' + days + '&_=' + Date.now(), { cache: 'no-store' }).then(function(r){ return r.json(); });
+function applyMarks(list){
+  MARKS = list || [];
+  var next = {};
+  MARKS.forEach(function(m){
+    if (!m) return;
+    var k = m.key || itemKey({ code: m.code, n: m.name });
+    if (k) next[k] = m;
+  });
+  DONE = next;
+  saveDone();
+}
+function findMark(it){
+  var k = itemKey(it);
+  if (k && DONE[k]) return DONE[k];
+  var c = String((it && it.code) || '').replace(/\D/g, ''), nm = normAr(it && it.n);
+  var keys = Object.keys(DONE);
+  for (var i = 0; i < keys.length; i++){
+    var m = DONE[keys[i]];
+    if (!m) continue;
+    if (c && String(m.code || '').replace(/\D/g, '') === c) return m;
+    if (nm && normAr(m.name || '') === nm) return m;
+  }
+  return null;
+}
+function migrateLocalMarks(pending){
+  var old = {};
+  try { var o = JSON.parse(lsGet('ordDone') || '{}'); if (o.d === cairoToday()) old = o.m || {}; } catch (e) {}
+  Object.keys(old).forEach(function(ok){
+    if (String(ok).indexOf('|') === -1) return;
+    var nm = normAr(String(ok).split('|').pop());
+    if (!nm) return;
+    ['zero', 'low'].forEach(function(sec){
+      (DATA[sec] || []).forEach(function(c){
+        c.items.forEach(function(it){
+          if (normAr(it.n) !== nm) return;
+          var k = itemKey(it);
+          if (!k || DONE[k] || pending[k]) return;
+          pending[k] = { on: '1', code: it.code || '', name: it.n };
+          DONE[k] = { on: 1, key: k, code: it.code || '', name: it.n };
+        });
+      });
+    });
+  });
 }
 function load(force){
   $('list').innerHTML = '<div class="state">بجيب النواقص…</div>';
-  call('', $('days').value).then(function(d){
+  apiGet('ordersPage', { days: $('days').value }).then(function(d){
+    if (d && d.lockError){
+      $('list').innerHTML = '<div class="state">اللوحة مقفولة<br><button class="q" style="margin-top:10px" onclick="load()">اكتب الرقم السري</button></div>';
+      return;
+    }
     if (d && d.ok) accept(d);
-    else $('list').innerHTML = '<div class="state">' + esc((d && d.msg) || 'حصلت مشكلة، حاول تاني') + '</div>';
+    else $('list').innerHTML = '<div class="state">' + esc((d && (d.msg || d.error)) || 'حصلت مشكلة، حاول تاني') + '</div>';
   }).catch(function(){ $('list').innerHTML = '<div class="state">النت مش راضي</div>'; });
 }
 /* بنعيد التجميع بالقسم (أدوية/تجميل/مستلزمات…) بدل الشركة — واسم الشركة بيفضل تحت كل صنف */
@@ -118,7 +238,7 @@ function regroup(d){
     (d[sec] || []).forEach(function(c){
       c.items.forEach(function(it){
         var cat = it.c || 'أخرى';
-        (by[cat] = by[cat] || []).push({ n: it.n, q: it.q, c: c.co, p: it.p, k: it.k, e: it.e, u: it.u, v: it.v, h: it.h, s: it.s });
+        (by[cat] = by[cat] || []).push({ n: it.n, q: it.q, c: c.co, p: it.p, k: it.k, e: it.e, u: it.u, v: it.v, h: it.h, s: it.s, code: it.code || '' });
       });
     });
     d[sec] = Object.keys(by).map(function(cat){
@@ -131,7 +251,36 @@ function regroup(d){
   });
   return d;
 }
-function accept(d){ DATA = regroup(d); $('days').value = d.days; draw(); }
+function accept(d){
+  DATA = regroup(d);
+  $('days').value = d.days;
+  if (d.marks){
+    MARK_SRC = 'server';
+    var pending = loadPending();
+    applyMarks(d.marks);
+    migrateLocalMarks(pending);
+    Object.keys(pending).forEach(function(k){
+      var p = pending[k];
+      if (!p) return;
+      if (String(p.on) === '0') delete DONE[k];
+      else DONE[k] = Object.assign({ on: 1, key: k }, p, DONE[k] || {});
+    });
+    saveDone();
+    savePending(pending);
+    if (Object.keys(pending).length) flushPending(pending);
+  } else {
+    MARK_SRC = 'local';
+    loadDone();
+  }
+  draw();
+}
+function flushPending(pending){
+  var items = Object.keys(pending).map(function(k){ return pending[k]; }).filter(Boolean);
+  if (!items.length) return;
+  apiPost({ action: 'markOrdered', items: items }).then(function(d){
+    if (d && d.ok){ savePending({}); if (d.marks) { applyMarks(d.marks); draw(); } }
+  }).catch(function(){});
+}
 
 function money(n){ return Math.round(n).toLocaleString('en-US'); }
 function val(items){
@@ -145,7 +294,7 @@ function val(items){
 function allItems(){ var a = []; (DATA[SEC] || []).forEach(function(c){ a = a.concat(c.items); }); return a; }
 function cnt(sec){ return (DATA[sec] || []).reduce(function(a, c){ return a + c.items.length; }, 0); }
 function setSec(s){ SEC = s; draw(); }
-function key(co, n){ return SEC + '|' + co + '|' + n; }
+function key(it){ return itemKey(it); }
 
 function draw(){
   if (!DATA) return;
@@ -184,33 +333,65 @@ function draw(){
     (tv.miss ? ' · ' + tv.miss + ' صنف بدون سعر' : '') + '</div>';
   if (!cos.length){ $('list').innerHTML = '<div class="state">🎉 مفيش نواقص في القسم ده</div>'; }
   else $('list').innerHTML = cos.map(function(c, i){
-    var left = c.items.filter(function(it){ return !DONE[key(c.co, it.n)]; }).length;
+    var left = c.items.filter(function(it){ return !findMark(it); }).length;
     return '<div class="co' + (OPEN[SEC + c.co] ? ' open' : '') + '"><div class="ch" onclick="tog(' + i + ')">' +
       '<div><b>' + esc(c.co) + '</b><small>' + left + ' من ' + c.items.length + ' لسه مطلبش · صيدلي ' + money(val(c.items).k) + ' · جمهور ' + money(val(c.items).p) + '</small></div><span class="arw">‹</span></div>' +
       '<div class="cb"><div class="acts"><button onclick="copyCo(' + i + ')">نسخ الطلب</button>' +
       '<button class="q" onclick="waCo(' + i + ')">واتساب</button></div>' +
       c.items.map(function(it, j){
-        var k = key(c.co, it.n);
+        var mk = findMark(it);
         var stk = (it.s == null) ? '' : '<span class="st' + (it.s <= 0 ? ' z' : '') + '">الرصيد: ' + (Math.round(it.s * 10) / 10) + '</span>';
-        return '<div class="it' + (DONE[k] ? ' done' : '') + '"><input type="checkbox"' + (DONE[k] ? ' checked' : '') +
+        var who = '';
+        if (mk){
+          var bits = [];
+          if (mk.wh) bits.push(mk.wh);
+          if (mk.qty) bits.push('الكمية ' + mk.qty);
+          if (mk.by) bits.push(mk.by);
+          if (mk.at) bits.push(mk.at);
+          if (bits.length) who = ' · اتطلب: ' + bits.join(' · ');
+        }
+        return '<div class="it' + (mk ? ' done' : '') + '"><input type="checkbox"' + (mk ? ' checked' : '') +
           ' onchange="mark(' + i + ',' + j + ',this.checked)" aria-label="اتطلب">' +
           '<div class="n" onclick="copyName(' + i + ',' + j + ')"><span class="nm">' + esc(it.n) + '</span>' +
-          '<span class="c">' + esc(it.c) + (stk ? ' · ' : '') + stk + '</span></div>' +
+          '<span class="c">' + esc(it.c) + (stk ? ' · ' : '') + stk + esc(who) + '</span></div>' +
           (it.h != null && SEC === 'zero' ? '<span class="c" style="flex:none">' + (it.h < 24 ? Math.round(it.h) + ' س' : (it.h / 24).toFixed(1) + ' يوم') + '</span>' : '') +
           (it.v ? '<span class="rk">' + money(it.v) + ' ج/يوم</span>' : '') +
           '<span class="qty">' + it.q + '</span></div>';
       }).join('') + '</div></div>';
   }).join('');
-  $('meta').textContent = 'اتحدّثت ' + (DATA.at || '') + ' · علامة "اتطلب" بتتحفظ على جهازك لحد آخر اليوم';
+  $('meta').textContent = 'اتحدّثت ' + (DATA.at || '') + ' · ' +
+    (MARK_SRC === 'server'
+      ? 'علامة "اتطلب" ظاهرة على كل الأجهزة لحد آخر اليوم'
+      : 'علامة "اتطلب" على الجهاز ده بس — السيرفر مرجّعش العلامات');
 }
 function tog(i){ var c = DATA[SEC][i]; OPEN[SEC + c.co] = !OPEN[SEC + c.co]; draw(); }
 function mark(i, j, v){
-  var c = DATA[SEC][i], it = c.items[j], k = key(c.co, it.n);
-  if (v) DONE[k] = 1; else delete DONE[k];
-  saveDone(); draw();
+  var c = DATA[SEC][i], it = c.items[j], k = itemKey(it);
+  if (!k) return;
+  if (v) DONE[k] = Object.assign({ on: 1, key: k, code: it.code || '', name: it.n }, DONE[k] || {});
+  else delete DONE[k];
+  saveDone();
+  var y = window.pageYOffset; draw(); window.scrollTo(0, y);
+  syncMark(it, v);
+}
+function syncMark(it, on){
+  var k = itemKey(it);
+  if (!k) return;
+  var body = { on: on ? '1' : '0', code: it.code || '', name: it.n || '' };
+  var pending = loadPending();
+  pending[k] = body;
+  savePending(pending);
+  apiPost({ action: 'markOrdered', code: body.code, name: body.name, on: body.on }).then(function(d){
+    if (d && d.ok){
+      var p2 = loadPending(); delete p2[k]; savePending(p2);
+      if (d.marks){ MARK_SRC = 'server'; applyMarks(d.marks); var y = window.pageYOffset; draw(); window.scrollTo(0, y); }
+    } else if (d && d.lockError){
+      toast('اللوحة مقفولة — العلامة على الجهاز ده بس لحد ما الرقم السري يظبط');
+    } else toast('اتحفظ على الجهاز بس — السيرفر مش راد');
+  }).catch(function(){ toast('اتحفظ على الجهاز بس — النت مش راضي'); });
 }
 function coText(c, onlyLeft){
-  var items = c.items.filter(function(it){ return !onlyLeft || !DONE[key(c.co, it.n)]; });
+  var items = c.items.filter(function(it){ return !onlyLeft || !findMark(it); });
   return { n: items.length, t: '🛒 طلب — قسم ' + c.co + '\n' + today() + '\n\n' + items.map(function(it){ return '• ' + it.n + ' × ' + it.q + ' (' + it.c + ')'; }).join('\n') + '\n\nسعر الصيدلي: ' + money(val(items).k) + ' ج | سعر الجمهور: ' + money(val(items).p) + ' ج' };
 }
 function copyTxt(text){
@@ -221,8 +402,10 @@ function copyTxt(text){
 function copyName(i, j){
   var c = DATA[SEC][i], it = c.items[j];
   copyTxt(it.n);
-  DONE[key(c.co, it.n)] = 1;      /* النسخ بيعلّمه ✓ "اتطلب" تلقائي */
+  var k = itemKey(it);
+  if (k) DONE[k] = Object.assign({ on: 1, key: k, code: it.code || '', name: it.n }, DONE[k] || {});
   saveDone();
+  syncMark(it, true);
   var y = window.pageYOffset; draw(); window.scrollTo(0, y);
 }
 function copyCo(i){ var r = coText(DATA[SEC][i], true); if (!r.n) return toast('كله اتطلب ✓'); copyTxt(r.t); }

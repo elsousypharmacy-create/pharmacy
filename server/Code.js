@@ -5147,8 +5147,9 @@ function setupHandoffReminderTrigger() {
   Logger.log('تذكير التحويل اتفعّل كل 10 دقايق');
 }
 
-/* 🔒 قفل اللوحة (بيتفعّل من الإعدادات): بيانات المبيعات والعملاء والديون محتاجة الرقم السري.
-   الصفحات التانية (الملصقات، الجرد، الدكاترة، الطلبيات) والـ SMS والتليجرام مش بتتأثر. */
+/* 🔒 قفل اللوحة (بيتفعّل من الإعدادات): بيانات المبيعات والعملاء والديون وطلب النواقص محتاجة الرقم السري.
+   الصفحات التانية (الملصقات، الجرد، الدكاترة) والـ SMS والتليجرام مش بتتأثر.
+   علامة "اتطلب" من بوت الجرد بتعدّي بمفتاح ORDERS_BOT_KEY من جوه markOrdered، مش من هنا. */
 var LOCKED_GET = { getHomeBundle: 1, getSMSLogFast: 1, getSMSLog: 1, getCustomers: 1, getHistory: 1, getCustomerProfile: 1,
   getCustomerVisits: 1, getAiConfig: 1, getAiUsage: 1, botStatus: 1, getBlocked: 1, getDashboard: 1, getStaffKPI: 1,
   getNewCustomersDetail: 1, getSystemDailyTotals: 1, getDebtsData: 1, getDebtsByEmployee: 1, getMonthTotalsRaw: 1,
@@ -5156,7 +5157,8 @@ var LOCKED_GET = { getHomeBundle: 1, getSMSLogFast: 1, getSMSLog: 1, getCustomer
   getDayDebits: 1, getDayCollections: 1, getMonthDebtsSummary: 1, getCustomerPoints: 1, getInventoryAging: 1, getAgents: 1,
   sendCoupon: 1, getStaffHub: 1, getExpiryByMonth: 1, getAttendanceLive: 1, getAttendanceHistory: 1, getAttendanceLiveV2: 1,
   getAttendanceHistoryV2: 1, diagnoseAll: 1, getBotSettings: 1, maintenanceStatus: 1, maintenanceStop: 1,
-  maintenanceResumeLive: 1, maintenanceDedup: 1, maintenanceStartRebuild: 1, backfillExpenses: 1, getExpReviews: 1 };
+  maintenanceResumeLive: 1, maintenanceDedup: 1, maintenanceStartRebuild: 1, backfillExpenses: 1, getExpReviews: 1,
+  ordersPage: 1, orderEfficiency: 1, logShortages: 1 };
 var LOCKED_POST = { log: 1, block: 1, unblock: 1, setSalaries: 1, retrySMS: 1, testSMS: 1, dismissSMS: 1, payAgent: 1,
   deleteAgentPending: 1, deleteCount: 1, expReview: 1 };
 function dashLocked_(pin) {
@@ -5194,6 +5196,16 @@ function doGet(e) {
   if (action === 'ordersPage')       return jsonResponseStaff(ordersPage(e.parameter.k, e.parameter.days));
   if (action === 'orderEfficiency')  return jsonResponseStaff(orderEfficiency(e.parameter.days));
   if (action === 'logShortages')     return jsonResponseStaff(logShortageSnapshot_(true));
+  if (action === 'markOrdered') {
+    var viaBot = ordersBotOk_(e.parameter.k || e.parameter.key);
+    if (!viaBot && dashLocked_(e.parameter.pin)) return lockedResp_();
+    return jsonResponseStaff(markOrdered_(e.parameter, viaBot));
+  }
+  if (action === 'ordersBotKey') {
+    if (!adminPinOk_(e.parameter.pin))
+      return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
+    return jsonResponseStaff(ensureOrdersBotKey_(e.parameter.regen === '1'));
+  }
   if (action === 'scanReady')        return jsonResponseStaff(diagnoseScanReady());
   if (action === 'timeSnapshot')     return jsonResponseStaff(timeSnapshot());
   if (action === 'testSnapStore')    return jsonResponseStaff(testSnapStorage());
@@ -5351,6 +5363,11 @@ function doPost(e) {
     if (data.action === 'saveOpen') return jsonResponseStaff(saveOpenCount(data));
     if (data.action === 'deleteCount') return jsonResponseStaff(deleteCountSession(data));
     if (data.action === 'saveCount') return jsonResponseStaff(saveCountSession(data));
+    if (data.action === 'markOrdered') {
+      var viaBotM = ordersBotOk_(data.k || data.key);
+      if (!viaBotM && dashLocked_(data.pin)) return lockedResp_();
+      return jsonResponseStaff(markOrdered_(data, viaBotM));
+    }
     if (data.action === 'payAgent') return jsonResponseStaff(payAgent(data.agentPhone, data.amount));
     if (data.action === 'deleteAgentPending') return jsonResponseStaff(deleteAgentPendingRow(data.agentPhone, data.customerPhone));
     return jsonResponseStaff({status:'ok'});
@@ -9059,49 +9076,157 @@ function doctorAdmin(p) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// 🛒 صفحة طلب النواقص لوحدها — orders.html (من غير كود دخول)
-//
-// صفحة منفصلة للموظف بتعرض النواقص مجمّعة بالشركة وبس: من غير أي حاجة
-// من الداشبورد (مبيعات، ديون، مصروفات). مفيش أسعار ولا تكلفة.
+// 🛒 صفحة طلب النواقص — orders.html
+// لما قفل اللوحة شغّال، أوامر الصفحة محتاجة الرقم السري زي باقي اللوحة.
+// علامة "اتطلب" في Script Properties وبتتمسح لوحدها آخر اليوم (القاهرة).
+// البوت بيعلّم بمفتاح الخاصية ORDERS_BOT_KEY — القيمة مش متكتوبة هنا.
 // ═══════════════════════════════════════════════════════════════════
-/* متوسط بيع الصنف اليومي (بالعلبة) من ملفات المبيعات آخر 30 يوم.
-   كل سطر في الملف = صنف في فاتورة: qty بالعلبة (0.33 = 1 من 3 أمبولات). المرتجع بيتخصم.
-   بيرجّع {byCode, byDrug, byName, days} — الكاش 6 ساعات. */
-function salesVelocity_() {
-  var hit = fxCacheGet_('fx_sales_vel2');
-  if (hit) return hit;
-  var byCode = {}, byDrug = {}, byName = {}, daysWith = 0, rev = 0;
-  var folder = DriveApp.getFolderById(SALES_FOLDER), now = new Date();
-  for (var back = 0; back < 30; back++) {
-    var ds = Utilities.formatDate(new Date(now.getTime() - back * 86400000), 'Africa/Cairo', 'yyyy-MM-dd');
-    var files = folder.getFilesByName('sales' + ds + '.txt');
-    if (!files.hasNext()) continue;
-    var content = files.next().getBlob().getDataAsString('UTF-8');
-    if (!content) continue;
-    daysWith++;
-    var re = /VALUES\s*\(((?:&#\d+;|[^;])+)\)/g, m;
-    while ((m = re.exec(content)) !== null) {
-      var tuples = extractTuples('(' + m[1] + ')');
-      for (var t = 0; t < tuples.length; t++) {
-        try {
-          var v = parseValues(tuples[t]);
-          if (!v || v.length < 54) continue;
-          var type = String(v[2]).trim();
-          if (type !== 'sale' && type !== 'return') continue;
-          var q = parseFloat(v[7]) || 0; if (type === 'return') q = -q;
-          rev += (parseFloat(v[52]) || 0) * (type === 'return' ? -1 : 1);
-          var code = String(v[16] || '').replace(/[^\d]/g, ''), drug = String(v[4] || '').trim();
-          var nm = doctorNorm_(v[6] || v[5]);
-          if (code) byCode[code] = (byCode[code] || 0) + q;
-          if (drug) byDrug[drug] = (byDrug[drug] || 0) + q;
-          if (nm) byName[nm] = (byName[nm] || 0) + q;
-        } catch (e) {}
-      }
-    }
+
+/* مفتاح البوت. الاتنشاء من الإعدادات > الصيانة عشان محدش يفتح محرر السكربت. */
+function ordersBotOk_(k) {
+  if (!k) return false;
+  var saved = '';
+  try { saved = PropertiesService.getScriptProperties().getProperty('ORDERS_BOT_KEY') || ''; } catch (e) { return false; }
+  return !!saved && String(k) === saved;
+}
+function ensureOrdersBotKey_(regen) {
+  var P = PropertiesService.getScriptProperties();
+  var cur = P.getProperty('ORDERS_BOT_KEY') || '';
+  if (regen || !cur) {
+    cur = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '').slice(0, 40);
+    P.setProperty('ORDERS_BOT_KEY', cur);
   }
-  var out = { byCode: byCode, byDrug: byDrug, byName: byName, days: daysWith, rev: rev };
-  fxCachePut_('fx_sales_vel2', out, 21600);
+  return { ok: true, key: cur, property: 'ORDERS_BOT_KEY' };
+}
+
+function ordMarkKey_(code, name) {
+  var c = String(code || '').replace(/[^\d]/g, '');
+  if (c) return 'c:' + c;
+  var n = doctorNorm_(name);
+  return n ? ('n:' + n) : '';
+}
+function ordMarksRaw_(P) {
+  var n = parseInt(P.getProperty('ORD_MARKS_N') || '0', 10);
+  if (n > 0) {
+    var s = '';
+    for (var i = 0; i < n && i < 12; i++) s += P.getProperty('ORD_MARKS_' + i) || '';
+    return s;
+  }
+  return P.getProperty('ORD_MARKS') || '';
+}
+function ordMarksClear_(P) {
+  var n = parseInt(P.getProperty('ORD_MARKS_N') || '0', 10);
+  for (var i = 0; i < n && i < 12; i++) { try { P.deleteProperty('ORD_MARKS_' + i); } catch (e) {} }
+  try { P.deleteProperty('ORD_MARKS_N'); } catch (e2) {}
+  try { P.deleteProperty('ORD_MARKS'); } catch (e3) {}
+}
+/* يوم القاهرة. لو التاريخ اتغيّر العلامات القديمة بتتمسح ومش بتترجع. */
+function ordMarksLoad_() {
+  var P = PropertiesService.getScriptProperties();
+  var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+  var raw = ordMarksRaw_(P);
+  var o = null;
+  try { o = raw ? JSON.parse(raw) : null; } catch (e) { o = null; }
+  if (o && o.d === today) return { day: today, map: o.m || {}, stale: false };
+  return { day: today, map: {}, stale: !!raw };
+}
+function ordMarksRead_() {
+  var r = ordMarksLoad_();
+  if (!r.stale) return r;
+  var lock = LockService.getScriptLock();
+  try {
+    if (lock.tryLock(4000)) {
+      r = ordMarksLoad_();
+      if (r.stale) ordMarksClear_(PropertiesService.getScriptProperties());
+      try { lock.releaseLock(); } catch (eR) {}
+      r.stale = false;
+    }
+  } catch (e) {}
+  return r;
+}
+function ordMarksWrite_(map) {
+  var P = PropertiesService.getScriptProperties();
+  var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+  var json = JSON.stringify({ d: today, m: map || {} });
+  var CHUNK = 7000, n = Math.max(1, Math.ceil(json.length / CHUNK));
+  if (n > 8) return { ok: false, msg: 'علامات كتير أوي النهاردة' };
+  var prev = parseInt(P.getProperty('ORD_MARKS_N') || '0', 10);
+  for (var i = 0; i < n; i++) P.setProperty('ORD_MARKS_' + i, json.substring(i * CHUNK, (i + 1) * CHUNK));
+  for (var j = n; j < prev; j++) { try { P.deleteProperty('ORD_MARKS_' + j); } catch (e) {} }
+  P.setProperty('ORD_MARKS_N', String(n));
+  try { P.deleteProperty('ORD_MARKS'); } catch (e2) {}
+  return { ok: true, day: today };
+}
+function ordMarksPublic_(map) {
+  var out = [];
+  Object.keys(map || {}).forEach(function (k) {
+    var m = map[k] || {};
+    out.push({ key: k, code: m.code || '', name: m.name || '', wh: m.wh || '', qty: m.qty || 0, by: m.by || '', at: m.at || '' });
+  });
   return out;
+}
+function ordersWithMarks_(out) {
+  if (!out || out.ok === false) return out;
+  try {
+    var r = ordMarksRead_();
+    out.day = r.day;
+    out.marks = ordMarksPublic_(r.map);
+  } catch (e) { out.marks = []; }
+  return out;
+}
+
+/* تعليم "اتطلب" أو شيله. viaBot = النداء جاي بمفتاح البوت مش من الصفحة. */
+function markOrdered_(p, viaBot) {
+  p = p || {};
+  var list = [];
+  if (p.items) {
+    var raw = p.items;
+    if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch (eJ) { return { ok: false, msg: 'القائمة مش مظبوطة' }; } }
+    if (!Array.isArray(raw)) return { ok: false, msg: 'القائمة مش مظبوطة' };
+    list = raw.slice(0, 80);
+  } else list = [p];
+  if (!list.length) return { ok: false, msg: 'ابعت كود الصنف أو اسمه' };
+
+  var lock = LockService.getScriptLock();
+  try { if (!lock.tryLock(15000)) return { ok: false, msg: 'مشغول — جرب تاني' }; }
+  catch (eL) { return { ok: false, msg: 'مشغول' }; }
+  try {
+    var loaded = ordMarksLoad_();
+    if (loaded.stale) ordMarksClear_(PropertiesService.getScriptProperties());
+    var map = loaded.stale ? {} : (loaded.map || {});
+    var whoDefault = viaBot ? 'البوت' : 'اللوحة';
+    var at = Utilities.formatDate(new Date(), 'Africa/Cairo', 'HH:mm');
+    var any = false;
+    for (var i = 0; i < list.length; i++) {
+      var it = list[i] || {};
+      var key = ordMarkKey_(it.code, it.name);
+      if (!key) continue;
+      any = true;
+      var on = !(it.on === 0 || it.on === '0' || it.on === false || it.on === 'false');
+      if (!on) { delete map[key]; continue; }
+      /* الصفحة بتعلّم من غير مخزن/كمية — متمسحش اللي البوت كتبه لو الحقل مش مبعوت */
+      var prev = map[key] || {};
+      var whIn = (it.wh != null) ? it.wh : ((it.store != null) ? it.store : ((it.warehouse != null) ? it.warehouse : null));
+      var wh = whIn === null ? (prev.wh || '') : String(whIn).trim().slice(0, 80);
+      var qty;
+      if (it.qty === undefined || it.qty === null || it.qty === '') qty = prev.qty || 0;
+      else { qty = parseFloat(it.qty); if (!isFinite(qty) || qty < 0) qty = 0; qty = Math.round(qty * 100) / 100; }
+      var by = String(it.by || '').trim().slice(0, 40) || prev.by || whoDefault;
+      map[key] = {
+        code: String(it.code || prev.code || '').replace(/[^\d]/g, ''),
+        name: String(it.name || prev.name || '').trim().slice(0, 120),
+        wh: wh, qty: qty, by: by, at: at
+      };
+    }
+    if (!any) return { ok: false, msg: 'ابعت كود الصنف أو اسمه' };
+    var saved = ordMarksWrite_(map);
+    if (!saved.ok) return saved;
+    return { ok: true, day: saved.day, marks: ordMarksPublic_(map) };
+  } catch (e) {
+    return { ok: false, msg: e.message };
+  } finally {
+    try { lock.releaseLock(); } catch (e2) {}
+  }
 }
 
 /* نسبة (سعر الصيدلي ÷ سعر الجمهور) لكل فئة من أصناف المخزون اللي فيها رصيد —
@@ -9135,9 +9260,9 @@ function ordersRatios_() {
 function ordersPage(code, days) {
   try {
     var dd = [3, 7, 14, 30].indexOf(parseInt(days, 10)) !== -1 ? parseInt(days, 10) : 7;
-    var key = 'fx_ord_page_v4_' + dd;
+    var key = 'fx_ord_page_v5_' + dd;
     var hit = fxCacheGet_(key);
-    if (hit) return hit;
+    if (hit) return ordersWithMarks_(hit);
 
     var res = UrlFetchApp.fetch(SHORTAGE_SCRIPT_URL + '?action=getShortages&days=' + dd, { muteHttpExceptions: true });
     var d = JSON.parse(res.getContentText());
@@ -9150,14 +9275,16 @@ function ordersPage(code, days) {
     try { doctorIndex_().forEach(function (it) { if (!byName[it.h]) { byName[it.h] = it.p; stByName[it.h] = it.s; } }); } catch (e2) {}
     var ratios = ordersRatios_() || { cat: {}, all: 0.8 };
     if (!ratios.cat) ratios.cat = {};
-    var vel = { byCode: {}, byDrug: {}, byName: {}, days: 0 };
+    /* salesVelocity_ الحيّة بترجّع items بالاسم = [كمية، إيراد السطر] + rev.
+       نسخة أقدم بنفس الاسم كانت بتترجّع byCode/rev وبتتغطي، فالأرقام كانت صفر. */
+    var vel = { days: 0, rev: 0, files: 0, items: null };
     try {
       var vv = salesVelocity_();
       if (vv && typeof vv === 'object') {
-        vel = { byCode: vv.byCode || {}, byDrug: vv.byDrug || {}, byName: vv.byName || {},
-                days: vv.days || 0, rev: vv.rev || 0 };
+        vel = { days: vv.days || 0, rev: vv.rev || 0, files: vv.files || 0, items: vv.items || null };
       }
-    } catch (e3) { vel = { byCode: {}, byDrug: {}, byName: {}, days: 0, rev: 0 }; }
+    } catch (e3) { vel = { days: 0, rev: 0, files: 0, items: null }; }
+    var salesDays = vel.files > 0 ? (vel.days || 0) : 0;
     var openMs = {};   // مفتاح الصنف → أول ما ظهر ناقص (من سجل النواقص)
     try {
       var esh = getOrCreateSheet_(SHORT_EP_SHEET, SHORT_EP_HEAD), en = esh.getLastRow() - 1;
@@ -9178,7 +9305,8 @@ function ordersPage(code, days) {
     }
 
     var out = { ok: true, days: dd, at: Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm'),
-                sourceFields: null, estimated: 0, total: 0, salesDays: vel.days, revPerDay: vel.days > 0 ? Math.round(vel.rev / vel.days) : 0 };
+                sourceFields: null, estimated: 0, total: 0, salesDays: salesDays,
+                revPerDay: salesDays > 0 ? Math.round((vel.rev || 0) / salesDays) : 0 };
     ['zero', 'low'].forEach(function (sec) {
       var by = {}, data = d[sec];
       if (data && data.categories) {
@@ -9212,16 +9340,20 @@ function ordersPage(code, days) {
                 if (disc !== null && disc < 100) cost = pub * (1 - disc / 100);
                 else { cost = pub * (ratios.cat[cat] || ratios.all); est = true; }
               }
-              /* متوسط البيع اليومي (علبة/يوم) → إيراد معرّض للضياع كل يوم نقص */
-              var sold = null, dcode = String(it.code || '').replace(/[^\d]/g, '');
-              if (dcode && vel.byCode[dcode] !== undefined) sold = vel.byCode[dcode];
-              else if (dcode && vel.byDrug[dcode] !== undefined) sold = vel.byDrug[dcode];
-              else if (vel.byName[doctorNorm_(it.name)] !== undefined) sold = vel.byName[doctorNorm_(it.name)];
-              var perDay = (sold !== null && vel.days > 0) ? Math.max(0, sold) / vel.days : null;
+              /* متوسط البيع اليومي (علبة/يوم) → إيراد معرّض للضياع كل يوم نقص.
+                 المطابقة بالاسم زي كفاءة الطلبيات (نفس أعمدة الفاتورة: اسم 6/5، كمية 7، سعر 8). */
+              var sold = null;
+              if (vel.items) {
+                var vh = velLookup_(vel, it.name);
+                if (vh && vh.length) sold = vh[0];
+              }
+              var perDay = (sold !== null && salesDays > 0) ? Math.max(0, sold) / salesDays : null;
               var fk = String(it.code || it.name || '').trim();
               var hrs = openMs[fk] ? Math.round((nowMs - openMs[fk]) / 360000) / 10 : null;
               out.total++; if (est) out.estimated++;
-              by[co].push({ n: String(it.name || ''), q: q, c: cat, s: stk === null ? null : Math.round(stk * 100) / 100,
+              by[co].push({ n: String(it.name || ''), q: q, c: cat,
+                            code: String(it.code || '').replace(/[^\d]/g, ''),
+                            s: stk === null ? null : Math.round(stk * 100) / 100,
                             p: pub === null ? null : Math.round(pub * 100) / 100,
                             k: cost === null ? null : Math.round(cost * 100) / 100, e: est ? 1 : 0,
                             u: perDay === null ? null : Math.round(perDay * 100) / 100,
@@ -9234,7 +9366,7 @@ function ordersPage(code, days) {
         .sort(function (a, b) { return b.items.length - a.items.length; });
     });
     fxCachePut_(key, out, 300);
-    return out;
+    return ordersWithMarks_(out);
   } catch (e) {
     return { ok: false, msg: e.message + ' @ ' + String(e.stack || '').split('\n').slice(0, 2).join(' | ') };
   }
@@ -9346,7 +9478,7 @@ function logShortageSnapshot_(force) {
 /* سرعة بيع كل صنف من ملفات المبيعات (آخر 28 يوم). بنستخدمها نقدّر المبيعات
    اللي ضاعت وقت ما الصنف كان خالص. الكاش 5.8 ساعة. */
 function salesVelocity_() {
-  var hit = fxCacheGet_('fx_sales_vel');
+  var hit = fxCacheGet_('fx_sales_vel3');
   if (hit) return hit;
   var DAYS = 28, folder = DriveApp.getFolderById(SALES_FOLDER), tz = 'Africa/Cairo', now = new Date();
   var items = {}, filesRead = 0;
@@ -9376,17 +9508,25 @@ function salesVelocity_() {
       }
     }
   }
-  var out = { days: DAYS, files: filesRead, items: items };
+  /* الاسم البديل بيشاور لنفس الكائن — نجمع الإيراد مرة واحدة قبل ما النسخ تتفصل في الكاش */
+  var rev = 0;
+  Object.keys(items).forEach(function (k) {
+    var o = items[k];
+    if (!o || o._counted) return;
+    o._counted = 1;
+    rev += o.r || 0;
+  });
   /* الكاش بيتخزن كنص — الكائنات المشتركة بتتفصل، فبنخزّن كل اسم بقيمته */
   var flat = {};
   Object.keys(items).forEach(function (k) { flat[k] = [Math.round(items[k].q * 100) / 100, Math.round(items[k].r)]; });
-  out = { days: DAYS, files: filesRead, items: flat };
-  fxCachePut_('fx_sales_vel', out, 20800);
+  var out = { days: DAYS, files: filesRead, items: flat, rev: Math.round(rev) };
+  fxCachePut_('fx_sales_vel3', out, 20800);
   return out;
 }
 
 /* بيدوّر على الصنف في سرعة البيع: بالاسم بالظبط، وبعدين كل كلمات الاسم موجودة */
 function velLookup_(vel, name) {
+  if (!vel || !vel.items) return null;
   var nm = doctorNorm_(name);
   if (!nm) return null;
   if (vel.items[nm]) return vel.items[nm];

@@ -3736,6 +3736,9 @@ function openSheet(kind){
         '<div class="group-title">' + tr('scanReady') + '</div>' +
         '<button class="btn btn-quiet" onclick="runScanReady()">' + tr('checkScan') + '</button>' +
         '<div id="scanbox"></div>' +
+        '<div class="group-title">مفتاح بوت طلب النواقص</div>' +
+        '<button class="btn btn-quiet" onclick="showOrdersBotKey()">اعرض أو أنشئ المفتاح</button>' +
+        '<div id="ordkey"></div>' +
         '<div class="group-title">' + tr('errorLog') + '</div>' +
         (ERRORS.length ? ERRORS.slice().reverse().map(function(e){
           return row(e.m, ltr(e.t));
@@ -4309,7 +4312,7 @@ function drawBotSet(){
     '<small style="color:var(--ink-2)">مواعيد العمل (البوت بيقولها لو اتسأل، وتذكير التحويل يسكت برهها لو اتقرأت)</small>' + aiInp('bsHours', 'مثلًا: كل يوم من 9 الصبح لـ 2 بالليل', 'text', d.hours) +
     '<small style="color:var(--ink-2)">أقصى مسافة للتوصيل بالكيلو (0 = من غير حد)</small>' + aiInp('bsKm', '10', 'number', String(d.maxKm)) +
     '<label style="display:flex;gap:8px;align-items:center;margin:6px 0 10px"><input type="checkbox" id="bsLock"' + (d.lock ? ' checked' : '') + '> ' +
-      '🔒 اقفل اللوحة بالرقم السري (المبيعات والعملاء والديون مش هتفتح من غيره)</label>' +
+      '🔒 اقفل اللوحة بالرقم السري (المبيعات والعملاء والديون وطلب النواقص مش هتفتح من غيره)</label>' +
     aiInp('bsPin', d.pinSet ? 'الرقم السري' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي فوق', 'password') +
     '<button class="btn btn-primary" onclick="saveBotSet()"' + (d.pinSet ? '' : ' disabled') + '>احفظ</button>' +
     '<div class="state" style="font-size:12px">' + (d.lock ? '🔒 اللوحة مقفولة دلوقتي.' : 'اللوحة مفتوحة لأي حد معاه الرابط.') +
@@ -4424,6 +4427,28 @@ function runScanReady(){
   });
 }
 
+var ORD_BOT_KEY = '';
+function showOrdersBotKey(regen){
+  if (regen && !confirm('المفتاح القديم هيتلغي، والبوت هيقف لحد ما تحط الجديد. متأكد؟')) return;
+  var box = document.getElementById('ordkey');
+  if (box) box.innerHTML = '<div class="state"><div class="spin"></div></div>';
+  var pin = adminPin();
+  if (!pin){ if (box) box.innerHTML = '<div class="state err">محتاج الرقم السري</div>'; return; }
+  api_('ordersBotKey', { pin: pin, regen: regen ? '1' : '0' }).then(function(d){
+    if (!box) return;
+    if (d && d.pinError){
+      try { localStorage.removeItem('adminPin'); } catch (e) {}
+      box.innerHTML = '<div class="state err">' + esc(d.error || 'الرقم السري غلط') + '</div>';
+      return;
+    }
+    if (!d || !d.ok || !d.key){ box.innerHTML = '<div class="state err">' + esc((d && (d.error || d.msg)) || 'فشل') + '</div>'; return; }
+    ORD_BOT_KEY = d.key;
+    box.innerHTML = '<div class="state" style="text-align:start;font-size:13px">الخاصية على السيرفر: <b dir="ltr">ORDERS_BOT_KEY</b><br>انسخ المفتاح وحطه في بوت الجرد. متعملهوش في أي ملف.</div>' +
+      '<div class="row"><div class="row-main"><b dir="ltr" style="user-select:all;word-break:break-all;font-size:13px">' + esc(d.key) + '</b></div></div>' +
+      '<button class="btn btn-quiet" onclick="copyTxt(ORD_BOT_KEY)">نسخ المفتاح</button>' +
+      '<button class="btn btn-quiet" onclick="showOrdersBotKey(1)">اعمل مفتاح جديد</button>';
+  }).catch(function(){ if (box) box.innerHTML = '<div class="state err">النت مش راضي</div>'; });
+}
 function runDiag(){
   var box = document.getElementById('diagbox');
   box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';

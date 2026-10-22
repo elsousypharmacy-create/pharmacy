@@ -2787,12 +2787,13 @@ function sendOrderSummary_(chatId, order) {
     '\nالعنوان: ' + String(order.address || '').replace(/\s*—?\s*https?:\S+/, '') +
     '\nالموبايل: ' + (order.phone || '—') +
     '\n\nالأوردر لسه متسجلش. نأكد الطلب؟';
+  var sent = tgApi_('sendMessage', { chat_id: chatId, text: txt,
+    reply_markup: { inline_keyboard: [[{ text: '✅ تأكيد الطلب', callback_data: 'o_ok' }, { text: '✏️ تعديل', callback_data: 'o_edit' }]] } });
+  if (!sent || sent.ok === false) return '';
   CacheService.getScriptCache().put('pord_' + chatId, JSON.stringify({
     items: lines.join('\n') + (total ? '\nإجمالي الأصناف: ' + total + ' جنيه' : '') + '\n' + fee.line,
     lines: resolved.lines, phone: order.phone, address: order.address
   }), 7200);
-  tgApi_('sendMessage', { chat_id: chatId, text: txt,
-    reply_markup: { inline_keyboard: [[{ text: '✅ تأكيد الطلب', callback_data: 'o_ok' }, { text: '✏️ تعديل', callback_data: 'o_edit' }]] } });
   return txt;
 }
 function confirmPendingOrder_(chatId) {
@@ -2820,6 +2821,8 @@ function confirmPendingOrder_(chatId) {
   }
   var fresh = [];
   try { fresh = readStockRowsFresh_(); } catch (eF) { fresh = []; }
+  /* قراية المخزون بطيئة. لو الصيدلي مسك الشات في النص، منسجلش الطلب ومنبعتش للعميل. */
+  if (holdOn_(chatId)) return;
   var kept = [], dropped = [], priceChanged = false;
   po.lines.forEach(function (l) {
     var m = matchFreshStock_(l.name, fresh);
@@ -3769,6 +3772,7 @@ function smartCustomerReply_(chatId, text, history, arrivalUnix) {
       saveCustomerPhone_(chatId, String(res.order.phone));
       if (holdOn_(chatId)) return true;
       var sum = sendOrderSummary_(chatId, res.order);
+      if (holdOn_(chatId)) return true;
       if (sum) saveConversationTurn(chatId, '[مستني تأكيد الطلب]', sum, 'bot', arrivalUnix);
       else sendTelegram_(chatId, 'مش لاقي الأصناف دي متوفرة في المخزون دلوقتي، فمش هقدر أجهّز ملخص الطلب.');
     } else if (res.order && !res.order.phone && !getVerifiedPhone_(chatId)) {
@@ -3825,6 +3829,10 @@ function handleCustomerMessage(chatId, message) {
       if (cen) {
         var km = distKm_(cen.lat, cen.lng, la, lo);
         if (km > bsl.maxKm) {
+          if (holdOn_(chatId)) {
+            tgApi_('sendMessage', { chat_id: PERSONAL_CHAT, text: '📍 العميل بعت موقعه: ' + (pn || '') + '\n' + mapsLink_(la, lo) + '\n[#c' + chatId + ']' });
+            return;
+          }
           tgApi_('sendMessage', { chat_id: chatId,
             text: '📍 الموقع ده' + (pn ? ' (' + pn + ')' : '') + ' بعيد عن منطقة التوصيل بتاعتنا (حوالي ' + Math.round(km) + ' كم من الصيدلية) 🙏\n' +
                   'ممكن حضرتك تبعت عنوان تاني جوه المنطقة، أو تكتب سؤالك والصيدلي يتواصل مع حضرتك.',
@@ -3832,6 +3840,10 @@ function handleCustomerMessage(chatId, message) {
           delFlow_(chatId, { step: 'address' });
           return;
         }
+      }
+      if (holdOn_(chatId)) {
+        tgApi_('sendMessage', { chat_id: PERSONAL_CHAT, text: '📍 العميل بعت موقعه: ' + (pn || '') + '\n' + mapsLink_(la, lo) + '\n[#c' + chatId + ']' });
+        return;
       }
       if (lf && (lf.step === 'address' || lf.step === 'confirm')) addressConfirmed_(chatId, (pn ? pn + ' — ' : '') + mapsLink_(la, lo));
       else tgApi_('sendMessage', { chat_id: chatId, text: 'وصلنا موقع حضرتك ✅ تحب نوصّلك طلب؟', reply_markup: { inline_keyboard: [[{ text: '🛵 أيوه، أطلب توصيل', callback_data: 'm_del' }]] } });

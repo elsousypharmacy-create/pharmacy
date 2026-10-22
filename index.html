@@ -776,7 +776,7 @@ function logErr(e){
 /* ═══════════ ٣) الاتصال بالسيرفر ═══════════
    كل نداء بيعدّي من هنا — لو الرابط اتغيّر، يتغيّر في مكان واحد. */
 /* 🔒 الأوامر الحساسة بتاخد الرقم السري (بيتطلب مرة ويتحفظ على الجهاز ده) */
-var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1,
+var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
                       getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1 };
 function adminPin(){
   var p = ''; try { p = localStorage.getItem('adminPin') || ''; } catch (e) {}
@@ -3713,6 +3713,11 @@ function openSheet(kind){
         '<div id="aicfg"><div class="state"><div class="spin"></div></div></div>' +
       '</details>' +
       '<details class="setg"><summary>🛠️ الصيانة</summary>' +
+        '<div class="group-title">تنبيهات البوت</div>' +
+        '<button class="btn btn-primary" onclick="runEnsureTriggers()">تفعيل التنبيهات التلقائية</button>' +
+        '<button class="btn btn-quiet" onclick="runEnsureTriggers(\'sendWeeklyDebtReminders\')">تفعيل تذكير الديون (بيبعت SMS كل سبت)</button>' +
+        '<button class="btn btn-quiet" onclick="runEnsureTriggers(\'checkExpiredCoupons\')">تفعيل فحص الكوبونات (كل يوم ٩)</button>' +
+        '<div id="trigbox"></div>' +
         '<div class="group-title">🔄 تحديث السيرفر</div>' +
         '<div id="srvup"><div class="state"><div class="spin"></div></div></div>' +
         '<div class="group-title">التحديث التلقائي للبيانات</div>' +
@@ -4283,6 +4288,17 @@ function setAutoUp(on){
     else toast((d && d.error) || tr('failed'));
     loadSrvUp();
   }).catch(function(){ toast(tr('failed')); loadSrvUp(); });
+}
+function runEnsureTriggers(which){
+  var box = document.getElementById('trigbox');
+  if (box) box.innerHTML = '<div class="state"><div class="spin"></div></div>';
+  api('ensureTriggers', which ? { which: which } : {}).then(function(d){
+    if (!box) return;
+    var msg = (d && (d.message || d.error)) || 'حصل خطأ';
+    box.innerHTML = '<div class="state' + (d && d.ok ? '' : ' err') + '">' + esc(msg) + '</div>';
+    if (d && d.pinError) return;
+    toast(d && d.ok ? '✓' : msg);
+  }).catch(function(){ if (box) box.innerHTML = '<div class="state err">حصل خطأ</div>'; });
 }
 function runSrvUp(){
   var b = document.getElementById('srvup');

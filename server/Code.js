@@ -5192,17 +5192,50 @@ function backupProbe() {
 /* تنظيف النسخ الاحتياطية لـ Pharmaclick:
    آخر 7 أيام: الكل · لحد 60 يوم: نسخة لكل يوم · الأقدم: نسخة لكل شهر.
    apply=false → حساب بس. apply=true → نقل لسلة المهملات (بيرجع خلال 30 يوم). */
-function cleanBackups(apply) {
-  var t0 = Date.now(), tz = 'Africa/Cairo';
-  var it = DriveApp.searchFiles("title contains 'pharmaclick_backup_' and trashed = false");
-  var files = [];
-  while (it.hasNext()) {
-    var f = it.next(), n = f.getName();
-    var m = n.match(/_(\d{2})-(\d{2})-(\d{4})(?:_(\d{2})-(\d{2}))?(_temp)?\.zip$/);
-    if (!m) continue;
-    files.push({ f: f, name: n, day: m[3] + '-' + m[2] + '-' + m[1], temp: !!m[6],
-                 at: f.getDateCreated().getTime(), size: f.getSize() });
+/* قايمة ملفات من Drive API مباشرة: طلب واحد لكل 1000 ملف. (DriveApp كان بيسأل عن اسم/حجم/تاريخ كل ملف لوحده، فالـ25 ثانية كانت بتخلص في القراية
+   وبينقل 6 ملفات بس في المرة.) */
+function driveListFiles_(q, fields) {
+  var tok = ScriptApp.getOAuthToken(), out = [], page = '';
+  do {
+    var r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true' +
+      '&fields=' + encodeURIComponent('nextPageToken,files(' + fields + ')') + '&q=' + encodeURIComponent(q) +
+      (page ? '&pageToken=' + encodeURIComponent(page) : ''), { headers: { Authorization: 'Bearer ' + tok }, muteHttpExceptions: true });
+    if (r.getResponseCode() !== 200) throw new Error('Drive list ' + r.getResponseCode() + ': ' + r.getContentText().slice(0, 200));
+    var d = JSON.parse(r.getContentText());
+    (d.files || []).forEach(function (x) { out.push(x); });
+    page = d.nextPageToken || '';
+  } while (page);
+  return out;
+}
+/* طلبات Drive API متوازية (30 في المرة). اللي بيفشل (rate limit مثلًا) بيفضل "فاضل" وبيتعاد في التشغيلة الجاية */
+function driveBatch_(ids, t0, budgetMs, make) {
+  var tok = ScriptApp.getOAuthToken(), done = 0, okIds = [];
+  for (var i = 0; i < ids.length; i += 30) {
+    if (Date.now() - t0 > budgetMs) break;
+    var chunk = ids.slice(i, i + 30), slow = false;
+    var rs = UrlFetchApp.fetchAll(chunk.map(function (id) {
+      var q = make(id); q.headers = { Authorization: 'Bearer ' + tok }; q.muteHttpExceptions = true; return q;
+    }));
+    rs.forEach(function (r, k) {
+      var c = r.getResponseCode();
+      if (c === 200 || c === 204) { done++; okIds.push(chunk[k]); }
+      else if (c === 403 || c === 429) slow = true;
+    });
+    Utilities.sleep(slow ? 2000 : 250);
   }
+  return { done: done, ids: okIds };
+}
+function cleanBackups(apply, budgetMs) {
+  var t0 = Date.now(), tz = 'Africa/Cairo';
+  var raw = driveListFiles_("name contains 'pharmaclick_backup_' and trashed = false", 'id,name,createdTime,size');
+  var files = [];
+  raw.forEach(function (f) {
+    var n = f.name || '';
+    var m = n.match(/_(\d{2})-(\d{2})-(\d{4})(?:_(\d{2})-(\d{2}))?(_temp)?\.zip$/);
+    if (!m) return;
+    files.push({ id: f.id, name: n, day: m[3] + '-' + m[2] + '-' + m[1], temp: !!m[6],
+                 at: Date.parse(f.createdTime) || 0, size: parseInt(f.size, 10) || 0 });
+  });
   var today = new Date(Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd') + 'T00:00:00');
   /* الأحدث الأول — أول واحد في كل مجموعة هو اللي بيتساب */
   files.sort(function (a, b) {
@@ -5219,29 +5252,26 @@ function cleanBackups(apply) {
   var out = { ok: true, total: files.length, keep: keep.length, remove: del.length,
               keepMB: mb(keep), freeMB: mb(del), trashed: 0, remaining: 0 };
   if (apply) {
-    for (var i = 0; i < del.length; i++) {
-      if (Date.now() - t0 > 25000) break;
-      try { del[i].f.setTrashed(true); out.trashed++; } catch (e) {}
-    }
-    out.remaining = del.length - out.trashed;
+    var r = driveBatch_(del.map(function (x) { return x.id; }), t0, budgetMs || 25000, function (id) {
+      return { url: 'https://www.googleapis.com/drive/v3/files/' + id + '?supportsAllDrives=true', method: 'patch',
+               contentType: 'application/json', payload: '{"trashed":true}' };
+    });
+    out.trashed = r.done;
+    out.remaining = del.length - r.done;
   }
   return out;
 }
-function cleanBackupsDaily() { return cleanBackups(true); }
-/* مسح نهائي للنسخ الاحتياطية اللي في سلة المهملات بس — مش بيلمس أي حاجة تانية في السلة */
+function cleanBackupsDaily() { return cleanBackups(true, 240000); }
+/* مسح نهائي للنسخ الاحتياطية (zip) اللي في سلة المهملات بس — مش بيلمس أي حاجة تانية في السلة */
 function purgeTrashedBackups() {
-  var t0 = Date.now(), done = 0, left = 0, freed = 0;
-  var it = DriveApp.searchFiles("title contains 'pharmaclick_backup_' and trashed = true");
-  var tok = ScriptApp.getOAuthToken();
-  while (it.hasNext()) {
-    var f = it.next();
-    if (Date.now() - t0 > 25000) { left++; continue; }
-    var sz = f.getSize();
-    var r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + f.getId() + '?supportsAllDrives=true',
-      { method: 'delete', headers: { Authorization: 'Bearer ' + tok }, muteHttpExceptions: true });
-    if (r.getResponseCode() === 204) { done++; freed += sz; } else left++;
-  }
-  return { ok: true, deleted: done, remaining: left, freedMB: Math.round(freed / 1048576) };
+  var t0 = Date.now();
+  var raw = driveListFiles_("name contains 'pharmaclick_backup_' and trashed = true", 'id,name,size').filter(function (f) { return /\.zip$/i.test(f.name || ''); });
+  var size = {}; raw.forEach(function (f) { size[f.id] = parseInt(f.size, 10) || 0; });
+  var r = driveBatch_(raw.map(function (f) { return f.id; }), t0, 25000, function (id) {
+    return { url: 'https://www.googleapis.com/drive/v3/files/' + id + '?supportsAllDrives=true', method: 'delete' };
+  });
+  var freed = 0; r.ids.forEach(function (id) { freed += size[id] || 0; });
+  return { ok: true, deleted: r.done, remaining: raw.length - r.done, freedMB: Math.round(freed / 1048576) };
 }
 function cleanBackupsAuto() {
   ScriptApp.getProjectTriggers().forEach(function (t) {

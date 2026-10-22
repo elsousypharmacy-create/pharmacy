@@ -1534,9 +1534,23 @@ function waOne_(m, pname) {
   else if (m.type === 'reaction' || m.type === 'unsupported') return;
   else {
     var fileLabel = '[' + (m.type || 'ملف') + ']';
+    if (holdOn_(chatId)) {
+      try {
+        var mediaObj = m[m.type];
+        if (mediaObj && mediaObj.id) {
+          var fblob = waMediaBlob_(mediaObj.id);
+          if (fblob) UrlFetchApp.fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/sendDocument', {
+            method: 'post', muteHttpExceptions: true,
+            payload: { chat_id: String(PERSONAL_CHAT), document: fblob.setName('file'),
+              caption: fileLabel + '\n[#c' + chatId + ']' } });
+        }
+      } catch (eFile) {}
+      heldSilence_(chatId, fileLabel, msg.date);
+      return;
+    }
     var fileNote = 'وصلنا 🌿 للأسف مش بنقدر نفتح النوع ده من الملفات — ممكن حضرتك تكتب طلبك أو تبعت صورة؟';
-    if (!holdOn_(chatId)) waSend_(chatId, fileNote);
-    saveConversationTurn(chatId, fileLabel, holdOn_(chatId) ? '[الصيدلي بيرد بنفسه]' : fileNote, 'bot', msg.date);
+    waSend_(chatId, fileNote);
+    saveConversationTurn(chatId, fileLabel, fileNote, 'bot', msg.date);
     return;
   }
   handleCustomerMessage(chatId, msg);
@@ -1608,6 +1622,9 @@ function routeTelegramUpdate_(update) {
   const msg = update.message;
   const chatId = String(msg.chat.id);
   const text = (msg.text || '').trim();
+
+  /* وقف/تشغيل بوت الواتساب من شات الصيدلي، حتى لو الأمر Reply على رسالة عميل */
+  if (botToggleCmd_(chatId, text)) return;
 
   // (أ) رد الدكتور على سؤال عميل — يتبعت للعميل باسم الصيدلية
   if (msg.reply_to_message && chatId === String(PERSONAL_CHAT)) {
@@ -2486,7 +2503,8 @@ function quotedFind_(chatId, name) {
 }
 
 /* إعدادات البوت من اللوحة: رسوم التوصيل، المواعيد، أقصى مسافة، مناطق التوصيل، قفل اللوحة.
-   BOT_FREE_DELIVERY=1 أو رسوم 0 = توصيل مجاني. BOT_DELIVERY_AREAS = أسماء مناطق مفصولة بفاصلة أو سطر. */
+   BOT_FREE_DELIVERY=1 أو رسوم 0 = توصيل مجاني. BOT_DELIVERY_AREAS = أسماء مناطق مفصولة بفاصلة أو سطر.
+   BOT_PAUSED=1 يوقف الرد التلقائي على عملاء واتساب بس. تليجرام والتقارير والرد اليدوي لسه شغالين. */
 function botSettings_() {
   var P = PropertiesService.getScriptProperties();
   var km = P.getProperty('BOT_MAX_KM');
@@ -2495,7 +2513,8 @@ function botSettings_() {
   return { fee: fee, hours: P.getProperty('BOT_HOURS') || '',
            maxKm: km === null ? 10 : (parseFloat(km) || 0), lock: P.getProperty('DASH_LOCK') === '1',
            freeDelivery: P.getProperty('BOT_FREE_DELIVERY') === '1' || String(fee) === '0',
-           areas: P.getProperty('BOT_DELIVERY_AREAS') || '' };
+           areas: P.getProperty('BOT_DELIVERY_AREAS') || '',
+           paused: P.getProperty('BOT_PAUSED') === '1' };
 }
 function getBotSettings() { var s = botSettings_(); s.ok = true; s.pinSet = !!aiKey_('ADMIN_PIN'); return s; }
 function setBotSettings(d) {
@@ -2518,6 +2537,7 @@ function setBotSettings(d) {
     if (ar) P.setProperty('BOT_DELIVERY_AREAS', ar.slice(0, 1500));
     else P.deleteProperty('BOT_DELIVERY_AREAS');
   }
+  if (d.paused !== undefined) botPauseSet_(String(d.paused) === '1');
   return getBotSettings();
 }
 function deliveryAreas_(s) {
@@ -2697,9 +2717,45 @@ function readPhoto_(fileIds) {
   return null;
 }
 
+/* ⛔ وقف الرد التلقائي على عملاء واتساب بس (شات wa_*). الخاصية BOT_PAUSED=1.
+   تليجرام والتقارير وتنبيهات الصيدلي مش بتتأثر.
+   الكاش 30 ثانية عشان الويبهوك ميقراش الخاصية على كل رسالة، وبيتمسح لحظة التبديل. */
+function botPaused_() {
+  try {
+    var c = CacheService.getScriptCache(), hit = c.get('bot_paused');
+    if (hit === '1' || hit === '0') return hit === '1';
+    var on = PropertiesService.getScriptProperties().getProperty('BOT_PAUSED') === '1';
+    try { c.put('bot_paused', on ? '1' : '0', 30); } catch (eP) {}
+    return on;
+  } catch (e) {
+    try { return PropertiesService.getScriptProperties().getProperty('BOT_PAUSED') === '1'; } catch (e2) { return false; }
+  }
+}
+function botPauseSet_(on) {
+  PropertiesService.getScriptProperties().setProperty('BOT_PAUSED', on ? '1' : '0');
+  try { CacheService.getScriptCache().remove('bot_paused'); } catch (e) {}
+}
+/* من شات الصيدلي بس: /botoff يوقف بوت الواتساب، /boton يرجّعه. */
+function botToggleCmd_(chatId, text) {
+  if (String(chatId) !== String(PERSONAL_CHAT)) return false;
+  var cmd = String(text || '').split(/\s+/)[0].toLowerCase();
+  var at = cmd.indexOf('@');
+  if (at !== -1) cmd = cmd.slice(0, at);
+  if (cmd !== '/botoff' && cmd !== '/boton') return false;
+  var pause = cmd === '/botoff';
+  botPauseSet_(pause);
+  sendTelegramStaff(pause
+    ? '⛔ بوت الواتساب واقف. رسايل الواتساب هتوصلك هنا ومش هيرد عليهم.'
+    : '▶️ بوت الواتساب رجع يرد على العملاء.', PERSONAL_CHAT);
+  return true;
+}
 /* 🤫 الصيدلي ماسك المحادثة — البوت يسكت وكل رسايل العميل توصلك (ساعتين أو لحد ما ترجّعه).
+   وقف الواتساب = نفس الإمساك على شاتات wa_* بس، فالرسالة تتسجل وتوصل للصيدلي من غير رد آلي.
    الفحص لحظة الإرسال مش بس أول الرسالة: رد الصيدلي من الواتساب ممكن يوصل والبوت لسه مستني الموديل. */
-function holdOn_(cid) { return !!CacheService.getScriptCache().get('hold_' + cid); }
+function holdOn_(cid) {
+  if (botPaused_() && isWa_(cid)) return true;
+  return !!CacheService.getScriptCache().get('hold_' + cid);
+}
 function holdBlocksBotSend_(chatId, text) {
   if (!chatId || String(chatId) === String(PERSONAL_CHAT)) return false;
   if (!holdOn_(chatId)) return false;
@@ -3865,13 +3921,16 @@ function handleCustomerMessage(chatId, message) {
   try {
     // 📱 العميل شارك رقمه بالزرار — نتأكد إنه رقمه هو مش رقم حد تاني
     if (message.contact) {
-      logChatRows_(chatId, [['user', '[مشاركة رقم]', message.date ? cairoStamp_(message.date) : '']]);
-      var ct = message.contact;
-      if (ct.user_id && message.from && String(ct.user_id) === String(message.from.id)) {
-        var vp = canonicalEgyptPhone_(ct.phone_number);
+      var ct = message.contact, own = ct.user_id && message.from && String(ct.user_id) === String(message.from.id);
+      var vp = own ? canonicalEgyptPhone_(ct.phone_number) : '';
+      if (own) {
         PropertiesService.getScriptProperties().setProperty('vphone_' + chatId, vp);
         saveCustomerPhone_(chatId, vp);
         CacheService.getScriptCache().remove('cname_' + vp);
+      }
+      if (holdOn_(chatId)) { heldSilence_(chatId, '[مشاركة رقم]' + (vp ? ' ' + vp : ''), message.date); return; }
+      logChatRows_(chatId, [['user', '[مشاركة رقم]', message.date ? cairoStamp_(message.date) : '']]);
+      if (own) {
         var pf = delFlow_(chatId);
         if (pf && pf.step === 'needPhone') {
           sendTelegramMarkup_(chatId, 'شكرًا لحضرتك، اتسجل رقم حضرتك ✅', { remove_keyboard: true });
@@ -3982,6 +4041,22 @@ function handleCustomerMessage(chatId, message) {
     /* 🎤 فويس → كلام مكتوب، وبعدها يتعامل كأنه رسالة عادية */
     var fromVoice = false;
     if ((message.voice || message.audio) && !message.text) {
+      /* واتساب واقف: منحوّلش الفويس لموديل. الصوت يتبعت للصيدلي والعميل مياخدش رد. تليجرام لسه بيتفهم. */
+      if (isWa_(chatId) && botPaused_()) {
+        try {
+          var vblob = tgFileBlob_((message.voice || message.audio).file_id);
+          if (vblob) UrlFetchApp.fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/sendAudio', {
+            method: 'post', muteHttpExceptions: true,
+            payload: { chat_id: String(PERSONAL_CHAT), audio: vblob.setName('voice'),
+              caption: '🎤 فويس واتساب\n[#c' + chatId + ']' } });
+        } catch (eFv) {}
+        heldSilence_(chatId, '[صوت]', message.date);
+        try {
+          PropertiesService.getScriptProperties().setProperty('escp_' + chatId, Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm'));
+          PropertiesService.getScriptProperties().deleteProperty('escr_' + chatId);
+        } catch (eH) {}
+        return;
+      }
       var va = message.voice || message.audio;
       if ((va.duration || 0) > 180) {
         var longV = 'الرسالة الصوتية طويلة شوية 🙏 ممكن حضرتك تبعتها في رسايل أقصر (أقل من 3 دقايق) أو تكتبها.';
@@ -4001,7 +4076,13 @@ function handleCustomerMessage(chatId, message) {
     }
 
     var text = toAsciiDigits_((message.text || '').trim());
-    if (!text) return;
+    if (!text) {
+      if (holdOn_(chatId) && message && (message.document || message.video || message.video_note || message.sticker || message.animation)) {
+        try { tgApi_('forwardMessage', { chat_id: PERSONAL_CHAT, from_chat_id: chatId, message_id: message.message_id }); } catch (eD) {}
+        heldSilence_(chatId, message.document ? '[ملف]' : ((message.video || message.video_note) ? '[فيديو]' : '[ملصق]'), message.date);
+      }
+      return;
+    }
 
     /* 🤫 الصيدلي ماسك المحادثة → الرسالة توصله والبوت ميردش */
     if (holdOn_(chatId)) {
@@ -4427,8 +4508,8 @@ function botStatus() {
     return { ok: true, url: r.url || '', viaRelay: !!props.getProperty('TG_RELAY_URL') && r.url === props.getProperty('TG_RELAY_URL'),
              pending: r.pending_update_count || 0, lastError: r.last_error_message || '',
              lastErrorAt: r.last_error_date ? Utilities.formatDate(new Date(r.last_error_date * 1000), 'Africa/Cairo', 'yyyy-MM-dd HH:mm') : '',
-             polling: !r.url, provider: aiCfg_().provider, hasKey: !!aiCfg_().key };
-  } catch (e) { return { ok: false, error: e.message }; }
+             polling: !r.url, provider: aiCfg_().provider, hasKey: !!aiCfg_().key, paused: botPaused_() };
+  } catch (e) { return { ok: false, error: e.message, paused: botPaused_() }; }
 }
 /* بيسجّل لينك الوسيط ويحوّل تليجرام عليه */
 function botSetRelay(url) {

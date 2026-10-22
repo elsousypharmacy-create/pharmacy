@@ -68,6 +68,9 @@ button{font-family:inherit}
 .brand p{font-size:var(--t-micro);color:var(--ink-3);margin-top:1px;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .tools{display:flex;gap:var(--s2);flex-shrink:0}
+.bot-pause{display:none;background:var(--bad);color:#fff;text-align:center;font-weight:800;
+  padding:12px 14px;font-size:16px;line-height:1.45;position:sticky;top:0;z-index:85}
+.bot-pause.on{display:block}
 /* ═══ أقسام المخزون ═══ */
 .sec{width:100%;display:flex;align-items:center;gap:var(--s4);
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);
@@ -334,6 +337,7 @@ details.setg[open]{padding-bottom:var(--s3)}
     <button class="ibtn" onclick="openSheet('more')" title="المزيد">☰</button>
   </div>
 </header>
+<div id="botPauseBanner" class="bot-pause" role="status"></div>
 
 <div class="subtabs hide" id="subtabs"></div>
 
@@ -4314,12 +4318,41 @@ function runSrvUp(){
 /* إعدادات البوت: رسوم التوصيل، المواعيد، أقصى مسافة، قفل اللوحة */
 var BOT_SET = null;
 function loadBotSet(){
-  api('getBotSettings').then(function(d){ if (d && d.ok){ BOT_SET = d; drawBotSet(); } })
+  api('getBotSettings').then(function(d){ if (d && d.ok){ BOT_SET = d; drawBotSet(); showBotPauseBanner(!!d.paused); } })
     .catch(function(){ var b = document.getElementById('botset'); if (b) b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+}
+function showBotPauseBanner(on){
+  var b = document.getElementById('botPauseBanner');
+  if (!b) return;
+  b.className = on ? 'bot-pause on' : 'bot-pause';
+  b.textContent = on ? 'بوت الواتساب واقف — الرسايل بتوصل للصيدلي بس' : '';
+}
+function loadBotPauseBanner(){
+  var pin0 = ''; try { pin0 = localStorage.getItem('adminPin') || ''; } catch (e) {}
+  api_('getBotSettings', pin0 ? { pin: pin0 } : {}).then(function(d){
+    if (d && d.ok) showBotPauseBanner(!!d.paused);
+  }).catch(function(){});
+}
+function toggleBotPause(paused){
+  var pin = ((document.getElementById('bsPin') || {}).value || '').trim() || storedPin();
+  if (!pin) pin = adminPin();
+  if (!pin){ toast('محتاج الرقم السري'); return; }
+  post({ action: 'setBotSettings', paused: paused ? '1' : '0', pin: pin }).then(function(d){
+    if (d && d.ok){
+      try { localStorage.setItem('adminPin', pin); } catch (e) {}
+      BOT_SET = d; drawBotSet(); showBotPauseBanner(!!d.paused);
+      toast(d.paused ? '⛔ بوت الواتساب واقف' : '▶️ بوت الواتساب رجع يرد');
+    } else {
+      if (d && d.pinError){ try { localStorage.removeItem('adminPin'); } catch (e2) {} }
+      toast((d && d.error) || tr('failed'));
+    }
+  }).catch(function(){ toast(tr('failed')); });
 }
 function drawBotSet(){
   var d = BOT_SET, box = document.getElementById('botset'); if (!box || !d) return;
   box.innerHTML =
+    '<button class="btn ' + (d.paused ? 'btn-primary' : 'btn-danger') + '" style="font-size:17px;font-weight:800;padding:14px 12px" onclick="toggleBotPause(' + (d.paused ? '0' : '1') + ')">' +
+      (d.paused ? '▶️ شغّل بوت الواتساب' : '⛔ وقف بوت الواتساب') + '</button>' +
     '<small style="color:var(--ink-2)">رسوم التوصيل بالجنيه (فاضي = هتتأكد، و0 = مجاني)</small>' + aiInp('bsFee', 'مثلًا 10', 'number', d.fee) +
     '<label style="display:flex;gap:8px;align-items:center;margin:6px 0 10px"><input type="checkbox" id="bsFree"' + (d.freeDelivery ? ' checked' : '') + '> ' +
       'التوصيل مجاني (البوت يقول «التوصيل مجاني» ومش هيقول إن الرسوم هتتأكد)</label>' +
@@ -4489,6 +4522,7 @@ try{
 }catch(e){}
 try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 go('sales', 0);
+loadBotPauseBanner();
 
 </script>
 </body>

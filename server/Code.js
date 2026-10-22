@@ -1307,7 +1307,10 @@ function waCall_(path, body) {
       PropertiesService.getScriptProperties().setProperty('WA_LAST_ERR', Utilities.formatDate(new Date(), 'Africa/Cairo', 'MM-dd HH:mm') + ' ' + why);
       return { ok: false, description: why };
     }
-    return { ok: true, result: { message_id: (d.messages && d.messages[0] && d.messages[0].id) || '' } };
+    var mid = (d.messages && d.messages[0] && d.messages[0].id) || '';
+    /* رسالة البوت من الـ API — لو ميتا رجّعتها إيكو منسجّلهاش تاني كأنها رد الصيدلي */
+    if (mid && body && body.type) { try { CacheService.getScriptCache().put('wamout_' + mid, '1', 21600); } catch (eO) {} }
+    return { ok: true, result: { message_id: mid } };
   } catch (e) { return { ok: false, description: e.message }; }
 }
 /* بيبعت نص (ومعاه أزرار تليجرام بعد تحويلها لأزرار واتساب) */
@@ -1373,7 +1376,13 @@ function waSeq_(chatId) {   /* رقم مسلسل لكل رسالة (الألبو
 
 function handleWhatsAppWebhook_(data) {
   (data.entry || []).forEach(function (en) { (en.changes || []).forEach(function (ch) {
-    var v = ch.value || {}, names = {};
+    var v = ch.value || {};
+    /* رد الصيدلي من تطبيق واتساب (تعايش). statuses و message_echoes (رسايل البوت من الـ API) مش هنا — منقراهمش ومش بنرد عليهم. */
+    if (ch.field === 'smb_message_echoes') {
+      (v.message_echoes || []).forEach(function (m) { try { waEcho_(m); } catch (e) { Logger.log('خطأ إيكو واتساب: ' + e.message); } });
+      return;
+    }
+    var names = {};
     (v.contacts || []).forEach(function (c) {
       var nm = c.profile && (c.profile.name || c.profile.username);
       if (c.wa_id) names[c.wa_id] = nm;
@@ -1382,9 +1391,53 @@ function handleWhatsAppWebhook_(data) {
     (v.messages || []).forEach(function (m) { try { waOne_(m, names[waSenderId_(m)] || names[m.from_user_id] || ''); } catch (e) { Logger.log('خطأ واتساب: ' + e.message); } });
   }); });
 }
+/* معرّف العميل في الإيكو = to (من غير +) عشان يطابق شات wa_ بتاع رسايله الواردة */
+function waEchoPeer_(raw) {
+  var id = String(raw || '').trim();
+  if (id.charAt(0) === '+') id = id.slice(1);
+  var digits = id.replace(/[\s\-]/g, '');
+  return /^\d{6,20}$/.test(digits) ? digits : id;
+}
+function waEchoCap_(obj) {
+  var c = obj && obj.caption ? String(obj.caption).trim() : '';
+  return c ? ' ' + c : '';
+}
+/* نص الإيكو للسجل: النص نفسه، وغير النص اختصار قصير. التعديل بيتردّ على الرسالة الجديدة. */
+function waEchoBody_(m) {
+  if (!m) return '';
+  if (m.type === 'edit') return waEchoBody_(m.edit && m.edit.message);
+  if (m.type === 'revoke') return '[اتمسحت]';
+  if (m.type === 'text') return String((m.text && m.text.body) || '').trim();
+  if (m.type === 'button') return String((m.button && m.button.text) || '').trim() || '[زرار]';
+  if (m.type === 'image') return '[صورة]' + waEchoCap_(m.image);
+  if (m.type === 'video') return '[فيديو]' + waEchoCap_(m.video);
+  if (m.type === 'audio' || m.type === 'voice') return '[صوت]';
+  if (m.type === 'document') return '[ملف]' + waEchoCap_(m.document);
+  if (m.type === 'sticker') return '[ملصق]';
+  if (m.type === 'location') return '[موقع]';
+  if (m.type === 'contacts') return '[جهة اتصال]';
+  if (m.type === 'interactive') return '[رسالة]';
+  if (m.type === 'reaction' || m.type === 'unsupported' || m.type === 'system') return '';
+  return '[رسالة]';
+}
+/* إيكو تطبيق الواتساب: نسجّله على شات العميل بدور الصيدلي، والبوت ميردّش. */
+function waEcho_(m) {
+  if (!m) return;
+  var cache = CacheService.getScriptCache(), id = String(m.id || '');
+  if (id && (cache.get('wamout_' + id) || cache.get('wam_' + id))) return;
+  var orig = (m.edit && m.edit.original_message_id) || (m.revoke && m.revoke.original_message_id) || '';
+  if (orig && cache.get('wamout_' + orig)) return;       /* تعديل/مسح لرسالة البوت نفسه */
+  if (id) cache.put('wam_' + id, '1', 21600);
+  var peer = waEchoPeer_(m.to), body = waEchoBody_(m);
+  if (!peer || !body) return;
+  var chatId = 'wa_' + peer, rows = [['pharm', body]];
+  if (holdEcho_(chatId)) rows.push(['sys', '🤫 الصيدلي رد من الواتساب — البوت ساكت ٣٠ دقيقة']);
+  logChatRows_(chatId, rows);
+}
 function waOne_(m, pname) {
   var cache = CacheService.getScriptCache();
   if (cache.get('wam_' + m.id)) return;                    /* ميتا بتعيد نفس الرسالة أحيانًا */
+  if (m.id && cache.get('wamout_' + m.id)) return;         /* رسالة البوت من الـ API — مش عميل ومش هنرد عليها */
   cache.put('wam_' + m.id, '1', 21600);
   var sid = waSenderId_(m), P = PropertiesService.getScriptProperties();
   if (!sid) {   /* مفيش رقم ولا BSUID — منحفظ الشكل عشان نشخّصه، ومنعملش شات اسمه wa_undefined */
@@ -2369,6 +2422,13 @@ function holdOn_(cid) { return !!CacheService.getScriptCache().get('hold_' + cid
 function holdSet_(cid, on) {
   var c = CacheService.getScriptCache();
   if (on) c.put('hold_' + cid, '1', 7200); else c.remove('hold_' + cid);
+}
+/* رد من تطبيق الواتساب: نفس الإمساك ٣٠ دقيقة. '1' = إمساك يدوي ساعتين — منقصرهوش. بيرجّع true لو الإمساك ابتدا دلوقتي. */
+function holdEcho_(cid) {
+  var c = CacheService.getScriptCache(), cur = c.get('hold_' + cid);
+  if (cur === '1') return false;
+  c.put('hold_' + cid, 'e', 1800);
+  return !cur;
 }
 function holdKb_(cid, on) {
   return { inline_keyboard: [[ on ? { text: '▶️ رجّع البوت يرد', callback_data: 'h_off_' + cid }

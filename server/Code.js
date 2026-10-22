@@ -1916,7 +1916,8 @@ function clearStockCache() {
   Logger.log('✅ اتمسحت نسخة المخزون المحفوظة');
 }
 
-/* أشكال دوائية: لو العميل طلب "نقط" والمتوفر "شراب" منفس المادة، ده تطابق قريب مش "مش متوفر" ومش بديل */
+/* أشكال دوائية: لو العميل طلب "نقط" والمتوفر "شراب" من نفس الاسم/الماركة، ده تطابق قريب.
+   ماركة تانية بنفس المادة الفعالة مش تطابق — البديل قرار الدكتور ومش بيتقال للعميل. */
 var FORM_WORD_LIST_ = ['drops','drop','syrup','syr','tabs','tab','tablet','tablets','cap','caps','capsule','capsules','cream','ointment','oint','spray','gel','susp','suspension','amp','ampoule','ampule','vial','sachet','suppository','نقط','نقطة','قطرة','قطرات','شراب','أقراص','اقراص','قرص','حبوب','حبة','حبه','كبسول','كبسولة','كبسولات','كريم','مرهم','بخاخ','جل','لبوس','لبوسة','تحاميل','تحميلة','حقن','حقنة','أمبول','امبول','فيال','كيس','أكياس','معلق'];
 var FORM_KEYS_ = null;
 function isFormWord_(w) {
@@ -1979,13 +1980,6 @@ function wordHitsName_(word, it) {
   }
   return false;
 }
-function wordHitsActive_(word, it) {
-  var ak = it.activeKey || '';
-  if (!ak) return false;
-  var keys = ingAliasKeys_(word);
-  for (var i = 0; i < keys.length; i++) if (keys[i].length >= 4 && ak.indexOf(keys[i]) !== -1) return true;
-  return false;
-}
 function formWordHits_(formWord, it) {
   var qw = stockKey_(formWord);
   if (!qw) return false;
@@ -2019,7 +2013,7 @@ function tagFormMismatch_(items, query) {
     return miss ? withClose_(it, 'form', label) : it;
   });
 }
-/* طبقة تانية بس لو مفيش تطابق قوي: نفس الاسم من غير كلمة الشكل، أو المادة الفعالة (عربي/إنجليزي) */
+/* طبقة تانية بس لو مفيش تطابق قوي: نفس المنتج (الاسم/الماركة) بشكل تاني. من غير بدائل بنفس المادة. */
 function closeStockMatches_(rows, qWords, askedForm) {
   var subst = [], forms = [];
   qWords.forEach(function (w) { (isFormWord_(w) ? forms : subst).push(w); });
@@ -2029,25 +2023,18 @@ function closeStockMatches_(rows, qWords, askedForm) {
   for (var i = 0; i < rows.length; i++) {
     var it = rows[i];
     if (it.daysToExpire !== null && it.daysToExpire < MIN_EXPIRY_DAYS_TO_OFFER) continue;
-    var nameHits = [], actHits = [], misses = [];
+    var nameHits = [], misses = [];
     for (var s = 0; s < subst.length; s++) {
       if (wordHitsName_(subst[s], it)) nameHits.push(subst[s]);
-      else if (wordHitsActive_(subst[s], it)) actHits.push(subst[s]);
       else misses.push(subst[s]);
     }
-    if (misses.some(function (w) { return w.length >= 6; })) continue;
-    var why = '';
-    if (nameHits.length) {
-      var longest = subst.slice().sort(function (a, b) { return b.length - a.length; })[0];
-      if (nameHits.indexOf(longest) === -1 && longest.length >= 6) continue;
-      var formMiss = forms.some(function (f) { return !formWordHits_(f, it); });
-      why = formMiss ? 'form' : ((misses.length || actHits.length) ? 'partial' : '');
-    } else if (!misses.length && actHits.length === subst.length) {
-      var strong = subst.every(function (w) { return w.length >= 5 || ingAliasKeys_(w).length > 1; });
-      if (!strong) continue;
-      why = 'ingredient';
-    } else continue;
-    out.push({ item: it, score: nameHits.length * 100 + actHits.length * 40 - misses.length * 10, why: why });
+    /* كلمة مش في الاسم = مش نفس المنتج، حتى لو المادة الفعالة واحدة */
+    if (!nameHits.length || misses.length) continue;
+    var longest = subst.slice().sort(function (a, b) { return b.length - a.length; })[0];
+    if (nameHits.indexOf(longest) === -1 && longest.length >= 6) continue;
+    var formMiss = forms.some(function (f) { return !formWordHits_(f, it); });
+    var why = formMiss ? 'form' : '';
+    out.push({ item: it, score: nameHits.length * 100, why: why });
   }
   out.sort(function (a, b) { return b.score - a.score; });
   var seen = {}, res = [];
@@ -2101,7 +2088,7 @@ function searchStock(query) {
             else if (qSk[w].length >= 4 && ts.indexOf(qSk[w]) === 0) best = Math.max(best, Math.round(30 * qSk[w].length / ts.length));
           }
         }
-        if (best === 0 && it.activeKey && it.activeKey.indexOf(qw) !== -1) best = 12;   // المادة الفعالة
+        /* المادة الفعالة لوحدها مش تطابق للعميل: ماركة تانية بنفس المادة بديل، والدكتور هو اللي يعرضه */
         if (best > 0) hit++;
         score += best;
       }
@@ -2122,7 +2109,7 @@ function searchStock(query) {
 
     pool.sort(function(a, b) { return b.score - a.score; });
 
-    // درجة ضعيفة = مفيش تطابق حقيقي. قبل ما نقول "مش متوفر" ندوّر على نفس المادة بشكل تاني
+    // درجة ضعيفة = مفيش تطابق حقيقي. قبل ما نقول "مش متوفر" ندوّر على نفس المنتج بشكل تاني بس
     if (pool[0].score < MIN_MATCH_SCORE) return closeStockMatches_(rows, qWords, formLabel);
 
     const cutoff = pool[0].score * 0.6;
@@ -2145,17 +2132,22 @@ function formatItemLine_(it) {
   return line;
 }
 
+/* جملة العميل لما الاسم مش موجود. البديل مش بيتقترح؛ الدكتور هو اللي يقرر. */
+var PRODUCT_MISSING_REPLY_ = 'مش متوفر حاليًا، تحب نوفّره ولا مستعجل والدكتور يعرض بديل؟';
+
 // بيرجع {text, prices[]} — prices هي الأرقام المسموح للمودل يذكرها
 function buildProductAnswer_(results, askedFor) {
-  const offerable = results.filter(function(it) {
+  const offerable = (results || []).filter(function(it) {
+    if (it.closeMatch && it.closeWhy !== 'form') return false;
     return it.daysToExpire === null || it.daysToExpire >= MIN_EXPIRY_DAYS_TO_OFFER;
   });
 
   if (!offerable.length) {
     return {
       available: false,
-      text: 'للأسف "' + askedFor + '" مش متوفر عندنا دلوقتي. تحب الدكتور يشوفلك حل مناسب؟',
-      prices: []
+      text: PRODUCT_MISSING_REPLY_,
+      prices: [],
+      items: []
     };
   }
 
@@ -2163,14 +2155,11 @@ function buildProductAnswer_(results, askedFor) {
   const prices = show.map(function(it){ return Math.round(it.price); });
 
   var text;
-  var closeOnly = show.every(function (it) { return it.closeMatch; });
+  var closeOnly = show.every(function (it) { return it.closeMatch && it.closeWhy === 'form'; });
   if (closeOnly) {
-    var why = show[0].closeWhy;
-    var head = why === 'form'
-      ? 'الشكل اللي حضرتك طلبته' + (show[0].askedForm ? ' (' + show[0].askedForm + ')' : '') + ' مش ظاهر عندي، المتوفر:'
-      : 'مش لاقي نفس الاسم بالظبط، المتوفر بنفس المادة الفعالة:';
+    var head = 'الشكل اللي حضرتك طلبته' + (show[0].askedForm ? ' (' + show[0].askedForm + ')' : '') + ' مش ظاهر عندي، المتوفر:';
     text = head + '\n' + show.map(formatItemLine_).join('\n');
-    if (show.length > 1) text += '\n\nتحب أجهز لحضرتك أنهي واحد؟';
+    if (show.length > 1) text += '\n\nتحب أجهز لحضرتك أنهي واحد فيهم؟';
   } else if (show.length === 1) {
     const it = show[0];
     text = 'متوفر عندنا:\n' + formatItemLine_(it);
@@ -3377,14 +3366,18 @@ function tryLocalReply_(chatId, text, history) {
     const results = searchStock(product);
     if (results.length) {
       const answer = buildProductAnswer_(results, product);
+      if (!answer.available) {
+        escalateToDoctor_(chatId, text, 'مش متوفر: ' + product);
+        return answer.text;
+      }
       logQuote_(chatId, answer.items || []);
       return answer.text;
     }
     // لقينا اسم صنف بس مش موجود — بس بنتأكد إنه فعلاً سؤال عن صنف
     if (hasAnyWord_(n, PRICE_WORDS_) || hasAnyWord_(n, AVAIL_WORDS_)) {
       logUnavailableRequest_(chatId, product);
-      return 'للأسف "' + product + '" مش متوفر عندنا دلوقتي 🙏\n' +
-             'ممكن نوفّره لحضرتك، ولو مستعجل الدكتور يعرض عليك بديل مناسب. تحب أنهي؟';
+      escalateToDoctor_(chatId, text, 'مش متوفر: ' + product);
+      return PRODUCT_MISSING_REPLY_;
     }
   }
 
@@ -3450,6 +3443,8 @@ function brainCandidates_(text, history, extra) {
     searchStock(q).forEach(function (it) {
       /* صنف من صورة: لازم اسم الماركة نفسه يبقى في اسم الصنف — مش مجرد نفس التركيز أو المادة الفعالة */
       if (mustHave && String(it.key || stockKey_(it.name)).indexOf(mustHave) === -1) return;
+      /* بديل بنفس المادة مش بيتقدم للعميل. التطابق القريب المسموح: نفس الماركة بشكل تاني بس */
+      if (it.closeMatch && it.closeWhy !== 'form') return;
       var k = it.name + '|' + it.price;
       if (seen[k] || out.length >= 14) return;
       if (it.daysToExpire !== null && it.daysToExpire < MIN_EXPIRY_DAYS_TO_OFFER) return;
@@ -3467,7 +3462,7 @@ function brainCandidates_(text, history, extra) {
   if (PHOTO_CTX) text = String(text).replace(/\n?\[العميل بعت صورة[\s\S]*$/, '');
   var prod = extractProductLocally_(text);
   addQ(prod);
-  prod.split(' ').forEach(function (w) { if (w.length >= 4) addQ(w); });
+  prod.split(' ').forEach(function (w) { if (w.length >= 4 && !isFormWord_(w)) addQ(w); });
   /* لو بيكمّل كلام ("التاني"، "الكبير") ندوّر باللي اتقال قبل كده */
   if (out.length < 3 && history && history.length) {
     for (var i = history.length - 1; i >= 0 && i >= history.length - 4; i--) {
@@ -3500,7 +3495,7 @@ function brainPrompt_(chatId, text, history, items, noSearch) {
       (it.units > 1 ? ' | العلبة ' + it.units : '') +
       (it.stock < LOW_STOCK_THRESHOLD ? ' | كمية محدودة' : '') +
       (it.activeKey ? ' | المادة الفعالة: ' + it.activeKey : '') +
-      (it.closeMatch ? ' | تطابق قريب' + (it.closeWhy === 'form' ? ' (شكل مختلف' + (it.askedForm ? ': ' + it.askedForm : '') + ')' : ' (نفس المادة الفعالة)') : '');
+      (it.closeMatch && it.closeWhy === 'form' ? ' | تطابق قريب (شكل مختلف' + (it.askedForm ? ': ' + it.askedForm : '') + ')' : '');
   }).join('\n') : '(مفيش أصناف مطابقة للكلام ده في المخزون)';
   return 'انت صيدلي شاب ودود في ' + PHARMACY_NAME + ' (محلة كيل، مصر)، بترد على العملاء على الشات بالعامية المصرية.\n\n' +
     'الأسلوب:\n' +
@@ -3519,15 +3514,16 @@ function brainPrompt_(chatId, text, history, items, noSearch) {
     '- اسأل سؤال يكمّل الكلام لما يكون مفيد، واعرض التوصيل لما يناسب ("تحب حضرتك نوصلهولك؟").\n\n' +
     'القواعد (لازم):\n' +
     '1. التوافر والأسعار من "المخزون المتاح" تحت بس. السعر يتكتب زي ما هو بالظبط. ممنوع تخترع صنف أو سعر.\n' +
-    '1-ج. صنف مكتوب جنبه "تطابق قريب": ده نفس المادة الفعالة بشكل أو اسم مختلف، مش بديل اخترته أنت. ' +
-    'لو الشكل مختلف قول بجملة صريحة: "الشكل اللي حضرتك طلبته مش ظاهر عندي، المتوفر: الاسم — السعر". ' +
-    'متقولش إنه نفس الشكل المطلوب، ومتقولش إنه مش متوفر خالص.\n' +
+    '1-ج. صنف مكتوب جنبه "تطابق قريب (شكل مختلف)": ده نفس المنتج ونفس الماركة بشكل تاني (نقط بدل شراب مثلًا)، مش بديل اخترته أنت. ' +
+    'قول بجملة صريحة: "الشكل اللي حضرتك طلبته مش ظاهر عندي، المتوفر: الاسم — السعر". ' +
+    'متقولش إنه نفس الشكل المطلوب. ماركة تانية حتى لو نفس المادة الفعالة ممنوعة تتذكر خالص.\n' +
     '1-أ. لو اسم الدوا اللي العميل كتبه مش معروف أو شكله غلطة كتابة لاسم معروف (زي "بدوفين" ممكن تكون "بروفين"، "كتافلام" ممكن "كتافاست"): ' +
     'متقولش متوفر ولا مش متوفر — اسأله الأول بجملة قصيرة: "تقصد حضرتك بروفين؟" (اقترح أقرب اسم أو اتنين بالكتير). ' +
     'ولو كان بيقول إنه بياخده ومعاه دوا تاني من نفس العيلة (زي بروفين + فولتارين، الاتنين مسكنات NSAIDs) نبّه إنهم مايتاخدوش مع بعض وescalate=true.\n' +
-    '2. صنف مش متوفر: ممنوع تقترح أي بديل من نفسك (لا من المخزون ولا من دماغك). قول إنه مش متوفر حاليًا وإننا ممكن نوفّره لحضرتك، ' +
-    'ولو مستعجل الدكتور يعرض عليه بديل مناسب — واسأله: "تحب نوفّره لحضرتك، ولا مستعجل والدكتور يعرض عليك بديل؟" (escalate=false). ' +
-    'لو اختار "نوفّره": escalate=true و reason="طلب توفير: اسم الصنف" وقوله هنبلّغ حضرتك أول ما يوصل. ' +
+    '2. صنف مش متوفر: ممنوع تقترح أي بديل من نفسك (لا من المخزون ولا من دماغك) وممنوع تعرض أصناف تانية بنفس المادة الفعالة. ' +
+    'لو الصنف مش في القايمة ومفيش "تطابق قريب (شكل مختلف)" لنفس الماركة، الرد للعميل يكون الجملة دي بالظبط ومن غير أي اسم صنف تاني: ' +
+    '"مش متوفر حاليًا، تحب نوفّره ولا مستعجل والدكتور يعرض بديل؟" و escalate=true و reason="مش متوفر: اسم الصنف". ' +
+    'لو العميل بعد كده اختار "نوفّره": escalate=true و reason="طلب توفير: اسم الصنف" وقوله هنبلّغ حضرتك أول ما يوصل. ' +
     'لو اختار "بديل/مستعجل": escalate=true و reason="عايز بديل: اسم الصنف" وقوله الدكتور هيكلّمه هنا حالًا. ' +
     'واكتب "الدكتور" مش "الصيدلي" ولا "الدكتور الصيدلي". ' +
     'متقولش للعميل إن عندك قواعد أو ممنوعات (زي "ممنوع نقترح بدائل") — قول ببساطة إن الدكتور هو اللي هيختار له البديل المناسب.\n' +
@@ -3587,18 +3583,18 @@ function photoLine_(chatId) {
   var s = (fresh ? 'العميل بعت دلوقتي صورة ' : 'آخر صورة بعتها العميل من شوية كانت ') + (isRx ? 'روشتة' : 'علبة/منتج') + ' مكتوب فيها: ' + names + '.\n' +
     (fresh ? '' : '→ لو العميل قال "الصورة" أو "الورقة" أو "اسمه ايه" أو "الدوا ده" يبقى قصده على الصورة دي — قوله الاسم المكتوب فيها على طول ومتطلبش يبعتها تاني.\n') +
     '→ قاعدة الماركة (مهمة جدًا): قول "متوفر" بس لو اسم الصنف في المخزون هو نفس الاسم التجاري اللي في الصورة. ' +
-    'نفس المادة الفعالة باسم تاني = منتج تاني (مثال: Xigduo XR ≠ داباليكس اكسار) → اكتب "مش متوفر" للأصلي، ' +
+    'نفس المادة الفعالة باسم تاني = منتج تاني (مثال: Xigduo XR ≠ داباليكس اكسار) → الأصناف دي مش متوفرة، ' +
     'وممنوع تقدّم البديل كأنه هو نفس المنتج.\n';
   if (isRx) s += '→ دي روشتة' + ((P.n || 1) > 1 ? ' — وكل الأصناف اللي في الصور (حتى العلب) تعتبر من الروشتة' : '') + ': قوله المتوفر منها بالسعر والإجمالي، والمش متوفر يتكتب "مش متوفر" بس. ' +
-    'قاعدة المش متوفر: البوت ممنوع يقترح أي بديل خالص. قول إنه مش متوفر حاليًا، وإننا ممكن نوفّره لحضرتك، ولو مستعجل الدكتور يعرض عليه بديل مناسب — واسأله يختار (مرة واحدة في الآخر لكل المش متوفر). متقولش جرعات.\n' +
+    'قاعدة المش متوفر: ممنوع تقترح أي بديل أو أي صنف بنفس المادة الفعالة. للأصناف المش متوفرة اكتب مرة واحدة في الآخر الجملة دي بالظبط: "مش متوفر حاليًا، تحب نوفّره ولا مستعجل والدكتور يعرض بديل؟" و escalate=true. متقولش جرعات ومتذكرش أسماء بديلة.\n' +
     '→ أي صنف مكتوب جنبه (مش واضح): اكتبه في سطر لوحده بالشكل ده: الاسم — مش واضح في الروشتة (الدكتور هيأكده). متقولش عليه متوفر ولا مش متوفر.\n' +
     '→ أي صنف متوفر ومكتوب جنبه {من الروشتة}: اكتب بعد سعره "(هيتأكد مع الدكتور)" — لأن قراية خط الإيد ممكن تغلط.\n' +
     '→ اختم دايمًا بسؤال يقفل الطلب لو فيه حاجة متوفرة، زي: "تحب حضرتك نجهّز المتوفر ونوصّله؟"\n';
   else if (P.rx) s += '→ ده دوا بروشتة: متقولش جرعة. قول التوافر والسعر' + (P.label && fresh ? '، والمكتوب على العلبة (بالعربي بس): "' + P.label + '"' : '') +
-    '. لو مش متوفر: قاعدة المش متوفر: البوت ممنوع يقترح أي بديل خالص. قول إنه مش متوفر حاليًا، وإننا ممكن نوفّره لحضرتك، ولو مستعجل الدكتور يعرض عليه بديل مناسب — واسأله يختار. ' +
+    '. لو مش متوفر: ممنوع تقترح أي بديل أو أي صنف بنفس المادة الفعالة. قول الجملة دي بالظبط: "مش متوفر حاليًا، تحب نوفّره ولا مستعجل والدكتور يعرض بديل؟" و escalate=true. ' +
     'والجرعة حسب الدكتور المعالج والدكتور هيأكدها (escalate=true لو سأل عن الاستعمال). ولو متوفر اختم بسؤال: "تحب حضرتك نجهّزه أو نوصّله؟"\n';
   else if (fresh) s += '→ رد على سؤاله عن الأصناف دي (التوافر والسعر، ومعلومة عامة عن استخدامه لو سأل — من غير جرعات: الجرعة والترشيح للدكتور). ' +
-    'قاعدة المش متوفر: البوت ممنوع يقترح أي بديل خالص. قول إنه مش متوفر حاليًا، وإننا ممكن نوفّره لحضرتك، ولو مستعجل الدكتور يعرض عليه بديل مناسب — واسأله يختار.\n';
+    'ممنوع تقترح أي بديل أو أي صنف بنفس المادة الفعالة. لو مش متوفر قول الجملة دي بالظبط: "مش متوفر حاليًا، تحب نوفّره ولا مستعجل والدكتور يعرض بديل؟" و escalate=true.\n';
   return s;
 }
 
@@ -3640,11 +3636,11 @@ function customerNamedItem_(text, history, it) {
   var toks = String(it.key || stockKey_(it.name)).split(' ').filter(function (w) { return w.length >= 4; });
   for (var i = 0; i < toks.length; i++) if (nk.indexOf(toks[i]) !== -1) return true;
   var qw = String(extractProductLocally_(text) || '').split(' ').filter(function (w) { return w.length >= 4; });
-  var ik = it.key || '', ak = it.activeKey || '';
+  var ik = it.key || '';
   for (var j = 0; j < qw.length; j++) {
     var keys = ingAliasKeys_(qw[j]);
     for (var a = 0; a < keys.length; a++) {
-      if ((ik && ik.indexOf(keys[a]) !== -1) || (ak && ak.indexOf(keys[a]) !== -1)) return true;
+      if (ik && ik.indexOf(keys[a]) !== -1) return true;
     }
   }
   return false;
@@ -3655,11 +3651,13 @@ function replyMentionsItem_(reply, it) {
   var raw = String(it.name || '').toLowerCase();
   return !!(raw && String(reply).toLowerCase().indexOf(raw) !== -1);
 }
-/* حارس كود: جرعة، أو ترشيح دوا لعرض، أو بديل العميل ماسمّهوش. التطابق القريب (نفس المادة) مسموح. */
+/* حارس كود: جرعة، أو ترشيح دوا لعرض، أو بديل العميل ماسمّهوش.
+   نفس الماركة بشكل تاني (closeWhy=form) مسموح. نفس المادة الفعالة بماركة تانية ممنوعة. */
 function botReplyBlocked_(reply, text, items, history) {
   if (replyHasDosing_(reply)) return 'جرعة';
   var named = (items || []).some(function (it) { return customerNamedItem_(text, history, it); });
   var nreply = normalizeArabic(reply);
+  if (/مش لاقي نفس الاسم|بنفس الماده الفعاله/.test(nreply)) return 'قائمة بدائل';
   if (textHasSymptom_(text) && !named) {
     if (/✅|❌/.test(reply)) return 'ترشيح علاج';
     if (/(انصح|استعمل|استخدم|يناسبك|رشحلك|جرب |افضل حاجه|احسن حاجه)/.test(nreply)) return 'ترشيح علاج';
@@ -3667,7 +3665,7 @@ function botReplyBlocked_(reply, text, items, history) {
     if (/\d+\s*جنيه/.test(toAsciiDigits_(reply))) return 'ترشيح علاج';
   }
   var foreign = (items || []).filter(function (it) {
-    if (it.closeMatch) return false;
+    if (it.closeMatch && it.closeWhy === 'form') return false;
     if (!replyMentionsItem_(reply, it)) return false;
     return !customerNamedItem_(text, history, it);
   });
@@ -3684,11 +3682,57 @@ function heldSilence_(chatId, text, arrivalUnix) {
   } catch (e) {}
   saveConversationTurn(chatId, text, '[الصيدلي بيرد بنفسه]', 'bot', arrivalUnix);
 }
+/* طلب اسم منتج ومفيش نفس المنتج في المخزون (ولا نفس الماركة بشكل تاني).
+   بيرجع اسم الصنف لو لازم نرد بجملة "مش متوفر" ونحوّل للدكتور، أو فاضي لو الرسالة مش طلب صنف. */
+function productAskMiss_(text) {
+  if (PHOTO_CTX) return '';
+  var prod = extractProductLocally_(text);
+  if (!prod || prod.length < 3) return '';
+  var n = normalizeArabic(text);
+  if (/(بيتعارض|تفاعل|جرعه|استخدام|بيستخدم|الفرق|اعراض|حامل|رضاع|روشت)/.test(n)) return '';
+  var choice = { 'نوفره': 1, 'نوفر': 1, 'وفر': 1, 'وفره': 1, 'مستعجل': 1, 'مستعجلين': 1 };
+  var follow = { 'الكبير': 1, 'الصغير': 1, 'الاول': 1, 'الاولى': 1, 'نفسه': 1, 'نفسها': 1 };
+  var words = prod.split(' ').filter(function (w) {
+    if (w.length < 4 || isFormWord_(w) || isGenericWord_(w) || choice[w] || follow[w]) return false;
+    for (var i = 0; i < SYMPTOM_WORDS_.length; i++) if (w.indexOf(normalizeArabic(SYMPTOM_WORDS_[i])) !== -1) return false;
+    return true;
+  });
+  if (!words.length) return '';
+  var asked = false, parts = {};
+  n.split(' ').forEach(function (w) { parts[w] = 1; });
+  ['عندك','عندكم','موجود','متوفر','متوفره','سعر','بكام','كام','فيه'].forEach(function (w) {
+    if (parts[normalizeArabic(w)]) asked = true;
+  });
+  var lead = { 'عايز': 1, 'عاوز': 1, 'محتاج': 1, 'لو': 1, 'سمحت': 1, 'فضلك': 1 };
+  var msgWords = n.split(' ').filter(Boolean);
+  var content = msgWords.filter(function (w) {
+    return !lead[w] && !isGenericWord_(w) && !isFormWord_(w) && !choice[w] && !follow[w] && w.length >= 5;
+  });
+  var bareName = content.length >= 1 && content.length <= 3 && msgWords.length <= 6 && content.join(' ') === words.join(' ');
+  var chatty = { 'ايه': 1, 'اي': 1, 'ازاي': 1, 'ليه': 1, 'عامل': 1, 'عامله': 1, 'في': 1, 'اخبار': 1, 'الاخبار': 1, 'اخبارك': 1 };
+  if (!asked && msgWords.some(function (w) { return chatty[w]; })) return '';
+  if ((hasAnyWord_(n, GREETING_WORDS_) || hasAnyWord_(n, THANKS_WORDS_)) && !asked) return '';
+  if (!asked && !bareName) return '';
+  function hits_(q) {
+    return searchStock(q).some(function (it) { return !it.closeMatch || it.closeWhy === 'form'; });
+  }
+  if (hits_(prod)) return '';
+  for (var s = 0; s < words.length; s++) if (hits_(words[s])) return '';
+  return words.join(' ');
+}
 /* بيرجع true لو رد وخلص، false لو لازم النظام القديم يكمّل */
 function smartCustomerReply_(chatId, text, history, arrivalUnix) {
   if (!SMART_BRAIN) return false;
   if (holdOn_(chatId)) { heldSilence_(chatId, text, arrivalUnix); return true; }
   try {
+    var miss = productAskMiss_(text);
+    if (miss) {
+      if (holdOn_(chatId)) { heldSilence_(chatId, text, arrivalUnix); return true; }
+      escalateToDoctor_(chatId, text, 'مش متوفر: ' + miss);
+      if (holdOn_(chatId) || sendTelegram_(chatId, PRODUCT_MISSING_REPLY_) === false) { heldSilence_(chatId, text, arrivalUnix); return true; }
+      saveConversationTurn(chatId, text, PRODUCT_MISSING_REPLY_, 'bot', arrivalUnix);
+      return true;
+    }
     var items = brainCandidates_(text, history, '');
     var res = brainParse_(callGemini(brainPrompt_(chatId, text, history, items)));
     if (!res) res = brainParse_(callGemini(brainPrompt_(chatId, text, history, items)));   /* محاولة تانية لو الرد مش JSON */
@@ -3743,8 +3787,9 @@ function smartCustomerReply_(chatId, text, history, arrivalUnix) {
 
     var blocked = botReplyBlocked_(reply, text, items, history);
     if (blocked) {
-      reply = 'الدكتور هيكلم حضرتك هنا في أقرب وقت';
-      escalateToDoctor_(chatId, text, 'حارس: ' + blocked);
+      var missingLine = blocked === 'قائمة بدائل';
+      reply = missingLine ? PRODUCT_MISSING_REPLY_ : 'الدكتور هيكلم حضرتك هنا في أقرب وقت';
+      escalateToDoctor_(chatId, text, missingLine ? ('مش متوفر: ' + (extractProductLocally_(text) || 'صنف')) : ('حارس: ' + blocked));
       if (holdOn_(chatId) || sendTelegram_(chatId, reply) === false) { heldSilence_(chatId, text, arrivalUnix); return true; }
       saveConversationTurn(chatId, text, reply, 'bot', arrivalUnix);
       return true;
@@ -3785,8 +3830,8 @@ function smartCustomerReply_(chatId, text, history, arrivalUnix) {
     } else if (res.order && claimsOrderSaved_(reply)) {
       reply = 'لسه بنكمّل بيانات الطلب. الأوردر مش بيتسجل غير بعد ملخص وتأكيد من حضرتك.';
     }
-    /* رد صورة من غير سؤال → نقفله بسؤال الطلب */
-    if (PHOTO_CTX && !/[؟?]\s*$/.test(reply))
+    /* رد صورة من غير سؤال → نقفله بسؤال الطلب. جملة "مش متوفر" تفضل لوحدها. */
+    if (PHOTO_CTX && reply !== PRODUCT_MISSING_REPLY_ && !/[؟?]\s*$/.test(reply))
       reply += '\n\nتحب حضرتك نجهّز المتوفر ونوصّله؟';
     if (holdOn_(chatId) || sendTelegram_(chatId, reply) === false) { heldSilence_(chatId, text, arrivalUnix); return true; }
     saveConversationTurn(chatId, text, reply, 'bot', arrivalUnix);
@@ -4104,8 +4149,19 @@ function handleCustomerMessage(chatId, message) {
       var fbProd = extractProductLocally_(text), fbRes = fbProd && fbProd.length >= 3 ? searchStock(fbProd) : [];
       if (fbRes.length) {
         var fbAns = buildProductAnswer_(fbRes, fbProd);
+        if (!fbAns.available) {
+          escalateToDoctor_(chatId, text, 'مش متوفر: ' + fbProd);
+          logDeliveredTurn_(chatId, text, fbAns.text, message.date, sendTelegram_(chatId, fbAns.text) !== false);
+          return;
+        }
         logQuote_(chatId, fbAns.items || []); quotedAdd_(chatId, fbAns.items || []);
         logDeliveredTurn_(chatId, text, fbAns.text, message.date, sendTelegram_(chatId, fbAns.text) !== false);
+        return;
+      }
+      var fbMiss = productAskMiss_(text);
+      if (fbMiss) {
+        escalateToDoctor_(chatId, text, 'مش متوفر: ' + fbMiss);
+        logDeliveredTurn_(chatId, text, PRODUCT_MISSING_REPLY_, message.date, sendTelegram_(chatId, PRODUCT_MISSING_REPLY_) !== false);
         return;
       }
       escalateToDoctor_(chatId, text, 'البوت مقدرش يرد — يفضّل ترد بنفسك');
@@ -4200,18 +4256,17 @@ function handleProductQuery_(chatId, text, product, history, arrivalUnix) {
 
   if (!results.length) {
     logUnavailableRequest_(chatId, product);
-    var msg;
-    if (ALLOW_AUTO_ALTERNATIVES) {
-      msg = 'للأسف "' + product + '" مش متوفر عندنا دلوقتي.';
-    } else {
-      msg = 'للأسف "' + product + '" مش متوفر عندنا دلوقتي.\n' +
-            'ممكن نوفّره لحضرتك، ولو مستعجل الدكتور يعرض عليك بديل مناسب. تحب أنهي؟';
-    }
-    logDeliveredTurn_(chatId, text, msg, arrivalUnix, sendTelegram_(chatId, msg) !== false);
+    escalateToDoctor_(chatId, text, 'مش متوفر: ' + product);
+    logDeliveredTurn_(chatId, text, PRODUCT_MISSING_REPLY_, arrivalUnix, sendTelegram_(chatId, PRODUCT_MISSING_REPLY_) !== false);
     return;
   }
 
   const answer = buildProductAnswer_(results, product);
+  if (!answer.available) {
+    escalateToDoctor_(chatId, text, 'مش متوفر: ' + product);
+    logDeliveredTurn_(chatId, text, answer.text, arrivalUnix, sendTelegram_(chatId, answer.text) !== false);
+    return;
+  }
   logQuote_(chatId, answer.items || []);
 
   // نخلي المودل يصيغ جملة تقديم بس — من غير أي أرقام

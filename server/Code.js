@@ -1,3 +1,4 @@
+// ==== MODULE 00_config (split from server/Code.js; load order = file name order) ====
 /* 🔐 المفاتيح السرية بتتخزن في إعدادات السيرفر (Script Properties) مش في الكود،
    عشان الكود نفسه يقدر يتحط على GitHub من غير ما المفاتيح تبان. */
 function secret_(k, seed) {
@@ -22,13 +23,280 @@ const CONNECTEAM_API_KEY = secret_('CONNECTEAM_API_KEY');
 const CONNECTEAM_TIME_CLOCK_ID = '4828050';
 const CONNECTEAM_USER_MAP = {};
 const STAFF_GROUP = '-5150806315';
+// ==== MODULE 05_routing (split from server/Code.js; load order = file name order) ====
 
-// 🆕 إعدادات نظام رسائل SMS + نقاط الولاء
-const AUTOREMOTE_KEY = secret_('AUTOREMOTE_KEY');
-const AUTOREMOTE_URL = 'https://autoremotejoaomgcd.appspot.com/sendmessage';
-const SMS_LOG_SHEET = 'رسائل SMS';
-const POINTS_SHEET = 'نقاط العملاء';
-const INVALID_PHONE_SHEET = 'أرقام تحتاج مراجعة';
+
+/* 🔒 قفل اللوحة (بيتفعّل من الإعدادات): بيانات المبيعات والعملاء والديون وطلب النواقص محتاجة الرقم السري.
+   الصفحات التانية (الملصقات، الجرد، الدكاترة) والـ SMS والتليجرام مش بتتأثر.
+   علامة "اتطلب" من بوت الجرد بتعدّي بمفتاح ORDERS_BOT_KEY من جوه markOrdered، مش من هنا. */
+var LOCKED_GET = { getHomeBundle: 1, getSMSLogFast: 1, getSMSLog: 1, getCustomers: 1, getHistory: 1, getCustomerProfile: 1,
+  getCustomerVisits: 1, getAiConfig: 1, getAiUsage: 1, botStatus: 1, getBlocked: 1, getDashboard: 1, getStaffKPI: 1,
+  getNewCustomersDetail: 1, getSystemDailyTotals: 1, getDebtsData: 1, getDebtsByEmployee: 1, getMonthTotalsRaw: 1,
+  sendDebtReminder: 1, getExpensesData: 1, getProfitLoss: 1, getNetWorth: 1, getConnecteamHours: 1, getDayInvoices: 1,
+  getDayDebits: 1, getDayCollections: 1, getMonthDebtsSummary: 1, getCustomerPoints: 1, getInventoryAging: 1, getAgents: 1,
+  sendCoupon: 1, getStaffHub: 1, getExpiryByMonth: 1, getAttendanceLive: 1, getAttendanceHistory: 1, getAttendanceLiveV2: 1,
+  getAttendanceHistoryV2: 1, diagnoseAll: 1, getBotSettings: 1, maintenanceStatus: 1, maintenanceStop: 1,
+  maintenanceResumeLive: 1, maintenanceDedup: 1, maintenanceStartRebuild: 1, backfillExpenses: 1, getExpReviews: 1,
+  ordersPage: 1, orderEfficiency: 1, logShortages: 1 };
+var LOCKED_POST = { log: 1, block: 1, unblock: 1, setSalaries: 1, retrySMS: 1, testSMS: 1, dismissSMS: 1, payAgent: 1,
+  deleteAgentPending: 1, deleteCount: 1, expReview: 1 };
+function dashLocked_(pin) {
+  var P = PropertiesService.getScriptProperties();
+  if (P.getProperty('DASH_LOCK') !== '1') return false;
+  var saved = P.getProperty('ADMIN_PIN');
+  return !(saved && String(pin || '') === saved);
+}
+function lockedResp_() { return jsonResponseStaff({ ok: false, lockError: true, error: 'اللوحة مقفولة — اكتب الرقم السري' }); }
+
+function doGet(e) {
+  /* 🟢 تأكيد ويبهوك واتساب من ميتا */
+  if (e.parameter['hub.mode'] === 'subscribe')
+    return ContentService.createTextOutput(e.parameter['hub.verify_token'] === waVerifyToken_() ? String(e.parameter['hub.challenge'] || '') : 'bad token');
+  try { maybeEnsureTriggers_(); } catch (eT) {}
+  var action = e.parameter.action;
+  if (LOCKED_GET[action] && dashLocked_(e.parameter.pin)) return lockedResp_();
+  if (action === 'getBotSettings') return jsonResponseStaff(getBotSettings());
+  if (action === 'getExpReviews') return jsonResponseStaff(getExpReviews());
+  if (action === 'serverUpdateInfo') return jsonResponseStaff(serverUpdateInfo());
+
+  // 🆕 الأوامر السريعة الجديدة (نداء واحد للرئيسية، رسايل مقطوعة بمدة، حضور مصلّح، فحص شامل)
+  if (action === 'getHomeBundle') return jsonResponseStaff(getHomeBundleFast());
+  if (action === 'getSMSLogFast') return jsonResponseStaff(getSMSLogFast(e.parameter));
+  if (action === 'getAttendanceLiveV2') return jsonResponseStaff(getAttendanceLiveV2());
+  if (action === 'getAttendanceHistoryV2') return jsonResponseStaff(getAttendanceHistoryV2(e.parameter));
+  if (action === 'diagnoseAll') return jsonResponseStaff(diagnoseAll());
+  if (action === 'refreshNow') return jsonResponseStaff(refreshLiveNumbers());
+  // 📷 الجرد بالكاميرا
+  if (action === 'scanLookup')       return jsonResponseStaff(scanLookup(e.parameter.code));
+  if (action === 'scanSearch')       return jsonResponseStaff(scanSearch(e.parameter.q));
+  // 🩺 صفحة الدكاترة (بكود دخول)
+  if (action === 'doctorSearch')     return jsonResponseStaff(doctorSearch(e.parameter.q, e.parameter.k));
+  if (action === 'doctorOrder')      return jsonResponseStaff(doctorOrder(e.parameter.items, e.parameter.note, e.parameter.k));
+  if (action === 'doctorAdmin')      return jsonResponseStaff(doctorAdmin(e.parameter));
+  if (action === 'ordersPage')       return jsonResponseStaff(ordersPage(e.parameter.k, e.parameter.days));
+  if (action === 'orderEfficiency')  return jsonResponseStaff(orderEfficiency(e.parameter.days));
+  if (action === 'logShortages')     return jsonResponseStaff(logShortageSnapshot_(true));
+  if (action === 'markOrdered') {
+    var viaBot = ordersBotOk_(e.parameter.k || e.parameter.key);
+    if (!viaBot && dashLocked_(e.parameter.pin)) return lockedResp_();
+    return jsonResponseStaff(markOrdered_(e.parameter, viaBot));
+  }
+  if (action === 'ordersBotKey') {
+    if (!adminPinOk_(e.parameter.pin))
+      return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
+    return jsonResponseStaff(ensureOrdersBotKey_(e.parameter.regen === '1'));
+  }
+  if (action === 'scanReady')        return jsonResponseStaff(diagnoseScanReady());
+  if (action === 'timeSnapshot')     return jsonResponseStaff(timeSnapshot());
+  if (action === 'testSnapStore')    return jsonResponseStaff(testSnapStorage());
+  if (action === 'scanRefreshIndex') return jsonResponseStaff(refreshScanIndex());
+  if (action === 'countSessions')    return jsonResponseStaff(getCountSessions());
+  if (action === 'countReport')      return jsonResponseStaff(getCountReport(e.parameter.session));
+  if (action === 'openCounts')       return jsonResponseStaff(listOpenCounts(e.parameter));
+  if (action === 'loadCount')        return jsonResponseStaff(loadOpenCount(e.parameter.session));
+  if (action === 'countDue')         return jsonResponseStaff(getCountDue(e.parameter));
+  if (action === 'countAccuracy')    return jsonResponseStaff(getCountAccuracy(e.parameter));
+  if (action === 'backfillExpenses') return jsonResponseStaff(backfillExpenseArchive());
+  if (action === 'recordStats')      return jsonResponseStaff(recordDailyStats_());
+  if (action === 'fixOrder')         return jsonResponseStaff(getFixOrder(e.parameter.session));
+  if (action === 'sendFixOrder')     return jsonResponseStaff(sendFixOrder(e.parameter.session));
+  if (action === 'scanStaff')        return jsonResponseStaff(getScanStaff());
+  if (action === 'scanBundle')       return jsonResponseStaff(getScanBundle());
+  if (action === 'countActivity')    return jsonResponseStaff(getCountActivity(e.parameter));
+  if (action === 'getStaffHub') return jsonResponseStaff(getStaffHub(e.parameter));
+  if (action === 'snapshotStatus') return jsonResponseStaff(snapshotStatus());
+  if (action === 'snapshotRefresh') { buildSnapshot(); return jsonResponseStaff(snapshotStatus()); }
+  if (action === 'snapshotEnable') { setupSnapshotTrigger(); buildSnapshot(); return jsonResponseStaff(snapshotStatus()); }
+
+  if (action === 'getCustomers') return jsonResponseStaff(
+    cachedCall_('cust', {}, function(){ return { ok: true, list: getCustomers() }; }, 600));
+  if (action === 'getHistory') return jsonResponseStaff(getHistory(e.parameter.phone));
+  if (action === 'getCustomerProfile') return jsonResponseStaff(getCustomerProfile(e.parameter.phone));
+  if (action === 'getCustomerVisits') return jsonResponseStaff(getCustomerVisits(e.parameter.days));
+  /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
+  var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
+                        purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
+                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1 };
+  if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
+    return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
+  if (action === 'aiTest') return jsonResponseStaff(aiTest(e.parameter.q));
+  if (action === 'getAiConfig') return jsonResponseStaff(getAiConfig());
+  if (action === 'getAiUsage') return jsonResponseStaff(getAiUsage());
+  if (action === 'botStatus') return jsonResponseStaff(botStatus());
+  if (action === 'botSetRelay') return jsonResponseStaff(botSetRelay(e.parameter.url));
+  if (action === 'backupProbe') return jsonResponseStaff(backupProbe());
+  if (action === 'serverUpdate') return jsonResponseStaff(serverUpdate());
+  if (action === 'setAutoUpdate') return jsonResponseStaff(setAutoUpdate(e.parameter.on === '1'));
+  if (action === 'ensureTriggers') return jsonResponseStaff(ensureTriggers_({ which: e.parameter.which || '' }));
+  if (action === 'getBotChats') return jsonResponseStaff(getBotChats());
+  if (action === 'waInfo') return jsonResponseStaff(waInfo());
+  if (action === 'waSubscribe') return jsonResponseStaff(waSubscribe());
+  if (action === 'getBotChat') return jsonResponseStaff(getBotChat(e.parameter.id));
+  if (action === 'botReply') return jsonResponseStaff(botReply(e.parameter.id, e.parameter.text));
+  if (action === 'botHold') return jsonResponseStaff(botHold(e.parameter.id, e.parameter.on === '1'));
+  if (action === 'botDone') return jsonResponseStaff(botDone(e.parameter.id));
+  if (action === 'cleanBackups') return jsonResponseStaff(cleanBackups(e.parameter.apply === '1'));
+  if (action === 'cleanBackupsAuto') return jsonResponseStaff(cleanBackupsAuto());
+  if (action === 'purgeTrashedBackups') return jsonResponseStaff(purgeTrashedBackups());
+  if (action === 'getBlocked') return jsonResponseStaff(getBlockedCustomers());
+  if (action === 'getDashboard') return jsonResponseStaff(getDashboard(e.parameter));
+  if (action === 'getStaffKPI') return jsonResponseStaff(
+    cachedCall_('kpi', e.parameter, function(){ var r = getStaffKPIData(e.parameter); r.ok = true; return r; }, cacheTTL_(e.parameter)));
+  if (action === 'getNewCustomersDetail') return jsonResponseStaff(getNewCustomersDetail(e.parameter));
+  if (action === 'getSystemDailyTotals') return jsonResponseStaff(getSystemDailyTotals());
+  if (action === 'getDebtsData') return jsonResponseStaff(getDebtsSnap());
+  if (action === 'getDebtsByEmployee') return jsonResponseStaff(getDebtsByEmployee(e.parameter));
+  if (action === 'getMonthTotalsRaw') return jsonResponseStaff(
+    cachedCall_('mtr', e.parameter, function(){ return getMonthTotalsFromRaw(e.parameter); }, cacheTTL_(e.parameter)));
+  if (action === 'sendDebtReminder') {
+    return jsonResponseStaff(sendDebtReminderSMS_(e.parameter.phone, e.parameter.name, e.parameter.amount));
+  }
+  if (action === 'getExpensesData') return jsonResponseStaff(
+    cachedCall_('exp', e.parameter, function(){ return getExpensesData(e.parameter); }, cacheTTL_(e.parameter)));
+  if (action === 'getProfitLoss') return jsonResponseStaff(
+    cachedCall_('pl', e.parameter, function(){ return getProfitLossData(e.parameter); }, 600));
+  if (action === 'getNetWorth') return jsonResponseStaff(getNetWorthData());
+  if (action === 'getConnecteamHours') return jsonResponseStaff(getConnecteamHours(e.parameter.from, e.parameter.to));
+  if (action === 'getDayInvoices') return jsonResponseStaff(getDayInvoices(e.parameter.date));
+  /* ملصقات الأدوية — الكود في آخر الملف */
+  if (action === 'labelsFeed') return jsonResponseStaff(labelsFeed(e.parameter.since));
+  if (action === 'labelsSave') return jsonResponseStaff(labelsSave(e.parameter.data));
+  if (action === 'aiDose') return jsonResponseStaff(aiDose(e.parameter.data));
+  if (action === 'getDayDebits') return jsonResponseStaff(getDayDebits(e.parameter.date));
+  if (action === 'getDayCollections') return jsonResponseStaff(getDayCollections(e.parameter.date));
+  if (action === 'getMonthDebtsSummary') return jsonResponseStaff(getMonthDebtsSummary(e.parameter.month));
+  if (action === 'getSMSLog') return jsonResponseStaff(getSMSLogFast(e.parameter)); // بقى بيوجّه للنسخة السريعة
+  if (action === 'getCustomerPoints') return jsonResponseStaff(getCustomerPointsData(e.parameter.phone));
+  if (action === 'getInventoryAging') return jsonResponseStaff(getInventorySnap());
+  if (action === 'getAgents') return jsonResponseStaff(getAgentsSnap());
+  if (action === 'maintenanceStatus') return jsonResponseStaff(getMaintenanceStatus());
+  if (action === 'maintenanceStop') {
+    stopAutoRebuild(); pauseLiveTrigger();
+    return jsonResponseStaff({ ok: true, step: 'stop' });
+  }
+  if (action === 'maintenanceResumeLive') {
+    resumeLiveTrigger();
+    return jsonResponseStaff({ ok: true, step: 'resumeLive' });
+  }
+  if (action === 'maintenanceDedup') {
+    wipeAndRebuildStaffSheet();
+    return jsonResponseStaff({ ok: true, step: 'dedup' });
+  }
+  if (action === 'maintenanceStartRebuild') {
+    resetRebuildProgress(); startAutoRebuild();
+    return jsonResponseStaff({ ok: true, step: 'rebuild' });
+  }
+  if (action === 'sendCoupon') {
+    return jsonResponseStaff(sendCouponSMS_(e.parameter.phone, e.parameter.name, e.parameter.message, e.parameter.expiry));
+  }
+  if (action === 'getAttendanceLive') return jsonResponseStaff(getAttendanceLiveV2());
+  if (action === 'getAttendanceHistory') return jsonResponseStaff(getAttendanceHistoryV2(e.parameter));
+  if (action === 'getExpiryByMonth') return jsonResponseStaff(getExpiryByMonthSnap());
+  return jsonResponseStaff({ status: 'ok', message: 'Staff API شغال' });
+}
+
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+
+    /* 🟢 واتساب */
+    if (data.object === 'whatsapp_business_account') {
+      handleWhatsAppWebhook_(data);
+      return ContentService.createTextOutput('ok');
+    }
+    // 🆕 لو دي رسالة جاية من تليجرام (ويبهوك) — نعالجها ونخرج
+    if (data.update_id !== undefined) {
+      handleTelegramWebhook_(data);
+      return ContentService.createTextOutput('ok');
+    }
+
+    if (LOCKED_POST[data.action] && dashLocked_(data.pin)) return lockedResp_();
+    if (data.action === 'setBotSettings') return jsonResponseStaff(setBotSettings(data));
+    if (data.action === 'setWaConfig') return jsonResponseStaff(adminPinOk_(data.pin) ? setWaConfig(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
+    if (data.action === 'expReview') return jsonResponseStaff(expReview(data));
+    if (data.action === 'log') saveHistory(data);
+    if (data.action === 'block') setCustomerBlocked(data.phone, true);
+    if (data.action === 'unblock') setCustomerBlocked(data.phone, false);
+    /* قايمة العملاء متخزنة 10 دقايق — من غير المسح ده الحالة الجديدة متظهرش */
+    if (data.action === 'log' || data.action === 'block' || data.action === 'unblock') {
+      fxClearCache_('fx_c_cust_{}');
+      return jsonResponseStaff({ ok: true });
+    }
+    if (data.action === 'setAiConfig') return jsonResponseStaff(setAiConfig(data));
+    if (data.action === 'setSalaries') setMonthlySalaries(data.month, data.amount);
+    if (data.action === 'retrySMS') retryFailedSMS(data.invoiceid);
+    if (data.action === 'smsAck') return jsonResponseStaff(recordSmsAck(data.phone, data.err));
+    if (data.action === 'testSMS') {
+      var __t = sendSMSViaAutoRemote(data.phone, 'رسالة تجريبية من صيدلية السوسي - لو وصلتك يبقى السيستم شغال');
+      return jsonResponseStaff({ ok: __t.ok, code: __t.code, response: __t.response });
+    }
+    if (data.action === 'dismissSMS') dismissFailedSMS(data.invoiceid);
+    if (data.action === 'agentReferral') {
+      try {
+        logAgentDebug_('استقبال POST', JSON.stringify(data));
+        var __res = handleAgentReferral(data);
+        return jsonResponseStaff(__res);
+      } catch (__e) {
+        logAgentDebug_('خطأ فادح في doPost', __e.message + ' | ' + (__e.stack || ''));
+        return jsonResponseStaff({ ok: false, fatal: true, error: __e.message });
+      }
+    }
+    if (data.action === 'saveOpen') return jsonResponseStaff(saveOpenCount(data));
+    if (data.action === 'deleteCount') return jsonResponseStaff(deleteCountSession(data));
+    if (data.action === 'saveCount') return jsonResponseStaff(saveCountSession(data));
+    if (data.action === 'markOrdered') {
+      var viaBotM = ordersBotOk_(data.k || data.key);
+      if (!viaBotM && dashLocked_(data.pin)) return lockedResp_();
+      return jsonResponseStaff(markOrdered_(data, viaBotM));
+    }
+    if (data.action === 'payAgent') return jsonResponseStaff(payAgent(data.agentPhone, data.amount));
+    if (data.action === 'deleteAgentPending') return jsonResponseStaff(deleteAgentPendingRow(data.agentPhone, data.customerPhone));
+    return jsonResponseStaff({status:'ok'});
+  } catch(err) {
+    return jsonResponseStaff({status:'error', msg:err.toString()});
+  }
+}
+
+function getSystemDailyTotals() {
+  try {
+    const ss = SpreadsheetApp.openById(DAILY_STATS_SHEET_ID);
+    const sheet = ss.getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+    const map = {};
+    data.forEach(function(r) {
+      if (r[0]) map[String(r[0]).trim()] = r[1];
+    });
+
+    return {
+      ok: true,
+      sales_today: parseFloat(map['مبيعات اليوم']) || 0,
+      profit_today: parseFloat(map['الربحية اليوم']) || 0,
+      discount_today: parseFloat(map['الخصم اليوم']) || 0,
+      sales_yesterday: parseFloat(map['المبيعات امس']) || 0,
+      profit_yesterday: parseFloat(map['الربحية امس']) || 0,
+      discount_yesterday: parseFloat(map['الخصم امس']) || 0,
+      total_debt: parseFloat(map['صافي الدين']) || 0,
+      debt_today: parseFloat(map['الدين اليوم']) || 0,
+      debt_paid_today: parseFloat(map['الدين المسدد اليوم']) || 0,
+      debt_yesterday: parseFloat(map['الدين امس']) || 0,
+      debt_paid_yesterday: parseFloat(map['الدين المسدد امس']) || 0,
+      /* طلبيات في الطريق — عشان متطلبش اللي اتطلب فعلاً */
+      misc_today:      parseFloat(map['مصروفات متنوعة اليوم']) || 0,
+      misc_yesterday:  parseFloat(map['مصروفات متنوعة امس']) || 0,
+      purch_today:     parseFloat(map['مشتروات الشركات اليوم']) || 0,
+      purch_yesterday: parseFloat(map['مشتروات الشركات امس']) || 0,
+      orders_prep_count:  parseFloat(map['الطلبيات تحت التجهيز']) || 0,
+      orders_prep_cost:   parseFloat(map['تكلفة الطلبيات تحت التجهيز']) || 0,
+      orders_recv_count:  parseFloat(map['الطلبيات تحت الاستلام']) || 0,
+      orders_recv_cost:   parseFloat(map['تكلفة الطلبيات تحت الاستلام']) || 0,
+      updated_at: map['الوقـت'] || ''
+    };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+// ==== MODULE 10_staff_stats (split from server/Code.js; load order = file name order) ====
+
 
 const EMPLOYEES = {
   '1': 'الدكتور',
@@ -1201,6 +1469,102 @@ function sendOrderSuggestion(chatId) {
     sendTelegramStaff('⚠️ خطأ في تجهيز القائمة: ' + e.message, chatId);
   }
 }
+// ==== MODULE 15_tests_misc (split from server/Code.js; load order = file name order) ====
+
+
+// ===================================================================
+// 12) اختبارات — شغّلهم من المحرر قبل ما تعتمد على البوت
+// ===================================================================
+
+// 🧪 اختبار (1): بيجرب الردود جوه المحرر — من غير تليجرام ولا ويبهوك ولا Deploy
+function testBotNow() {
+  const samples = ['اهلا', 'بنادول', 'سعر كاتافلام كام', 'شكرا', 'نقاطي كام'];
+  samples.forEach(function(t) {
+    Logger.log('────────────────');
+    Logger.log('👤 العميل: ' + t);
+    var reply;
+    try {
+      reply = tryLocalReply_(String(PERSONAL_CHAT), t, []);
+    } catch (e) {
+      reply = '❌ خطأ: ' + e.message;
+    }
+    Logger.log('🤖 البوت: ' + (reply || '(الرد ده محتاج الذكاء الاصطناعي)'));
+  });
+  Logger.log('────────────────');
+  Logger.log('لو شفت ردود صح فوق ← الكود تمام، المشكلة في التوصيل.');
+}
+
+// 🧪 اختبار (2): بيبعتلك رسالة فعلية على تليجرام
+function testSendToMe() {
+  try {
+    sendTelegramStaff('🧪 رسالة اختبار من الاسكربت — لو وصلتك يبقى الإرسال شغال', PERSONAL_CHAT);
+    Logger.log('✅ اتبعتت — شوف تليجرام');
+  } catch (e) {
+    Logger.log('❌ فشل الإرسال: ' + e.message);
+  }
+}
+
+function testGemini() {
+  const result = callGemini('قول مرحبا بجملة قصيرة');
+  Logger.log(result ? ('✅ جيميني شغال: ' + result) : '❌ جيميني مش شغال — راجع المفتاح في الـ Logs');
+}
+
+function testStockSearch() {
+  const tests = ['بنادول', 'بانادول اكسترا', 'كاتافلام', 'البنادول', 'باراسيتامول'];
+  tests.forEach(function(q) {
+    const r = searchStock(q);
+    Logger.log('🔎 "' + q + '" → ' + r.length + ' نتيجة');
+    r.slice(0, 3).forEach(function(it) {
+      Logger.log('    ' + it.name + ' | ' + it.price + ' ج | رصيد ' + it.stock);
+    });
+  });
+}
+
+function setupStaffTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    const name = t.getHandlerFunction();
+    if (['checkStaffOrders', 'checkStaffMessages', 'sendMiddayReport', 'sendNightReport'].includes(name)) {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  ScriptApp.newTrigger('checkStaffOrders').timeBased().everyMinutes(1).create();
+  ScriptApp.newTrigger('checkStaffMessages').timeBased().everyMinutes(1).create();
+  ScriptApp.newTrigger('sendNightReport').timeBased().atHour(0).everyDays(1).create();
+}
+
+function sendNightReport() {
+  try { deduplicateStaffSheet(); } catch(e) { Logger.log('خطأ في التنظيف التلقائي: ' + e.message); }
+  const yesterday = new Date(new Date().getTime() - 24 * 60 * 60 * 1000);
+  const yDate = Utilities.formatDate(yesterday, 'Africa/Cairo', 'yyyy-MM-dd');
+  const yDateStr = Utilities.formatDate(yesterday, 'Africa/Cairo', 'dd/MM/yyyy');
+  getReportForDate(yDate, 'ملخص اليوم - ' + yDateStr, STAFF_GROUP);
+  const firstOfMonth = yDate.substring(0, 7) + '-01';
+  getReportForRange(firstOfMonth, yDate, 'الشهر حتى ' + yDateStr, STAFF_GROUP);
+}
+
+var CARE_WEIGHTS = {
+  new_customers: 0.35,
+  registration: 0.30,
+  repeat: 0.20,
+  low_returns: 0.15
+};
+
+function getConnecteamTimeClocks() {
+  const url = 'https://api.connecteam.com/time-clock/v1/time-clocks';
+  const res = UrlFetchApp.fetch(url, {
+    headers: { 'X-API-KEY': CONNECTEAM_API_KEY },
+    muteHttpExceptions: true
+  });
+  Logger.log(res.getContentText());
+}
+
+function connecteamReady_() {
+  if (!CONNECTEAM_API_KEY || CONNECTEAM_API_KEY.indexOf('ضع_') === 0) return 'لسه محطتش مفتاح Connecteam API';
+  if (!CONNECTEAM_TIME_CLOCK_ID || CONNECTEAM_TIME_CLOCK_ID.indexOf('ضع_') === 0) return 'لسه محطتش Time Clock ID';
+  return null;
+}
+// ==== MODULE 20_bot_config (split from server/Code.js; load order = file name order) ====
+
 
 // ===================================================================
 // 🤖 مساعد صيدلية السوسي — نسخة معاد بناؤها
@@ -1237,6 +1601,8 @@ const ESCALATE_KEYWORDS = [
   'مضاد حيوي','مضاد حيوى','حقن','امبول','أمبول','روشتة','روشته','وصفة',
   'جرعة','جرعه','كام مرة','اخده ازاي','آخده','يضر','تفاعل','بديل ل'
 ];
+// ==== MODULE 21_messaging (split from server/Code.js; load order = file name order) ====
+
 
 // ===================================================================
 // 1) استقبال رسايل تليجرام — Webhook أو Polling
@@ -1714,6 +2080,8 @@ function handleStaffCommand_(chatId, text) {
 
   return false;
 }
+// ==== MODULE 22_handoff (split from server/Code.js; load order = file name order) ====
+
 
 // ===================================================================
 // 2) تحويل السؤال للدكتور والرد عليه
@@ -1785,408 +2153,8 @@ function relayDoctorReply_(msg) {
     return false;
   }
 }
+// ==== MODULE 23_ai (split from server/Code.js; load order = file name order) ====
 
-// ===================================================================
-// 3) البحث في المخزون — تطبيع عربي قوي + ترتيب بالأولوية
-// ===================================================================
-
-// بيوحّد شكل الكلمة: الهمزات، الألف، التاء المربوطة، الياء، التطويل، وأل التعريف
-function normalizeArabic(s) {
-  var t = String(s || '')
-    .replace(/&#\d+;/g, ' ')
-    .replace(/[\u0640]/g, '')                 // التطويل ـــ
-    .replace(/[\u064B-\u0652]/g, '')          // التشكيل
-    .replace(/[أإآٱ]/g, 'ا')
-    .replace(/ى/g, 'ي')
-    .replace(/ؤ/g, 'و')
-    .replace(/ئ/g, 'ي')
-    .replace(/ء/g, '')
-    .replace(/ة/g, 'ه')
-    .replace(/[^\u0621-\u064Aa-zA-Z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim().toLowerCase();
-  return t;
-}
-
-// بيشيل "ال" التعريف ويوحّد الألف الزيادة (بنادول = بانادول)
-function stockKey_(s) {
-  return normalizeArabic(s)
-    .split(' ')
-    .map(function(w){ return w.length > 3 && w.indexOf('ال') === 0 ? w.substring(2) : w; })
-    .join(' ')
-    .replace(/ا/g, '');   // بنشيل الألف خالص من مفتاح المقارنة
-}
-
-// كلمات منتشرة مش بتفيد في البحث
-var STOP_WORDS_ = ['عندك','عندكم','عايز','عاوز','محتاج','ممكن','فيه','في','هل','لو','سمحت','من','فضلك','سعر','كام','بكام','علبه','علبة','شريط','برشام','دوا','دواء','صنف','طيب','طب','وفيه','وعندكم','موجود','متوفر','لسه','حضرتك','برضو','كمان'];
-
-// كلمات كلام عادي مش أسماء أصناف ("اعرض" اتطابقت مع صنف "صن سويت عرض" لأن stockKey_ بيشيل الألف).
-// بتتشال من البحث ومن استخراج اسم الصنف — بتتقارن بعد توحيد الألف زي بالظبط مفتاح المخزون.
-var GENERIC_QUERY_WORDS_ = ['عرض','اعرض','اعرضلي','اعرضها','عروض','غالي','غاليه','رخيص','ارخص','اقتصادي','اقتصاديه','بديل','البديل','بدايل','حاجه','حاجة','زيه','زيها','زي','تاني','ايه','لا','تمام','ماشي','اه','ايوه','اوكي','شكرا','خلاص','معلش','قصدي','دا','ده','دي'];
-// كلمات منتجات من حرفين (بتتشال عادةً لأن الكلمات القصيرة ملهاش لازمة) — "في رز طيب؟" كانت بترجع بحث فاضي وتاخد اللي قبلها
-var SHORT_PRODUCT_WORDS_ = ['رز','بن','خل'];
-// "هيكل" الكلمة من غير حروف العلة: سيرلاك = سيريلاك ، برفلجان = بيرفالجان (الألف بتتشال من stockKey_ قبل كده)
-function skel_(w) { return String(w).replace(/[يو]/g, ''); }
-var GENERIC_KEYS_ = null;
-function isGenericWord_(w) {
-  if (!GENERIC_KEYS_) {
-    GENERIC_KEYS_ = {};
-    GENERIC_QUERY_WORDS_.forEach(function (g) { GENERIC_KEYS_[stockKey_(g)] = true; });
-  }
-  return GENERIC_KEYS_[w] === true || GENERIC_KEYS_[stockKey_(w)] === true;
-}
-
-// بيقرا أعمدة المخزون المطلوبة بس (أسرع)، بالاسم مش بالرقم
-function readStockRowsFresh_() {
-  const ss = SpreadsheetApp.openById(STOCK_SHEET_ID);
-  const sheet = ss.getSheets()[0];
-  if (!sheet || sheet.getLastRow() <= 1) return [];
-
-  const lastCol = sheet.getLastColumn();
-  const header = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  const idx = {};
-  header.forEach(function(h, i) { idx[String(h || '').trim().toLowerCase()] = i; });
-
-  const need = ['nameen','namear','price','stock','expire','units','activecomponent'];
-  for (var i = 0; i < need.length; i++) {
-    if (idx[need[i]] === undefined) {
-      Logger.log('عمود ناقص في شيت المخزون: ' + need[i]);
-      return [];
-    }
-  }
-
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
-  const today = new Date();
-  const out = [];
-
-  for (var r = 0; r < data.length; r++) {
-    const row = data[r];
-    const stock = parseFloat(row[idx['stock']]) || 0;
-    if (stock <= 0) continue;
-
-    const nameAr = invCleanName_(row[idx['namear']]);
-    const nameEn = invCleanName_(row[idx['nameen']]);
-    const name = nameAr || nameEn;
-    if (!name) continue;
-
-    var daysToExpire = null;
-    const expD = invParseDate_(row[idx['expire']], 'Africa/Cairo');
-    if (expD) daysToExpire = Math.floor((expD - today) / 86400000);
-
-    out.push({
-      name: name,
-      price: parseFloat(row[idx['price']]) || 0,
-      stock: stock,
-      units: parseFloat(row[idx['units']]) || 0,
-      daysToExpire: daysToExpire,
-      key: stockKey_(name + ' ' + nameEn),
-      activeKey: stockKey_(row[idx['activecomponent']])
-    });
-  }
-  return out;
-}
-
-// بنحتفظ بنسخة من المخزون في الذاكرة عشان منقراش الشيت مع كل رسالة.
-// الشيت كبير (آلاف الصفوف) فقراءته كل مرة كانت بتاخد ثواني.
-function readStockRows_() {
-  try {
-    const cache = CacheService.getScriptCache();
-    const meta = cache.get('stk_meta');
-    if (meta) {
-      const n = parseInt(meta);
-      const keys = [];
-      for (var i = 0; i < n; i++) keys.push('stk_' + i);
-      const parts = cache.getAll(keys);
-      var joined = '';
-      var ok = true;
-      for (var j = 0; j < n; j++) {
-        if (parts['stk_' + j] === undefined) { ok = false; break; }
-        joined += parts['stk_' + j];
-      }
-      if (ok && joined) return JSON.parse(joined);
-    }
-  } catch (e) { /* الكاش وقع، هنقرا من الشيت عادي */ }
-
-  const rows = readStockRowsFresh_();
-  try {
-    const json = JSON.stringify(rows);
-    const CHUNK = 90000;
-    const n = Math.ceil(json.length / CHUNK);
-    const obj = {};
-    for (var k = 0; k < n; k++) obj['stk_' + k] = json.substring(k * CHUNK, (k + 1) * CHUNK);
-    const cache = CacheService.getScriptCache();
-    cache.putAll(obj, STOCK_CACHE_MINUTES * 60);
-    cache.put('stk_meta', String(n), STOCK_CACHE_MINUTES * 60);
-  } catch (e) { /* عادي */ }
-  return rows;
-}
-
-// لو حبيت تجبر تحديث المخزون فورًا بعد ما يتغير
-function clearStockCache() {
-  const cache = CacheService.getScriptCache();
-  const meta = cache.get('stk_meta');
-  if (meta) {
-    const keys = ['stk_meta'];
-    for (var i = 0; i < parseInt(meta); i++) keys.push('stk_' + i);
-    cache.removeAll(keys);
-  }
-  Logger.log('✅ اتمسحت نسخة المخزون المحفوظة');
-}
-
-/* أشكال دوائية: لو العميل طلب "نقط" والمتوفر "شراب" من نفس الاسم/الماركة، ده تطابق قريب.
-   ماركة تانية بنفس المادة الفعالة مش تطابق — البديل قرار الدكتور ومش بيتقال للعميل. */
-var FORM_WORD_LIST_ = ['drops','drop','syrup','syr','tabs','tab','tablet','tablets','cap','caps','capsule','capsules','cream','ointment','oint','spray','gel','susp','suspension','amp','ampoule','ampule','vial','sachet','suppository','نقط','نقطة','قطرة','قطرات','شراب','أقراص','اقراص','قرص','حبوب','حبة','حبه','كبسول','كبسولة','كبسولات','كريم','مرهم','بخاخ','جل','لبوس','لبوسة','تحاميل','تحميلة','حقن','حقنة','أمبول','امبول','فيال','كيس','أكياس','معلق'];
-var FORM_KEYS_ = null;
-function isFormWord_(w) {
-  if (!FORM_KEYS_) {
-    FORM_KEYS_ = {};
-    FORM_WORD_LIST_.forEach(function (g) { FORM_KEYS_[stockKey_(g)] = true; FORM_KEYS_[normalizeArabic(g)] = true; });
-  }
-  if (!w) return false;
-  return FORM_KEYS_[w] === true || FORM_KEYS_[stockKey_(w)] === true || FORM_KEYS_[normalizeArabic(w)] === true;
-}
-/* أسماء مواد فعالة بالعربي والإنجليزي — سهل التوسيع. من غير أسماء تجارية عشان الماركة متبقاش "نفس المادة" بالغلط */
-var ING_ALIAS_GROUPS_ = [
-  ['simethicone', 'سيميثيكون', 'سميثيكون', 'سيميتيكون', 'سيميتكون'],
-  ['paracetamol', 'باراسيتامول', 'اسيتامينوفين', 'acetaminophen'],
-  ['ibuprofen', 'ايبوبروفين', 'ايبوبروفن'],
-  ['diclofenac', 'ديكلوفيناك'],
-  ['amoxicillin', 'اموكسيسيلين', 'أموكسيسيلين'],
-  ['omeprazole', 'اوميبرازول', 'أوميبرازول'],
-  ['pantoprazole', 'بانتوبرازول'],
-  ['metformin', 'ميتفورمين'],
-  ['atorvastatin', 'اتورفاستاتين'],
-  ['cetirizine', 'سيتريزين'],
-  ['loratadine', 'لوراتادين'],
-  ['domperidone', 'دومبيريدون'],
-  ['hyoscine', 'هيوسين'],
-  ['salbutamol', 'سالبيوتامول'],
-  ['metoclopramide', 'ميتوكلوبراميد'],
-  ['lactulose', 'لاكتولوز', 'لاكتيولوز'],
-  ['ambroxol', 'امبروكسول'],
-  ['azithromycin', 'ازيثرومايسين'],
-  ['ciprofloxacin', 'سيبروفلوكساسين'],
-  ['metronidazole', 'ميترونيدازول']
-];
-var ING_ALIAS_INDEX_ = null;
-function ingAliasKeys_(word) {
-  if (!ING_ALIAS_INDEX_) {
-    ING_ALIAS_INDEX_ = {};
-    ING_ALIAS_GROUPS_.forEach(function (g) {
-      var keys = [];
-      g.forEach(function (n) { var k = stockKey_(n); if (k && keys.indexOf(k) === -1) keys.push(k); });
-      keys.forEach(function (k) { ING_ALIAS_INDEX_[k] = keys; });
-    });
-  }
-  var k = stockKey_(word);
-  return (k && ING_ALIAS_INDEX_[k]) || (k ? [k] : []);
-}
-function wordHitsName_(word, it) {
-  var toks = String(it.key || '').split(' ').filter(Boolean);
-  var keys = ingAliasKeys_(word), sk = skel_(stockKey_(word));
-  for (var i = 0; i < keys.length; i++) {
-    var qw = keys[i];
-    if (qw.length < 4) continue;
-    for (var t = 0; t < toks.length; t++) {
-      if (toks[t] === qw) return true;
-      if (qw.length >= 5 && (toks[t].indexOf(qw) === 0 || qw.indexOf(toks[t]) === 0)) return true;
-    }
-  }
-  if (sk.length >= 4) {
-    for (var t2 = 0; t2 < toks.length; t2++) if (skel_(toks[t2]) === sk) return true;
-  }
-  return false;
-}
-function formWordHits_(formWord, it) {
-  var qw = stockKey_(formWord);
-  if (!qw) return false;
-  var toks = String(it.key || '').split(' ').filter(Boolean);
-  for (var i = 0; i < toks.length; i++) {
-    var tok = toks[i];
-    if (tok === qw) return true;
-    if (qw.length >= 4 && tok.indexOf(qw) === 0) return true;
-    if (tok.length >= 4 && qw.indexOf(tok) === 0) return true;
-  }
-  return false;
-}
-function withClose_(it, why, askedForm) {
-  var c = {};
-  for (var k in it) if (Object.prototype.hasOwnProperty.call(it, k)) c[k] = it[k];
-  c.closeMatch = true;
-  c.closeWhy = why || 'partial';
-  c.askedForm = askedForm || '';
-  return c;
-}
-function askedFormWords_(query) {
-  return normalizeArabic(query).split(' ').filter(function (w) { return isFormWord_(w); });
-}
-function tagFormMismatch_(items, query) {
-  var forms = askedFormWords_(query);
-  if (!forms.length) return items;
-  var label = forms.join(' ');
-  return items.map(function (it) {
-    if (it.closeMatch) return it;
-    var miss = forms.some(function (f) { return !formWordHits_(f, it); });
-    return miss ? withClose_(it, 'form', label) : it;
-  });
-}
-/* طبقة تانية بس لو مفيش تطابق قوي: نفس المنتج (الاسم/الماركة) بشكل تاني. من غير بدائل بنفس المادة. */
-function closeStockMatches_(rows, qWords, askedForm) {
-  var subst = [], forms = [];
-  qWords.forEach(function (w) { (isFormWord_(w) ? forms : subst).push(w); });
-  if (!subst.length) return [];
-  if (!askedForm) askedForm = forms.join(' ');
-  var out = [];
-  for (var i = 0; i < rows.length; i++) {
-    var it = rows[i];
-    if (it.daysToExpire !== null && it.daysToExpire < MIN_EXPIRY_DAYS_TO_OFFER) continue;
-    var nameHits = [], misses = [];
-    for (var s = 0; s < subst.length; s++) {
-      if (wordHitsName_(subst[s], it)) nameHits.push(subst[s]);
-      else misses.push(subst[s]);
-    }
-    /* كلمة مش في الاسم = مش نفس المنتج، حتى لو المادة الفعالة واحدة */
-    if (!nameHits.length || misses.length) continue;
-    var longest = subst.slice().sort(function (a, b) { return b.length - a.length; })[0];
-    if (nameHits.indexOf(longest) === -1 && longest.length >= 6) continue;
-    var formMiss = forms.some(function (f) { return !formWordHits_(f, it); });
-    var why = formMiss ? 'form' : '';
-    out.push({ item: it, score: nameHits.length * 100, why: why });
-  }
-  out.sort(function (a, b) { return b.score - a.score; });
-  var seen = {}, res = [];
-  for (var j = 0; j < out.length && res.length < MAX_RESULTS_TO_SHOW; j++) {
-    if (seen[out[j].item.name]) continue;
-    seen[out[j].item.name] = 1;
-    res.push(out[j].why ? withClose_(out[j].item, out[j].why, askedForm) : out[j].item);
-  }
-  return res;
-}
-
-// البحث الأساسي — بيرجع نتايج مرتبة بالأهمية
-// الفكرة: بنقارن كل كلمة في سؤال العميل بكل كلمة في اسم الصنف،
-// وبندي درجة أعلى للتطابق الكامل. كده "بنادول" بتوصل لـ"بانادول"
-// من غير ما تجيب "باندولين" (حفاضات) معاها.
-function searchStock(query) {
-  try {
-    const rows = readStockRows_();
-    if (!rows.length) return [];
-
-    const qKey = stockKey_(query);
-    if (!qKey) return [];
-
-    const qWords = qKey.split(' ').filter(function(w) {
-      return w.length >= 2 && STOP_WORDS_.indexOf(w) === -1 && !isGenericWord_(w);
-    });
-    if (!qWords.length) return [];
-
-    const qSk = qWords.map(skel_);
-    const scored = [];
-    for (var i = 0; i < rows.length; i++) {
-      const it = rows[i];
-      const toks = it.key.split(' ').filter(function(t){ return t; });
-      var score = 0, hit = 0;
-
-      if (qKey.length >= 3 ? it.key.indexOf(qKey) !== -1 : toks.indexOf(qKey) !== -1) score += 60;   // العبارة كلها موجودة
-
-      for (var w = 0; w < qWords.length; w++) {
-        const qw = qWords[w];
-        var best = 0;
-        for (var t = 0; t < toks.length; t++) {
-          const tok = toks[t];
-          if (tok === qw) best = Math.max(best, 40);                                   // تطابق تام
-          else if (qw.length >= 3 && tok.indexOf(qw) === 0) best = Math.max(best, Math.round(40 * qw.length / tok.length)); // بداية الكلمة
-          else if (qw.length >= 3 && tok.indexOf(qw) !== -1) best = Math.max(best, Math.round(28 * qw.length / tok.length));
-        }
-        if (best === 0 && qSk[w].length >= 3) {   // اختلاف إملاء بسيط (سيرلاك/سيريلاك): بنقارن من غير ي و و
-          for (var t2 = 0; t2 < toks.length; t2++) {
-            const ts = skel_(toks[t2]);
-            if (ts === qSk[w]) best = Math.max(best, 34);
-            else if (qSk[w].length >= 4 && ts.indexOf(qSk[w]) === 0) best = Math.max(best, Math.round(30 * qSk[w].length / ts.length));
-          }
-        }
-        /* المادة الفعالة لوحدها مش تطابق للعميل: ماركة تانية بنفس المادة بديل، والدكتور هو اللي يعرضه */
-        if (best > 0) hit++;
-        score += best;
-      }
-      if (!hit) continue;
-
-      if (hit === qWords.length) score += 25;
-      if (it.stock >= 1) score += 8;
-      if (it.daysToExpire !== null && it.daysToExpire < MIN_EXPIRY_DAYS_TO_OFFER) score -= 60;
-
-      scored.push({ item: it, score: score, hit: hit });
-    }
-    var formLabel = askedFormWords_(query).join(' ');
-    if (!scored.length) return closeStockMatches_(rows, qWords, formLabel);
-
-    // لو فيه نتايج طابقت كل الكلمات، منعرضش غيرها
-    const full = scored.filter(function(x){ return x.hit === qWords.length; });
-    const pool = full.length ? full : scored;
-
-    pool.sort(function(a, b) { return b.score - a.score; });
-
-    // درجة ضعيفة = مفيش تطابق حقيقي. قبل ما نقول "مش متوفر" ندوّر على نفس المنتج بشكل تاني بس
-    if (pool[0].score < MIN_MATCH_SCORE) return closeStockMatches_(rows, qWords, formLabel);
-
-    const cutoff = pool[0].score * 0.6;
-    return tagFormMismatch_(pool.filter(function(x){ return x.score >= cutoff; })
-               .slice(0, 8)
-               .map(function(x){ return x.item; }), query);
-  } catch (e) {
-    Logger.log('خطأ searchStock: ' + e.message);
-    return [];
-  }
-}
-
-// ===================================================================
-// 4) بناء الرد من البيانات — الأسعار من هنا بس
-// ===================================================================
-
-function formatItemLine_(it) {
-  var line = '• ' + it.name + ' — ' + Math.round(it.price) + ' جنيه';
-  if (it.stock < LOW_STOCK_THRESHOLD) line += ' (كمية محدودة)';
-  return line;
-}
-
-/* جملة العميل لما الاسم مش موجود. البديل مش بيتقترح؛ الدكتور هو اللي يقرر. */
-var PRODUCT_MISSING_REPLY_ = 'مش متوفر حاليًا، تحب نوفّره ولا مستعجل والدكتور يعرض بديل؟';
-
-// بيرجع {text, prices[]} — prices هي الأرقام المسموح للمودل يذكرها
-function buildProductAnswer_(results, askedFor) {
-  const offerable = (results || []).filter(function(it) {
-    if (it.closeMatch && it.closeWhy !== 'form') return false;
-    return it.daysToExpire === null || it.daysToExpire >= MIN_EXPIRY_DAYS_TO_OFFER;
-  });
-
-  if (!offerable.length) {
-    return {
-      available: false,
-      text: PRODUCT_MISSING_REPLY_,
-      prices: [],
-      items: []
-    };
-  }
-
-  const show = offerable.slice(0, MAX_RESULTS_TO_SHOW);
-  const prices = show.map(function(it){ return Math.round(it.price); });
-
-  var text;
-  var closeOnly = show.every(function (it) { return it.closeMatch && it.closeWhy === 'form'; });
-  if (closeOnly) {
-    var head = 'الشكل اللي حضرتك طلبته' + (show[0].askedForm ? ' (' + show[0].askedForm + ')' : '') + ' مش ظاهر عندي، المتوفر:';
-    text = head + '\n' + show.map(formatItemLine_).join('\n');
-    if (show.length > 1) text += '\n\nتحب أجهز لحضرتك أنهي واحد فيهم؟';
-  } else if (show.length === 1) {
-    const it = show[0];
-    text = 'متوفر عندنا:\n' + formatItemLine_(it);
-    if (it.units > 1) text += '\nالعلبة ' + it.units + ' ' + (it.units > 10 ? 'حبة' : 'وحدة');
-  } else {
-    text = 'عندنا الأنواع دي متوفرة دلوقتي:\n' + show.map(formatItemLine_).join('\n') +
-           '\n\nتحب أجهز لحضرتك أنهي واحد فيهم؟';
-  }
-  return { available: true, text: text, prices: prices, items: show };
-}
 
 // ===================================================================
 // 5) جيميني — مع حارس يمنع اختراع الأرقام
@@ -2627,6 +2595,8 @@ function distKm_(a1, o1, a2, o2) {
   var x = Math.sin(da / 2) * Math.sin(da / 2) + Math.cos(a1 * r) * Math.cos(a2 * r) * Math.sin(dobj / 2) * Math.sin(dobj / 2);
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
+// ==== MODULE 24_bot_features (split from server/Code.js; load order = file name order) ====
+
 
 /* 🎤 الرسايل الصوتية → كلام مكتوب (Gemini المجاني) */
 function transcribeVoice_(fileId, mime) {
@@ -2910,6 +2880,8 @@ function confirmPendingOrder_(chatId) {
   tgApi_('sendMessage', { chat_id: chatId, text: rr });
   saveConversationTurn(chatId, '[أكد الطلب]', rr);
 }
+// ==== MODULE 25_bot_history_ui (split from server/Code.js; load order = file name order) ====
+
 
 // ===================================================================
 // 6) الذاكرة والتعرّف على العميل
@@ -3346,6 +3318,8 @@ function saveOrder_(chatId, itemsText, phone, address, confirmed) {
     return false;
   }
 }
+// ==== MODULE 26_bot_local_classify (split from server/Code.js; load order = file name order) ====
+
 
 // ===================================================================
 // 7.5) الفهم المحلي — من غير أي نداء لجيميني
@@ -3468,6 +3442,8 @@ function classifyCustomerMessage(text, history) {
     return { type: 'OTHER', product: '' };
   }
 }
+// ==== MODULE 27_bot_brain (split from server/Code.js; load order = file name order) ====
+
 
 
 // ===================================================================
@@ -3910,6 +3886,8 @@ function smartCustomerReply_(chatId, text, history, arrivalUnix) {
     return false;
   }
 }
+// ==== MODULE 28_bot_handler (split from server/Code.js; load order = file name order) ====
+
 
 // ===================================================================
 // 9) المعالج الرئيسي لرسالة العميل
@@ -4424,6 +4402,8 @@ function handleOrderIntent_(chatId, text, history, arrivalUnix) {
   }
   saveConversationTurn(chatId, text, sum, 'bot', arrivalUnix);
 }
+// ==== MODULE 29_telegram_webhook (split from server/Code.js; load order = file name order) ====
+
 
 // ===================================================================
 // 10) إرسال تليجرام
@@ -4585,98 +4565,412 @@ function deleteTelegramWebhook() {
   PropertiesService.getScriptProperties().deleteProperty('telegramWebhookOn');
   Logger.log('🛑 الويبهوك اتقفل — رجعنا للـ polling كل دقيقة');
 }
+// ==== MODULE 30_stock (split from server/Code.js; load order = file name order) ====
+
 
 // ===================================================================
-// 12) اختبارات — شغّلهم من المحرر قبل ما تعتمد على البوت
+// 3) البحث في المخزون — تطبيع عربي قوي + ترتيب بالأولوية
 // ===================================================================
 
-// 🧪 اختبار (1): بيجرب الردود جوه المحرر — من غير تليجرام ولا ويبهوك ولا Deploy
-function testBotNow() {
-  const samples = ['اهلا', 'بنادول', 'سعر كاتافلام كام', 'شكرا', 'نقاطي كام'];
-  samples.forEach(function(t) {
-    Logger.log('────────────────');
-    Logger.log('👤 العميل: ' + t);
-    var reply;
-    try {
-      reply = tryLocalReply_(String(PERSONAL_CHAT), t, []);
-    } catch (e) {
-      reply = '❌ خطأ: ' + e.message;
-    }
-    Logger.log('🤖 البوت: ' + (reply || '(الرد ده محتاج الذكاء الاصطناعي)'));
-  });
-  Logger.log('────────────────');
-  Logger.log('لو شفت ردود صح فوق ← الكود تمام، المشكلة في التوصيل.');
+// بيوحّد شكل الكلمة: الهمزات، الألف، التاء المربوطة، الياء، التطويل، وأل التعريف
+function normalizeArabic(s) {
+  var t = String(s || '')
+    .replace(/&#\d+;/g, ' ')
+    .replace(/[\u0640]/g, '')                 // التطويل ـــ
+    .replace(/[\u064B-\u0652]/g, '')          // التشكيل
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
+    .replace(/ء/g, '')
+    .replace(/ة/g, 'ه')
+    .replace(/[^\u0621-\u064Aa-zA-Z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim().toLowerCase();
+  return t;
 }
 
-// 🧪 اختبار (2): بيبعتلك رسالة فعلية على تليجرام
-function testSendToMe() {
+// بيشيل "ال" التعريف ويوحّد الألف الزيادة (بنادول = بانادول)
+function stockKey_(s) {
+  return normalizeArabic(s)
+    .split(' ')
+    .map(function(w){ return w.length > 3 && w.indexOf('ال') === 0 ? w.substring(2) : w; })
+    .join(' ')
+    .replace(/ا/g, '');   // بنشيل الألف خالص من مفتاح المقارنة
+}
+
+// كلمات منتشرة مش بتفيد في البحث
+var STOP_WORDS_ = ['عندك','عندكم','عايز','عاوز','محتاج','ممكن','فيه','في','هل','لو','سمحت','من','فضلك','سعر','كام','بكام','علبه','علبة','شريط','برشام','دوا','دواء','صنف','طيب','طب','وفيه','وعندكم','موجود','متوفر','لسه','حضرتك','برضو','كمان'];
+
+// كلمات كلام عادي مش أسماء أصناف ("اعرض" اتطابقت مع صنف "صن سويت عرض" لأن stockKey_ بيشيل الألف).
+// بتتشال من البحث ومن استخراج اسم الصنف — بتتقارن بعد توحيد الألف زي بالظبط مفتاح المخزون.
+var GENERIC_QUERY_WORDS_ = ['عرض','اعرض','اعرضلي','اعرضها','عروض','غالي','غاليه','رخيص','ارخص','اقتصادي','اقتصاديه','بديل','البديل','بدايل','حاجه','حاجة','زيه','زيها','زي','تاني','ايه','لا','تمام','ماشي','اه','ايوه','اوكي','شكرا','خلاص','معلش','قصدي','دا','ده','دي'];
+// كلمات منتجات من حرفين (بتتشال عادةً لأن الكلمات القصيرة ملهاش لازمة) — "في رز طيب؟" كانت بترجع بحث فاضي وتاخد اللي قبلها
+var SHORT_PRODUCT_WORDS_ = ['رز','بن','خل'];
+// "هيكل" الكلمة من غير حروف العلة: سيرلاك = سيريلاك ، برفلجان = بيرفالجان (الألف بتتشال من stockKey_ قبل كده)
+function skel_(w) { return String(w).replace(/[يو]/g, ''); }
+var GENERIC_KEYS_ = null;
+function isGenericWord_(w) {
+  if (!GENERIC_KEYS_) {
+    GENERIC_KEYS_ = {};
+    GENERIC_QUERY_WORDS_.forEach(function (g) { GENERIC_KEYS_[stockKey_(g)] = true; });
+  }
+  return GENERIC_KEYS_[w] === true || GENERIC_KEYS_[stockKey_(w)] === true;
+}
+
+// بيقرا أعمدة المخزون المطلوبة بس (أسرع)، بالاسم مش بالرقم
+function readStockRowsFresh_() {
+  const ss = SpreadsheetApp.openById(STOCK_SHEET_ID);
+  const sheet = ss.getSheets()[0];
+  if (!sheet || sheet.getLastRow() <= 1) return [];
+
+  const lastCol = sheet.getLastColumn();
+  const header = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const idx = {};
+  header.forEach(function(h, i) { idx[String(h || '').trim().toLowerCase()] = i; });
+
+  const need = ['nameen','namear','price','stock','expire','units','activecomponent'];
+  for (var i = 0; i < need.length; i++) {
+    if (idx[need[i]] === undefined) {
+      Logger.log('عمود ناقص في شيت المخزون: ' + need[i]);
+      return [];
+    }
+  }
+
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
+  const today = new Date();
+  const out = [];
+
+  for (var r = 0; r < data.length; r++) {
+    const row = data[r];
+    const stock = parseFloat(row[idx['stock']]) || 0;
+    if (stock <= 0) continue;
+
+    const nameAr = invCleanName_(row[idx['namear']]);
+    const nameEn = invCleanName_(row[idx['nameen']]);
+    const name = nameAr || nameEn;
+    if (!name) continue;
+
+    var daysToExpire = null;
+    const expD = invParseDate_(row[idx['expire']], 'Africa/Cairo');
+    if (expD) daysToExpire = Math.floor((expD - today) / 86400000);
+
+    out.push({
+      name: name,
+      price: parseFloat(row[idx['price']]) || 0,
+      stock: stock,
+      units: parseFloat(row[idx['units']]) || 0,
+      daysToExpire: daysToExpire,
+      key: stockKey_(name + ' ' + nameEn),
+      activeKey: stockKey_(row[idx['activecomponent']])
+    });
+  }
+  return out;
+}
+
+// بنحتفظ بنسخة من المخزون في الذاكرة عشان منقراش الشيت مع كل رسالة.
+// الشيت كبير (آلاف الصفوف) فقراءته كل مرة كانت بتاخد ثواني.
+function readStockRows_() {
   try {
-    sendTelegramStaff('🧪 رسالة اختبار من الاسكربت — لو وصلتك يبقى الإرسال شغال', PERSONAL_CHAT);
-    Logger.log('✅ اتبعتت — شوف تليجرام');
+    const cache = CacheService.getScriptCache();
+    const meta = cache.get('stk_meta');
+    if (meta) {
+      const n = parseInt(meta);
+      const keys = [];
+      for (var i = 0; i < n; i++) keys.push('stk_' + i);
+      const parts = cache.getAll(keys);
+      var joined = '';
+      var ok = true;
+      for (var j = 0; j < n; j++) {
+        if (parts['stk_' + j] === undefined) { ok = false; break; }
+        joined += parts['stk_' + j];
+      }
+      if (ok && joined) return JSON.parse(joined);
+    }
+  } catch (e) { /* الكاش وقع، هنقرا من الشيت عادي */ }
+
+  const rows = readStockRowsFresh_();
+  try {
+    const json = JSON.stringify(rows);
+    const CHUNK = 90000;
+    const n = Math.ceil(json.length / CHUNK);
+    const obj = {};
+    for (var k = 0; k < n; k++) obj['stk_' + k] = json.substring(k * CHUNK, (k + 1) * CHUNK);
+    const cache = CacheService.getScriptCache();
+    cache.putAll(obj, STOCK_CACHE_MINUTES * 60);
+    cache.put('stk_meta', String(n), STOCK_CACHE_MINUTES * 60);
+  } catch (e) { /* عادي */ }
+  return rows;
+}
+
+// لو حبيت تجبر تحديث المخزون فورًا بعد ما يتغير
+function clearStockCache() {
+  const cache = CacheService.getScriptCache();
+  const meta = cache.get('stk_meta');
+  if (meta) {
+    const keys = ['stk_meta'];
+    for (var i = 0; i < parseInt(meta); i++) keys.push('stk_' + i);
+    cache.removeAll(keys);
+  }
+  Logger.log('✅ اتمسحت نسخة المخزون المحفوظة');
+}
+
+/* أشكال دوائية: لو العميل طلب "نقط" والمتوفر "شراب" من نفس الاسم/الماركة، ده تطابق قريب.
+   ماركة تانية بنفس المادة الفعالة مش تطابق — البديل قرار الدكتور ومش بيتقال للعميل. */
+var FORM_WORD_LIST_ = ['drops','drop','syrup','syr','tabs','tab','tablet','tablets','cap','caps','capsule','capsules','cream','ointment','oint','spray','gel','susp','suspension','amp','ampoule','ampule','vial','sachet','suppository','نقط','نقطة','قطرة','قطرات','شراب','أقراص','اقراص','قرص','حبوب','حبة','حبه','كبسول','كبسولة','كبسولات','كريم','مرهم','بخاخ','جل','لبوس','لبوسة','تحاميل','تحميلة','حقن','حقنة','أمبول','امبول','فيال','كيس','أكياس','معلق'];
+var FORM_KEYS_ = null;
+function isFormWord_(w) {
+  if (!FORM_KEYS_) {
+    FORM_KEYS_ = {};
+    FORM_WORD_LIST_.forEach(function (g) { FORM_KEYS_[stockKey_(g)] = true; FORM_KEYS_[normalizeArabic(g)] = true; });
+  }
+  if (!w) return false;
+  return FORM_KEYS_[w] === true || FORM_KEYS_[stockKey_(w)] === true || FORM_KEYS_[normalizeArabic(w)] === true;
+}
+/* أسماء مواد فعالة بالعربي والإنجليزي — سهل التوسيع. من غير أسماء تجارية عشان الماركة متبقاش "نفس المادة" بالغلط */
+var ING_ALIAS_GROUPS_ = [
+  ['simethicone', 'سيميثيكون', 'سميثيكون', 'سيميتيكون', 'سيميتكون'],
+  ['paracetamol', 'باراسيتامول', 'اسيتامينوفين', 'acetaminophen'],
+  ['ibuprofen', 'ايبوبروفين', 'ايبوبروفن'],
+  ['diclofenac', 'ديكلوفيناك'],
+  ['amoxicillin', 'اموكسيسيلين', 'أموكسيسيلين'],
+  ['omeprazole', 'اوميبرازول', 'أوميبرازول'],
+  ['pantoprazole', 'بانتوبرازول'],
+  ['metformin', 'ميتفورمين'],
+  ['atorvastatin', 'اتورفاستاتين'],
+  ['cetirizine', 'سيتريزين'],
+  ['loratadine', 'لوراتادين'],
+  ['domperidone', 'دومبيريدون'],
+  ['hyoscine', 'هيوسين'],
+  ['salbutamol', 'سالبيوتامول'],
+  ['metoclopramide', 'ميتوكلوبراميد'],
+  ['lactulose', 'لاكتولوز', 'لاكتيولوز'],
+  ['ambroxol', 'امبروكسول'],
+  ['azithromycin', 'ازيثرومايسين'],
+  ['ciprofloxacin', 'سيبروفلوكساسين'],
+  ['metronidazole', 'ميترونيدازول']
+];
+var ING_ALIAS_INDEX_ = null;
+function ingAliasKeys_(word) {
+  if (!ING_ALIAS_INDEX_) {
+    ING_ALIAS_INDEX_ = {};
+    ING_ALIAS_GROUPS_.forEach(function (g) {
+      var keys = [];
+      g.forEach(function (n) { var k = stockKey_(n); if (k && keys.indexOf(k) === -1) keys.push(k); });
+      keys.forEach(function (k) { ING_ALIAS_INDEX_[k] = keys; });
+    });
+  }
+  var k = stockKey_(word);
+  return (k && ING_ALIAS_INDEX_[k]) || (k ? [k] : []);
+}
+function wordHitsName_(word, it) {
+  var toks = String(it.key || '').split(' ').filter(Boolean);
+  var keys = ingAliasKeys_(word), sk = skel_(stockKey_(word));
+  for (var i = 0; i < keys.length; i++) {
+    var qw = keys[i];
+    if (qw.length < 4) continue;
+    for (var t = 0; t < toks.length; t++) {
+      if (toks[t] === qw) return true;
+      if (qw.length >= 5 && (toks[t].indexOf(qw) === 0 || qw.indexOf(toks[t]) === 0)) return true;
+    }
+  }
+  if (sk.length >= 4) {
+    for (var t2 = 0; t2 < toks.length; t2++) if (skel_(toks[t2]) === sk) return true;
+  }
+  return false;
+}
+function formWordHits_(formWord, it) {
+  var qw = stockKey_(formWord);
+  if (!qw) return false;
+  var toks = String(it.key || '').split(' ').filter(Boolean);
+  for (var i = 0; i < toks.length; i++) {
+    var tok = toks[i];
+    if (tok === qw) return true;
+    if (qw.length >= 4 && tok.indexOf(qw) === 0) return true;
+    if (tok.length >= 4 && qw.indexOf(tok) === 0) return true;
+  }
+  return false;
+}
+function withClose_(it, why, askedForm) {
+  var c = {};
+  for (var k in it) if (Object.prototype.hasOwnProperty.call(it, k)) c[k] = it[k];
+  c.closeMatch = true;
+  c.closeWhy = why || 'partial';
+  c.askedForm = askedForm || '';
+  return c;
+}
+function askedFormWords_(query) {
+  return normalizeArabic(query).split(' ').filter(function (w) { return isFormWord_(w); });
+}
+function tagFormMismatch_(items, query) {
+  var forms = askedFormWords_(query);
+  if (!forms.length) return items;
+  var label = forms.join(' ');
+  return items.map(function (it) {
+    if (it.closeMatch) return it;
+    var miss = forms.some(function (f) { return !formWordHits_(f, it); });
+    return miss ? withClose_(it, 'form', label) : it;
+  });
+}
+/* طبقة تانية بس لو مفيش تطابق قوي: نفس المنتج (الاسم/الماركة) بشكل تاني. من غير بدائل بنفس المادة. */
+function closeStockMatches_(rows, qWords, askedForm) {
+  var subst = [], forms = [];
+  qWords.forEach(function (w) { (isFormWord_(w) ? forms : subst).push(w); });
+  if (!subst.length) return [];
+  if (!askedForm) askedForm = forms.join(' ');
+  var out = [];
+  for (var i = 0; i < rows.length; i++) {
+    var it = rows[i];
+    if (it.daysToExpire !== null && it.daysToExpire < MIN_EXPIRY_DAYS_TO_OFFER) continue;
+    var nameHits = [], misses = [];
+    for (var s = 0; s < subst.length; s++) {
+      if (wordHitsName_(subst[s], it)) nameHits.push(subst[s]);
+      else misses.push(subst[s]);
+    }
+    /* كلمة مش في الاسم = مش نفس المنتج، حتى لو المادة الفعالة واحدة */
+    if (!nameHits.length || misses.length) continue;
+    var longest = subst.slice().sort(function (a, b) { return b.length - a.length; })[0];
+    if (nameHits.indexOf(longest) === -1 && longest.length >= 6) continue;
+    var formMiss = forms.some(function (f) { return !formWordHits_(f, it); });
+    var why = formMiss ? 'form' : '';
+    out.push({ item: it, score: nameHits.length * 100, why: why });
+  }
+  out.sort(function (a, b) { return b.score - a.score; });
+  var seen = {}, res = [];
+  for (var j = 0; j < out.length && res.length < MAX_RESULTS_TO_SHOW; j++) {
+    if (seen[out[j].item.name]) continue;
+    seen[out[j].item.name] = 1;
+    res.push(out[j].why ? withClose_(out[j].item, out[j].why, askedForm) : out[j].item);
+  }
+  return res;
+}
+
+// البحث الأساسي — بيرجع نتايج مرتبة بالأهمية
+// الفكرة: بنقارن كل كلمة في سؤال العميل بكل كلمة في اسم الصنف،
+// وبندي درجة أعلى للتطابق الكامل. كده "بنادول" بتوصل لـ"بانادول"
+// من غير ما تجيب "باندولين" (حفاضات) معاها.
+function searchStock(query) {
+  try {
+    const rows = readStockRows_();
+    if (!rows.length) return [];
+
+    const qKey = stockKey_(query);
+    if (!qKey) return [];
+
+    const qWords = qKey.split(' ').filter(function(w) {
+      return w.length >= 2 && STOP_WORDS_.indexOf(w) === -1 && !isGenericWord_(w);
+    });
+    if (!qWords.length) return [];
+
+    const qSk = qWords.map(skel_);
+    const scored = [];
+    for (var i = 0; i < rows.length; i++) {
+      const it = rows[i];
+      const toks = it.key.split(' ').filter(function(t){ return t; });
+      var score = 0, hit = 0;
+
+      if (qKey.length >= 3 ? it.key.indexOf(qKey) !== -1 : toks.indexOf(qKey) !== -1) score += 60;   // العبارة كلها موجودة
+
+      for (var w = 0; w < qWords.length; w++) {
+        const qw = qWords[w];
+        var best = 0;
+        for (var t = 0; t < toks.length; t++) {
+          const tok = toks[t];
+          if (tok === qw) best = Math.max(best, 40);                                   // تطابق تام
+          else if (qw.length >= 3 && tok.indexOf(qw) === 0) best = Math.max(best, Math.round(40 * qw.length / tok.length)); // بداية الكلمة
+          else if (qw.length >= 3 && tok.indexOf(qw) !== -1) best = Math.max(best, Math.round(28 * qw.length / tok.length));
+        }
+        if (best === 0 && qSk[w].length >= 3) {   // اختلاف إملاء بسيط (سيرلاك/سيريلاك): بنقارن من غير ي و و
+          for (var t2 = 0; t2 < toks.length; t2++) {
+            const ts = skel_(toks[t2]);
+            if (ts === qSk[w]) best = Math.max(best, 34);
+            else if (qSk[w].length >= 4 && ts.indexOf(qSk[w]) === 0) best = Math.max(best, Math.round(30 * qSk[w].length / ts.length));
+          }
+        }
+        /* المادة الفعالة لوحدها مش تطابق للعميل: ماركة تانية بنفس المادة بديل، والدكتور هو اللي يعرضه */
+        if (best > 0) hit++;
+        score += best;
+      }
+      if (!hit) continue;
+
+      if (hit === qWords.length) score += 25;
+      if (it.stock >= 1) score += 8;
+      if (it.daysToExpire !== null && it.daysToExpire < MIN_EXPIRY_DAYS_TO_OFFER) score -= 60;
+
+      scored.push({ item: it, score: score, hit: hit });
+    }
+    var formLabel = askedFormWords_(query).join(' ');
+    if (!scored.length) return closeStockMatches_(rows, qWords, formLabel);
+
+    // لو فيه نتايج طابقت كل الكلمات، منعرضش غيرها
+    const full = scored.filter(function(x){ return x.hit === qWords.length; });
+    const pool = full.length ? full : scored;
+
+    pool.sort(function(a, b) { return b.score - a.score; });
+
+    // درجة ضعيفة = مفيش تطابق حقيقي. قبل ما نقول "مش متوفر" ندوّر على نفس المنتج بشكل تاني بس
+    if (pool[0].score < MIN_MATCH_SCORE) return closeStockMatches_(rows, qWords, formLabel);
+
+    const cutoff = pool[0].score * 0.6;
+    return tagFormMismatch_(pool.filter(function(x){ return x.score >= cutoff; })
+               .slice(0, 8)
+               .map(function(x){ return x.item; }), query);
   } catch (e) {
-    Logger.log('❌ فشل الإرسال: ' + e.message);
+    Logger.log('خطأ searchStock: ' + e.message);
+    return [];
   }
 }
 
-function testGemini() {
-  const result = callGemini('قول مرحبا بجملة قصيرة');
-  Logger.log(result ? ('✅ جيميني شغال: ' + result) : '❌ جيميني مش شغال — راجع المفتاح في الـ Logs');
+// ===================================================================
+// 4) بناء الرد من البيانات — الأسعار من هنا بس
+// ===================================================================
+
+function formatItemLine_(it) {
+  var line = '• ' + it.name + ' — ' + Math.round(it.price) + ' جنيه';
+  if (it.stock < LOW_STOCK_THRESHOLD) line += ' (كمية محدودة)';
+  return line;
 }
 
-function testStockSearch() {
-  const tests = ['بنادول', 'بانادول اكسترا', 'كاتافلام', 'البنادول', 'باراسيتامول'];
-  tests.forEach(function(q) {
-    const r = searchStock(q);
-    Logger.log('🔎 "' + q + '" → ' + r.length + ' نتيجة');
-    r.slice(0, 3).forEach(function(it) {
-      Logger.log('    ' + it.name + ' | ' + it.price + ' ج | رصيد ' + it.stock);
-    });
+/* جملة العميل لما الاسم مش موجود. البديل مش بيتقترح؛ الدكتور هو اللي يقرر. */
+var PRODUCT_MISSING_REPLY_ = 'مش متوفر حاليًا، تحب نوفّره ولا مستعجل والدكتور يعرض بديل؟';
+
+// بيرجع {text, prices[]} — prices هي الأرقام المسموح للمودل يذكرها
+function buildProductAnswer_(results, askedFor) {
+  const offerable = (results || []).filter(function(it) {
+    if (it.closeMatch && it.closeWhy !== 'form') return false;
+    return it.daysToExpire === null || it.daysToExpire >= MIN_EXPIRY_DAYS_TO_OFFER;
   });
-}
 
-function setupStaffTrigger() {
-  ScriptApp.getProjectTriggers().forEach(function(t) {
-    const name = t.getHandlerFunction();
-    if (['checkStaffOrders', 'checkStaffMessages', 'sendMiddayReport', 'sendNightReport'].includes(name)) {
-      ScriptApp.deleteTrigger(t);
-    }
-  });
-  ScriptApp.newTrigger('checkStaffOrders').timeBased().everyMinutes(1).create();
-  ScriptApp.newTrigger('checkStaffMessages').timeBased().everyMinutes(1).create();
-  ScriptApp.newTrigger('sendNightReport').timeBased().atHour(0).everyDays(1).create();
-}
+  if (!offerable.length) {
+    return {
+      available: false,
+      text: PRODUCT_MISSING_REPLY_,
+      prices: [],
+      items: []
+    };
+  }
 
-function sendNightReport() {
-  try { deduplicateStaffSheet(); } catch(e) { Logger.log('خطأ في التنظيف التلقائي: ' + e.message); }
-  const yesterday = new Date(new Date().getTime() - 24 * 60 * 60 * 1000);
-  const yDate = Utilities.formatDate(yesterday, 'Africa/Cairo', 'yyyy-MM-dd');
-  const yDateStr = Utilities.formatDate(yesterday, 'Africa/Cairo', 'dd/MM/yyyy');
-  getReportForDate(yDate, 'ملخص اليوم - ' + yDateStr, STAFF_GROUP);
-  const firstOfMonth = yDate.substring(0, 7) + '-01';
-  getReportForRange(firstOfMonth, yDate, 'الشهر حتى ' + yDateStr, STAFF_GROUP);
-}
+  const show = offerable.slice(0, MAX_RESULTS_TO_SHOW);
+  const prices = show.map(function(it){ return Math.round(it.price); });
 
-var CARE_WEIGHTS = {
-  new_customers: 0.35,
-  registration: 0.30,
-  repeat: 0.20,
-  low_returns: 0.15
-};
-
-function getConnecteamTimeClocks() {
-  const url = 'https://api.connecteam.com/time-clock/v1/time-clocks';
-  const res = UrlFetchApp.fetch(url, {
-    headers: { 'X-API-KEY': CONNECTEAM_API_KEY },
-    muteHttpExceptions: true
-  });
-  Logger.log(res.getContentText());
+  var text;
+  var closeOnly = show.every(function (it) { return it.closeMatch && it.closeWhy === 'form'; });
+  if (closeOnly) {
+    var head = 'الشكل اللي حضرتك طلبته' + (show[0].askedForm ? ' (' + show[0].askedForm + ')' : '') + ' مش ظاهر عندي، المتوفر:';
+    text = head + '\n' + show.map(formatItemLine_).join('\n');
+    if (show.length > 1) text += '\n\nتحب أجهز لحضرتك أنهي واحد فيهم؟';
+  } else if (show.length === 1) {
+    const it = show[0];
+    text = 'متوفر عندنا:\n' + formatItemLine_(it);
+    if (it.units > 1) text += '\nالعلبة ' + it.units + ' ' + (it.units > 10 ? 'حبة' : 'وحدة');
+  } else {
+    text = 'عندنا الأنواع دي متوفرة دلوقتي:\n' + show.map(formatItemLine_).join('\n') +
+           '\n\nتحب أجهز لحضرتك أنهي واحد فيهم؟';
+  }
+  return { available: true, text: text, prices: prices, items: show };
 }
+// ==== MODULE 40_customers_dashboard (split from server/Code.js; load order = file name order) ====
 
-function connecteamReady_() {
-  if (!CONNECTEAM_API_KEY || CONNECTEAM_API_KEY.indexOf('ضع_') === 0) return 'لسه محطتش مفتاح Connecteam API';
-  if (!CONNECTEAM_TIME_CLOCK_ID || CONNECTEAM_TIME_CLOCK_ID.indexOf('ضع_') === 0) return 'لسه محطتش Time Clock ID';
-  return null;
-}
 
 // 🩺 تشخيص شهري — يوم بيوم — بيوريك مبيعات وفواتير كل يوم لوحده في الـ Logs
 function diagnoseLastMonthDays() {
@@ -5100,89 +5394,8 @@ function getDashboard(params) {
     }
   };
 }
+// ==== MODULE 41_bot_chat_admin (split from server/Code.js; load order = file name order) ====
 
-/* ═══ 🔄 تحديث السيرفر من زرار في اللوحة ═══
-   Claude بيرفع الكود الجديد على Drive بتاعك (ملف خاص — مش على GitHub عشان فيه مفاتيح البوت)،
-   والزرار ده بيقراه ويحطه مكان الكود الحالي ويعمل New version على نفس الرابط.
-   محتاج مرة واحدة: تشغيل Google Apps Script API من script.google.com/home/usersettings */
-var SERVER_SRC_URL = 'https://raw.githubusercontent.com/elsousypharmacy-create/pharmacy/main/server/Code.js';
-function serverSrc_() {
-  var r = UrlFetchApp.fetch(SERVER_SRC_URL + '?t=' + Date.now(), { muteHttpExceptions: true });
-  if (r.getResponseCode() !== 200) return null;
-  var src = r.getContentText('UTF-8');
-  var sig = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, src, Utilities.Charset.UTF_8));
-  return { src: src, sig: sig };
-}
-function serverUpdateInfo() {
-  var s = serverSrc_(), P = PropertiesService.getScriptProperties();
-  return { ok: true, available: !!s, newer: !!s && P.getProperty('SERVER_SRC_SIG') !== s.sig,
-           lastUpdate: P.getProperty('SERVER_UPDATED_AT') || '', autoOn: autoUpdateOn_() };
-}
-/* 🔁 التحديث التلقائي: كل 15 دقيقة يشوف GitHub — لو فيه نسخة جديدة يركّبها ويبعتلك على تيليجرام */
-function autoUpdateOn_() {
-  return ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'autoServerUpdate'; });
-}
-function setAutoUpdate(on) {
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'autoServerUpdate') ScriptApp.deleteTrigger(t); });
-  if (on) ScriptApp.newTrigger('autoServerUpdate').timeBased().everyMinutes(15).create();
-  return { ok: true, autoOn: !!on };
-}
-function autoServerUpdate() {
-  try { maybeEnsureTriggers_(); } catch (eT) {}
-  var s = serverSrc_(), P = PropertiesService.getScriptProperties();
-  if (!s || P.getProperty('SERVER_SRC_SIG') === s.sig) return;
-  if (P.getProperty('SERVER_FAILED_SIG') === s.sig) return;          /* النسخة دي فشلت قبل كده — منحاولش كل ربع ساعة */
-  var r = serverUpdate();
-  if (r && r.ok) {
-    P.deleteProperty('SERVER_FAILED_SIG');
-    sendTelegramStaff('🔄 السيرفر اتحدّث تلقائي — نسخة ' + r.version + ' (' + r.at + ')', PERSONAL_CHAT);
-  } else {
-    P.setProperty('SERVER_FAILED_SIG', s.sig);
-    sendTelegramStaff('⚠️ التحديث التلقائي للسيرفر فشل:\n' + ((r && r.error) || 'سبب مش معروف') + '\nالنسخة الحالية شغالة عادي.', PERSONAL_CHAT);
-  }
-}
-function serverUpdate() {
-  var s = serverSrc_();
-  if (!s) return { ok: false, error: 'مقدرتش أوصل للكود الجديد على GitHub' };
-  var src = s.src;
-  /* فحص أمان: الكود لازم يكون كامل قبل ما نحطه */
-  if (src.length < 100000 || src.indexOf('function doGet(') === -1 || src.indexOf('function doPost(') === -1 || src.indexOf('function serverUpdate(') === -1)
-    return { ok: false, error: 'الكود على GitHub ناقص أو مش سليم — مش هحدّث' };
-  /* المفاتيح لازم تكون متخزنة قبل ما نحط نسخة من غير مفاتيح */
-  var P0 = PropertiesService.getScriptProperties();
-  if (!P0.getProperty('BOT_TOKEN') || !P0.getProperty('GEMINI_API_KEY')) return { ok: false, error: 'المفاتيح مش متخزنة — مش هحدّث' };
-  var token = ScriptApp.getOAuthToken(), id = ScriptApp.getScriptId(), H = { Authorization: 'Bearer ' + token };
-  var api = 'https://script.googleapis.com/v1/projects/' + id;
-  var r = UrlFetchApp.fetch(api + '/content', { headers: H, muteHttpExceptions: true });
-  if (r.getResponseCode() !== 200) {
-    var msg = r.getContentText();
-    var em = ''; try { em = JSON.parse(msg).error.message; } catch (e) { em = msg; }
-    return { ok: false, error: (/insufficient|scope/i.test(em) ? 'الصلاحيات الجديدة لسه متوافقش عليها — اعمل New version ووافق. ' : '') +
-      'Apps Script API ' + r.getResponseCode() + ': ' + String(em).slice(0, 300) };
-  }
-  var content = JSON.parse(r.getContentText()), done = false;
-  (content.files || []).forEach(function (file) {
-    if (!done && file.type === 'SERVER_JS' && String(file.source || '').indexOf('function doGet(') !== -1) { file.source = src; done = true; }
-  });
-  if (!done) return { ok: false, error: 'مش لاقي ملف الكود الأساسي في المشروع' };
-  r = UrlFetchApp.fetch(api + '/content', { method: 'put', contentType: 'application/json', headers: H, muteHttpExceptions: true,
-    payload: JSON.stringify({ files: content.files }) });
-  if (r.getResponseCode() !== 200) return { ok: false, error: 'حفظ الكود: ' + r.getContentText().slice(0, 200) };
-  var stamp = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm');
-  r = UrlFetchApp.fetch(api + '/versions', { method: 'post', contentType: 'application/json', headers: H, muteHttpExceptions: true,
-    payload: JSON.stringify({ description: 'تحديث من اللوحة ' + stamp }) });
-  if (r.getResponseCode() !== 200) return { ok: false, error: 'New version: ' + r.getContentText().slice(0, 200) };
-  var ver = JSON.parse(r.getContentText()).versionNumber;
-  var depId = (WEB_APP_URL.match(/\/s\/([^/]+)\/exec/) || [])[1];
-  r = UrlFetchApp.fetch(api + '/deployments/' + depId, { method: 'put', contentType: 'application/json', headers: H, muteHttpExceptions: true,
-    payload: JSON.stringify({ deploymentConfig: { scriptId: id, versionNumber: ver, manifestFileName: 'appsscript', description: 'تحديث من اللوحة ' + stamp } }) });
-  if (r.getResponseCode() !== 200) return { ok: false, error: 'Deploy: ' + r.getContentText().slice(0, 200), version: ver };
-  var P = PropertiesService.getScriptProperties();
-  P.setProperty('SERVER_SRC_SIG', s.sig);
-  P.setProperty('SERVER_UPDATED_AT', stamp);
-  try { maybeEnsureTriggers_(); } catch (eT) {}
-  return { ok: true, version: ver, at: stamp };
-}
 
 /* 💬 صفحة المحادثات */
 function chatLogRows_(maxRows) {
@@ -5398,276 +5611,390 @@ function setupHandoffReminderTrigger() {
   Logger.log(r.message || r.error || '');
   return r;
 }
+// ==== MODULE 50_sms_points (split from server/Code.js; load order = file name order) ====
 
-/* 🔒 قفل اللوحة (بيتفعّل من الإعدادات): بيانات المبيعات والعملاء والديون وطلب النواقص محتاجة الرقم السري.
-   الصفحات التانية (الملصقات، الجرد، الدكاترة) والـ SMS والتليجرام مش بتتأثر.
-   علامة "اتطلب" من بوت الجرد بتعدّي بمفتاح ORDERS_BOT_KEY من جوه markOrdered، مش من هنا. */
-var LOCKED_GET = { getHomeBundle: 1, getSMSLogFast: 1, getSMSLog: 1, getCustomers: 1, getHistory: 1, getCustomerProfile: 1,
-  getCustomerVisits: 1, getAiConfig: 1, getAiUsage: 1, botStatus: 1, getBlocked: 1, getDashboard: 1, getStaffKPI: 1,
-  getNewCustomersDetail: 1, getSystemDailyTotals: 1, getDebtsData: 1, getDebtsByEmployee: 1, getMonthTotalsRaw: 1,
-  sendDebtReminder: 1, getExpensesData: 1, getProfitLoss: 1, getNetWorth: 1, getConnecteamHours: 1, getDayInvoices: 1,
-  getDayDebits: 1, getDayCollections: 1, getMonthDebtsSummary: 1, getCustomerPoints: 1, getInventoryAging: 1, getAgents: 1,
-  sendCoupon: 1, getStaffHub: 1, getExpiryByMonth: 1, getAttendanceLive: 1, getAttendanceHistory: 1, getAttendanceLiveV2: 1,
-  getAttendanceHistoryV2: 1, diagnoseAll: 1, getBotSettings: 1, maintenanceStatus: 1, maintenanceStop: 1,
-  maintenanceResumeLive: 1, maintenanceDedup: 1, maintenanceStartRebuild: 1, backfillExpenses: 1, getExpReviews: 1,
-  ordersPage: 1, orderEfficiency: 1, logShortages: 1 };
-var LOCKED_POST = { log: 1, block: 1, unblock: 1, setSalaries: 1, retrySMS: 1, testSMS: 1, dismissSMS: 1, payAgent: 1,
-  deleteAgentPending: 1, deleteCount: 1, expReview: 1 };
-function dashLocked_(pin) {
-  var P = PropertiesService.getScriptProperties();
-  if (P.getProperty('DASH_LOCK') !== '1') return false;
-  var saved = P.getProperty('ADMIN_PIN');
-  return !(saved && String(pin || '') === saved);
-}
-function lockedResp_() { return jsonResponseStaff({ ok: false, lockError: true, error: 'اللوحة مقفولة — اكتب الرقم السري' }); }
 
-function doGet(e) {
-  /* 🟢 تأكيد ويبهوك واتساب من ميتا */
-  if (e.parameter['hub.mode'] === 'subscribe')
-    return ContentService.createTextOutput(e.parameter['hub.verify_token'] === waVerifyToken_() ? String(e.parameter['hub.challenge'] || '') : 'bad token');
-  try { maybeEnsureTriggers_(); } catch (eT) {}
-  var action = e.parameter.action;
-  if (LOCKED_GET[action] && dashLocked_(e.parameter.pin)) return lockedResp_();
-  if (action === 'getBotSettings') return jsonResponseStaff(getBotSettings());
-  if (action === 'getExpReviews') return jsonResponseStaff(getExpReviews());
-  if (action === 'serverUpdateInfo') return jsonResponseStaff(serverUpdateInfo());
+// 🆕 إعدادات نظام رسائل SMS + نقاط الولاء
+const AUTOREMOTE_KEY = secret_('AUTOREMOTE_KEY');
+const AUTOREMOTE_URL = 'https://autoremotejoaomgcd.appspot.com/sendmessage';
+const SMS_LOG_SHEET = 'رسائل SMS';
+const POINTS_SHEET = 'نقاط العملاء';
+const INVALID_PHONE_SHEET = 'أرقام تحتاج مراجعة';
 
-  // 🆕 الأوامر السريعة الجديدة (نداء واحد للرئيسية، رسايل مقطوعة بمدة، حضور مصلّح، فحص شامل)
-  if (action === 'getHomeBundle') return jsonResponseStaff(getHomeBundleFast());
-  if (action === 'getSMSLogFast') return jsonResponseStaff(getSMSLogFast(e.parameter));
-  if (action === 'getAttendanceLiveV2') return jsonResponseStaff(getAttendanceLiveV2());
-  if (action === 'getAttendanceHistoryV2') return jsonResponseStaff(getAttendanceHistoryV2(e.parameter));
-  if (action === 'diagnoseAll') return jsonResponseStaff(diagnoseAll());
-  if (action === 'refreshNow') return jsonResponseStaff(refreshLiveNumbers());
-  // 📷 الجرد بالكاميرا
-  if (action === 'scanLookup')       return jsonResponseStaff(scanLookup(e.parameter.code));
-  if (action === 'scanSearch')       return jsonResponseStaff(scanSearch(e.parameter.q));
-  // 🩺 صفحة الدكاترة (بكود دخول)
-  if (action === 'doctorSearch')     return jsonResponseStaff(doctorSearch(e.parameter.q, e.parameter.k));
-  if (action === 'doctorOrder')      return jsonResponseStaff(doctorOrder(e.parameter.items, e.parameter.note, e.parameter.k));
-  if (action === 'doctorAdmin')      return jsonResponseStaff(doctorAdmin(e.parameter));
-  if (action === 'ordersPage')       return jsonResponseStaff(ordersPage(e.parameter.k, e.parameter.days));
-  if (action === 'orderEfficiency')  return jsonResponseStaff(orderEfficiency(e.parameter.days));
-  if (action === 'logShortages')     return jsonResponseStaff(logShortageSnapshot_(true));
-  if (action === 'markOrdered') {
-    var viaBot = ordersBotOk_(e.parameter.k || e.parameter.key);
-    if (!viaBot && dashLocked_(e.parameter.pin)) return lockedResp_();
-    return jsonResponseStaff(markOrdered_(e.parameter, viaBot));
-  }
-  if (action === 'ordersBotKey') {
-    if (!adminPinOk_(e.parameter.pin))
-      return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
-    return jsonResponseStaff(ensureOrdersBotKey_(e.parameter.regen === '1'));
-  }
-  if (action === 'scanReady')        return jsonResponseStaff(diagnoseScanReady());
-  if (action === 'timeSnapshot')     return jsonResponseStaff(timeSnapshot());
-  if (action === 'testSnapStore')    return jsonResponseStaff(testSnapStorage());
-  if (action === 'scanRefreshIndex') return jsonResponseStaff(refreshScanIndex());
-  if (action === 'countSessions')    return jsonResponseStaff(getCountSessions());
-  if (action === 'countReport')      return jsonResponseStaff(getCountReport(e.parameter.session));
-  if (action === 'openCounts')       return jsonResponseStaff(listOpenCounts(e.parameter));
-  if (action === 'loadCount')        return jsonResponseStaff(loadOpenCount(e.parameter.session));
-  if (action === 'countDue')         return jsonResponseStaff(getCountDue(e.parameter));
-  if (action === 'countAccuracy')    return jsonResponseStaff(getCountAccuracy(e.parameter));
-  if (action === 'backfillExpenses') return jsonResponseStaff(backfillExpenseArchive());
-  if (action === 'recordStats')      return jsonResponseStaff(recordDailyStats_());
-  if (action === 'fixOrder')         return jsonResponseStaff(getFixOrder(e.parameter.session));
-  if (action === 'sendFixOrder')     return jsonResponseStaff(sendFixOrder(e.parameter.session));
-  if (action === 'scanStaff')        return jsonResponseStaff(getScanStaff());
-  if (action === 'scanBundle')       return jsonResponseStaff(getScanBundle());
-  if (action === 'countActivity')    return jsonResponseStaff(getCountActivity(e.parameter));
-  if (action === 'getStaffHub') return jsonResponseStaff(getStaffHub(e.parameter));
-  if (action === 'snapshotStatus') return jsonResponseStaff(snapshotStatus());
-  if (action === 'snapshotRefresh') { buildSnapshot(); return jsonResponseStaff(snapshotStatus()); }
-  if (action === 'snapshotEnable') { setupSnapshotTrigger(); buildSnapshot(); return jsonResponseStaff(snapshotStatus()); }
+// ===================================================================
+// 🆕 نظام رسائل SMS الترحيبية + نقاط الولاء - يشتغل مع كل فاتورة جديدة
+// بيستخدم نفس آلية checkStaffOrders() (كل دقيقة)، ومربوط جوّاها
+// ===================================================================
 
-  if (action === 'getCustomers') return jsonResponseStaff(
-    cachedCall_('cust', {}, function(){ return { ok: true, list: getCustomers() }; }, 600));
-  if (action === 'getHistory') return jsonResponseStaff(getHistory(e.parameter.phone));
-  if (action === 'getCustomerProfile') return jsonResponseStaff(getCustomerProfile(e.parameter.phone));
-  if (action === 'getCustomerVisits') return jsonResponseStaff(getCustomerVisits(e.parameter.days));
-  /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
-  var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
-                        purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1 };
-  if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
-    return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
-  if (action === 'aiTest') return jsonResponseStaff(aiTest(e.parameter.q));
-  if (action === 'getAiConfig') return jsonResponseStaff(getAiConfig());
-  if (action === 'getAiUsage') return jsonResponseStaff(getAiUsage());
-  if (action === 'botStatus') return jsonResponseStaff(botStatus());
-  if (action === 'botSetRelay') return jsonResponseStaff(botSetRelay(e.parameter.url));
-  if (action === 'backupProbe') return jsonResponseStaff(backupProbe());
-  if (action === 'serverUpdate') return jsonResponseStaff(serverUpdate());
-  if (action === 'setAutoUpdate') return jsonResponseStaff(setAutoUpdate(e.parameter.on === '1'));
-  if (action === 'ensureTriggers') return jsonResponseStaff(ensureTriggers_({ which: e.parameter.which || '' }));
-  if (action === 'getBotChats') return jsonResponseStaff(getBotChats());
-  if (action === 'waInfo') return jsonResponseStaff(waInfo());
-  if (action === 'waSubscribe') return jsonResponseStaff(waSubscribe());
-  if (action === 'getBotChat') return jsonResponseStaff(getBotChat(e.parameter.id));
-  if (action === 'botReply') return jsonResponseStaff(botReply(e.parameter.id, e.parameter.text));
-  if (action === 'botHold') return jsonResponseStaff(botHold(e.parameter.id, e.parameter.on === '1'));
-  if (action === 'botDone') return jsonResponseStaff(botDone(e.parameter.id));
-  if (action === 'cleanBackups') return jsonResponseStaff(cleanBackups(e.parameter.apply === '1'));
-  if (action === 'cleanBackupsAuto') return jsonResponseStaff(cleanBackupsAuto());
-  if (action === 'purgeTrashedBackups') return jsonResponseStaff(purgeTrashedBackups());
-  if (action === 'getBlocked') return jsonResponseStaff(getBlockedCustomers());
-  if (action === 'getDashboard') return jsonResponseStaff(getDashboard(e.parameter));
-  if (action === 'getStaffKPI') return jsonResponseStaff(
-    cachedCall_('kpi', e.parameter, function(){ var r = getStaffKPIData(e.parameter); r.ok = true; return r; }, cacheTTL_(e.parameter)));
-  if (action === 'getNewCustomersDetail') return jsonResponseStaff(getNewCustomersDetail(e.parameter));
-  if (action === 'getSystemDailyTotals') return jsonResponseStaff(getSystemDailyTotals());
-  if (action === 'getDebtsData') return jsonResponseStaff(getDebtsSnap());
-  if (action === 'getDebtsByEmployee') return jsonResponseStaff(getDebtsByEmployee(e.parameter));
-  if (action === 'getMonthTotalsRaw') return jsonResponseStaff(
-    cachedCall_('mtr', e.parameter, function(){ return getMonthTotalsFromRaw(e.parameter); }, cacheTTL_(e.parameter)));
-  if (action === 'sendDebtReminder') {
-    return jsonResponseStaff(sendDebtReminderSMS_(e.parameter.phone, e.parameter.name, e.parameter.amount));
-  }
-  if (action === 'getExpensesData') return jsonResponseStaff(
-    cachedCall_('exp', e.parameter, function(){ return getExpensesData(e.parameter); }, cacheTTL_(e.parameter)));
-  if (action === 'getProfitLoss') return jsonResponseStaff(
-    cachedCall_('pl', e.parameter, function(){ return getProfitLossData(e.parameter); }, 600));
-  if (action === 'getNetWorth') return jsonResponseStaff(getNetWorthData());
-  if (action === 'getConnecteamHours') return jsonResponseStaff(getConnecteamHours(e.parameter.from, e.parameter.to));
-  if (action === 'getDayInvoices') return jsonResponseStaff(getDayInvoices(e.parameter.date));
-  /* ملصقات الأدوية — الكود في آخر الملف */
-  if (action === 'labelsFeed') return jsonResponseStaff(labelsFeed(e.parameter.since));
-  if (action === 'labelsSave') return jsonResponseStaff(labelsSave(e.parameter.data));
-  if (action === 'aiDose') return jsonResponseStaff(aiDose(e.parameter.data));
-  if (action === 'getDayDebits') return jsonResponseStaff(getDayDebits(e.parameter.date));
-  if (action === 'getDayCollections') return jsonResponseStaff(getDayCollections(e.parameter.date));
-  if (action === 'getMonthDebtsSummary') return jsonResponseStaff(getMonthDebtsSummary(e.parameter.month));
-  if (action === 'getSMSLog') return jsonResponseStaff(getSMSLogFast(e.parameter)); // بقى بيوجّه للنسخة السريعة
-  if (action === 'getCustomerPoints') return jsonResponseStaff(getCustomerPointsData(e.parameter.phone));
-  if (action === 'getInventoryAging') return jsonResponseStaff(getInventorySnap());
-  if (action === 'getAgents') return jsonResponseStaff(getAgentsSnap());
-  if (action === 'maintenanceStatus') return jsonResponseStaff(getMaintenanceStatus());
-  if (action === 'maintenanceStop') {
-    stopAutoRebuild(); pauseLiveTrigger();
-    return jsonResponseStaff({ ok: true, step: 'stop' });
-  }
-  if (action === 'maintenanceResumeLive') {
-    resumeLiveTrigger();
-    return jsonResponseStaff({ ok: true, step: 'resumeLive' });
-  }
-  if (action === 'maintenanceDedup') {
-    wipeAndRebuildStaffSheet();
-    return jsonResponseStaff({ ok: true, step: 'dedup' });
-  }
-  if (action === 'maintenanceStartRebuild') {
-    resetRebuildProgress(); startAutoRebuild();
-    return jsonResponseStaff({ ok: true, step: 'rebuild' });
-  }
-  if (action === 'sendCoupon') {
-    return jsonResponseStaff(sendCouponSMS_(e.parameter.phone, e.parameter.name, e.parameter.message, e.parameter.expiry));
-  }
-  if (action === 'getAttendanceLive') return jsonResponseStaff(getAttendanceLiveV2());
-  if (action === 'getAttendanceHistory') return jsonResponseStaff(getAttendanceHistoryV2(e.parameter));
-  if (action === 'getExpiryByMonth') return jsonResponseStaff(getExpiryByMonthSnap());
-  return jsonResponseStaff({ status: 'ok', message: 'Staff API شغال' });
+// ✅ يتأكد إن الرقم شكله رقم موبايل مصري صحيح (11 رقم، بادئة 010/011/012/015)
+function isValidEgyptianPhone(phone) {
+  if (!phone) return false;
+  var clean = String(phone).trim();
+  return /^01[0125][0-9]{8}$/.test(clean);
 }
 
-function doPost(e) {
-  try {
-    var data = JSON.parse(e.postData.contents);
+// ✅ بياخد أول كلمتين بس من اسم العميل
+function getFirstTwoWords(name) {
+  if (!name) return 'عميلنا العزيز';
+  var words = String(name).trim().split(/\s+/);
+  return words.slice(0, 2).join(' ');
+}
 
-    /* 🟢 واتساب */
-    if (data.object === 'whatsapp_business_account') {
-      handleWhatsAppWebhook_(data);
-      return ContentService.createTextOutput('ok');
-    }
-    // 🆕 لو دي رسالة جاية من تليجرام (ويبهوك) — نعالجها ونخرج
-    if (data.update_id !== undefined) {
-      handleTelegramWebhook_(data);
-      return ContentService.createTextOutput('ok');
-    }
+// ✅ يحسب النقاط: 5% من قيمة الفاتورة قبل الخصم، مطروح منها الخصم، بحد أدنى صفر
+function calculatePoints(grandtotal, discount) {
+  var basePoints = Math.round((grandtotal || 0) * 0.05);
+  var finalPoints = basePoints - Math.round(discount || 0);
+  return Math.max(0, finalPoints);
+}
 
-    if (LOCKED_POST[data.action] && dashLocked_(data.pin)) return lockedResp_();
-    if (data.action === 'setBotSettings') return jsonResponseStaff(setBotSettings(data));
-    if (data.action === 'setWaConfig') return jsonResponseStaff(adminPinOk_(data.pin) ? setWaConfig(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
-    if (data.action === 'expReview') return jsonResponseStaff(expReview(data));
-    if (data.action === 'log') saveHistory(data);
-    if (data.action === 'block') setCustomerBlocked(data.phone, true);
-    if (data.action === 'unblock') setCustomerBlocked(data.phone, false);
-    /* قايمة العملاء متخزنة 10 دقايق — من غير المسح ده الحالة الجديدة متظهرش */
-    if (data.action === 'log' || data.action === 'block' || data.action === 'unblock') {
-      fxClearCache_('fx_c_cust_{}');
-      return jsonResponseStaff({ ok: true });
-    }
-    if (data.action === 'setAiConfig') return jsonResponseStaff(setAiConfig(data));
-    if (data.action === 'setSalaries') setMonthlySalaries(data.month, data.amount);
-    if (data.action === 'retrySMS') retryFailedSMS(data.invoiceid);
-    if (data.action === 'smsAck') return jsonResponseStaff(recordSmsAck(data.phone, data.err));
-    if (data.action === 'testSMS') {
-      var __t = sendSMSViaAutoRemote(data.phone, 'رسالة تجريبية من صيدلية السوسي - لو وصلتك يبقى السيستم شغال');
-      return jsonResponseStaff({ ok: __t.ok, code: __t.code, response: __t.response });
-    }
-    if (data.action === 'dismissSMS') dismissFailedSMS(data.invoiceid);
-    if (data.action === 'agentReferral') {
+// ✅ يقرا ملف مبيعات يوم معين، ويرجع كل فاتورة (unique) مرة واحدة بس
+function getUniqueSaleInvoices(dateStr) {
+  var folder = DriveApp.getFolderById(SALES_FOLDER);
+  var content = '';
+  var files = folder.getFilesByName('sales' + dateStr + '.txt');
+  if (files.hasNext()) content = files.next().getBlob().getDataAsString('UTF-8');
+  if (!content) return {};
+
+  var regex = /VALUES\s*\(((?:&#\d+;|[^;])+)\)/g;
+  var match;
+  var invoices = {};
+
+  while ((match = regex.exec(content)) !== null) {
+    var tuples = extractTuples('(' + match[1] + ')');
+    for (var t = 0; t < tuples.length; t++) {
       try {
-        logAgentDebug_('استقبال POST', JSON.stringify(data));
-        var __res = handleAgentReferral(data);
-        return jsonResponseStaff(__res);
-      } catch (__e) {
-        logAgentDebug_('خطأ فادح في doPost', __e.message + ' | ' + (__e.stack || ''));
-        return jsonResponseStaff({ ok: false, fatal: true, error: __e.message });
-      }
+        var vals = parseValues(tuples[t]);
+        if (!vals || vals.length < 50) continue;
+
+        var invoiceid = vals[1];
+        var invtype = vals[2] ? vals[2].trim() : '';
+        if (invtype !== 'sale') continue;
+        if (invoices[invoiceid]) continue;
+
+        var discount = parseFloat(vals[27]) || 0;
+        var netpaid = parseFloat(vals[35]) || 0;
+        var paid2 = parseFloat(vals[39]) || 0;
+        var realPaid = netpaid + paid2;
+        var grandtotal = parseFloat(vals[40]) || 0;
+        var customername = vals[44] ? vals[44].trim() : '';
+        var customerphone = vals[45] ? vals[45].trim() : '';
+
+        invoices[invoiceid] = {
+          invoiceid: invoiceid,
+          customername: customername,
+          customerphone: customerphone,
+          discount: discount,
+          grandtotal: grandtotal,
+          realPaid: Math.round(realPaid)
+        };
+      } catch (e) { continue; }
     }
-    if (data.action === 'saveOpen') return jsonResponseStaff(saveOpenCount(data));
-    if (data.action === 'deleteCount') return jsonResponseStaff(deleteCountSession(data));
-    if (data.action === 'saveCount') return jsonResponseStaff(saveCountSession(data));
-    if (data.action === 'markOrdered') {
-      var viaBotM = ordersBotOk_(data.k || data.key);
-      if (!viaBotM && dashLocked_(data.pin)) return lockedResp_();
-      return jsonResponseStaff(markOrdered_(data, viaBotM));
-    }
-    if (data.action === 'payAgent') return jsonResponseStaff(payAgent(data.agentPhone, data.amount));
-    if (data.action === 'deleteAgentPending') return jsonResponseStaff(deleteAgentPendingRow(data.agentPhone, data.customerPhone));
-    return jsonResponseStaff({status:'ok'});
-  } catch(err) {
-    return jsonResponseStaff({status:'error', msg:err.toString()});
+  }
+  return invoices;
+}
+
+// ✅ يبني نص رسالة SMS العميل (مختصرة، رسالة واحدة)
+function buildCustomerSMSMessage(firstName, amount) {
+  return 'أهلاً يا ' + firstName + ' فاتورتك ' + amount + ' جنيه توصيلك مجانًا دايمًا - صيدلية السوسي';
+}
+
+// ✅ يبعت SMS فعلي عن طريق AutoRemote (تنسيق =:= المتفق عليه مع Tasker)
+function sendSMSViaAutoRemote(phone, message) {
+  try {
+    var payload = phone + '=:=' + message;  // 🔧 فاصل خاص بينا — Tasker هو اللي بيقسّمه (مش AutoRemote)
+    var url = AUTOREMOTE_URL + '?key=' + encodeURIComponent(AUTOREMOTE_KEY) + '&message=' + encodeURIComponent(payload);
+    var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var code = res.getResponseCode();
+    var body = res.getContentText();
+    // 🔍 تسجيل تشخيصي: بيوضّح هل AutoRemote استقبل الطلب ولا لأ
+    try {
+      logAgentDebug_('📤 إرسال SMS', 'لـ=' + phone + ' | كود_الرد=' + code + ' | رد_AutoRemote=' + String(body).substring(0, 200));
+    } catch (e2) {}
+    return { ok: code === 200, code: code, response: body };
+  } catch (e) {
+    try { logAgentDebug_('📤 فشل إرسال SMS', 'لـ=' + phone + ' | خطأ=' + e.message); } catch (e2) {}
+    return { ok: false, code: 0, response: e.message };
   }
 }
 
-function getSystemDailyTotals() {
+// ✅ يجيب كل رقم فاتورة اتعالجت بالفعل - عشان مانعالجش نفس الفاتورة مرتين
+function getAlreadyProcessedInvoiceIds() {
+  var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
+  var sheet = ss.getSheetByName(SMS_LOG_SHEET);
+  var ids = new Set();
+  if (!sheet || sheet.getLastRow() <= 1) return ids;
+  var data = sheet.getRange(2, 2, sheet.getLastRow() - 1, 1).getValues();
+  data.forEach(function(r) { if (r[0]) ids.add(String(r[0])); });
+  return ids;
+}
+
+function getSMSLogSheet_() {
+  var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
+  var sheet = ss.getSheetByName(SMS_LOG_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(SMS_LOG_SHEET);
+    sheet.appendRow(['التاريخ', 'رقم الفاتورة', 'اسم العميل', 'رقم التليفون', 'المبلغ', 'نص الرسالة', 'الحالة', 'وقت المحاولة']);
+    sheet.getRange('D:D').setNumberFormat('@'); // 🔧 يمنع اختفاء الصفر الأول من رقم التليفون
+  }
+  return sheet;
+}
+
+function logSMSAttempt(row) {
+  getSMSLogSheet_().appendRow(row);
+}
+
+function logInvalidPhone(row) {
+  var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
+  var sheet = ss.getSheetByName(INVALID_PHONE_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(INVALID_PHONE_SHEET);
+    sheet.appendRow(['التاريخ', 'رقم الفاتورة', 'اسم العميل', 'الرقم المسجل', 'المبلغ']);
+    sheet.getRange('D:D').setNumberFormat('@');
+  }
+  sheet.appendRow(row);
+}
+
+function logPoints(row) {
+  var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
+  var sheet = ss.getSheetByName(POINTS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(POINTS_SHEET);
+    sheet.appendRow(['التاريخ', 'رقم الفاتورة', 'رقم التليفون', 'اسم العميل', 'قيمة الفاتورة', 'الخصم', 'النقاط المكتسبة']);
+    sheet.getRange('C:C').setNumberFormat('@');
+  }
+  sheet.appendRow(row);
+}
+
+// ✅ الدالة الرئيسية: بتتنفذ كل دقيقة (مربوطة جوّا checkStaffOrders)
+function processCustomerSMS() {
   try {
-    const ss = SpreadsheetApp.openById(DAILY_STATS_SHEET_ID);
-    const sheet = ss.getSheets()[0];
-    const data = sheet.getDataRange().getValues();
-    const map = {};
-    data.forEach(function(r) {
-      if (r[0]) map[String(r[0]).trim()] = r[1];
+    var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+    var now = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss');
+    var invoices = getUniqueSaleInvoices(today);
+    var alreadyProcessed = getAlreadyProcessedInvoiceIds();
+
+    Object.keys(invoices).forEach(function(invoiceid) {
+      if (alreadyProcessed.has(String(invoiceid))) return;
+
+      var inv = invoices[invoiceid];
+      inv.customerphone = canonicalEgyptPhone_(inv.customerphone); // 🔧 يرجّع الصفر الأول لو ضايع من نظام البيع
+      var phoneValid = isValidEgyptianPhone(inv.customerphone);
+
+      if (!phoneValid) {
+        if (inv.customerphone && inv.customerphone.trim() !== '') {
+          logInvalidPhone([today, invoiceid, inv.customername, inv.customerphone, inv.realPaid]);
+        }
+        return;
+      }
+
+      var points = calculatePoints(inv.grandtotal, inv.discount);
+      logPoints([today, invoiceid, inv.customerphone, inv.customername, inv.realPaid, inv.discount, points]);
+
+      var firstName = getFirstTwoWords(inv.customername);
+      var message = buildCustomerSMSMessage(firstName, inv.realPaid);
+
+      var result = sendSMSViaAutoRemote(inv.customerphone, message);
+      logSMSAttempt([
+        today, invoiceid, inv.customername, inv.customerphone,
+        inv.realPaid, message, result.ok ? 'تم الإرسال للموبايل' : 'فشل', now
+      ]);
+
+      // 🆕 مندوبين: لو العميل ده معلّق تحت مندوب واشترى ≥ الحد الأدنى، فعّل الإحالة
+      activateAgentReferralIfPending_(inv.customerphone, invoiceid, inv.realPaid);
     });
 
-    return {
-      ok: true,
-      sales_today: parseFloat(map['مبيعات اليوم']) || 0,
-      profit_today: parseFloat(map['الربحية اليوم']) || 0,
-      discount_today: parseFloat(map['الخصم اليوم']) || 0,
-      sales_yesterday: parseFloat(map['المبيعات امس']) || 0,
-      profit_yesterday: parseFloat(map['الربحية امس']) || 0,
-      discount_yesterday: parseFloat(map['الخصم امس']) || 0,
-      total_debt: parseFloat(map['صافي الدين']) || 0,
-      debt_today: parseFloat(map['الدين اليوم']) || 0,
-      debt_paid_today: parseFloat(map['الدين المسدد اليوم']) || 0,
-      debt_yesterday: parseFloat(map['الدين امس']) || 0,
-      debt_paid_yesterday: parseFloat(map['الدين المسدد امس']) || 0,
-      /* طلبيات في الطريق — عشان متطلبش اللي اتطلب فعلاً */
-      misc_today:      parseFloat(map['مصروفات متنوعة اليوم']) || 0,
-      misc_yesterday:  parseFloat(map['مصروفات متنوعة امس']) || 0,
-      purch_today:     parseFloat(map['مشتروات الشركات اليوم']) || 0,
-      purch_yesterday: parseFloat(map['مشتروات الشركات امس']) || 0,
-      orders_prep_count:  parseFloat(map['الطلبيات تحت التجهيز']) || 0,
-      orders_prep_cost:   parseFloat(map['تكلفة الطلبيات تحت التجهيز']) || 0,
-      orders_recv_count:  parseFloat(map['الطلبيات تحت الاستلام']) || 0,
-      orders_recv_cost:   parseFloat(map['تكلفة الطلبيات تحت الاستلام']) || 0,
-      updated_at: map['الوقـت'] || ''
-    };
-  } catch(e) {
+    fxClearCache_('fx_sms_30'); // فيه رسايل جديدة → نفضّي الكاش عشان الداشبورد يشوفها فورًا
+  } catch (e) {
+    Logger.log('خطأ processCustomerSMS: ' + e.message);
+  }
+}
+
+// ✅ إعادة إرسال رسالة فشلت (بتستخدم نفس البيانات المخزنة في السجل)
+function retryFailedSMS(invoiceid) {
+  var sheet = getSMSLogSheet_();
+  if (sheet.getLastRow() <= 1) return;
+  var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
+  for (var i = 0; i < data.length; i++) {
+    if (String(data[i][1]) !== String(invoiceid)) continue;
+    var phone = canonicalEgyptPhone_(String(data[i][3]));
+    var message = data[i][5];
+    var result = sendSMSViaAutoRemote(phone, message);
+    var now = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss');
+    sheet.getRange(i + 2, 7).setValue(result.ok ? 'تم الإرسال للموبايل' : 'فشل');
+    sheet.getRange(i + 2, 8).setValue(now);
+    fxClearCache_('fx_sms_30');
+    return;
+  }
+}
+
+// ===================================================================
+// 🎁 إرسال كوبونات الاسترجاع عبر SMS — نفس مسار AutoRemote/Tasker
+// ===================================================================
+var COUPON_LOG_SHEET = 'رسائل الكوبونات';
+
+function getCouponLogSheet_() {
+  var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
+  var sheet = ss.getSheetByName(COUPON_LOG_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(COUPON_LOG_SHEET);
+    sheet.appendRow(['التاريخ', 'رقم التليفون', 'اسم العميل', 'نص الرسالة', 'الحالة', 'الوقت']);
+    sheet.getRange('B:B').setNumberFormat('@');
+  }
+  return sheet;
+}
+
+// 🆕 بعد إرسال كوبون: العميل يدخل "متابعة" ومعاه تاريخ صلاحية الكوبون
+function markCouponFollowUp_(ss, phone, expiryIso) {
+  try {
+    var custSheet = ss.getSheetByName('Customers');
+    if (!custSheet || custSheet.getLastRow() <= 1) return;
+    var map = getHeaderMap(custSheet);
+    if (map['phone'] === undefined) return;
+    var data = custSheet.getRange(2, 1, custSheet.getLastRow() - 1, custSheet.getLastColumn()).getValues();
+
+    for (var i = 0; i < data.length; i++) {
+      if (String(data[i][map['phone']]) !== String(phone)) continue;
+      var rowIndex = i + 2;
+      var status = map['status'] !== undefined ? data[i][map['status']] : '';
+      var isBlocked = map['blocked'] !== undefined ? isTruthy(data[i][map['blocked']]) : false;
+      if (isBlocked || status === 'نشط') return;
+
+      if (map['status'] !== undefined) custSheet.getRange(rowIndex, map['status'] + 1).setValue('تمت المتابعة - في الانتظار');
+      if (map['contact_marked_at'] !== undefined) custSheet.getRange(rowIndex, map['contact_marked_at'] + 1).setValue(new Date().toISOString());
+      if (map['follow_deadline'] !== undefined && expiryIso) custSheet.getRange(rowIndex, map['follow_deadline'] + 1).setValue(expiryIso);
+      if (map['follow_attempts'] !== undefined) {
+        var cur = parseInt(data[i][map['follow_attempts']]) || 0;
+        custSheet.getRange(rowIndex, map['follow_attempts'] + 1).setValue(cur + 1);
+      }
+      return;
+    }
+  } catch (e) {
+    Logger.log('خطأ markCouponFollowUp_: ' + e.message);
+  }
+}
+
+// 🆕 تشغيل يومي — أي عميل "في الانتظار" وخلصت مهلته من غير ما يشتري يرجع للحالة المناسبة
+function checkExpiredCoupons() {
+  try {
+    var ss = SpreadsheetApp.openById(CRM_SHEET_ID);
+    var custSheet = ss.getSheetByName('Customers');
+    if (!custSheet || custSheet.getLastRow() <= 1) return;
+    var map = getHeaderMap(custSheet);
+    if (map['status'] === undefined || map['follow_deadline'] === undefined) return;
+
+    var data = custSheet.getRange(2, 1, custSheet.getLastRow() - 1, custSheet.getLastColumn()).getValues();
+    var now = new Date();
+    var reverted = 0, lost = 0;
+
+    for (var i = 0; i < data.length; i++) {
+      var status = data[i][map['status']];
+      var expiry = data[i][map['follow_deadline']];
+      if (status !== 'تمت المتابعة - في الانتظار' || !expiry) continue;
+      var expDate = new Date(expiry);
+      if (isNaN(expDate.getTime()) || expDate > now) continue;
+
+      var attempts = map['follow_attempts'] !== undefined ? (parseInt(data[i][map['follow_attempts']]) || 0) : 0;
+      var newStatus = attempts >= FOLLOWUP_MAX_ATTEMPTS ? 'محاولات استرجاع فشلت' : 'تنبيه';
+
+      custSheet.getRange(i + 2, map['status'] + 1).setValue(newStatus);
+      custSheet.getRange(i + 2, map['follow_deadline'] + 1).setValue('');
+      if (newStatus === 'محاولات استرجاع فشلت') lost++; else reverted++;
+    }
+    if (reverted > 0 || lost > 0) {
+      Logger.log('✅ رجّعنا ' + reverted + ' عميل لتنبيه، ونقلنا ' + lost + ' عميل لـ فقد (3 محاولات من غير شراء)');
+    }
+  } catch (e) {
+    Logger.log('خطأ checkExpiredCoupons: ' + e.message);
+  }
+}
+
+/* من زرار الصيانة. مش بيتفعّل لوحده عشان بيعدّل حالة متابعة العملاء. */
+function setupCouponExpiryTrigger() {
+  return ensureTriggers_({ which: 'checkExpiredCoupons' });
+}
+
+function sendCouponSMS_(phone, name, message, expiryIso) {
+  try {
+    var canon = canonicalEgyptPhone_(String(phone || ''));
+    if (!isValidEgyptianPhone(canon)) return { ok: false, error: 'رقم غير صحيح' };
+    if (!message) return { ok: false, error: 'الرسالة فاضية' };
+
+    var result = sendSMSViaAutoRemote(canon, message);
+    var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+    var now = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss');
+    getCouponLogSheet_().appendRow([today, asSheetText_(canon), name || '', message, result.ok ? 'تم الإرسال للموبايل' : 'فشل', now]);
+    fxClearCache_('fx_sms_30');
+
+    if (result.ok) {
+      var ss = SpreadsheetApp.openById(CRM_SHEET_ID);
+      markCouponFollowUp_(ss, canon, expiryIso);
+    }
+    return { ok: result.ok, phone: canon };
+  } catch (e) {
     return { ok: false, error: e.message };
   }
 }
+
+// ✅ تأكيد من تليفون الصيدلية: Tasker بيبعته بعد ما يحاول يبعت SMS فعلي
+function recordSmsAck(phone, err) {
+  try {
+    var canon = canonicalEgyptPhone_(phone);
+    if (!canon) return { ok: false, error: 'رقم ناقص' };
+    var sheet = getSMSLogSheet_();
+    if (sheet.getLastRow() <= 1) return { ok: false, error: 'السجل فاضي' };
+
+    var ok = (String(err || '0').trim() === '0');
+    var newStatus = ok ? '✅ اتبعت من التليفون' : '❌ التليفون مبعتهاش';
+    var now = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss');
+
+    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
+    for (var i = data.length - 1; i >= 0; i--) {
+      if (canonicalEgyptPhone_(data[i][3]) !== canon) continue;
+      sheet.getRange(i + 2, 7).setValue(newStatus);
+      sheet.getRange(i + 2, 8).setValue(now);
+      fxClearCache_('fx_sms_30');
+      return { ok: true, phone: canon, status: newStatus };
+    }
+    return { ok: false, error: 'مفيش سطر للرقم ده' };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// ✅ رفض رسالة فشلت (تتعلم كـ"متجاهلة نهائيًا" ومتظهرش تاني في قائمة "فشلت")
+function dismissFailedSMS(invoiceid) {
+  var sheet = getSMSLogSheet_();
+  if (sheet.getLastRow() <= 1) return;
+  var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
+  for (var i = 0; i < data.length; i++) {
+    if (String(data[i][1]) !== String(invoiceid)) continue;
+    sheet.getRange(i + 2, 7).setValue('متجاهلة');
+    fxClearCache_('fx_sms_30');
+    return;
+  }
+}
+
+// ✅ يرجع رصيد النقاط الكلي لعميل معين (مجموع كل سطوره في شيت النقاط)
+function getCustomerPointsData(phone) {
+  try {
+    var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
+    var sheet = ss.getSheetByName(POINTS_SHEET);
+    if (!sheet || sheet.getLastRow() <= 1) return { ok: true, phone: phone, total_points: 0, history: [] };
+    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+    var total = 0;
+    var history = [];
+    data.forEach(function(r) {
+      if (String(r[2]) !== String(phone)) return;
+      total += parseInt(r[6]) || 0;
+      history.push({ date: r[0], invoiceid: String(r[1]), amount: r[4], discount: r[5], points: r[6] });
+    });
+    return { ok: true, phone: phone, total_points: total, history: history.reverse() };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+// ==== MODULE 60_debts_reminders (split from server/Code.js; load order = file name order) ====
+
 
 // ===================================================================
 // 💳 تذكير العملاء المتأخرين في السداد — يدوي أو أسبوعي تلقائي
@@ -5755,6 +6082,8 @@ function sendWeeklyDebtReminders() {
     Logger.log('خطأ sendWeeklyDebtReminders: ' + e.message);
   }
 }
+// ==== MODULE 61_finance (split from server/Code.js; load order = file name order) ====
+
 
 /* 🔁 طلبات Drive أحيانًا بترجع "خطأ في الخدمة" — نستنى ونعيد بدل ما الحساب كله يقع */
 function driveRetry_(fn) {
@@ -6323,6 +6652,8 @@ function cleanBackupsAuto() {
 function jsonResponseStaff(data) {
   return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 }
+// ==== MODULE 62_kpi (split from server/Code.js; load order = file name order) ====
+
 
 // ═══════════════════════════════════════════════════════════════════
 // 🆕 حساب مباشر ودقيق من ملفات المبيعات الخام
@@ -6609,379 +6940,567 @@ function getStaffKPIData(params) {
     daily: daily
   };
 }
+// ==== MODULE 63_expenses (split from server/Code.js; load order = file name order) ====
 
-// ===================================================================
-// 🆕 نظام رسائل SMS الترحيبية + نقاط الولاء - يشتغل مع كل فاتورة جديدة
-// بيستخدم نفس آلية checkStaffOrders() (كل دقيقة)، ومربوط جوّاها
-// ===================================================================
 
-// ✅ يتأكد إن الرقم شكله رقم موبايل مصري صحيح (11 رقم، بادئة 010/011/012/015)
-function isValidEgyptianPhone(phone) {
-  if (!phone) return false;
-  var clean = String(phone).trim();
-  return /^01[0125][0-9]{8}$/.test(clean);
+// ═══════════════════════════════════════════════════════════════════
+// 💸 المصروفات — قراءة مباشرة من ملفات Drive
+//
+// ⚠️ ليه اتغيّرت:
+// السلسلة القديمة كانت 3 خطوات: نظام البيع → xlsx على Drive →
+// شيت جوجل → الداشبورد. الخطوة الوسطانية (التحويل للشيت) وقفت
+// يوم 2 أغسطس من غير ما حد يلاحظ، فالداشبورد فضل يعرض بيانات
+// عمرها 9 أيام وكأنها صح.
+//
+// دلوقتي بنقرا الـxlsx من Drive مباشرة — نفس اللي بنعمله مع ملفات
+// المبيعات الخام من شهور. خطوة أقل = نقطة فشل أقل.
+//
+// ⚠️ تصحيح: Expenses_*.xlsx مش تراكمي. كل نسخة فيها الحركات من آخر
+// تقفيل بس (يومين-تلاتة)، واللي اتقفل بيختفي من النسخة الجاية. ولما
+// التصدير بيقف أو بيطلع متقطع، الأيام اللي بينهم مالهاش نسخة خالص.
+// عشان كده: (١) كل ما نقرا الملف نحفظ حركاته في أرشيف دائم بالتسلسل،
+// (٢) وبنسجّل إجمالي المصروفات المتنوعة اليومي من Daily_Mini_Statics
+//     (بيتحدّث لحظي) ونكمّل بيه أي يوم ناقص.
+// ═══════════════════════════════════════════════════════════════════
+
+var EXPORT_FOLDER = '1Vq85t_jS3sS4s0JHjP5uo3nHZxOAltpb';
+
+/* بيلاقي أحدث ملف مصروفات وبيحوّله لصفوف */
+/* تحويل ملف xlsx واحد لصفوف — Drive REST مباشرة (من غير تفعيل خدمة متقدمة) */
+function xlsxToRows_(file) {
+  var res = UrlFetchApp.fetch(
+    'https://www.googleapis.com/drive/v3/files/' + file.getId() +
+    '/copy?fields=id&supportsAllDrives=true',
+    { method: 'post', contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+      payload: JSON.stringify({ name: '__tmp_exp_' + Date.now(), mimeType: MimeType.GOOGLE_SHEETS }),
+      muteHttpExceptions: true });
+  if (res.getResponseCode() !== 200) {
+    var why = ''; try { why = JSON.parse(res.getContentText()).error.message; } catch (e) { why = res.getContentText().slice(0, 150); }
+    return { ok: false, error: 'تحويل الملف فشل: ' + res.getResponseCode() + (why ? ' — ' + why : '') };
+  }
+  var tmpId = JSON.parse(res.getContentText()).id, rows = [];
+  try {
+    var sh = SpreadsheetApp.openById(tmpId).getSheets()[0];
+    if (sh.getLastRow() > 1) rows = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getDisplayValues();
+  } finally {
+    try { DriveApp.getFileById(tmpId).setTrashed(true); } catch (e) {}
+  }
+  return { ok: true, rows: rows };
 }
 
-// ✅ بياخد أول كلمتين بس من اسم العميل
-function getFirstTwoWords(name) {
-  if (!name) return 'عميلنا العزيز';
-  var words = String(name).trim().split(/\s+/);
-  return words.slice(0, 2).join(' ');
-}
-
-// ✅ يحسب النقاط: 5% من قيمة الفاتورة قبل الخصم، مطروح منها الخصم، بحد أدنى صفر
-function calculatePoints(grandtotal, discount) {
-  var basePoints = Math.round((grandtotal || 0) * 0.05);
-  var finalPoints = basePoints - Math.round(discount || 0);
-  return Math.max(0, finalPoints);
-}
-
-// ✅ يقرا ملف مبيعات يوم معين، ويرجع كل فاتورة (unique) مرة واحدة بس
-function getUniqueSaleInvoices(dateStr) {
-  var folder = DriveApp.getFolderById(SALES_FOLDER);
-  var content = '';
-  var files = folder.getFilesByName('sales' + dateStr + '.txt');
-  if (files.hasNext()) content = files.next().getBlob().getDataAsString('UTF-8');
-  if (!content) return {};
-
-  var regex = /VALUES\s*\(((?:&#\d+;|[^;])+)\)/g;
-  var match;
-  var invoices = {};
-
-  while ((match = regex.exec(content)) !== null) {
-    var tuples = extractTuples('(' + match[1] + ')');
-    for (var t = 0; t < tuples.length; t++) {
-      try {
-        var vals = parseValues(tuples[t]);
-        if (!vals || vals.length < 50) continue;
-
-        var invoiceid = vals[1];
-        var invtype = vals[2] ? vals[2].trim() : '';
-        if (invtype !== 'sale') continue;
-        if (invoices[invoiceid]) continue;
-
-        var discount = parseFloat(vals[27]) || 0;
-        var netpaid = parseFloat(vals[35]) || 0;
-        var paid2 = parseFloat(vals[39]) || 0;
-        var realPaid = netpaid + paid2;
-        var grandtotal = parseFloat(vals[40]) || 0;
-        var customername = vals[44] ? vals[44].trim() : '';
-        var customerphone = vals[45] ? vals[45].trim() : '';
-
-        invoices[invoiceid] = {
-          invoiceid: invoiceid,
-          customername: customername,
-          customerphone: customerphone,
-          discount: discount,
-          grandtotal: grandtotal,
-          realPaid: Math.round(realPaid)
-        };
-      } catch (e) { continue; }
+/* بيلاقي أحدث ملف مصروفات وبيحوّله لصفوف */
+function readExpenseFile_() {
+  try {
+    var folder = DriveApp.getFolderById(EXPORT_FOLDER);
+    var files = folder.getFilesByName('Expenses_9882-3C97_1.xlsx');
+    var newest = null;
+    while (files.hasNext()) {
+      var f = files.next();
+      if (!newest || f.getLastUpdated() > newest.getLastUpdated()) newest = f;
     }
-  }
-  return invoices;
-}
-
-// ✅ يبني نص رسالة SMS العميل (مختصرة، رسالة واحدة)
-function buildCustomerSMSMessage(firstName, amount) {
-  return 'أهلاً يا ' + firstName + ' فاتورتك ' + amount + ' جنيه توصيلك مجانًا دايمًا - صيدلية السوسي';
-}
-
-// ✅ يبعت SMS فعلي عن طريق AutoRemote (تنسيق =:= المتفق عليه مع Tasker)
-function sendSMSViaAutoRemote(phone, message) {
-  try {
-    var payload = phone + '=:=' + message;  // 🔧 فاصل خاص بينا — Tasker هو اللي بيقسّمه (مش AutoRemote)
-    var url = AUTOREMOTE_URL + '?key=' + encodeURIComponent(AUTOREMOTE_KEY) + '&message=' + encodeURIComponent(payload);
-    var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-    var code = res.getResponseCode();
-    var body = res.getContentText();
-    // 🔍 تسجيل تشخيصي: بيوضّح هل AutoRemote استقبل الطلب ولا لأ
-    try {
-      logAgentDebug_('📤 إرسال SMS', 'لـ=' + phone + ' | كود_الرد=' + code + ' | رد_AutoRemote=' + String(body).substring(0, 200));
-    } catch (e2) {}
-    return { ok: code === 200, code: code, response: body };
+    if (!newest) return { ok: false, error: 'ملف المصروفات مش موجود' };
+    var r = xlsxToRows_(newest);
+    if (!r.ok) return r;
+    return { ok: true, rows: r.rows,
+             at: Utilities.formatDate(newest.getLastUpdated(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss') };
   } catch (e) {
-    try { logAgentDebug_('📤 فشل إرسال SMS', 'لـ=' + phone + ' | خطأ=' + e.message); } catch (e2) {}
-    return { ok: false, code: 0, response: e.message };
+    return { ok: false, error: e.message };
   }
 }
 
-// ✅ يجيب كل رقم فاتورة اتعالجت بالفعل - عشان مانعالجش نفس الفاتورة مرتين
-function getAlreadyProcessedInvoiceIds() {
-  var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
-  var sheet = ss.getSheetByName(SMS_LOG_SHEET);
-  var ids = new Set();
-  if (!sheet || sheet.getLastRow() <= 1) return ids;
-  var data = sheet.getRange(2, 2, sheet.getLastRow() - 1, 1).getValues();
-  data.forEach(function(r) { if (r[0]) ids.add(String(r[0])); });
-  return ids;
-}
+/* بيحوّل صفوف الملف لسطور مصروفات موحّدة */
+function parseExpenseRows_(rows) {
+  if (!rows || rows.length < 2) return [];
+  var hdr = rows[0].map(function (h) { return String(h || '').trim(); });
+  var ix = {};
+  hdr.forEach(function (h, i) { ix[h] = i; });
 
-function getSMSLogSheet_() {
-  var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
-  var sheet = ss.getSheetByName(SMS_LOG_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(SMS_LOG_SHEET);
-    sheet.appendRow(['التاريخ', 'رقم الفاتورة', 'اسم العميل', 'رقم التليفون', 'المبلغ', 'نص الرسالة', 'الحالة', 'وقت المحاولة']);
-    sheet.getRange('D:D').setNumberFormat('@'); // 🔧 يمنع اختفاء الصفر الأول من رقم التليفون
-  }
-  return sheet;
-}
+  /* الأعمدة بالاسم مش بالرقم — النظام بيغيّر الترتيب أحيانًا */
+  var cType = (ix['النوع']   !== undefined) ? ix['النوع']   : 3;
+  var cVal  = (ix['القيمة']  !== undefined) ? ix['القيمة']  : 4;
+  var cTime = (ix['الوقـت']  !== undefined) ? ix['الوقـت']  : 5;
+  var cName = (ix['المصروفات']!== undefined) ? ix['المصروفات']: 1;
+  var cDet  = (ix['التفاصيل'] !== undefined) ? ix['التفاصيل'] : 2;
+  var cId   = (ix['التسلسل']  !== undefined) ? ix['التسلسل']  : 0;
+  var cComp = (ix['الشركة']    !== undefined) ? ix['الشركة']    : -1;
+  var cStaff= (ix['اسم الموظف']!== undefined) ? ix['اسم الموظف']: -1;
 
-function logSMSAttempt(row) {
-  getSMSLogSheet_().appendRow(row);
-}
+  var out = [];
+  for (var i = 1; i < rows.length; i++) {
+    var r = rows[i];
 
-function logInvalidPhone(row) {
-  var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
-  var sheet = ss.getSheetByName(INVALID_PHONE_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(INVALID_PHONE_SHEET);
-    sheet.appendRow(['التاريخ', 'رقم الفاتورة', 'اسم العميل', 'الرقم المسجل', 'المبلغ']);
-    sheet.getRange('D:D').setNumberFormat('@');
-  }
-  sheet.appendRow(row);
-}
+    /* ⚠️ إصلاح الزحلقة:
+       لما خانة "التفاصيل" تبقى فاضية، بعض المصادر بتسقطها خالص
+       بدل ما تسيبها فاضية — فكل الأعمدة بتتزحلق مكان لورا.
+       مثال حقيقي (مصروفات متنوعة):
+         الصح:   2929 | صور فوتير | (فاضي) | مصروفات متنوعة | 20 | 2026-08-01
+         المكسور: 2929 | صور فوتير | مصروفات متنوعة | 20 | 2026-08-01
+       فالوقت كان بيتقرا "20" بدل التاريخ، والسطر يتفلتر ويختفي.
 
-function logPoints(row) {
-  var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
-  var sheet = ss.getSheetByName(POINTS_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(POINTS_SHEET);
-    sheet.appendRow(['التاريخ', 'رقم الفاتورة', 'رقم التليفون', 'اسم العميل', 'قيمة الفاتورة', 'الخصم', 'النقاط المكتسبة']);
-    sheet.getRange('C:C').setNumberFormat('@');
-  }
-  sheet.appendRow(row);
-}
-
-// ✅ الدالة الرئيسية: بتتنفذ كل دقيقة (مربوطة جوّا checkStaffOrders)
-function processCustomerSMS() {
-  try {
-    var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
-    var now = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss');
-    var invoices = getUniqueSaleInvoices(today);
-    var alreadyProcessed = getAlreadyProcessedInvoiceIds();
-
-    Object.keys(invoices).forEach(function(invoiceid) {
-      if (alreadyProcessed.has(String(invoiceid))) return;
-
-      var inv = invoices[invoiceid];
-      inv.customerphone = canonicalEgyptPhone_(inv.customerphone); // 🔧 يرجّع الصفر الأول لو ضايع من نظام البيع
-      var phoneValid = isValidEgyptianPhone(inv.customerphone);
-
-      if (!phoneValid) {
-        if (inv.customerphone && inv.customerphone.trim() !== '') {
-          logInvalidPhone([today, invoiceid, inv.customername, inv.customerphone, inv.realPaid]);
+       الحل: بندوّر على التاريخ في الصف كله بدل ما نثق في رقم العمود. */
+    var shift = 0;
+    var tsRaw = String(r[cTime] || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}/.test(tsRaw)) {
+      for (var k = 0; k < r.length; k++) {
+        if (/^\d{4}-\d{2}-\d{2}[ T]/.test(String(r[k] || '').trim())) {
+          shift = k - cTime;   /* بكام خانة اتزحلق الصف */
+          break;
         }
-        return;
       }
+    }
+    function col(base) {
+      var v = r[base + shift];
+      return (v === undefined || v === null) ? '' : String(v).trim();
+    }
 
-      var points = calculatePoints(inv.grandtotal, inv.discount);
-      logPoints([today, invoiceid, inv.customerphone, inv.customername, inv.realPaid, inv.discount, points]);
+    var cat = col(cType);
+    if (!cat) continue;
+    var ts = col(cTime).substring(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ts)) continue;
+    out.push({
+      id: String(r[cId] || ''),           /* التسلسل قبل الزحلقة دايمًا */
+      category: cat,
+      amount: parseFloat(col(cVal).replace(/,/g, '')) || 0,
+      date: ts,
+      time: col(cTime).substring(11, 16),
+      name: col(cName),
+      detail: shift ? '' : col(cDet),     /* الزحلقة معناها التفاصيل فاضية */
+      company: (cComp !== -1) ? col(cComp) : '',
+      staff: (cStaff !== -1) ? col(cStaff) : '',
+      /* الإيراد مش مصروف — بيتفلتر في الحسابات وبيتعرض لوحده */
+      isIncome: cat.indexOf('ايراد') === 0
+    });
+  }
+  return out;
+}
 
-      var firstName = getFirstTwoWords(inv.customername);
-      var message = buildCustomerSMSMessage(firstName, inv.realPaid);
+/* أرشيف الشيت — للشهور القديمة اللي مش في الملف الحالي */
+function readExpenseSheet_() {
+  var out = [];
+  try {
+    var ss = SpreadsheetApp.openById(EXPENSES_SHEET_ID);
+    ['Daily_Expenses', 'Monthly_Expenses'].forEach(function (name) {
+      var sh = ss.getSheetByName(name);
+      if (!sh || sh.getLastRow() <= 1) return;
+      var rows = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getDisplayValues();
+      out = out.concat(parseExpenseRows_(rows));
+    });
+  } catch (e) {}
+  return out;
+}
 
-      var result = sendSMSViaAutoRemote(inv.customerphone, message);
-      logSMSAttempt([
-        today, invoiceid, inv.customername, inv.customerphone,
-        inv.realPaid, message, result.ok ? 'تم الإرسال للموبايل' : 'فشل', now
-      ]);
+/* المصدر الموحّد: الملف الحي + الأرشيف، من غير تكرار */
+var EXP_LEDGER_SHEET  = 'سجل يومي للمصروفات';
+var EXP_ARCHIVE_SHEET = 'أرشيف المصروفات';
 
-      // 🆕 مندوبين: لو العميل ده معلّق تحت مندوب واشترى ≥ الحد الأدنى، فعّل الإحالة
-      activateAgentReferralIfPending_(inv.customerphone, invoiceid, inv.realPaid);
+/* نوع الحركة: المتنوعة (الوحيدة اللي بنكمّلها من السجل) أو المشتروات */
+function expKind_(cat) {
+  cat = String(cat || '');
+  if (cat.indexOf('متنوعة') !== -1) return 'misc';
+  if (cat.indexOf('مشتروات') !== -1) return 'purch';
+  return '';
+}
+
+/* "09/10/2026 - 11:45 PM" → "2026-10-09". لو مش مفهوم بنرجّع فاضي ومبنخمّنش */
+function statsDay_(s) {
+  var m = String(s || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!m) return '';
+  return m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+}
+
+/* حفظ دائم لحركات الملف بالتسلسل. الملف بيشيل اللي اتقفل، فلو متحفظش هنا بيضيع. */
+function archiveExpenses_(items) {
+  if (!items || !items.length) return 0;
+  var sh = getOrCreateSheet_(EXP_ARCHIVE_SHEET,
+    ['التسلسل', 'النوع', 'القيمة', 'التاريخ', 'الوقت', 'المصروف', 'التفاصيل', 'الشركة', 'الموظف', 'إيراد', 'أُضيف']);
+  sh.getRange('A:A').setNumberFormat('@');
+  sh.getRange('D:D').setNumberFormat('@');
+  var seen = {};
+  if (sh.getLastRow() > 1) {
+    sh.getRange(2, 1, sh.getLastRow() - 1, 1).getDisplayValues().forEach(function (r) { seen[String(r[0])] = 1; });
+  }
+  var now = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss'), rows = [];
+  items.forEach(function (e) {
+    if (!e.id || seen[e.id]) return;
+    seen[e.id] = 1;
+    rows.push([e.id, e.category, e.amount, e.date, e.time || '', e.name || '', e.detail || '',
+               e.company || '', e.staff || '', e.isIncome ? 1 : 0, now]);
+  });
+  if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 11).setValues(rows);
+  return rows.length;
+}
+
+function readExpenseArchive_() {
+  var out = [];
+  try {
+    var sh = SpreadsheetApp.openById(STAFF_SHEET_ID).getSheetByName(EXP_ARCHIVE_SHEET);
+    if (!sh || sh.getLastRow() <= 1) return out;
+    sh.getRange(2, 1, sh.getLastRow() - 1, 10).getDisplayValues().forEach(function (r) {
+      out.push({ id: String(r[0]), category: r[1],
+                 amount: parseFloat(String(r[2]).replace(/,/g, '')) || 0,
+                 date: String(r[3]).substring(0, 10), time: r[4], name: r[5], detail: r[6],
+                 company: r[7], staff: r[8], isIncome: String(r[9]) === '1' });
+    });
+  } catch (e) {}
+  return out;
+}
+
+/* السجل اليومي: كل ساعة بنكتب إجمالي النهاردة وإمبارح من Daily_Mini_Statics.
+   "اليوم" هنا هو يوم الإحصائية نفسها (مش يوم السكربت) — لو الجهاز اتأخر في
+   التحديث مبنسجّلش بيانات يوم على يوم تاني. */
+function recordDailyStats_() {
+  var t = getSystemDailyTotals();
+  if (!t || !t.ok) return { ok: false, error: 'الإحصائيات مش متاحة' };
+  var day = statsDay_(t.updated_at);
+  if (!day) return { ok: false, error: 'مقدرتش أفهم تاريخ الإحصائية: ' + t.updated_at };
+  var prev = Utilities.formatDate(new Date(new Date(day + 'T12:00:00').getTime() - 86400000), 'Africa/Cairo', 'yyyy-MM-dd');
+
+  var sh = getOrCreateSheet_(EXP_LEDGER_SHEET, ['التاريخ', 'مصروفات متنوعة', 'مشتروات الشركات', 'آخر تحديث', 'مصدر']);
+  sh.getRange('A:A').setNumberFormat('@');
+  var rowOf = {};
+  if (sh.getLastRow() > 1) {
+    sh.getRange(2, 1, sh.getLastRow() - 1, 1).getDisplayValues().forEach(function (r, i) { rowOf[String(r[0]).substring(0, 10)] = i + 2; });
+  }
+  var now = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss'), written = 0;
+  function upsert(d, misc, purch, src) {
+    var vals = [[d, misc, purch, now, src]];
+    if (rowOf[d]) sh.getRange(rowOf[d], 1, 1, 5).setValues(vals);
+    else { sh.getRange(sh.getLastRow() + 1, 1, 1, 5).setValues(vals); rowOf[d] = sh.getLastRow(); }
+    written++;
+  }
+  upsert(prev, t.misc_yesterday || 0, t.purch_yesterday || 0, 'أمس');
+  upsert(day,  t.misc_today || 0,     t.purch_today || 0,     'النهاردة');
+  fxClearCache_('fx_exp_all');
+  return { ok: true, day: day, written: written, misc_today: t.misc_today, misc_yesterday: t.misc_yesterday };
+}
+
+function readLedger_() {
+  var out = [];
+  try {
+    var sh = SpreadsheetApp.openById(STAFF_SHEET_ID).getSheetByName(EXP_LEDGER_SHEET);
+    if (!sh || sh.getLastRow() <= 1) return out;
+    sh.getRange(2, 1, sh.getLastRow() - 1, 3).getDisplayValues().forEach(function (r) {
+      var day = String(r[0] || '').substring(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
+      out.push({ day: day, misc: parseFloat(String(r[1]).replace(/,/g, '')) || 0,
+                 purch: parseFloat(String(r[2]).replace(/,/g, '')) || 0 });
+    });
+  } catch (e) {}
+  return out;
+}
+
+/* بيكمّل المتنوعة بالفرق عن إجمالي النظام اليومي.
+   ⚠️ المتنوعة بس — المشتريات مبنكمّلهاش لأني مش متأكد إن تعريف "مشتروات
+   الشركات" في إحصائيات النظام نفس اللي في ملف المصروفات، ولو اختلف هنضيف
+   فروق وهمية. المتنوعة هي اللي بتدخل في حساب الربح الصافي. */
+function applyLedger_(items, ledger) {
+  var sums = {};
+  items.forEach(function (e) {
+    if (e.isIncome) return;
+    if (expKind_(e.category) !== 'misc') return;
+    sums[e.date] = (sums[e.date] || 0) + e.amount;
+  });
+  var extra = [];
+  ledger.forEach(function (L) {
+    var have = sums[L.day] || 0;
+    var diff = Math.round((L.misc - have) * 100) / 100;
+    if (diff > 0.5) {
+      extra.push({ id: 'L-' + L.day + '-misc', category: 'مصروفات متنوعة', amount: diff,
+                   date: L.day, time: '',
+                   name: have > 0 ? 'فرق غير مفصّل (إجمالي اليوم من النظام)' : 'إجمالي اليوم من النظام',
+                   detail: '', company: '', staff: '', isIncome: false, fromLedger: true });
+    }
+  });
+  return items.concat(extra);
+}
+
+/* ملفات التصدير بفترة يدوية "Expenses From ..." — بتتحوّل مرة لكل نسخة وتتحفظ في الأرشيف */
+function ingestPeriodExpenseFiles_() {
+  var props = PropertiesService.getScriptProperties(), added = 0, items = [];
+  var done = {};
+  try { done = JSON.parse(props.getProperty('exp_period_done') || '{}'); } catch (e) {}
+  var it = DriveApp.searchFiles("title contains 'Expenses From' and trashed = false");
+  var n = 0;
+  while (it.hasNext() && n < 10) {
+    var f = it.next(); n++;
+    if (!/\.xlsx$/i.test(f.getName())) continue;
+    var sig = String(f.getLastUpdated().getTime());
+    if (done[f.getId()] === sig) continue;
+    var r = xlsxToRows_(f);
+    if (!r.ok) continue;
+    items = items.concat(parseExpenseRows_(r.rows));
+    done[f.getId()] = sig;
+  }
+  if (items.length) added = archiveExpenses_(items);
+  props.setProperty('exp_period_done', JSON.stringify(done));
+  return added;
+}
+
+/* ملفات "Company Paid Expenses" الشهرية: بتسد فجوة المشتروات بعد آخر مشتروات مفصّلة حقيقية */
+function readCompanyPaid_() {
+  var out = [];
+  try {
+    var cache = fxCacheGet_('fx_cpaid');
+    if (cache) return cache;
+    var it = DriveApp.searchFiles("title contains 'Company Paid Expenses' and trashed = false");
+    var files = [];
+    while (it.hasNext()) files.push(it.next());
+    files.sort(function (a, b) { return b.getLastUpdated() - a.getLastUpdated(); });
+    files.slice(0, 2).forEach(function (f) {
+      var r = xlsxToRows_(f);
+      if (!r.ok) return;
+      r.rows.slice(1).forEach(function (row) {
+        var cname = String(row[2] || '').trim();
+        var det = String(row[5] || '');
+        var re = /invoice:(\d+)\s+paid:([\d.]+)\s+at:(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/g, m;
+        while ((m = re.exec(det))) {
+          if (m[1] === '0') continue;   /* دفعات من غير فاتورة مش مشتروات */
+          out.push({ id: 'CP-' + m[1] + '-' + m[3] + m[4] + '-' + m[2], category: 'مصروفات مشتروات شركات',
+                     amount: parseFloat(m[2]) || 0, date: m[3], time: m[4],
+                     name: (cname || 'الصيدلية') + ',' + m[1], detail: '', company: cname, staff: '',
+                     isIncome: false, fromCompanyPaid: true });
+        }
+      });
+    });
+    fxCachePut_('fx_cpaid', out, 1800);
+  } catch (e) {}
+  return out;
+}
+
+/* ═══ المصروفات من النسخة الاحتياطية لـ Pharmaclick ═══
+   الإكسبورت وقف من 4 أكتوبر، لكن الباك أب (كل 3–4 ساعات) فيه جدول expenses كامل.
+   التسلسل في الباك أب = نفس "التسلسل" في الإكسبورت القديم، فمفيش تكرار في الأرشيف.
+   out = مصروفات متنوعة · pay = مشتروات شركات · salary = مرتبات · debits = ايراد مديونيات */
+var EXP_TYPE_CAT_ = { out: 'مصروفات متنوعة', pay: 'مصروفات مشتروات شركات', salary: 'مصروفات مرتبات', debits: 'ايراد مديونيات' };
+function syncExpensesFromBackup_(force) {
+  var P = PropertiesService.getScriptProperties();
+  var it = DriveApp.searchFiles("title contains 'pharmaclick_backup_9882' and trashed = false"), newest = null;
+  while (it.hasNext()) { var f = it.next(); if (!newest || f.getLastUpdated() > newest.getLastUpdated()) newest = f; }
+  if (!newest) return { ok: false, error: 'مفيش نسخة احتياطية' };
+  var sig = newest.getId() + '|' + newest.getLastUpdated().getTime();
+  if (!force && P.getProperty('exp_bk_sig') === sig) return { ok: true, skipped: true, file: newest.getName() };
+  var blob = newest.getBlob(); blob.setContentType('application/zip');
+  var sql = '';
+  Utilities.unzip(blob).forEach(function (e) { if (!sql && /\.sql$/i.test(e.getName())) sql = e.getDataAsString('UTF-8'); });
+  if (!sql) return { ok: false, error: 'ملف SQL مش موجود في النسخة' };
+
+  function table(name) {
+    var cols = sqlColumns_(sql, name), rows = sqlTableRows_(sql, name).rows;
+    return rows.map(function (x) { var v = sqlVals_(x), o = {}; cols.forEach(function (c, i) { o[c] = v[i]; }); return o; });
+  }
+  var users = {}, comps = {};
+  table('users').forEach(function (u) { users[u.id] = u.name || ''; });
+  table('companies').forEach(function (c) { comps[c.id] = c.namear || c.name || ''; });
+  var exp = table('expenses');
+  sql = null;   /* نفضّي الذاكرة */
+
+  var items = [];
+  exp.forEach(function (r) {
+    if (String(r.deleted) === '1') return;
+    var cat = EXP_TYPE_CAT_[r.type]; if (!cat) return;
+    var ts = String(r.time || '');
+    if (!/^\d{4}-\d{2}-\d{2}/.test(ts)) return;
+    items.push({ id: String(r.id), category: cat, amount: parseFloat(r.value) || 0,
+                 date: ts.slice(0, 10), time: ts.slice(11, 16),
+                 name: String(r.title || '').replace(/,\d+,دفع مباشر$/, ''), detail: String(r.details || '').trim(),
+                 company: (+r.companyid > 3 ? comps[r.companyid] || '' : ''), staff: users[r.userid] || '',
+                 isIncome: r.type === 'debits' });
+  });
+  var added = archiveExpenses_(items);
+  P.setProperty('exp_bk_sig', sig);
+  P.setProperty('exp_bk_last', JSON.stringify({ at: Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm'),
+    file: newest.getName(), rows: items.length, added: added }));
+  fxClearCache_('fx_exp_all');
+  return { ok: true, file: newest.getName(), rows: items.length, added: added,
+           lastDate: items.reduce(function (m, x) { return x.date > m ? x.date : m; }, '') };
+}
+function syncExpensesFromBackup() { return syncExpensesFromBackup_(false); }   /* للتريجر */
+function ensureExpenseBackupTrigger_() {
+  var P = PropertiesService.getScriptProperties();
+  if (P.getProperty('exp_bk_trigger') === '1') return false;
+  var has = ScriptApp.getProjectTriggers().some(function (tr) { return tr.getHandlerFunction() === 'syncExpensesFromBackup'; });
+  if (!has) ScriptApp.newTrigger('syncExpensesFromBackup').timeBased().everyHours(2).create();
+  P.setProperty('exp_bk_trigger', '1');
+  return true;
+}
+
+/* المصدر الموحّد: الملف الحي + الأرشيف الدائم + الشيتات القديمة + السجل اليومي */
+function allExpenses_() {
+  var hit = fxCacheGet_('fx_exp_all');
+  if (hit) return hit;
+  /* أول مرة: نركّب التحديث التلقائي كل ساعتين ونسحب من الباك أب على طول */
+  try { if (ensureExpenseBackupTrigger_()) syncExpensesFromBackup_(true); } catch (e) { Logger.log('exp backup: ' + e.message); }
+
+  var file = readExpenseFile_();
+  var live = (file.ok) ? parseExpenseRows_(file.rows) : [];
+  try { if (live.length) archiveExpenses_(live); } catch (e) {}
+  try { ingestPeriodExpenseFiles_(); } catch (e) {}
+
+  var seen = {}, merged = [];
+  live.concat(readExpenseArchive_()).concat(readExpenseSheet_()).forEach(function (e) {
+    var k = e.id ? ('#' + e.id) : (e.date + '|' + e.category + '|' + e.amount + '|' + e.name);
+    if (seen[k]) return;
+    seen[k] = 1; merged.push(e);
+  });
+
+  /* آخر حركة مفصّلة حقيقية — قبل ما السجل يضيف صفوفه التكميلية */
+  merged.sort(function (a, b) { return b.date.localeCompare(a.date); });
+  var latestItem = merged.length ? merged[0].date : '';
+
+  /* سد فجوة المشتروات من ملف المدفوعات للشركات (بعد آخر مشتروات حقيقية فقط) */
+  var lastPurch = '';
+  merged.forEach(function (e) { if (!e.isIncome && expKind_(e.category) === 'purch' && e.date > lastPurch) lastPurch = e.date; });
+  var cp = readCompanyPaid_().filter(function (e) { return e.date > lastPurch; });
+  merged = merged.concat(cp);
+
+  var ledger = readLedger_();
+  merged = applyLedger_(merged, ledger);
+  merged.sort(function (a, b) { return b.date.localeCompare(a.date); });
+
+  /* "واقفة" = مفيش أي إشارة حياة: لا حركة مفصّلة ولا سجل يومي حديث.
+     قبل كده كانت بتبص على آخر حركة بس، فيوم من غير مصروفات كان بيبان كأن
+     التصدير واقف. */
+  var latestLedger = ledger.reduce(function (m, L) { return L.day > m ? L.day : m; }, '');
+  var latest = (latestLedger > latestItem) ? latestLedger : latestItem;
+
+  var out = {
+    ok: true, items: merged,
+    fileAt: file.ok ? file.at : '',
+    fileError: file.ok ? '' : file.error,
+    latestEntry: latest,
+    latestItemized: latestItem,
+    itemizedStaleDays: latestItem
+      ? Math.floor((new Date(Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd'))
+                    - new Date(latestItem)) / 86400000)
+      : null,
+    companyPaidFrom: lastPurch,
+    companyPaidRows: cp.length,
+    ledgerDays: ledger.length,
+    staleDays: latest
+      ? Math.floor((new Date(Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd'))
+                    - new Date(latest)) / 86400000)
+      : null
+  };
+  fxCachePut_('fx_exp_all', out, 600);
+  return out;
+}
+
+/* مرة واحدة: بيقرا كل النسخ القديمة من ملف المصروفات على Drive ويحفظ حركاتها
+   في الأرشيف. بيجيب كل اللي لسه ظاهر في أي نسخة — اللي اتقفل ومفيش نسخة
+   فيه مش ممكن يتجاب. */
+function backfillExpenseArchive() {
+  var lock = LockService.getScriptLock();
+  try { if (!lock.tryLock(30000)) return { ok: false, error: 'مشغول — جرب كمان شوية' }; }
+  catch (e) { return { ok: false, error: 'مشغول' }; }
+  try {
+    var folder = DriveApp.getFolderById(EXPORT_FOLDER);
+    var it = folder.getFilesByName('Expenses_9882-3C97_1.xlsx'), list = [];
+    while (it.hasNext()) list.push(it.next());
+    list.sort(function (a, b) { return a.getLastUpdated() - b.getLastUpdated(); });
+
+    var read = 0, added = 0, errors = [];
+    list.forEach(function (f) {
+      try {
+        var r = xlsxToRows_(f);
+        if (!r.ok) { errors.push(r.error); return; }
+        read++;
+        added += archiveExpenses_(parseExpenseRows_(r.rows));
+      } catch (e2) { errors.push(e2.message); }
+    });
+    var bk = null;
+    try { ensureExpenseBackupTrigger_(); bk = syncExpensesFromBackup_(true); } catch (eb) { bk = { ok: false, error: eb.message }; }
+    fxClearCache_('fx_exp_all');
+    return { ok: true, versions: list.length, read: read, added: added + ((bk && bk.added) || 0), errors: errors.slice(0, 3), backup: bk };
+  } catch (e3) {
+    return { ok: false, error: e3.message };
+  } finally {
+    try { lock.releaseLock(); } catch (e4) {}
+  }
+}
+
+/* مراجعة المصروفات (صفحة expenses.html): الموظف المسؤول بيعلّم كل حركة "تمام" أو "محتاجة توضيح" بملاحظة */
+var EXP_REVIEW_SHEET = 'مراجعة المصروفات';
+function getExpReviews() {
+  var out = {};
+  try {
+    var sh = SpreadsheetApp.openById(STAFF_SHEET_ID).getSheetByName(EXP_REVIEW_SHEET);
+    if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 5).getDisplayValues().forEach(function (r) {
+      if (r[0]) out[r[0]] = { status: r[1], note: r[2], by: r[3], at: r[4] };
+    });
+  } catch (e) {}
+  return { ok: true, reviews: out };
+}
+function expReview(d) {
+  var id = String(d.id || '').trim();
+  if (!id) return { ok: false, error: 'رقم الحركة ناقص' };
+  var status = d.status === 'ask' ? 'ask' : (d.status === 'ok' ? 'ok' : '');
+  var sh = getOrCreateSheet_(EXP_REVIEW_SHEET, ['الحركة', 'الحالة', 'ملاحظة', 'راجعها', 'الوقت']);
+  sh.getRange('A:A').setNumberFormat('@');
+  var row = [[id, status, String(d.note || '').slice(0, 300), String(d.by || '').slice(0, 40),
+              Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm')]];
+  var n = sh.getLastRow(), at = 0;
+  if (n > 1) { var ids = sh.getRange(2, 1, n - 1, 1).getDisplayValues(); for (var i = 0; i < ids.length; i++) if (ids[i][0] === id) { at = i + 2; break; } }
+  if (at) sh.getRange(at, 1, 1, 5).setValues(row); else sh.getRange(n + 1, 1, 1, 5).setValues(row);
+  return { ok: true };
+}
+
+function getExpensesData(params) {
+  try {
+    var all = allExpenses_();
+    var R = resolveRange_(params);
+
+    /* 🔧 إصلاح: "ايراد مديونيات" كان بيتجمع في إجمالي المصروفات.
+       ده فلوس داخلة مش خارجة — الإجمالي كان منفوخ بقيمتها. */
+    var byCat = {}, items = [], total = 0, count = 0, income = 0, incomeCount = 0;
+    var ledgerTotal = 0, ledgerCount = 0;   /* اللي اتكمّل من إجمالي النظام اليومي */
+
+    all.items.forEach(function (e) {
+      if (e.date < R.from || e.date > R.to) return;
+
+      var row = {
+        id: e.id, category: e.category, amount: e.amount,
+        date: e.date, time: e.time || '',
+        company: e.company || '', staff: e.staff || '',
+        name: e.name || '', detail: e.detail || '',
+        isIncome: !!e.isIncome, fromLedger: !!e.fromLedger,
+        desc: [e.name, e.detail].filter(function (x) { return x; }).join(' — ') || '—'
+      };
+      items.push(row);
+      if (e.fromLedger && !e.isIncome) { ledgerTotal += e.amount; ledgerCount++; }
+
+      if (e.isIncome) { income += e.amount; incomeCount++; return; }
+
+      if (!byCat[e.category]) byCat[e.category] = { total: 0, count: 0 };
+      byCat[e.category].total += e.amount;
+      byCat[e.category].count++;
+      total += e.amount; count++;
     });
 
-    fxClearCache_('fx_sms_30'); // فيه رسايل جديدة → نفضّي الكاش عشان الداشبورد يشوفها فورًا
-  } catch (e) {
-    Logger.log('خطأ processCustomerSMS: ' + e.message);
-  }
-}
+    var list = Object.keys(byCat).map(function (k) {
+      return { category: k, total: byCat[k].total, count: byCat[k].count };
+    }).sort(function (a, b) { return b.total - a.total; });
 
-// ✅ إعادة إرسال رسالة فشلت (بتستخدم نفس البيانات المخزنة في السجل)
-function retryFailedSMS(invoiceid) {
-  var sheet = getSMSLogSheet_();
-  if (sheet.getLastRow() <= 1) return;
-  var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
-  for (var i = 0; i < data.length; i++) {
-    if (String(data[i][1]) !== String(invoiceid)) continue;
-    var phone = canonicalEgyptPhone_(String(data[i][3]));
-    var message = data[i][5];
-    var result = sendSMSViaAutoRemote(phone, message);
-    var now = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss');
-    sheet.getRange(i + 2, 7).setValue(result.ok ? 'تم الإرسال للموبايل' : 'فشل');
-    sheet.getRange(i + 2, 8).setValue(now);
-    fxClearCache_('fx_sms_30');
-    return;
-  }
-}
-
-// ===================================================================
-// 🎁 إرسال كوبونات الاسترجاع عبر SMS — نفس مسار AutoRemote/Tasker
-// ===================================================================
-var COUPON_LOG_SHEET = 'رسائل الكوبونات';
-
-function getCouponLogSheet_() {
-  var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
-  var sheet = ss.getSheetByName(COUPON_LOG_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(COUPON_LOG_SHEET);
-    sheet.appendRow(['التاريخ', 'رقم التليفون', 'اسم العميل', 'نص الرسالة', 'الحالة', 'الوقت']);
-    sheet.getRange('B:B').setNumberFormat('@');
-  }
-  return sheet;
-}
-
-// 🆕 بعد إرسال كوبون: العميل يدخل "متابعة" ومعاه تاريخ صلاحية الكوبون
-function markCouponFollowUp_(ss, phone, expiryIso) {
-  try {
-    var custSheet = ss.getSheetByName('Customers');
-    if (!custSheet || custSheet.getLastRow() <= 1) return;
-    var map = getHeaderMap(custSheet);
-    if (map['phone'] === undefined) return;
-    var data = custSheet.getRange(2, 1, custSheet.getLastRow() - 1, custSheet.getLastColumn()).getValues();
-
-    for (var i = 0; i < data.length; i++) {
-      if (String(data[i][map['phone']]) !== String(phone)) continue;
-      var rowIndex = i + 2;
-      var status = map['status'] !== undefined ? data[i][map['status']] : '';
-      var isBlocked = map['blocked'] !== undefined ? isTruthy(data[i][map['blocked']]) : false;
-      if (isBlocked || status === 'نشط') return;
-
-      if (map['status'] !== undefined) custSheet.getRange(rowIndex, map['status'] + 1).setValue('تمت المتابعة - في الانتظار');
-      if (map['contact_marked_at'] !== undefined) custSheet.getRange(rowIndex, map['contact_marked_at'] + 1).setValue(new Date().toISOString());
-      if (map['follow_deadline'] !== undefined && expiryIso) custSheet.getRange(rowIndex, map['follow_deadline'] + 1).setValue(expiryIso);
-      if (map['follow_attempts'] !== undefined) {
-        var cur = parseInt(data[i][map['follow_attempts']]) || 0;
-        custSheet.getRange(rowIndex, map['follow_attempts'] + 1).setValue(cur + 1);
-      }
-      return;
-    }
-  } catch (e) {
-    Logger.log('خطأ markCouponFollowUp_: ' + e.message);
-  }
-}
-
-// 🆕 تشغيل يومي — أي عميل "في الانتظار" وخلصت مهلته من غير ما يشتري يرجع للحالة المناسبة
-function checkExpiredCoupons() {
-  try {
-    var ss = SpreadsheetApp.openById(CRM_SHEET_ID);
-    var custSheet = ss.getSheetByName('Customers');
-    if (!custSheet || custSheet.getLastRow() <= 1) return;
-    var map = getHeaderMap(custSheet);
-    if (map['status'] === undefined || map['follow_deadline'] === undefined) return;
-
-    var data = custSheet.getRange(2, 1, custSheet.getLastRow() - 1, custSheet.getLastColumn()).getValues();
-    var now = new Date();
-    var reverted = 0, lost = 0;
-
-    for (var i = 0; i < data.length; i++) {
-      var status = data[i][map['status']];
-      var expiry = data[i][map['follow_deadline']];
-      if (status !== 'تمت المتابعة - في الانتظار' || !expiry) continue;
-      var expDate = new Date(expiry);
-      if (isNaN(expDate.getTime()) || expDate > now) continue;
-
-      var attempts = map['follow_attempts'] !== undefined ? (parseInt(data[i][map['follow_attempts']]) || 0) : 0;
-      var newStatus = attempts >= FOLLOWUP_MAX_ATTEMPTS ? 'محاولات استرجاع فشلت' : 'تنبيه';
-
-      custSheet.getRange(i + 2, map['status'] + 1).setValue(newStatus);
-      custSheet.getRange(i + 2, map['follow_deadline'] + 1).setValue('');
-      if (newStatus === 'محاولات استرجاع فشلت') lost++; else reverted++;
-    }
-    if (reverted > 0 || lost > 0) {
-      Logger.log('✅ رجّعنا ' + reverted + ' عميل لتنبيه، ونقلنا ' + lost + ' عميل لـ فقد (3 محاولات من غير شراء)');
-    }
-  } catch (e) {
-    Logger.log('خطأ checkExpiredCoupons: ' + e.message);
-  }
-}
-
-/* من زرار الصيانة. مش بيتفعّل لوحده عشان بيعدّل حالة متابعة العملاء. */
-function setupCouponExpiryTrigger() {
-  return ensureTriggers_({ which: 'checkExpiredCoupons' });
-}
-
-function sendCouponSMS_(phone, name, message, expiryIso) {
-  try {
-    var canon = canonicalEgyptPhone_(String(phone || ''));
-    if (!isValidEgyptianPhone(canon)) return { ok: false, error: 'رقم غير صحيح' };
-    if (!message) return { ok: false, error: 'الرسالة فاضية' };
-
-    var result = sendSMSViaAutoRemote(canon, message);
-    var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
-    var now = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss');
-    getCouponLogSheet_().appendRow([today, asSheetText_(canon), name || '', message, result.ok ? 'تم الإرسال للموبايل' : 'فشل', now]);
-    fxClearCache_('fx_sms_30');
-
-    if (result.ok) {
-      var ss = SpreadsheetApp.openById(CRM_SHEET_ID);
-      markCouponFollowUp_(ss, canon, expiryIso);
-    }
-    return { ok: result.ok, phone: canon };
+    return {
+      ok: true, label: R.label, total: total, count: count,
+      income: income, income_count: incomeCount,
+      ledger_total: Math.round(ledgerTotal * 100) / 100, ledger_count: ledgerCount,
+      byCategory: list, items: items,
+      /* التنبيه: لو آخر مصروف بقاله كتير يبقى التصدير واقف */
+      lastEntry: all.latestEntry,
+      staleDays: all.staleDays,
+      itemizedStaleDays: all.itemizedStaleDays,
+      companyPaidRows: all.companyPaidRows,
+      stale: (all.staleDays !== null && all.staleDays > 2),
+      sourceAt: all.fileAt,
+      sourceError: all.fileError
+    };
   } catch (e) {
     return { ok: false, error: e.message };
   }
 }
+// ==== MODULE 70_inventory_aging (split from server/Code.js; load order = file name order) ====
 
-// ✅ تأكيد من تليفون الصيدلية: Tasker بيبعته بعد ما يحاول يبعت SMS فعلي
-function recordSmsAck(phone, err) {
-  try {
-    var canon = canonicalEgyptPhone_(phone);
-    if (!canon) return { ok: false, error: 'رقم ناقص' };
-    var sheet = getSMSLogSheet_();
-    if (sheet.getLastRow() <= 1) return { ok: false, error: 'السجل فاضي' };
-
-    var ok = (String(err || '0').trim() === '0');
-    var newStatus = ok ? '✅ اتبعت من التليفون' : '❌ التليفون مبعتهاش';
-    var now = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss');
-
-    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
-    for (var i = data.length - 1; i >= 0; i--) {
-      if (canonicalEgyptPhone_(data[i][3]) !== canon) continue;
-      sheet.getRange(i + 2, 7).setValue(newStatus);
-      sheet.getRange(i + 2, 8).setValue(now);
-      fxClearCache_('fx_sms_30');
-      return { ok: true, phone: canon, status: newStatus };
-    }
-    return { ok: false, error: 'مفيش سطر للرقم ده' };
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
-}
-
-// ✅ رفض رسالة فشلت (تتعلم كـ"متجاهلة نهائيًا" ومتظهرش تاني في قائمة "فشلت")
-function dismissFailedSMS(invoiceid) {
-  var sheet = getSMSLogSheet_();
-  if (sheet.getLastRow() <= 1) return;
-  var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
-  for (var i = 0; i < data.length; i++) {
-    if (String(data[i][1]) !== String(invoiceid)) continue;
-    sheet.getRange(i + 2, 7).setValue('متجاهلة');
-    fxClearCache_('fx_sms_30');
-    return;
-  }
-}
-
-// ✅ يرجع رصيد النقاط الكلي لعميل معين (مجموع كل سطوره في شيت النقاط)
-function getCustomerPointsData(phone) {
-  try {
-    var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
-    var sheet = ss.getSheetByName(POINTS_SHEET);
-    if (!sheet || sheet.getLastRow() <= 1) return { ok: true, phone: phone, total_points: 0, history: [] };
-    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
-    var total = 0;
-    var history = [];
-    data.forEach(function(r) {
-      if (String(r[2]) !== String(phone)) return;
-      total += parseInt(r[6]) || 0;
-      history.push({ date: r[0], invoiceid: String(r[1]), amount: r[4], discount: r[5], points: r[6] });
-    });
-    return { ok: true, phone: phone, total_points: total, history: history.reverse() };
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
-}
 
 // ===================================================================
 // 📦 تحليل المخزون (Inventory Aging) — يقرأ من شيت STOCK LIVE
@@ -7429,6 +7948,8 @@ function testInventoryAging() {
   Logger.log('شرايح الـ Aging: ' + JSON.stringify(r.aging));
   Logger.log('شرايح الصلاحية: ' + JSON.stringify(r.expiry));
 }
+// ==== MODULE 71_agents (split from server/Code.js; load order = file name order) ====
+
 
 // ═══════════════════════════════════════════════════════════════════
 // 🆕 نظام المندوبين (Agents / Referral System)
@@ -7925,961 +8446,8 @@ function retryLastAgentReply(phone, message) {
   var r = sendSMSViaAutoRemote(phone, message);
   Logger.log('النتيجة: كود=' + r.code + ' | رد=' + r.response);
 }
+// ==== MODULE 72_scan (split from server/Code.js; load order = file name order) ====
 
-// ═══════════════════════════════════════════════════════════════════
-// ⚡ قسم السرعة والإصلاحات — أغسطس 2026
-//
-// ١) كاش مقسّم: الكاش القديم كان بيتخزن بس لو الحجم أقل من 95KB،
-//    وسجل الرسايل عدّى الرقم ده من شهور، يعني الكاش كان واقف
-//    والسيرفر بيقرا 3 شيتات كاملة في كل فتحة.
-// ٢) نداء واحد للصفحة الرئيسية بدل 6 (Apps Script بينفّذ طلبات
-//    نفس المستخدم واحد ورا التاني، فالستة كانوا بيقفوا في طابور).
-// ٣) سجل الرسايل بقى آخر 30 يوم بس بدل من أول يوم.
-// ٤) Connecteam: الرد بيجي ملفوف جوه { data: {...} } والكود القديم
-//    مكانش بيفكّه، فكان بيرجّع قايمة فاضية دايمًا من غير رسالة خطأ.
-// ═══════════════════════════════════════════════════════════════════
-
-// ── كاش مقسّم: بيشتغل مهما كبرت البيانات ──
-function fxCacheGet_(key) {
-  try {
-    var cache = CacheService.getScriptCache();
-    var meta = cache.get(key + '_meta');
-    if (!meta) return null;
-    var count = parseInt(meta, 10);
-    var wanted = [];
-    for (var i = 0; i < count; i++) wanted.push(key + '_' + i);
-    var parts = cache.getAll(wanted);
-    var joined = '';
-    for (var j = 0; j < count; j++) {
-      if (parts[key + '_' + j] === undefined) return null; // جزء ضايع → نحسبها من الأول
-      joined += parts[key + '_' + j];
-    }
-    return joined ? JSON.parse(joined) : null;
-  } catch (err) {
-    return null;
-  }
-}
-
-function fxCachePut_(key, value, seconds) {
-  try {
-    var json = JSON.stringify(value);
-    var CHUNK = 90000;
-    var count = Math.ceil(json.length / CHUNK);
-    if (count > 40) return; // كبير أوي — منخزنش
-    var obj = {};
-    for (var i = 0; i < count; i++) obj[key + '_' + i] = json.substring(i * CHUNK, (i + 1) * CHUNK);
-    var cache = CacheService.getScriptCache();
-    cache.putAll(obj, seconds);
-    cache.put(key + '_meta', String(count), seconds);
-  } catch (err) { /* الكاش مش ضروري */ }
-}
-
-function fxClearCache_(key) {
-  try {
-    var cache = CacheService.getScriptCache();
-    var meta = cache.get(key + '_meta');
-    if (!meta) return;
-    var keys = [key + '_meta'];
-    for (var i = 0; i < parseInt(meta, 10); i++) keys.push(key + '_' + i);
-    cache.removeAll(keys);
-  } catch (err) {}
-}
-
-// شغّلها لو عايز تجبر تحديث فوري بعد ما تغيّر حاجة في الشيتات
-/* 🆕 بيتنادى من زرار "حدّث دلوقتي" في الداشبورد.
-   بيفضّي كاش الأرقام الحية بس — مش بيلمس اللقطة (المخزون/المندوبين)
-   عشان الصفحة تفضل سريعة. */
-function refreshLiveNumbers() {
-  ['fx_home_bundle', 'fx_sms_30'].forEach(fxClearCache_);
-  ['today', 'yesterday', 'week', 'month'].forEach(function (r) {
-    ['kpi', 'mtr', 'exp'].forEach(function (n) {
-      fxClearCache_('fx_c_' + n + '_' + JSON.stringify({ action: 'x', range: r }));
-      fxClearCache_('fx_c_' + n + '_' + JSON.stringify({ range: r }));
-    });
-    fxClearCache_('fx_hub_' + r);
-  });
-  return { ok: true, at: Utilities.formatDate(new Date(), 'Africa/Cairo', 'HH:mm:ss') };
-}
-
-function clearAllFixesCache() {
-  ['fx_sms_30', 'fx_home_bundle', 'fx_debts', 'fx_inv_aging', 'ct_users'].forEach(fxClearCache_);
-  Logger.log('✅ اتمسح الكاش — أول فتحة جاية هتقرا من الشيتات من جديد');
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// ١) سجل الرسايل — آخر 30 يوم بس، وبيقرا من آخر الشيت للأول
-// ═══════════════════════════════════════════════════════════════════
-function getSMSLogFast(params) {
-  var days = parseInt((params && params.days) || '30', 10);
-  if (isNaN(days) || days < 1) days = 30;
-  if (days > 365) days = 365;
-
-  var cacheKey = 'fx_sms_' + days;
-  var cached = fxCacheGet_(cacheKey);
-  if (cached) { cached.cached = true; return cached; }
-
-  try {
-    var tz = 'Africa/Cairo';
-    var cutoff = Utilities.formatDate(new Date(Date.now() - days * 86400000), tz, 'yyyy-MM-dd');
-    var messages = [];
-
-    function asDate_(v) {
-      return (v instanceof Date)
-        ? Utilities.formatDate(v, tz, 'yyyy-MM-dd')
-        : String(v || '').substring(0, 10);
-    }
-
-    // بنقرا من آخر الشيت للأول ونقف أول ما نخرج من المدة — أسرع بكتير
-    /* ⚠️ إصلاح: النسخة القديمة كانت بتوقف أول ما تلاقي سطر أقدم من
-       المدة — وده بيفترض إن الشيت مرتب بالتاريخ، وهو مش مرتب:
-         • تلات شيتات بتتكتب بالتوازي (فواتير + كوبونات + ديون)
-         • retrySMS بتعدّل سطور قديمة وترجّعها لآخر الشيت
-         • السطر اللي تاريخه فاضي كان بيوقف القراءة فورًا ('' < cutoff)
-       النتيجة كانت رسايل بتختفي من السجل من غير ما حد يعرف.
-
-       دلوقتي بنقرا آخر 3000 سطر كاملين وبنفلتر بالتاريخ — من غير
-       وقوف مبكر. الشيت مبيوصلش الحجم ده بسرعة، والقراءة دفعة واحدة
-       أسرع من دفعات متتالية. */
-    function tailRows_(sheet, cols) {
-      if (!sheet || sheet.getLastRow() <= 1) return [];
-      var last = sheet.getLastRow();
-      var MAX = 3000;
-      var start = Math.max(2, last - MAX + 1);
-      var rows = sheet.getRange(start, 1, last - start + 1, cols).getValues();
-      var out = [];
-      for (var i = rows.length - 1; i >= 0; i--) {
-        var d = asDate_(rows[i][0]);
-        if (!d) continue;               /* تاريخ فاضي = نتخطاه مش نوقف */
-        if (d < cutoff) continue;       /* بره المدة = نتخطاه مش نوقف */
-        out.push(rows[i]);
-      }
-      return out;
-    }
-
-    // (أ) رسايل الفواتير
-    tailRows_(getSMSLogSheet_(), 8).forEach(function (r) {
-      messages.push({
-        type: 'invoice', date: asDate_(r[0]), invoiceid: String(r[1]),
-        customername: r[2], phone: String(r[3]), amount: r[4],
-        message: r[5], status: r[6], attemptTime: r[7]
-      });
-    });
-
-    // (ب) رسايل الكوبونات
-    tailRows_(getCouponLogSheet_(), 6).forEach(function (r) {
-      messages.push({
-        type: 'coupon', date: asDate_(r[0]), invoiceid: '',
-        customername: r[2], phone: String(r[1]), amount: '',
-        message: r[3], status: r[4], attemptTime: r[5]
-      });
-    });
-
-    // (ج) رسايل تذكير الديون
-    tailRows_(getDebtReminderLogSheet_(), 6).forEach(function (r) {
-      messages.push({
-        type: 'debt', date: asDate_(r[0]), invoiceid: '',
-        customername: r[2], phone: String(r[1]), amount: r[3],
-        message: 'تذكير سداد: ' + r[3] + ' جنيه', status: r[4], attemptTime: r[5]
-      });
-    });
-
-    // 🔧 الترتيب بالتاريخ الحقيقي مش بالنص — الصفوف متخزنة بصيغتين مختلفتين
-    function ms_(v) {
-      if (v instanceof Date) return v.getTime();
-      var s = String(v || '').trim();
-      if (!s) return 0;
-      var t = new Date(s.replace(' ', 'T')).getTime();
-      if (!isNaN(t)) return t;
-      t = new Date(s).getTime();
-      return isNaN(t) ? 0 : t;
-    }
-    messages.sort(function (a, b) { return ms_(b.attemptTime) - ms_(a.attemptTime); });
-
-    var result = { ok: true, days: days, count: messages.length, messages: messages };
-    fxCachePut_(cacheKey, result, 120); // دقيقتين
-    return result;
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// ٢) الصفحة الرئيسية — نداء واحد بدل ٦
-// ═══════════════════════════════════════════════════════════════════
-function getHomeBundle() {
-  var cached = fxCacheGet_('fx_home_bundle');
-  if (cached) { cached.cached = true; return cached; }
-
-  function safe_(label, fn) {
-    try { return fn(); }
-    catch (err) { return { ok: false, error: label + ': ' + err.message }; }
-  }
-
-  var out = {
-    ok: true,
-    daily:       safe_('daily',       function () { return getSystemDailyTotals(); }),
-    maintenance: safe_('maintenance', function () { return getMaintenanceStatus(); }),
-    attendance:  safe_('attendance',  function () { return getAttendanceLiveV2(); }),
-    expiry:      safe_('expiry',      function () { return getExpiryByMonth(); }),
-    agents:      safe_('agents',      function () { return getAgentsData(); }),
-    debts:       safe_('debts',       function () { return fxDebtsCached_(); }),
-    generated:   Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss')
-  };
-
-  fxCachePut_('fx_home_bundle', out, 60); // 🔧 كانت ٣ دقايق — قصّرناها عشان رقم النهاردة يوصل بسرعة
-  return out;
-}
-
-// الديون بتقرا سنة من ملفات Drive — أتقل حاجة في السيستم
-function fxDebtsCached_() {
-  var cached = fxCacheGet_('fx_debts');
-  if (cached) return cached;
-  var d = getDebtsData();
-  if (d && d.ok) fxCachePut_('fx_debts', d, 600); // ١٠ دقايق
-  return d;
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// ٣) بصمة Connecteam — النسخة المصلّحة
-// ═══════════════════════════════════════════════════════════════════
-
-// بيدوّر على مفتاح جوه أي عمق، مهما كان شكل التغليف
-function ctFind_(obj, key, depth) {
-  depth = depth || 0;
-  if (!obj || typeof obj !== 'object' || depth > 6) return null;
-  if (obj[key] !== undefined && obj[key] !== null) return obj[key];
-  for (var k in obj) {
-    if (!Object.prototype.hasOwnProperty.call(obj, k)) continue;
-    var found = ctFind_(obj[k], key, depth + 1);
-    if (found !== null) return found;
-  }
-  return null;
-}
-
-function ctCall_(url) {
-  // لو Connecteam حظرنا مؤقتًا، مش بنكمّل نداءات — بنستنى المهلة تخلص
-  try {
-    var until = PropertiesService.getScriptProperties().getProperty('ctBlockedUntil');
-    if (until && Date.now() < parseInt(until, 10)) {
-      return { ok: false, code: 429,
-               error: 'الحضور مؤقتًا مش متاح — Connecteam حاظرنا لكتر الطلبات. هيرجع خلال دقايق.' };
-    }
-  } catch (e) {}
-
-  var res = UrlFetchApp.fetch(url, {
-    headers: { 'X-API-KEY': CONNECTEAM_API_KEY, 'accept': 'application/json' },
-    muteHttpExceptions: true
-  });
-  var code = res.getResponseCode();
-  var body = res.getContentText();
-
-  if (code === 429) {
-    // نوقف كل النداءات ٥ دقايق بدل ما نزوّد الحظر
-    try {
-      PropertiesService.getScriptProperties()
-        .setProperty('ctBlockedUntil', String(Date.now() + 300000));
-    } catch (e) {}
-    return { ok: false, code: 429,
-             error: 'الحضور مؤقتًا مش متاح — Connecteam حاظرنا لكتر الطلبات. هيرجع خلال دقايق.' };
-  }
-  if (code !== 200) {
-    return { ok: false, code: code, error: 'Connecteam رجّع كود ' + code };
-  }
-  try { return { ok: true, code: code, json: JSON.parse(body) }; }
-  catch (err) { return { ok: false, code: code, error: 'الرد مش JSON صالح' }; }
-}
-
-// أسماء الموظفين من Connecteam نفسه (كاش ٦ ساعات)
-function ctUserMap_() {
-  var cached = fxCacheGet_('ct_users');
-  if (cached) return cached;
-
-  var map = {};
-  try {
-    var offset = 0;
-    for (var page = 0; page < 10; page++) {
-      var r = ctCall_('https://api.connecteam.com/users/v1/users?limit=200&offset=' + offset);
-      if (!r.ok) break;
-      var users = ctFind_(r.json, 'users');
-      if (!users || !users.length) break;
-      users.forEach(function (u) {
-        var id = String(u.userId || u.id || '');
-        if (!id) return;
-        var nm = [u.firstName, u.lastName].filter(function (x) { return x; }).join(' ').trim();
-        map[id] = nm || u.fullName || u.name || ('موظف ' + id);
-      });
-      if (users.length < 200) break;
-      offset += 200;
-    }
-  } catch (err) {}
-
-  // أي اسم مكتوب يدوي في CONNECTEAM_USER_MAP بيغلب اللي جاي من الـAPI
-  try { for (var k in CONNECTEAM_USER_MAP) map[k] = CONNECTEAM_USER_MAP[k]; } catch (err) {}
-
-  if (Object.keys(map).length) fxCachePut_('ct_users', map, 21600);
-  return map;
-}
-
-function ctName_(userId, map) {
-  var id = String(userId || '');
-  return (map && map[id]) ? map[id] : ('موظف ' + id);
-}
-
-// بيجيب الشيفتات الخام — بيفكّ التغليف وبيمشي على الصفحات
-function ctGetShifts_(from, to) {
-  var err = connecteamReady_();
-  if (err) return { ok: false, error: err };
-
-  var ck = 'ct_sh_' + from + '_' + to;
-  var hit = fxCacheGet_(ck);
-  if (hit) return hit;
-
-  var all = [], offset = 0, lastError = '';
-  for (var page = 0; page < 20; page++) {
-    var url = 'https://api.connecteam.com/time-clock/v1/time-clocks/' + CONNECTEAM_TIME_CLOCK_ID +
-      '/time-activities?startDate=' + from + '&endDate=' + to + '&limit=200&offset=' + offset;
-    var r = ctCall_(url);
-    if (!r.ok) { lastError = r.error; break; }
-
-    var arr = ctFind_(r.json, 'timeActivitiesByUsers') || ctFind_(r.json, 'timeActivities');
-    if (!arr || !arr.length) break;
-
-    all = all.concat(arr);
-    if (arr.length < 200) break;
-    offset += 200;
-  }
-
-  if (!all.length && lastError) return { ok: false, error: lastError };
-  var out = { ok: true, shifts: all };
-  fxCachePut_(ck, out, 600);   // ١٠ دقايق — يمنع تكرار النداء على نفس الفترة
-  return out;
-}
-
-// النسخة القديمة — سايبينها عشان أي كود تاني بينده عليها
-function getConnecteamShifts_(from, to) {
-  var r = ctGetShifts_(from, to);
-  return r.ok ? r.shifts : [];
-}
-
-function ctShiftsOf_(entry) {
-  var s = entry.shifts || entry.timeActivities || entry.activities || [];
-  return (s && s.length !== undefined) ? s : [];
-}
-
-function ctTs_(point) {
-  if (!point) return null;
-  if (typeof point === 'number') return point;
-  if (point.timestamp) return point.timestamp;
-  if (point.time) return point.time;
-  return null;
-}
-
-function getConnecteamHours(from, to) {
-  try {
-    var r = ctGetShifts_(from, to);
-    if (!r.ok) return { ok: false, error: r.error };
-
-    var map = ctUserMap_();
-    var hoursByEmployee = {};
-
-    r.shifts.forEach(function (entry) {
-      var nm = ctName_(entry.userId, map);
-      ctShiftsOf_(entry).forEach(function (sh) {
-        var a = ctTs_(sh.start), b = ctTs_(sh.end);
-        if (!a || !b) return; // شيفت لسه مفتوح، منحسبوش
-        hoursByEmployee[nm] = (hoursByEmployee[nm] || 0) + ((b - a) / 3600);
-      });
-    });
-
-    return { ok: true, hours: hoursByEmployee };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-}
-
-// مين موجود دلوقتي (شيفت مفتوح: فيه بداية ومفيش نهاية)
-function getAttendanceLiveV2() {
-  try {
-    var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
-    var r = ctGetShifts_(today, today);
-    if (!r.ok) return { ok: false, error: r.error };
-
-    var map = ctUserMap_();
-    var now = Math.floor(Date.now() / 1000);
-    var live = [];
-
-    r.shifts.forEach(function (entry) {
-      var nm = ctName_(entry.userId, map);
-      ctShiftsOf_(entry).forEach(function (sh) {
-        var a = ctTs_(sh.start);
-        if (!a || ctTs_(sh.end)) return;
-        live.push({ name: nm, checkInTimestamp: a, elapsedMinutes: Math.round((now - a) / 60) });
-      });
-    });
-
-    return { ok: true, live: live, count: live.length };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-}
-
-// سجل الحضور يوم بيوم
-function getAttendanceHistoryV2(params) {
-  try {
-    params = params || {};
-    var now = new Date(), tz = 'Africa/Cairo';
-    var from, to, label;
-
-    if (params.from && params.to) {
-      from = params.from; to = params.to; label = params.from + ' → ' + params.to;
-    } else if (params.range === 'today') {
-      from = Utilities.formatDate(now, tz, 'yyyy-MM-dd'); to = from; label = 'اليوم';
-    } else if (params.range === 'week') {
-      from = Utilities.formatDate(new Date(now.getTime() - 7 * 86400000), tz, 'yyyy-MM-dd');
-      to = Utilities.formatDate(now, tz, 'yyyy-MM-dd'); label = 'آخر أسبوع';
-    } else if (params.range === 'lastMonth') {
-      var y = now.getFullYear(), m = now.getMonth();
-      from = Utilities.formatDate(new Date(y, m - 1, 1), tz, 'yyyy-MM-dd');
-      to = Utilities.formatDate(new Date(y, m, 0), tz, 'yyyy-MM-dd'); label = 'الشهر اللي فات';
-    } else {
-      from = Utilities.formatDate(new Date(now.getFullYear(), now.getMonth(), 1), tz, 'yyyy-MM-dd');
-      to = Utilities.formatDate(now, tz, 'yyyy-MM-dd'); label = 'الشهر ده';
-    }
-
-    var r = ctGetShifts_(from, to);
-    if (!r.ok) return { ok: false, error: r.error };
-
-    var map = ctUserMap_();
-    var rows = [];
-
-    r.shifts.forEach(function (entry) {
-      var nm = ctName_(entry.userId, map);
-      ctShiftsOf_(entry).forEach(function (sh) {
-        var a = ctTs_(sh.start);
-        if (!a) return;
-        var b = ctTs_(sh.end);
-        var startD = new Date(a * 1000);
-        var endD = b ? new Date(b * 1000) : null;
-        rows.push({
-          date: Utilities.formatDate(startD, tz, 'yyyy-MM-dd'),
-          name: nm,
-          checkIn: Utilities.formatDate(startD, tz, 'hh:mm a'),
-          checkOut: endD ? Utilities.formatDate(endD, tz, 'hh:mm a') : 'مفتوح',
-          durationMin: endD ? Math.round((b - a) / 60) : null
-        });
-      });
-    });
-
-    rows.sort(function (x, y) { return x.date.localeCompare(y.date) || x.name.localeCompare(y.name); });
-    return { ok: true, label: label, from: from, to: to, rows: rows };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-}
-
-// الأسماء القديمة — سايبينها عشان أي كود قديم يفضل شغال
-function getAttendanceLiveStatus() { return getAttendanceLiveV2(); }
-function getAttendanceHistoryData(params) { return getAttendanceHistoryV2(params); }
-
-
-// ═══════════════════════════════════════════════════════════════════
-// ٤) الفحص الشامل — بيتنادى من زرار "ابدأ الفحص" في صفحة الصيانة
-// ═══════════════════════════════════════════════════════════════════
-function diagnoseAll() {
-  var out = { ok: true, checks: [] };
-
-  function add(name, ok, detail) {
-    out.checks.push({ name: name, ok: !!ok, detail: String(detail || '') });
-  }
-
-  // ---- Connecteam ----
-  var ready = null;
-  try { ready = connecteamReady_(); } catch (err) { ready = err.message; }
-  if (ready) {
-    add('مفاتيح Connecteam', false, ready);
-  } else {
-    add('مفاتيح Connecteam', true, 'موجودة');
-
-    var u = ctCall_('https://api.connecteam.com/users/v1/users?limit=5&offset=0');
-    if (!u.ok) {
-      add('الاتصال بـ Connecteam', false, u.error);
-    } else {
-      add('الاتصال بـ Connecteam', true, 'كود 200');
-      var users = ctFind_(u.json, 'users');
-      add('أسماء الموظفين', !!(users && users.length),
-        (users && users.length) ? (users.length + ' موظف')
-          : ('مفيش مفتاح users — المفاتيح الموجودة: ' + Object.keys(u.json).join(', ')));
-    }
-
-    var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
-    var monthAgo = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), 'Africa/Cairo', 'yyyy-MM-dd');
-    var t = ctCall_('https://api.connecteam.com/time-clock/v1/time-clocks/' + CONNECTEAM_TIME_CLOCK_ID +
-      '/time-activities?startDate=' + monthAgo + '&endDate=' + today + '&limit=5&offset=0');
-    if (!t.ok) {
-      add('قراءة البصمات', false, t.error);
-    } else {
-      var arr = ctFind_(t.json, 'timeActivitiesByUsers') || ctFind_(t.json, 'timeActivities');
-      add('قراءة البصمات', !!arr,
-        arr ? ('بصمات لـ ' + arr.length + ' موظف خلال ٣٠ يوم')
-            : ('مفيش مفتاح بصمات. المفاتيح: ' + Object.keys(t.json).join(', ') +
-               ' | الرد: ' + JSON.stringify(t.json).substring(0, 300)));
-      var h = getAttendanceHistoryV2({ range: 'month' });
-      add('سجل الحضور النهائي', h.ok && h.rows.length > 0,
-        h.ok ? (h.rows.length + ' سطر') : h.error);
-    }
-  }
-
-  // ---- الشيتات ----
-  [['شيت الموظفين', STAFF_SHEET_ID], ['شيت العملاء', CRM_SHEET_ID], ['شيت المخزون', STOCK_SHEET_ID]]
-    .forEach(function (pair) {
-      try {
-        add(pair[0], true, SpreadsheetApp.openById(pair[1]).getName());
-      } catch (err) {
-        add(pair[0], false, err.message);
-      }
-    });
-
-  // ---- مجلد المبيعات ----
-  try {
-    add('مجلد ملفات المبيعات', true, DriveApp.getFolderById(SALES_FOLDER).getName());
-  } catch (err) {
-    add('مجلد ملفات المبيعات', false, err.message);
-  }
-
-  // ---- سرعة الرسايل ----
-  try {
-    var t0 = new Date().getTime();
-    var sms = getSMSLogFast({ days: 30 });
-    add('سجل الرسايل (٣٠ يوم)', sms.ok,
-      sms.ok ? (sms.count + ' رسالة في ' + (new Date().getTime() - t0) + ' مللي ثانية' +
-                (sms.cached ? ' — من الكاش' : '')) : sms.error);
-  } catch (err) {
-    add('سجل الرسايل', false, err.message);
-  }
-
-  // ---- التريجرات ----
-  try {
-    var liveOn = ScriptApp.getProjectTriggers().some(function (tr) {
-      return tr.getHandlerFunction() === 'checkStaffOrders';
-    });
-    add('تريجر الفواتير الحي', liveOn, liveOn ? 'شغال كل دقيقة' : 'واقف — دوس "شغّل التريجر الحي"');
-  } catch (err) {
-    add('تريجر الفواتير الحي', false, err.message);
-  }
-
-  out.failed = out.checks.filter(function (c) { return !c.ok; }).length;
-  return out;
-}
-
-// نفس الفحص بس بيطبع في الـLogs — لو حبيت تشغّله من المحرر
-function diagnoseAllToLog() {
-  var r = diagnoseAll();
-  Logger.log('════ فحص شامل — ' + r.failed + ' مشكلة ════');
-  r.checks.forEach(function (c) {
-    Logger.log((c.ok ? '✅ ' : '❌ ') + c.name + ' — ' + c.detail);
-  });
-}
-
-// النسخة القديمة من تشخيص Connecteam — بتطبع الرد الخام كامل
-function diagnoseConnecteam() {
-  var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
-  var monthAgo = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), 'Africa/Cairo', 'yyyy-MM-dd');
-  var r = ctCall_('https://api.connecteam.com/time-clock/v1/time-clocks/' + CONNECTEAM_TIME_CLOCK_ID +
-    '/time-activities?startDate=' + monthAgo + '&endDate=' + today + '&limit=5&offset=0');
-  Logger.log('كود الرد: ' + r.code);
-  Logger.log('الرد كامل: ' + (r.ok ? JSON.stringify(r.json).substring(0, 3000) : r.error));
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// 📸 نظام اللقطة (Snapshot) — السبب الحقيقي في السرعة
-//
-// المشكلة: الداشبورد كان بيحسب كل حاجة وقت ما تفتحه.
-//   الديون = قراءة ملفات سنة كاملة من Drive
-//   المخزون = مسح شيت STOCK كامل
-// والكاش بيخلص كل شوية، فأول واحد يفتح بعده بيدفع التمن كامل.
-//
-// الحل: تريجر بيشتغل لوحده كل ساعة، بيحسب الحاجات التقيلة دي
-// ويحفظ النتيجة في ملفات JSON صغيرة على Drive. الداشبورد بيقرا
-// الملف الجاهز بس — فبيفتح في ثانية، دايمًا.
-//
-// اللي بيفضل لحظي (مش من اللقطة):
-//   • مبيعات وربح ودين النهاردة (من Daily_Mini_Statics)
-//   • مين موجود دلوقتي (من Connecteam مباشرة)
-//   • رسايل العملاء
-// ═══════════════════════════════════════════════════════════════════
-
-var SNAPSHOT_SHEET = 'اللقطة';
-var SNAP_CHUNK = 45000;   // أقصى حجم للخلية الواحدة في جوجل شيتس ~50 ألف حرف
-
-/* ═══════════════════════════════════════════════════════════════════
-   ⚠️ ليه شيت مش Drive؟
-   النسخة القديمة كانت بتحفظ اللقطة كملف JSON على Drive عن طريق
-   DriveApp.Folder.createFile — ودي محتاجة تصريح الكتابة على Drive
-   كامل (auth/drive). التصريح ده مكانش موجود، فالكتابة كانت بترفض
-   واللقطة تفضل "لسه متبنيتش" مهما اشتغل التريجر.
-
-   الشيتات السكربت بيكتب فيها أصلاً من غير أي تصريح جديد (شيت
-   الموظفين، رسايل SMS، المندوبين...). فحوّلنا اللقطة تتخزن هناك.
-
-   البيانات بتتقسّم على خلايا لأن الخلية الواحدة سقفها ~50 ألف حرف.
-   ═══════════════════════════════════════════════════════════════════ */
-
-function snapSheet_() {
-  var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
-  var sh = ss.getSheetByName(SNAPSHOT_SHEET);
-  if (!sh) {
-    sh = ss.insertSheet(SNAPSHOT_SHEET);
-    sh.appendRow(['الاسم', 'وقت البناء', 'عدد الأجزاء', 'البيانات']);
-    sh.hideSheet();          // مش محتاج تشوفه، ده تخزين داخلي
-  }
-  return sh;
-}
-
-function snapSave_(name, data) {
-  var payload = JSON.stringify({
-    builtAt: Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss'),
-    data: data
-  });
-
-  var parts = [];
-  for (var i = 0; i < payload.length; i += SNAP_CHUNK) {
-    parts.push(payload.substring(i, i + SNAP_CHUNK));
-  }
-  /* الصف الواحد بياخد 100 عمود بالكتير = ~4.5 مليون حرف.
-     لو عدّينا كده يبقى فيه حاجة غلط في البيانات نفسها. */
-  if (parts.length > 100) {
-    throw new Error('اللقطة كبيرة أوي: ' + Math.round(payload.length / 1024) + ' ك.ب');
-  }
-
-  var sh = snapSheet_();
-  var last = sh.getLastRow();
-  var row = -1;
-  if (last > 1) {
-    var names = sh.getRange(2, 1, last - 1, 1).getValues();
-    for (var r = 0; r < names.length; r++) {
-      if (String(names[r][0]) === name) { row = r + 2; break; }
-    }
-  }
-  if (row === -1) row = last + 1;
-
-  /* بنفضّي الصف القديم الأول — لو اللقطة الجديدة أقصر من القديمة،
-     الأجزاء الزيادة كانت هتفضل وتلخبط القراءة. */
-  sh.getRange(row, 1, 1, sh.getMaxColumns()).clearContent();
-
-  var out = [name,
-             Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss'),
-             parts.length].concat(parts);
-  sh.getRange(row, 1, 1, out.length).setValues([out]);
-
-  return Math.round(payload.length / 1024);   // الحجم بالكيلوبايت
-}
-
-function snapLoad_(name) {
-  try {
-    var cached = fxCacheGet_('snap_' + name);
-    if (cached) return cached;
-
-    var sh = SpreadsheetApp.openById(STAFF_SHEET_ID).getSheetByName(SNAPSHOT_SHEET);
-    if (!sh || sh.getLastRow() <= 1) return null;
-
-    var last = sh.getLastRow();
-    var names = sh.getRange(2, 1, last - 1, 1).getValues();
-    var row = -1;
-    for (var r = 0; r < names.length; r++) {
-      if (String(names[r][0]) === name) { row = r + 2; break; }
-    }
-    if (row === -1) return null;
-
-    var n = parseInt(sh.getRange(row, 3).getValue(), 10);
-    if (!n || n < 1) return null;
-
-    var cells = sh.getRange(row, 4, 1, n).getValues()[0];
-    var joined = cells.join('');
-    if (!joined) return null;
-
-    var parsed = JSON.parse(joined);
-    if (!parsed || !parsed.data) return null;
-
-    parsed.data.snapshot_at = parsed.builtAt;
-    fxCachePut_('snap_' + name, parsed.data, 900);   // ربع ساعة في الذاكرة كمان
-    return parsed.data;
-  } catch (e) {
-    Logger.log('خطأ snapLoad_ (' + name + '): ' + e.message);
-    return null;
-  }
-}
-
-// ── الدالة اللي التريجر بينده عليها كل ساعة ──
-function buildSnapshot() {
-  var lock = LockService.getScriptLock();
-  if (!lock.tryLock(5000)) {
-    Logger.log('⏳ فيه بناء لقطة شغال دلوقتي — سيبناه يكمّل');
-    return;
-  }
-
-  try {
-    var t0 = new Date().getTime();
-    var done = [], failed = [];
-
-    /* سجل المصروفات اليومي + أرشفة الملف الحي — كل ساعة مع اللقطة. كل واحدة
-       لوحدها عشان فشل واحدة ميوقفش اللقطة. */
-    try { recordDailyStats_(); } catch (eS) { Logger.log('خطأ recordDailyStats_: ' + eS.message); }
-    try { logShortageSnapshot_(); } catch (eSh) { Logger.log('خطأ سجل النواقص: ' + eSh.message); }
-    try {
-      var fx = readExpenseFile_();
-      if (fx.ok) archiveExpenses_(parseExpenseRows_(fx.rows));
-    } catch (eA) { Logger.log('خطأ أرشفة المصروفات: ' + eA.message); }
-
-    /* كل واحدة لوحدها: بنحسب، وبنكتب، وبنسجّل السبب لو وقعت.
-       الحساب والكتابة اتنين منفصلين — فشل الكتابة كان بيتخبّى قبل كده. */
-    function build(label, key, calc) {
-      try {
-        var r = calc();
-        if (!r || r.ok === false) {
-          failed.push(label + ': الحساب رجع ' + ((r && r.error) || 'فاضي'));
-          return;
-        }
-        var kb = snapSave_(key, r);
-        done.push(label + ' (' + kb + 'ك.ب)');
-      } catch (e) {
-        failed.push(label + ': ' + e.message);
-      }
-    }
-
-    build('الديون',    'debts',     function () { return getDebtsData(); });
-    build('المخزون',   'inventory', function () { return getInventoryAging_uncached(); });
-    build('المندوبين', 'agents',    function () { return getAgentsData(); });
-
-    // نفضّي الكاش عشان أول فتحة جاية تقرا اللقطة الجديدة
-    ['snap_debts', 'snap_inventory', 'snap_agents', 'fx_home_bundle', 'fx_inv_aging', 'fx_debts']
-      .forEach(fxClearCache_);
-
-    var secs = Math.round((new Date().getTime() - t0) / 1000);
-    var props = PropertiesService.getScriptProperties();
-    props.setProperty('lastSnapshotAt',
-      Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss') + ' (' + secs + ' ثانية)');
-    /* السبب بيتحفظ عشان يظهر في الداشبورد — مش في اللوج بس */
-    props.setProperty('lastSnapshotResult',
-      (failed.length ? '❌ ' + failed.join(' | ') : '✅ ' + done.join('، ')));
-
-    Logger.log('📸 اللقطة: ' + secs + ' ثانية — نجح: ' + (done.join('، ') || 'ولا حاجة') +
-               (failed.length ? ' | فشل: ' + failed.join(' | ') : ''));
-    if (failed.length) {
-      sendTelegramStaff('⚠️ اللقطة فشلت\n' + SEP + '\n' + failed.join('\n'), PERSONAL_CHAT);
-    }
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-// ── تشغيل التحديث التلقائي كل ساعة (بيتنادى من زرار في الداشبورد) ──
-function setupSnapshotTrigger() {
-  ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction() === 'buildSnapshot') ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger('buildSnapshot').timeBased().everyHours(1).create();
-  Logger.log('✅ التحديث التلقائي اشتغل — هيبني لقطة جديدة كل ساعة');
-  return { ok: true };
-}
-
-function snapshotStatus() {
-  var props = PropertiesService.getScriptProperties();
-  var on = ScriptApp.getProjectTriggers().some(function (t) {
-    return t.getHandlerFunction() === 'buildSnapshot';
-  });
-  var names = ['debts', 'inventory', 'agents'];
-  var files = names.map(function (n) {
-    var s = snapLoad_(n);
-    return { name: n, ready: !!s, builtAt: s ? (s.snapshot_at || '') : '' };
-  });
-  return {
-    ok: true,
-    triggerOn: on,
-    lastRun: props.getProperty('lastSnapshotAt') || '',
-    lastResult: props.getProperty('lastSnapshotResult') || '',
-    files: files
-  };
-}
-
-// ── نسخ تقرا اللقطة الأول، ولو مش موجودة بتحسب عادي ──
-function getDebtsSnap() {
-  var s = snapLoad_('debts');
-  if (s) return s;
-  return fxDebtsCached_();
-}
-
-function getInventorySnap() {
-  var s = snapLoad_('inventory');
-  if (s) return s;
-  return getInventoryAging();
-}
-
-function getAgentsSnap() {
-  var s = snapLoad_('agents');
-  if (s) return s;
-  return getAgentsData();
-}
-
-function getExpiryByMonthSnap() {
-  var inv = getInventorySnap();
-  if (!inv || !inv.ok) return { ok: false, error: (inv && inv.error) || 'تعذّر تحليل المخزون' };
-  return {
-    ok: true,
-    generated_date: inv.generated_date,
-    snapshot_at: inv.snapshot_at || '',
-    expired: inv.expiry_by_month.expired,
-    months: inv.expiry_by_month.months
-  };
-}
-
-// ── الحزمة السريعة للصفحة الرئيسية: لحظي + لقطة ──
-function getHomeBundleFast() {
-  function safe_(label, fn) {
-    try { return fn(); }
-    catch (err) { return { ok: false, error: label + ': ' + err.message }; }
-  }
-
-  return {
-    ok: true,
-    // لحظي
-    daily:       safe_('daily',       function () { return getSystemDailyTotals(); }),
-    attendance:  safe_('attendance',  function () { return getAttendanceLiveV2(); }),
-    maintenance: safe_('maintenance', function () { return getMaintenanceStatus(); }),
-    // من اللقطة
-    expiry:      safe_('expiry',      function () { return getExpiryByMonthSnap(); }),
-    agents:      safe_('agents',      function () { return getAgentsSnap(); }),
-    debts:       safe_('debts',       function () { return getDebtsSnap(); }),
-    generated:   Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss')
-  };
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// 👥 حزمة الموظفين — نداء واحد بدل تلاتة
-//
-// المشكلة: صفحة الموظفين كانت بتبعت 3 طلبات (حضور مباشر + سجل + أداء)،
-// واتنين منهم بيكلموا Connecteam. وApps Script بينفّذ طلبات نفس المستخدم
-// واحد ورا التاني، فالمجموع كان بيوصل لدقيقة.
-//
-// الحل: قراءة واحدة من Connecteam بتغطي الفترة كلها، و"مين موجود دلوقتي"
-// بيتحسب من نفس البيانات (الشيفتات المفتوحة النهاردة) بدل نداء تاني.
-// ═══════════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════════
-// ⚡ كاش عام للنداءات التقيلة اللي مش في اللقطة
-// السبب: getMonthTotalsRaw بيقرا شهر كامل من الملفات، وgetProfitLoss
-// وgetExpensesData بيقروا شيتات كاملة. من غير كاش، كل فتحة صفحة
-// بتعيد الشغل من الأول.
-// ═══════════════════════════════════════════════════════════════════
-/* 🆕 مدة الكاش بتتحدد حسب الفترة نفسها.
-   المشكلة اللي كانت: كل الفترات كانت بكاش 10 دقايق — يعني "اليوم"
-   (بيتغير مع كل فاتورة) بياخد نفس معاملة "الشهر اللي فات"
-   (بيانات مقفولة مش هتتغير). فلو بعت فاتورة دلوقتي كنت تستنى
-   10 دقايق زيادة على تأخير نظام البيع نفسه. */
-function cacheTTL_(params) {
-  var r = (params && params.range) || 'month';
-  if (params && params.from && params.to) return 1800;  // فترة مخصصة = تاريخ ثابت
-  if (r === 'today')      return 45;      // أقل حاجة — البيانات حية
-  if (r === 'yesterday')  return 900;     // خلصت، بس ممكن مرتجع متأخر
-  if (r === 'week')       return 300;
-  if (r === 'month')      return 300;     // فيه النهاردة جواه
-  if (r === 'lastMonth')  return 3600;    // مقفول خلاص
-  return 600;
-}
-
-function cachedCall_(name, params, fn, seconds) {
-  var key = 'fx_c_' + name + '_' + JSON.stringify(params || {});
-  var hit = fxCacheGet_(key);
-  if (hit) { hit.cached = true; return hit; }
-  var out = fn();
-  if (out && out.ok !== false) fxCachePut_(key, out, seconds || 300);
-  return out;
-}
-
-function getStaffHub(params) {
-  try {
-    params = params || {};
-    var tz = 'Africa/Cairo';
-    var now = new Date();
-    var today = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
-
-    // مفتاح كاش حسب الفترة المطلوبة
-    var ck = 'fx_hub_' + (params.from ? (params.from + '_' + params.to) : (params.range || 'month'));
-    var cached = fxCacheGet_(ck);
-    if (cached) { cached.cached = true; return cached; }
-
-    // (١) الأداء من شيت الموظفين
-    var kpi = {};
-    try { kpi = getStaffKPIData(params); } catch (e) { kpi = { employees: [], error: e.message }; }
-
-    // (٢) الفترة المطلوبة للحضور — نفس التفسير بالظبط
-    var R = resolveRange_(params);
-    var from = R.from, to = R.to, label = R.label;
-
-    // لو الفترة مش شاملة النهاردة، بنمدّها عشان نعرف مين موجود دلوقتي
-    var ctTo = (to < today) ? today : to;
-
-    // (٣) قراءة واحدة من Connecteam
-    var rows = [], live = [], ctError = null;
-    var r = ctGetShifts_(from, ctTo);
-    if (!r.ok) {
-      ctError = r.error;
-    } else {
-      var map = ctUserMap_();
-      var nowSec = Math.floor(Date.now() / 1000);
-
-      r.shifts.forEach(function (entry) {
-        var nm = ctName_(entry.userId, map);
-        ctShiftsOf_(entry).forEach(function (sh) {
-          var a = ctTs_(sh.start);
-          if (!a) return;
-          var b = ctTs_(sh.end);
-          var startD = new Date(a * 1000);
-          var dateStr = Utilities.formatDate(startD, tz, 'yyyy-MM-dd');
-
-          // شيفت مفتوح النهاردة = الراجل موجود دلوقتي
-          if (!b && dateStr === today) {
-            live.push({ name: nm, checkInTimestamp: a,
-                        elapsedMinutes: Math.round((nowSec - a) / 60) });
-          }
-
-          // السجل: بس الأيام اللي جوه الفترة المطلوبة
-          if (dateStr < from || dateStr > to) return;
-          var endD = b ? new Date(b * 1000) : null;
-          rows.push({
-            date: dateStr,
-            name: nm,
-            checkIn: Utilities.formatDate(startD, tz, 'hh:mm a'),
-            checkOut: endD ? Utilities.formatDate(endD, tz, 'hh:mm a') : 'مفتوح',
-            durationMin: endD ? Math.round((b - a) / 60) : null
-          });
-        });
-      });
-      rows.sort(function (x, y) { return x.date.localeCompare(y.date) || x.name.localeCompare(y.name); });
-    }
-
-    var out = {
-      ok: true,
-      label: label, from: from, to: to,
-      employees: kpi.employees || [],
-      daily: kpi.daily || [],
-      targets: kpi.targets || TARGETS,
-      live: live,
-      liveCount: live.length,
-      rows: rows,
-      attendanceError: ctError
-    };
-
-    fxCachePut_(ck, out, 120);   // دقيقتين
-    return out;
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════════
 // 📷 الجرد بالكاميرا — نسخة "هاند هيلد"
@@ -9009,6 +8577,8 @@ function scanSearch(q) {
     return { ok: false, error: e.message };
   }
 }
+// ==== MODULE 73_doctors (split from server/Code.js; load order = file name order) ====
+
 
 // ═══════════════════════════════════════════════════════════════════
 // 🩺 بحث الدكاترة في المخزون — صفحة doctors.html
@@ -9321,6 +8891,8 @@ function doctorAdmin(p) {
     return { ok: false, msg: e.message };
   }
 }
+// ==== MODULE 74_orders (split from server/Code.js; load order = file name order) ====
+
 
 // ═══════════════════════════════════════════════════════════════════
 // 🛒 صفحة طلب النواقص — orders.html
@@ -9621,6 +9193,8 @@ function ordersPage(code, days) {
     return { ok: false, msg: e.message + ' @ ' + String(e.stack || '').split('\n').slice(0, 2).join(' | ') };
   }
 }
+// ==== MODULE 75_count_shortage (split from server/Code.js; load order = file name order) ====
+
 
 // ═══════════════════════════════════════════════════════════════════
 // 📈 كفاءة الطلبيات — سجل النواقص
@@ -10700,563 +10274,6 @@ function getCountActivity(params) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// 💸 المصروفات — قراءة مباشرة من ملفات Drive
-//
-// ⚠️ ليه اتغيّرت:
-// السلسلة القديمة كانت 3 خطوات: نظام البيع → xlsx على Drive →
-// شيت جوجل → الداشبورد. الخطوة الوسطانية (التحويل للشيت) وقفت
-// يوم 2 أغسطس من غير ما حد يلاحظ، فالداشبورد فضل يعرض بيانات
-// عمرها 9 أيام وكأنها صح.
-//
-// دلوقتي بنقرا الـxlsx من Drive مباشرة — نفس اللي بنعمله مع ملفات
-// المبيعات الخام من شهور. خطوة أقل = نقطة فشل أقل.
-//
-// ⚠️ تصحيح: Expenses_*.xlsx مش تراكمي. كل نسخة فيها الحركات من آخر
-// تقفيل بس (يومين-تلاتة)، واللي اتقفل بيختفي من النسخة الجاية. ولما
-// التصدير بيقف أو بيطلع متقطع، الأيام اللي بينهم مالهاش نسخة خالص.
-// عشان كده: (١) كل ما نقرا الملف نحفظ حركاته في أرشيف دائم بالتسلسل،
-// (٢) وبنسجّل إجمالي المصروفات المتنوعة اليومي من Daily_Mini_Statics
-//     (بيتحدّث لحظي) ونكمّل بيه أي يوم ناقص.
-// ═══════════════════════════════════════════════════════════════════
-
-var EXPORT_FOLDER = '1Vq85t_jS3sS4s0JHjP5uo3nHZxOAltpb';
-
-/* بيلاقي أحدث ملف مصروفات وبيحوّله لصفوف */
-/* تحويل ملف xlsx واحد لصفوف — Drive REST مباشرة (من غير تفعيل خدمة متقدمة) */
-function xlsxToRows_(file) {
-  var res = UrlFetchApp.fetch(
-    'https://www.googleapis.com/drive/v3/files/' + file.getId() +
-    '/copy?fields=id&supportsAllDrives=true',
-    { method: 'post', contentType: 'application/json',
-      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
-      payload: JSON.stringify({ name: '__tmp_exp_' + Date.now(), mimeType: MimeType.GOOGLE_SHEETS }),
-      muteHttpExceptions: true });
-  if (res.getResponseCode() !== 200) {
-    var why = ''; try { why = JSON.parse(res.getContentText()).error.message; } catch (e) { why = res.getContentText().slice(0, 150); }
-    return { ok: false, error: 'تحويل الملف فشل: ' + res.getResponseCode() + (why ? ' — ' + why : '') };
-  }
-  var tmpId = JSON.parse(res.getContentText()).id, rows = [];
-  try {
-    var sh = SpreadsheetApp.openById(tmpId).getSheets()[0];
-    if (sh.getLastRow() > 1) rows = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getDisplayValues();
-  } finally {
-    try { DriveApp.getFileById(tmpId).setTrashed(true); } catch (e) {}
-  }
-  return { ok: true, rows: rows };
-}
-
-/* بيلاقي أحدث ملف مصروفات وبيحوّله لصفوف */
-function readExpenseFile_() {
-  try {
-    var folder = DriveApp.getFolderById(EXPORT_FOLDER);
-    var files = folder.getFilesByName('Expenses_9882-3C97_1.xlsx');
-    var newest = null;
-    while (files.hasNext()) {
-      var f = files.next();
-      if (!newest || f.getLastUpdated() > newest.getLastUpdated()) newest = f;
-    }
-    if (!newest) return { ok: false, error: 'ملف المصروفات مش موجود' };
-    var r = xlsxToRows_(newest);
-    if (!r.ok) return r;
-    return { ok: true, rows: r.rows,
-             at: Utilities.formatDate(newest.getLastUpdated(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss') };
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
-}
-
-/* بيحوّل صفوف الملف لسطور مصروفات موحّدة */
-function parseExpenseRows_(rows) {
-  if (!rows || rows.length < 2) return [];
-  var hdr = rows[0].map(function (h) { return String(h || '').trim(); });
-  var ix = {};
-  hdr.forEach(function (h, i) { ix[h] = i; });
-
-  /* الأعمدة بالاسم مش بالرقم — النظام بيغيّر الترتيب أحيانًا */
-  var cType = (ix['النوع']   !== undefined) ? ix['النوع']   : 3;
-  var cVal  = (ix['القيمة']  !== undefined) ? ix['القيمة']  : 4;
-  var cTime = (ix['الوقـت']  !== undefined) ? ix['الوقـت']  : 5;
-  var cName = (ix['المصروفات']!== undefined) ? ix['المصروفات']: 1;
-  var cDet  = (ix['التفاصيل'] !== undefined) ? ix['التفاصيل'] : 2;
-  var cId   = (ix['التسلسل']  !== undefined) ? ix['التسلسل']  : 0;
-  var cComp = (ix['الشركة']    !== undefined) ? ix['الشركة']    : -1;
-  var cStaff= (ix['اسم الموظف']!== undefined) ? ix['اسم الموظف']: -1;
-
-  var out = [];
-  for (var i = 1; i < rows.length; i++) {
-    var r = rows[i];
-
-    /* ⚠️ إصلاح الزحلقة:
-       لما خانة "التفاصيل" تبقى فاضية، بعض المصادر بتسقطها خالص
-       بدل ما تسيبها فاضية — فكل الأعمدة بتتزحلق مكان لورا.
-       مثال حقيقي (مصروفات متنوعة):
-         الصح:   2929 | صور فوتير | (فاضي) | مصروفات متنوعة | 20 | 2026-08-01
-         المكسور: 2929 | صور فوتير | مصروفات متنوعة | 20 | 2026-08-01
-       فالوقت كان بيتقرا "20" بدل التاريخ، والسطر يتفلتر ويختفي.
-
-       الحل: بندوّر على التاريخ في الصف كله بدل ما نثق في رقم العمود. */
-    var shift = 0;
-    var tsRaw = String(r[cTime] || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}/.test(tsRaw)) {
-      for (var k = 0; k < r.length; k++) {
-        if (/^\d{4}-\d{2}-\d{2}[ T]/.test(String(r[k] || '').trim())) {
-          shift = k - cTime;   /* بكام خانة اتزحلق الصف */
-          break;
-        }
-      }
-    }
-    function col(base) {
-      var v = r[base + shift];
-      return (v === undefined || v === null) ? '' : String(v).trim();
-    }
-
-    var cat = col(cType);
-    if (!cat) continue;
-    var ts = col(cTime).substring(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(ts)) continue;
-    out.push({
-      id: String(r[cId] || ''),           /* التسلسل قبل الزحلقة دايمًا */
-      category: cat,
-      amount: parseFloat(col(cVal).replace(/,/g, '')) || 0,
-      date: ts,
-      time: col(cTime).substring(11, 16),
-      name: col(cName),
-      detail: shift ? '' : col(cDet),     /* الزحلقة معناها التفاصيل فاضية */
-      company: (cComp !== -1) ? col(cComp) : '',
-      staff: (cStaff !== -1) ? col(cStaff) : '',
-      /* الإيراد مش مصروف — بيتفلتر في الحسابات وبيتعرض لوحده */
-      isIncome: cat.indexOf('ايراد') === 0
-    });
-  }
-  return out;
-}
-
-/* أرشيف الشيت — للشهور القديمة اللي مش في الملف الحالي */
-function readExpenseSheet_() {
-  var out = [];
-  try {
-    var ss = SpreadsheetApp.openById(EXPENSES_SHEET_ID);
-    ['Daily_Expenses', 'Monthly_Expenses'].forEach(function (name) {
-      var sh = ss.getSheetByName(name);
-      if (!sh || sh.getLastRow() <= 1) return;
-      var rows = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getDisplayValues();
-      out = out.concat(parseExpenseRows_(rows));
-    });
-  } catch (e) {}
-  return out;
-}
-
-/* المصدر الموحّد: الملف الحي + الأرشيف، من غير تكرار */
-var EXP_LEDGER_SHEET  = 'سجل يومي للمصروفات';
-var EXP_ARCHIVE_SHEET = 'أرشيف المصروفات';
-
-/* نوع الحركة: المتنوعة (الوحيدة اللي بنكمّلها من السجل) أو المشتروات */
-function expKind_(cat) {
-  cat = String(cat || '');
-  if (cat.indexOf('متنوعة') !== -1) return 'misc';
-  if (cat.indexOf('مشتروات') !== -1) return 'purch';
-  return '';
-}
-
-/* "09/10/2026 - 11:45 PM" → "2026-10-09". لو مش مفهوم بنرجّع فاضي ومبنخمّنش */
-function statsDay_(s) {
-  var m = String(s || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (!m) return '';
-  return m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
-}
-
-/* حفظ دائم لحركات الملف بالتسلسل. الملف بيشيل اللي اتقفل، فلو متحفظش هنا بيضيع. */
-function archiveExpenses_(items) {
-  if (!items || !items.length) return 0;
-  var sh = getOrCreateSheet_(EXP_ARCHIVE_SHEET,
-    ['التسلسل', 'النوع', 'القيمة', 'التاريخ', 'الوقت', 'المصروف', 'التفاصيل', 'الشركة', 'الموظف', 'إيراد', 'أُضيف']);
-  sh.getRange('A:A').setNumberFormat('@');
-  sh.getRange('D:D').setNumberFormat('@');
-  var seen = {};
-  if (sh.getLastRow() > 1) {
-    sh.getRange(2, 1, sh.getLastRow() - 1, 1).getDisplayValues().forEach(function (r) { seen[String(r[0])] = 1; });
-  }
-  var now = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss'), rows = [];
-  items.forEach(function (e) {
-    if (!e.id || seen[e.id]) return;
-    seen[e.id] = 1;
-    rows.push([e.id, e.category, e.amount, e.date, e.time || '', e.name || '', e.detail || '',
-               e.company || '', e.staff || '', e.isIncome ? 1 : 0, now]);
-  });
-  if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 11).setValues(rows);
-  return rows.length;
-}
-
-function readExpenseArchive_() {
-  var out = [];
-  try {
-    var sh = SpreadsheetApp.openById(STAFF_SHEET_ID).getSheetByName(EXP_ARCHIVE_SHEET);
-    if (!sh || sh.getLastRow() <= 1) return out;
-    sh.getRange(2, 1, sh.getLastRow() - 1, 10).getDisplayValues().forEach(function (r) {
-      out.push({ id: String(r[0]), category: r[1],
-                 amount: parseFloat(String(r[2]).replace(/,/g, '')) || 0,
-                 date: String(r[3]).substring(0, 10), time: r[4], name: r[5], detail: r[6],
-                 company: r[7], staff: r[8], isIncome: String(r[9]) === '1' });
-    });
-  } catch (e) {}
-  return out;
-}
-
-/* السجل اليومي: كل ساعة بنكتب إجمالي النهاردة وإمبارح من Daily_Mini_Statics.
-   "اليوم" هنا هو يوم الإحصائية نفسها (مش يوم السكربت) — لو الجهاز اتأخر في
-   التحديث مبنسجّلش بيانات يوم على يوم تاني. */
-function recordDailyStats_() {
-  var t = getSystemDailyTotals();
-  if (!t || !t.ok) return { ok: false, error: 'الإحصائيات مش متاحة' };
-  var day = statsDay_(t.updated_at);
-  if (!day) return { ok: false, error: 'مقدرتش أفهم تاريخ الإحصائية: ' + t.updated_at };
-  var prev = Utilities.formatDate(new Date(new Date(day + 'T12:00:00').getTime() - 86400000), 'Africa/Cairo', 'yyyy-MM-dd');
-
-  var sh = getOrCreateSheet_(EXP_LEDGER_SHEET, ['التاريخ', 'مصروفات متنوعة', 'مشتروات الشركات', 'آخر تحديث', 'مصدر']);
-  sh.getRange('A:A').setNumberFormat('@');
-  var rowOf = {};
-  if (sh.getLastRow() > 1) {
-    sh.getRange(2, 1, sh.getLastRow() - 1, 1).getDisplayValues().forEach(function (r, i) { rowOf[String(r[0]).substring(0, 10)] = i + 2; });
-  }
-  var now = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss'), written = 0;
-  function upsert(d, misc, purch, src) {
-    var vals = [[d, misc, purch, now, src]];
-    if (rowOf[d]) sh.getRange(rowOf[d], 1, 1, 5).setValues(vals);
-    else { sh.getRange(sh.getLastRow() + 1, 1, 1, 5).setValues(vals); rowOf[d] = sh.getLastRow(); }
-    written++;
-  }
-  upsert(prev, t.misc_yesterday || 0, t.purch_yesterday || 0, 'أمس');
-  upsert(day,  t.misc_today || 0,     t.purch_today || 0,     'النهاردة');
-  fxClearCache_('fx_exp_all');
-  return { ok: true, day: day, written: written, misc_today: t.misc_today, misc_yesterday: t.misc_yesterday };
-}
-
-function readLedger_() {
-  var out = [];
-  try {
-    var sh = SpreadsheetApp.openById(STAFF_SHEET_ID).getSheetByName(EXP_LEDGER_SHEET);
-    if (!sh || sh.getLastRow() <= 1) return out;
-    sh.getRange(2, 1, sh.getLastRow() - 1, 3).getDisplayValues().forEach(function (r) {
-      var day = String(r[0] || '').substring(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
-      out.push({ day: day, misc: parseFloat(String(r[1]).replace(/,/g, '')) || 0,
-                 purch: parseFloat(String(r[2]).replace(/,/g, '')) || 0 });
-    });
-  } catch (e) {}
-  return out;
-}
-
-/* بيكمّل المتنوعة بالفرق عن إجمالي النظام اليومي.
-   ⚠️ المتنوعة بس — المشتريات مبنكمّلهاش لأني مش متأكد إن تعريف "مشتروات
-   الشركات" في إحصائيات النظام نفس اللي في ملف المصروفات، ولو اختلف هنضيف
-   فروق وهمية. المتنوعة هي اللي بتدخل في حساب الربح الصافي. */
-function applyLedger_(items, ledger) {
-  var sums = {};
-  items.forEach(function (e) {
-    if (e.isIncome) return;
-    if (expKind_(e.category) !== 'misc') return;
-    sums[e.date] = (sums[e.date] || 0) + e.amount;
-  });
-  var extra = [];
-  ledger.forEach(function (L) {
-    var have = sums[L.day] || 0;
-    var diff = Math.round((L.misc - have) * 100) / 100;
-    if (diff > 0.5) {
-      extra.push({ id: 'L-' + L.day + '-misc', category: 'مصروفات متنوعة', amount: diff,
-                   date: L.day, time: '',
-                   name: have > 0 ? 'فرق غير مفصّل (إجمالي اليوم من النظام)' : 'إجمالي اليوم من النظام',
-                   detail: '', company: '', staff: '', isIncome: false, fromLedger: true });
-    }
-  });
-  return items.concat(extra);
-}
-
-/* ملفات التصدير بفترة يدوية "Expenses From ..." — بتتحوّل مرة لكل نسخة وتتحفظ في الأرشيف */
-function ingestPeriodExpenseFiles_() {
-  var props = PropertiesService.getScriptProperties(), added = 0, items = [];
-  var done = {};
-  try { done = JSON.parse(props.getProperty('exp_period_done') || '{}'); } catch (e) {}
-  var it = DriveApp.searchFiles("title contains 'Expenses From' and trashed = false");
-  var n = 0;
-  while (it.hasNext() && n < 10) {
-    var f = it.next(); n++;
-    if (!/\.xlsx$/i.test(f.getName())) continue;
-    var sig = String(f.getLastUpdated().getTime());
-    if (done[f.getId()] === sig) continue;
-    var r = xlsxToRows_(f);
-    if (!r.ok) continue;
-    items = items.concat(parseExpenseRows_(r.rows));
-    done[f.getId()] = sig;
-  }
-  if (items.length) added = archiveExpenses_(items);
-  props.setProperty('exp_period_done', JSON.stringify(done));
-  return added;
-}
-
-/* ملفات "Company Paid Expenses" الشهرية: بتسد فجوة المشتروات بعد آخر مشتروات مفصّلة حقيقية */
-function readCompanyPaid_() {
-  var out = [];
-  try {
-    var cache = fxCacheGet_('fx_cpaid');
-    if (cache) return cache;
-    var it = DriveApp.searchFiles("title contains 'Company Paid Expenses' and trashed = false");
-    var files = [];
-    while (it.hasNext()) files.push(it.next());
-    files.sort(function (a, b) { return b.getLastUpdated() - a.getLastUpdated(); });
-    files.slice(0, 2).forEach(function (f) {
-      var r = xlsxToRows_(f);
-      if (!r.ok) return;
-      r.rows.slice(1).forEach(function (row) {
-        var cname = String(row[2] || '').trim();
-        var det = String(row[5] || '');
-        var re = /invoice:(\d+)\s+paid:([\d.]+)\s+at:(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/g, m;
-        while ((m = re.exec(det))) {
-          if (m[1] === '0') continue;   /* دفعات من غير فاتورة مش مشتروات */
-          out.push({ id: 'CP-' + m[1] + '-' + m[3] + m[4] + '-' + m[2], category: 'مصروفات مشتروات شركات',
-                     amount: parseFloat(m[2]) || 0, date: m[3], time: m[4],
-                     name: (cname || 'الصيدلية') + ',' + m[1], detail: '', company: cname, staff: '',
-                     isIncome: false, fromCompanyPaid: true });
-        }
-      });
-    });
-    fxCachePut_('fx_cpaid', out, 1800);
-  } catch (e) {}
-  return out;
-}
-
-/* ═══ المصروفات من النسخة الاحتياطية لـ Pharmaclick ═══
-   الإكسبورت وقف من 4 أكتوبر، لكن الباك أب (كل 3–4 ساعات) فيه جدول expenses كامل.
-   التسلسل في الباك أب = نفس "التسلسل" في الإكسبورت القديم، فمفيش تكرار في الأرشيف.
-   out = مصروفات متنوعة · pay = مشتروات شركات · salary = مرتبات · debits = ايراد مديونيات */
-var EXP_TYPE_CAT_ = { out: 'مصروفات متنوعة', pay: 'مصروفات مشتروات شركات', salary: 'مصروفات مرتبات', debits: 'ايراد مديونيات' };
-function syncExpensesFromBackup_(force) {
-  var P = PropertiesService.getScriptProperties();
-  var it = DriveApp.searchFiles("title contains 'pharmaclick_backup_9882' and trashed = false"), newest = null;
-  while (it.hasNext()) { var f = it.next(); if (!newest || f.getLastUpdated() > newest.getLastUpdated()) newest = f; }
-  if (!newest) return { ok: false, error: 'مفيش نسخة احتياطية' };
-  var sig = newest.getId() + '|' + newest.getLastUpdated().getTime();
-  if (!force && P.getProperty('exp_bk_sig') === sig) return { ok: true, skipped: true, file: newest.getName() };
-  var blob = newest.getBlob(); blob.setContentType('application/zip');
-  var sql = '';
-  Utilities.unzip(blob).forEach(function (e) { if (!sql && /\.sql$/i.test(e.getName())) sql = e.getDataAsString('UTF-8'); });
-  if (!sql) return { ok: false, error: 'ملف SQL مش موجود في النسخة' };
-
-  function table(name) {
-    var cols = sqlColumns_(sql, name), rows = sqlTableRows_(sql, name).rows;
-    return rows.map(function (x) { var v = sqlVals_(x), o = {}; cols.forEach(function (c, i) { o[c] = v[i]; }); return o; });
-  }
-  var users = {}, comps = {};
-  table('users').forEach(function (u) { users[u.id] = u.name || ''; });
-  table('companies').forEach(function (c) { comps[c.id] = c.namear || c.name || ''; });
-  var exp = table('expenses');
-  sql = null;   /* نفضّي الذاكرة */
-
-  var items = [];
-  exp.forEach(function (r) {
-    if (String(r.deleted) === '1') return;
-    var cat = EXP_TYPE_CAT_[r.type]; if (!cat) return;
-    var ts = String(r.time || '');
-    if (!/^\d{4}-\d{2}-\d{2}/.test(ts)) return;
-    items.push({ id: String(r.id), category: cat, amount: parseFloat(r.value) || 0,
-                 date: ts.slice(0, 10), time: ts.slice(11, 16),
-                 name: String(r.title || '').replace(/,\d+,دفع مباشر$/, ''), detail: String(r.details || '').trim(),
-                 company: (+r.companyid > 3 ? comps[r.companyid] || '' : ''), staff: users[r.userid] || '',
-                 isIncome: r.type === 'debits' });
-  });
-  var added = archiveExpenses_(items);
-  P.setProperty('exp_bk_sig', sig);
-  P.setProperty('exp_bk_last', JSON.stringify({ at: Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm'),
-    file: newest.getName(), rows: items.length, added: added }));
-  fxClearCache_('fx_exp_all');
-  return { ok: true, file: newest.getName(), rows: items.length, added: added,
-           lastDate: items.reduce(function (m, x) { return x.date > m ? x.date : m; }, '') };
-}
-function syncExpensesFromBackup() { return syncExpensesFromBackup_(false); }   /* للتريجر */
-function ensureExpenseBackupTrigger_() {
-  var P = PropertiesService.getScriptProperties();
-  if (P.getProperty('exp_bk_trigger') === '1') return false;
-  var has = ScriptApp.getProjectTriggers().some(function (tr) { return tr.getHandlerFunction() === 'syncExpensesFromBackup'; });
-  if (!has) ScriptApp.newTrigger('syncExpensesFromBackup').timeBased().everyHours(2).create();
-  P.setProperty('exp_bk_trigger', '1');
-  return true;
-}
-
-/* المصدر الموحّد: الملف الحي + الأرشيف الدائم + الشيتات القديمة + السجل اليومي */
-function allExpenses_() {
-  var hit = fxCacheGet_('fx_exp_all');
-  if (hit) return hit;
-  /* أول مرة: نركّب التحديث التلقائي كل ساعتين ونسحب من الباك أب على طول */
-  try { if (ensureExpenseBackupTrigger_()) syncExpensesFromBackup_(true); } catch (e) { Logger.log('exp backup: ' + e.message); }
-
-  var file = readExpenseFile_();
-  var live = (file.ok) ? parseExpenseRows_(file.rows) : [];
-  try { if (live.length) archiveExpenses_(live); } catch (e) {}
-  try { ingestPeriodExpenseFiles_(); } catch (e) {}
-
-  var seen = {}, merged = [];
-  live.concat(readExpenseArchive_()).concat(readExpenseSheet_()).forEach(function (e) {
-    var k = e.id ? ('#' + e.id) : (e.date + '|' + e.category + '|' + e.amount + '|' + e.name);
-    if (seen[k]) return;
-    seen[k] = 1; merged.push(e);
-  });
-
-  /* آخر حركة مفصّلة حقيقية — قبل ما السجل يضيف صفوفه التكميلية */
-  merged.sort(function (a, b) { return b.date.localeCompare(a.date); });
-  var latestItem = merged.length ? merged[0].date : '';
-
-  /* سد فجوة المشتروات من ملف المدفوعات للشركات (بعد آخر مشتروات حقيقية فقط) */
-  var lastPurch = '';
-  merged.forEach(function (e) { if (!e.isIncome && expKind_(e.category) === 'purch' && e.date > lastPurch) lastPurch = e.date; });
-  var cp = readCompanyPaid_().filter(function (e) { return e.date > lastPurch; });
-  merged = merged.concat(cp);
-
-  var ledger = readLedger_();
-  merged = applyLedger_(merged, ledger);
-  merged.sort(function (a, b) { return b.date.localeCompare(a.date); });
-
-  /* "واقفة" = مفيش أي إشارة حياة: لا حركة مفصّلة ولا سجل يومي حديث.
-     قبل كده كانت بتبص على آخر حركة بس، فيوم من غير مصروفات كان بيبان كأن
-     التصدير واقف. */
-  var latestLedger = ledger.reduce(function (m, L) { return L.day > m ? L.day : m; }, '');
-  var latest = (latestLedger > latestItem) ? latestLedger : latestItem;
-
-  var out = {
-    ok: true, items: merged,
-    fileAt: file.ok ? file.at : '',
-    fileError: file.ok ? '' : file.error,
-    latestEntry: latest,
-    latestItemized: latestItem,
-    itemizedStaleDays: latestItem
-      ? Math.floor((new Date(Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd'))
-                    - new Date(latestItem)) / 86400000)
-      : null,
-    companyPaidFrom: lastPurch,
-    companyPaidRows: cp.length,
-    ledgerDays: ledger.length,
-    staleDays: latest
-      ? Math.floor((new Date(Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd'))
-                    - new Date(latest)) / 86400000)
-      : null
-  };
-  fxCachePut_('fx_exp_all', out, 600);
-  return out;
-}
-
-/* مرة واحدة: بيقرا كل النسخ القديمة من ملف المصروفات على Drive ويحفظ حركاتها
-   في الأرشيف. بيجيب كل اللي لسه ظاهر في أي نسخة — اللي اتقفل ومفيش نسخة
-   فيه مش ممكن يتجاب. */
-function backfillExpenseArchive() {
-  var lock = LockService.getScriptLock();
-  try { if (!lock.tryLock(30000)) return { ok: false, error: 'مشغول — جرب كمان شوية' }; }
-  catch (e) { return { ok: false, error: 'مشغول' }; }
-  try {
-    var folder = DriveApp.getFolderById(EXPORT_FOLDER);
-    var it = folder.getFilesByName('Expenses_9882-3C97_1.xlsx'), list = [];
-    while (it.hasNext()) list.push(it.next());
-    list.sort(function (a, b) { return a.getLastUpdated() - b.getLastUpdated(); });
-
-    var read = 0, added = 0, errors = [];
-    list.forEach(function (f) {
-      try {
-        var r = xlsxToRows_(f);
-        if (!r.ok) { errors.push(r.error); return; }
-        read++;
-        added += archiveExpenses_(parseExpenseRows_(r.rows));
-      } catch (e2) { errors.push(e2.message); }
-    });
-    var bk = null;
-    try { ensureExpenseBackupTrigger_(); bk = syncExpensesFromBackup_(true); } catch (eb) { bk = { ok: false, error: eb.message }; }
-    fxClearCache_('fx_exp_all');
-    return { ok: true, versions: list.length, read: read, added: added + ((bk && bk.added) || 0), errors: errors.slice(0, 3), backup: bk };
-  } catch (e3) {
-    return { ok: false, error: e3.message };
-  } finally {
-    try { lock.releaseLock(); } catch (e4) {}
-  }
-}
-
-/* مراجعة المصروفات (صفحة expenses.html): الموظف المسؤول بيعلّم كل حركة "تمام" أو "محتاجة توضيح" بملاحظة */
-var EXP_REVIEW_SHEET = 'مراجعة المصروفات';
-function getExpReviews() {
-  var out = {};
-  try {
-    var sh = SpreadsheetApp.openById(STAFF_SHEET_ID).getSheetByName(EXP_REVIEW_SHEET);
-    if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 5).getDisplayValues().forEach(function (r) {
-      if (r[0]) out[r[0]] = { status: r[1], note: r[2], by: r[3], at: r[4] };
-    });
-  } catch (e) {}
-  return { ok: true, reviews: out };
-}
-function expReview(d) {
-  var id = String(d.id || '').trim();
-  if (!id) return { ok: false, error: 'رقم الحركة ناقص' };
-  var status = d.status === 'ask' ? 'ask' : (d.status === 'ok' ? 'ok' : '');
-  var sh = getOrCreateSheet_(EXP_REVIEW_SHEET, ['الحركة', 'الحالة', 'ملاحظة', 'راجعها', 'الوقت']);
-  sh.getRange('A:A').setNumberFormat('@');
-  var row = [[id, status, String(d.note || '').slice(0, 300), String(d.by || '').slice(0, 40),
-              Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm')]];
-  var n = sh.getLastRow(), at = 0;
-  if (n > 1) { var ids = sh.getRange(2, 1, n - 1, 1).getDisplayValues(); for (var i = 0; i < ids.length; i++) if (ids[i][0] === id) { at = i + 2; break; } }
-  if (at) sh.getRange(at, 1, 1, 5).setValues(row); else sh.getRange(n + 1, 1, 1, 5).setValues(row);
-  return { ok: true };
-}
-
-function getExpensesData(params) {
-  try {
-    var all = allExpenses_();
-    var R = resolveRange_(params);
-
-    /* 🔧 إصلاح: "ايراد مديونيات" كان بيتجمع في إجمالي المصروفات.
-       ده فلوس داخلة مش خارجة — الإجمالي كان منفوخ بقيمتها. */
-    var byCat = {}, items = [], total = 0, count = 0, income = 0, incomeCount = 0;
-    var ledgerTotal = 0, ledgerCount = 0;   /* اللي اتكمّل من إجمالي النظام اليومي */
-
-    all.items.forEach(function (e) {
-      if (e.date < R.from || e.date > R.to) return;
-
-      var row = {
-        id: e.id, category: e.category, amount: e.amount,
-        date: e.date, time: e.time || '',
-        company: e.company || '', staff: e.staff || '',
-        name: e.name || '', detail: e.detail || '',
-        isIncome: !!e.isIncome, fromLedger: !!e.fromLedger,
-        desc: [e.name, e.detail].filter(function (x) { return x; }).join(' — ') || '—'
-      };
-      items.push(row);
-      if (e.fromLedger && !e.isIncome) { ledgerTotal += e.amount; ledgerCount++; }
-
-      if (e.isIncome) { income += e.amount; incomeCount++; return; }
-
-      if (!byCat[e.category]) byCat[e.category] = { total: 0, count: 0 };
-      byCat[e.category].total += e.amount;
-      byCat[e.category].count++;
-      total += e.amount; count++;
-    });
-
-    var list = Object.keys(byCat).map(function (k) {
-      return { category: k, total: byCat[k].total, count: byCat[k].count };
-    }).sort(function (a, b) { return b.total - a.total; });
-
-    return {
-      ok: true, label: R.label, total: total, count: count,
-      income: income, income_count: incomeCount,
-      ledger_total: Math.round(ledgerTotal * 100) / 100, ledger_count: ledgerCount,
-      byCategory: list, items: items,
-      /* التنبيه: لو آخر مصروف بقاله كتير يبقى التصدير واقف */
-      lastEntry: all.latestEntry,
-      staleDays: all.staleDays,
-      itemizedStaleDays: all.itemizedStaleDays,
-      companyPaidRows: all.companyPaidRows,
-      stale: (all.staleDays !== null && all.staleDays > 2),
-      sourceAt: all.fileAt,
-      sourceError: all.fileError
-    };
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════
 // 🎯 دقة المخزون — من نتايج الجرد
 //
 // الفكرة: الجرد بيقارن اللي على الرف بالسيستم. كل سطر إما مطابق أو
@@ -11353,6 +10370,8 @@ function getCountAccuracy(params) {
     return { ok: false, error: e.message };
   }
 }
+// ==== MODULE 76_labels (split from server/Code.js; load order = file name order) ====
+
 
 
 // ===================================================================
@@ -11514,6 +10533,8 @@ function labelsSave(payload) {
     return { ok: false, error: e.message };
   }
 }
+// ==== MODULE 77_dose_ai (split from server/Code.js; load order = file name order) ====
+
 
 // ===================================================================
 // 🤖 الجرعة بالذكاء الاصطناعي — اقتراح بس، والصيدلي بيراجع ويأكد قبل الطباعة
@@ -11583,4 +10604,1051 @@ function aiDose(payload) {
   } catch (e) {
     return { ok: false, error: e.message };
   }
+}
+
+// ==== MODULE 80_cache_home (split from server/Code.js; load order = file name order) ====
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ⚡ قسم السرعة والإصلاحات — أغسطس 2026
+//
+// ١) كاش مقسّم: الكاش القديم كان بيتخزن بس لو الحجم أقل من 95KB،
+//    وسجل الرسايل عدّى الرقم ده من شهور، يعني الكاش كان واقف
+//    والسيرفر بيقرا 3 شيتات كاملة في كل فتحة.
+// ٢) نداء واحد للصفحة الرئيسية بدل 6 (Apps Script بينفّذ طلبات
+//    نفس المستخدم واحد ورا التاني، فالستة كانوا بيقفوا في طابور).
+// ٣) سجل الرسايل بقى آخر 30 يوم بس بدل من أول يوم.
+// ٤) Connecteam: الرد بيجي ملفوف جوه { data: {...} } والكود القديم
+//    مكانش بيفكّه، فكان بيرجّع قايمة فاضية دايمًا من غير رسالة خطأ.
+// ═══════════════════════════════════════════════════════════════════
+
+// ── كاش مقسّم: بيشتغل مهما كبرت البيانات ──
+function fxCacheGet_(key) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var meta = cache.get(key + '_meta');
+    if (!meta) return null;
+    var count = parseInt(meta, 10);
+    var wanted = [];
+    for (var i = 0; i < count; i++) wanted.push(key + '_' + i);
+    var parts = cache.getAll(wanted);
+    var joined = '';
+    for (var j = 0; j < count; j++) {
+      if (parts[key + '_' + j] === undefined) return null; // جزء ضايع → نحسبها من الأول
+      joined += parts[key + '_' + j];
+    }
+    return joined ? JSON.parse(joined) : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function fxCachePut_(key, value, seconds) {
+  try {
+    var json = JSON.stringify(value);
+    var CHUNK = 90000;
+    var count = Math.ceil(json.length / CHUNK);
+    if (count > 40) return; // كبير أوي — منخزنش
+    var obj = {};
+    for (var i = 0; i < count; i++) obj[key + '_' + i] = json.substring(i * CHUNK, (i + 1) * CHUNK);
+    var cache = CacheService.getScriptCache();
+    cache.putAll(obj, seconds);
+    cache.put(key + '_meta', String(count), seconds);
+  } catch (err) { /* الكاش مش ضروري */ }
+}
+
+function fxClearCache_(key) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var meta = cache.get(key + '_meta');
+    if (!meta) return;
+    var keys = [key + '_meta'];
+    for (var i = 0; i < parseInt(meta, 10); i++) keys.push(key + '_' + i);
+    cache.removeAll(keys);
+  } catch (err) {}
+}
+
+// شغّلها لو عايز تجبر تحديث فوري بعد ما تغيّر حاجة في الشيتات
+/* 🆕 بيتنادى من زرار "حدّث دلوقتي" في الداشبورد.
+   بيفضّي كاش الأرقام الحية بس — مش بيلمس اللقطة (المخزون/المندوبين)
+   عشان الصفحة تفضل سريعة. */
+function refreshLiveNumbers() {
+  ['fx_home_bundle', 'fx_sms_30'].forEach(fxClearCache_);
+  ['today', 'yesterday', 'week', 'month'].forEach(function (r) {
+    ['kpi', 'mtr', 'exp'].forEach(function (n) {
+      fxClearCache_('fx_c_' + n + '_' + JSON.stringify({ action: 'x', range: r }));
+      fxClearCache_('fx_c_' + n + '_' + JSON.stringify({ range: r }));
+    });
+    fxClearCache_('fx_hub_' + r);
+  });
+  return { ok: true, at: Utilities.formatDate(new Date(), 'Africa/Cairo', 'HH:mm:ss') };
+}
+
+function clearAllFixesCache() {
+  ['fx_sms_30', 'fx_home_bundle', 'fx_debts', 'fx_inv_aging', 'ct_users'].forEach(fxClearCache_);
+  Logger.log('✅ اتمسح الكاش — أول فتحة جاية هتقرا من الشيتات من جديد');
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ١) سجل الرسايل — آخر 30 يوم بس، وبيقرا من آخر الشيت للأول
+// ═══════════════════════════════════════════════════════════════════
+function getSMSLogFast(params) {
+  var days = parseInt((params && params.days) || '30', 10);
+  if (isNaN(days) || days < 1) days = 30;
+  if (days > 365) days = 365;
+
+  var cacheKey = 'fx_sms_' + days;
+  var cached = fxCacheGet_(cacheKey);
+  if (cached) { cached.cached = true; return cached; }
+
+  try {
+    var tz = 'Africa/Cairo';
+    var cutoff = Utilities.formatDate(new Date(Date.now() - days * 86400000), tz, 'yyyy-MM-dd');
+    var messages = [];
+
+    function asDate_(v) {
+      return (v instanceof Date)
+        ? Utilities.formatDate(v, tz, 'yyyy-MM-dd')
+        : String(v || '').substring(0, 10);
+    }
+
+    // بنقرا من آخر الشيت للأول ونقف أول ما نخرج من المدة — أسرع بكتير
+    /* ⚠️ إصلاح: النسخة القديمة كانت بتوقف أول ما تلاقي سطر أقدم من
+       المدة — وده بيفترض إن الشيت مرتب بالتاريخ، وهو مش مرتب:
+         • تلات شيتات بتتكتب بالتوازي (فواتير + كوبونات + ديون)
+         • retrySMS بتعدّل سطور قديمة وترجّعها لآخر الشيت
+         • السطر اللي تاريخه فاضي كان بيوقف القراءة فورًا ('' < cutoff)
+       النتيجة كانت رسايل بتختفي من السجل من غير ما حد يعرف.
+
+       دلوقتي بنقرا آخر 3000 سطر كاملين وبنفلتر بالتاريخ — من غير
+       وقوف مبكر. الشيت مبيوصلش الحجم ده بسرعة، والقراءة دفعة واحدة
+       أسرع من دفعات متتالية. */
+    function tailRows_(sheet, cols) {
+      if (!sheet || sheet.getLastRow() <= 1) return [];
+      var last = sheet.getLastRow();
+      var MAX = 3000;
+      var start = Math.max(2, last - MAX + 1);
+      var rows = sheet.getRange(start, 1, last - start + 1, cols).getValues();
+      var out = [];
+      for (var i = rows.length - 1; i >= 0; i--) {
+        var d = asDate_(rows[i][0]);
+        if (!d) continue;               /* تاريخ فاضي = نتخطاه مش نوقف */
+        if (d < cutoff) continue;       /* بره المدة = نتخطاه مش نوقف */
+        out.push(rows[i]);
+      }
+      return out;
+    }
+
+    // (أ) رسايل الفواتير
+    tailRows_(getSMSLogSheet_(), 8).forEach(function (r) {
+      messages.push({
+        type: 'invoice', date: asDate_(r[0]), invoiceid: String(r[1]),
+        customername: r[2], phone: String(r[3]), amount: r[4],
+        message: r[5], status: r[6], attemptTime: r[7]
+      });
+    });
+
+    // (ب) رسايل الكوبونات
+    tailRows_(getCouponLogSheet_(), 6).forEach(function (r) {
+      messages.push({
+        type: 'coupon', date: asDate_(r[0]), invoiceid: '',
+        customername: r[2], phone: String(r[1]), amount: '',
+        message: r[3], status: r[4], attemptTime: r[5]
+      });
+    });
+
+    // (ج) رسايل تذكير الديون
+    tailRows_(getDebtReminderLogSheet_(), 6).forEach(function (r) {
+      messages.push({
+        type: 'debt', date: asDate_(r[0]), invoiceid: '',
+        customername: r[2], phone: String(r[1]), amount: r[3],
+        message: 'تذكير سداد: ' + r[3] + ' جنيه', status: r[4], attemptTime: r[5]
+      });
+    });
+
+    // 🔧 الترتيب بالتاريخ الحقيقي مش بالنص — الصفوف متخزنة بصيغتين مختلفتين
+    function ms_(v) {
+      if (v instanceof Date) return v.getTime();
+      var s = String(v || '').trim();
+      if (!s) return 0;
+      var t = new Date(s.replace(' ', 'T')).getTime();
+      if (!isNaN(t)) return t;
+      t = new Date(s).getTime();
+      return isNaN(t) ? 0 : t;
+    }
+    messages.sort(function (a, b) { return ms_(b.attemptTime) - ms_(a.attemptTime); });
+
+    var result = { ok: true, days: days, count: messages.length, messages: messages };
+    fxCachePut_(cacheKey, result, 120); // دقيقتين
+    return result;
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ٢) الصفحة الرئيسية — نداء واحد بدل ٦
+// ═══════════════════════════════════════════════════════════════════
+function getHomeBundle() {
+  var cached = fxCacheGet_('fx_home_bundle');
+  if (cached) { cached.cached = true; return cached; }
+
+  function safe_(label, fn) {
+    try { return fn(); }
+    catch (err) { return { ok: false, error: label + ': ' + err.message }; }
+  }
+
+  var out = {
+    ok: true,
+    daily:       safe_('daily',       function () { return getSystemDailyTotals(); }),
+    maintenance: safe_('maintenance', function () { return getMaintenanceStatus(); }),
+    attendance:  safe_('attendance',  function () { return getAttendanceLiveV2(); }),
+    expiry:      safe_('expiry',      function () { return getExpiryByMonth(); }),
+    agents:      safe_('agents',      function () { return getAgentsData(); }),
+    debts:       safe_('debts',       function () { return fxDebtsCached_(); }),
+    generated:   Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss')
+  };
+
+  fxCachePut_('fx_home_bundle', out, 60); // 🔧 كانت ٣ دقايق — قصّرناها عشان رقم النهاردة يوصل بسرعة
+  return out;
+}
+
+// الديون بتقرا سنة من ملفات Drive — أتقل حاجة في السيستم
+function fxDebtsCached_() {
+  var cached = fxCacheGet_('fx_debts');
+  if (cached) return cached;
+  var d = getDebtsData();
+  if (d && d.ok) fxCachePut_('fx_debts', d, 600); // ١٠ دقايق
+  return d;
+}
+// ==== MODULE 81_connecteam (split from server/Code.js; load order = file name order) ====
+
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ٣) بصمة Connecteam — النسخة المصلّحة
+// ═══════════════════════════════════════════════════════════════════
+
+// بيدوّر على مفتاح جوه أي عمق، مهما كان شكل التغليف
+function ctFind_(obj, key, depth) {
+  depth = depth || 0;
+  if (!obj || typeof obj !== 'object' || depth > 6) return null;
+  if (obj[key] !== undefined && obj[key] !== null) return obj[key];
+  for (var k in obj) {
+    if (!Object.prototype.hasOwnProperty.call(obj, k)) continue;
+    var found = ctFind_(obj[k], key, depth + 1);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
+function ctCall_(url) {
+  // لو Connecteam حظرنا مؤقتًا، مش بنكمّل نداءات — بنستنى المهلة تخلص
+  try {
+    var until = PropertiesService.getScriptProperties().getProperty('ctBlockedUntil');
+    if (until && Date.now() < parseInt(until, 10)) {
+      return { ok: false, code: 429,
+               error: 'الحضور مؤقتًا مش متاح — Connecteam حاظرنا لكتر الطلبات. هيرجع خلال دقايق.' };
+    }
+  } catch (e) {}
+
+  var res = UrlFetchApp.fetch(url, {
+    headers: { 'X-API-KEY': CONNECTEAM_API_KEY, 'accept': 'application/json' },
+    muteHttpExceptions: true
+  });
+  var code = res.getResponseCode();
+  var body = res.getContentText();
+
+  if (code === 429) {
+    // نوقف كل النداءات ٥ دقايق بدل ما نزوّد الحظر
+    try {
+      PropertiesService.getScriptProperties()
+        .setProperty('ctBlockedUntil', String(Date.now() + 300000));
+    } catch (e) {}
+    return { ok: false, code: 429,
+             error: 'الحضور مؤقتًا مش متاح — Connecteam حاظرنا لكتر الطلبات. هيرجع خلال دقايق.' };
+  }
+  if (code !== 200) {
+    return { ok: false, code: code, error: 'Connecteam رجّع كود ' + code };
+  }
+  try { return { ok: true, code: code, json: JSON.parse(body) }; }
+  catch (err) { return { ok: false, code: code, error: 'الرد مش JSON صالح' }; }
+}
+
+// أسماء الموظفين من Connecteam نفسه (كاش ٦ ساعات)
+function ctUserMap_() {
+  var cached = fxCacheGet_('ct_users');
+  if (cached) return cached;
+
+  var map = {};
+  try {
+    var offset = 0;
+    for (var page = 0; page < 10; page++) {
+      var r = ctCall_('https://api.connecteam.com/users/v1/users?limit=200&offset=' + offset);
+      if (!r.ok) break;
+      var users = ctFind_(r.json, 'users');
+      if (!users || !users.length) break;
+      users.forEach(function (u) {
+        var id = String(u.userId || u.id || '');
+        if (!id) return;
+        var nm = [u.firstName, u.lastName].filter(function (x) { return x; }).join(' ').trim();
+        map[id] = nm || u.fullName || u.name || ('موظف ' + id);
+      });
+      if (users.length < 200) break;
+      offset += 200;
+    }
+  } catch (err) {}
+
+  // أي اسم مكتوب يدوي في CONNECTEAM_USER_MAP بيغلب اللي جاي من الـAPI
+  try { for (var k in CONNECTEAM_USER_MAP) map[k] = CONNECTEAM_USER_MAP[k]; } catch (err) {}
+
+  if (Object.keys(map).length) fxCachePut_('ct_users', map, 21600);
+  return map;
+}
+
+function ctName_(userId, map) {
+  var id = String(userId || '');
+  return (map && map[id]) ? map[id] : ('موظف ' + id);
+}
+
+// بيجيب الشيفتات الخام — بيفكّ التغليف وبيمشي على الصفحات
+function ctGetShifts_(from, to) {
+  var err = connecteamReady_();
+  if (err) return { ok: false, error: err };
+
+  var ck = 'ct_sh_' + from + '_' + to;
+  var hit = fxCacheGet_(ck);
+  if (hit) return hit;
+
+  var all = [], offset = 0, lastError = '';
+  for (var page = 0; page < 20; page++) {
+    var url = 'https://api.connecteam.com/time-clock/v1/time-clocks/' + CONNECTEAM_TIME_CLOCK_ID +
+      '/time-activities?startDate=' + from + '&endDate=' + to + '&limit=200&offset=' + offset;
+    var r = ctCall_(url);
+    if (!r.ok) { lastError = r.error; break; }
+
+    var arr = ctFind_(r.json, 'timeActivitiesByUsers') || ctFind_(r.json, 'timeActivities');
+    if (!arr || !arr.length) break;
+
+    all = all.concat(arr);
+    if (arr.length < 200) break;
+    offset += 200;
+  }
+
+  if (!all.length && lastError) return { ok: false, error: lastError };
+  var out = { ok: true, shifts: all };
+  fxCachePut_(ck, out, 600);   // ١٠ دقايق — يمنع تكرار النداء على نفس الفترة
+  return out;
+}
+
+// النسخة القديمة — سايبينها عشان أي كود تاني بينده عليها
+function getConnecteamShifts_(from, to) {
+  var r = ctGetShifts_(from, to);
+  return r.ok ? r.shifts : [];
+}
+
+function ctShiftsOf_(entry) {
+  var s = entry.shifts || entry.timeActivities || entry.activities || [];
+  return (s && s.length !== undefined) ? s : [];
+}
+
+function ctTs_(point) {
+  if (!point) return null;
+  if (typeof point === 'number') return point;
+  if (point.timestamp) return point.timestamp;
+  if (point.time) return point.time;
+  return null;
+}
+
+function getConnecteamHours(from, to) {
+  try {
+    var r = ctGetShifts_(from, to);
+    if (!r.ok) return { ok: false, error: r.error };
+
+    var map = ctUserMap_();
+    var hoursByEmployee = {};
+
+    r.shifts.forEach(function (entry) {
+      var nm = ctName_(entry.userId, map);
+      ctShiftsOf_(entry).forEach(function (sh) {
+        var a = ctTs_(sh.start), b = ctTs_(sh.end);
+        if (!a || !b) return; // شيفت لسه مفتوح، منحسبوش
+        hoursByEmployee[nm] = (hoursByEmployee[nm] || 0) + ((b - a) / 3600);
+      });
+    });
+
+    return { ok: true, hours: hoursByEmployee };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+// مين موجود دلوقتي (شيفت مفتوح: فيه بداية ومفيش نهاية)
+function getAttendanceLiveV2() {
+  try {
+    var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+    var r = ctGetShifts_(today, today);
+    if (!r.ok) return { ok: false, error: r.error };
+
+    var map = ctUserMap_();
+    var now = Math.floor(Date.now() / 1000);
+    var live = [];
+
+    r.shifts.forEach(function (entry) {
+      var nm = ctName_(entry.userId, map);
+      ctShiftsOf_(entry).forEach(function (sh) {
+        var a = ctTs_(sh.start);
+        if (!a || ctTs_(sh.end)) return;
+        live.push({ name: nm, checkInTimestamp: a, elapsedMinutes: Math.round((now - a) / 60) });
+      });
+    });
+
+    return { ok: true, live: live, count: live.length };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+// سجل الحضور يوم بيوم
+function getAttendanceHistoryV2(params) {
+  try {
+    params = params || {};
+    var now = new Date(), tz = 'Africa/Cairo';
+    var from, to, label;
+
+    if (params.from && params.to) {
+      from = params.from; to = params.to; label = params.from + ' → ' + params.to;
+    } else if (params.range === 'today') {
+      from = Utilities.formatDate(now, tz, 'yyyy-MM-dd'); to = from; label = 'اليوم';
+    } else if (params.range === 'week') {
+      from = Utilities.formatDate(new Date(now.getTime() - 7 * 86400000), tz, 'yyyy-MM-dd');
+      to = Utilities.formatDate(now, tz, 'yyyy-MM-dd'); label = 'آخر أسبوع';
+    } else if (params.range === 'lastMonth') {
+      var y = now.getFullYear(), m = now.getMonth();
+      from = Utilities.formatDate(new Date(y, m - 1, 1), tz, 'yyyy-MM-dd');
+      to = Utilities.formatDate(new Date(y, m, 0), tz, 'yyyy-MM-dd'); label = 'الشهر اللي فات';
+    } else {
+      from = Utilities.formatDate(new Date(now.getFullYear(), now.getMonth(), 1), tz, 'yyyy-MM-dd');
+      to = Utilities.formatDate(now, tz, 'yyyy-MM-dd'); label = 'الشهر ده';
+    }
+
+    var r = ctGetShifts_(from, to);
+    if (!r.ok) return { ok: false, error: r.error };
+
+    var map = ctUserMap_();
+    var rows = [];
+
+    r.shifts.forEach(function (entry) {
+      var nm = ctName_(entry.userId, map);
+      ctShiftsOf_(entry).forEach(function (sh) {
+        var a = ctTs_(sh.start);
+        if (!a) return;
+        var b = ctTs_(sh.end);
+        var startD = new Date(a * 1000);
+        var endD = b ? new Date(b * 1000) : null;
+        rows.push({
+          date: Utilities.formatDate(startD, tz, 'yyyy-MM-dd'),
+          name: nm,
+          checkIn: Utilities.formatDate(startD, tz, 'hh:mm a'),
+          checkOut: endD ? Utilities.formatDate(endD, tz, 'hh:mm a') : 'مفتوح',
+          durationMin: endD ? Math.round((b - a) / 60) : null
+        });
+      });
+    });
+
+    rows.sort(function (x, y) { return x.date.localeCompare(y.date) || x.name.localeCompare(y.name); });
+    return { ok: true, label: label, from: from, to: to, rows: rows };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+// الأسماء القديمة — سايبينها عشان أي كود قديم يفضل شغال
+function getAttendanceLiveStatus() { return getAttendanceLiveV2(); }
+function getAttendanceHistoryData(params) { return getAttendanceHistoryV2(params); }
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ٤) الفحص الشامل — بيتنادى من زرار "ابدأ الفحص" في صفحة الصيانة
+// ═══════════════════════════════════════════════════════════════════
+function diagnoseAll() {
+  var out = { ok: true, checks: [] };
+
+  function add(name, ok, detail) {
+    out.checks.push({ name: name, ok: !!ok, detail: String(detail || '') });
+  }
+
+  // ---- Connecteam ----
+  var ready = null;
+  try { ready = connecteamReady_(); } catch (err) { ready = err.message; }
+  if (ready) {
+    add('مفاتيح Connecteam', false, ready);
+  } else {
+    add('مفاتيح Connecteam', true, 'موجودة');
+
+    var u = ctCall_('https://api.connecteam.com/users/v1/users?limit=5&offset=0');
+    if (!u.ok) {
+      add('الاتصال بـ Connecteam', false, u.error);
+    } else {
+      add('الاتصال بـ Connecteam', true, 'كود 200');
+      var users = ctFind_(u.json, 'users');
+      add('أسماء الموظفين', !!(users && users.length),
+        (users && users.length) ? (users.length + ' موظف')
+          : ('مفيش مفتاح users — المفاتيح الموجودة: ' + Object.keys(u.json).join(', ')));
+    }
+
+    var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+    var monthAgo = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), 'Africa/Cairo', 'yyyy-MM-dd');
+    var t = ctCall_('https://api.connecteam.com/time-clock/v1/time-clocks/' + CONNECTEAM_TIME_CLOCK_ID +
+      '/time-activities?startDate=' + monthAgo + '&endDate=' + today + '&limit=5&offset=0');
+    if (!t.ok) {
+      add('قراءة البصمات', false, t.error);
+    } else {
+      var arr = ctFind_(t.json, 'timeActivitiesByUsers') || ctFind_(t.json, 'timeActivities');
+      add('قراءة البصمات', !!arr,
+        arr ? ('بصمات لـ ' + arr.length + ' موظف خلال ٣٠ يوم')
+            : ('مفيش مفتاح بصمات. المفاتيح: ' + Object.keys(t.json).join(', ') +
+               ' | الرد: ' + JSON.stringify(t.json).substring(0, 300)));
+      var h = getAttendanceHistoryV2({ range: 'month' });
+      add('سجل الحضور النهائي', h.ok && h.rows.length > 0,
+        h.ok ? (h.rows.length + ' سطر') : h.error);
+    }
+  }
+
+  // ---- الشيتات ----
+  [['شيت الموظفين', STAFF_SHEET_ID], ['شيت العملاء', CRM_SHEET_ID], ['شيت المخزون', STOCK_SHEET_ID]]
+    .forEach(function (pair) {
+      try {
+        add(pair[0], true, SpreadsheetApp.openById(pair[1]).getName());
+      } catch (err) {
+        add(pair[0], false, err.message);
+      }
+    });
+
+  // ---- مجلد المبيعات ----
+  try {
+    add('مجلد ملفات المبيعات', true, DriveApp.getFolderById(SALES_FOLDER).getName());
+  } catch (err) {
+    add('مجلد ملفات المبيعات', false, err.message);
+  }
+
+  // ---- سرعة الرسايل ----
+  try {
+    var t0 = new Date().getTime();
+    var sms = getSMSLogFast({ days: 30 });
+    add('سجل الرسايل (٣٠ يوم)', sms.ok,
+      sms.ok ? (sms.count + ' رسالة في ' + (new Date().getTime() - t0) + ' مللي ثانية' +
+                (sms.cached ? ' — من الكاش' : '')) : sms.error);
+  } catch (err) {
+    add('سجل الرسايل', false, err.message);
+  }
+
+  // ---- التريجرات ----
+  try {
+    var liveOn = ScriptApp.getProjectTriggers().some(function (tr) {
+      return tr.getHandlerFunction() === 'checkStaffOrders';
+    });
+    add('تريجر الفواتير الحي', liveOn, liveOn ? 'شغال كل دقيقة' : 'واقف — دوس "شغّل التريجر الحي"');
+  } catch (err) {
+    add('تريجر الفواتير الحي', false, err.message);
+  }
+
+  out.failed = out.checks.filter(function (c) { return !c.ok; }).length;
+  return out;
+}
+
+// نفس الفحص بس بيطبع في الـLogs — لو حبيت تشغّله من المحرر
+function diagnoseAllToLog() {
+  var r = diagnoseAll();
+  Logger.log('════ فحص شامل — ' + r.failed + ' مشكلة ════');
+  r.checks.forEach(function (c) {
+    Logger.log((c.ok ? '✅ ' : '❌ ') + c.name + ' — ' + c.detail);
+  });
+}
+
+// النسخة القديمة من تشخيص Connecteam — بتطبع الرد الخام كامل
+function diagnoseConnecteam() {
+  var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+  var monthAgo = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), 'Africa/Cairo', 'yyyy-MM-dd');
+  var r = ctCall_('https://api.connecteam.com/time-clock/v1/time-clocks/' + CONNECTEAM_TIME_CLOCK_ID +
+    '/time-activities?startDate=' + monthAgo + '&endDate=' + today + '&limit=5&offset=0');
+  Logger.log('كود الرد: ' + r.code);
+  Logger.log('الرد كامل: ' + (r.ok ? JSON.stringify(r.json).substring(0, 3000) : r.error));
+}
+// ==== MODULE 82_snapshot_staffhub (split from server/Code.js; load order = file name order) ====
+
+
+
+// ═══════════════════════════════════════════════════════════════════
+// 📸 نظام اللقطة (Snapshot) — السبب الحقيقي في السرعة
+//
+// المشكلة: الداشبورد كان بيحسب كل حاجة وقت ما تفتحه.
+//   الديون = قراءة ملفات سنة كاملة من Drive
+//   المخزون = مسح شيت STOCK كامل
+// والكاش بيخلص كل شوية، فأول واحد يفتح بعده بيدفع التمن كامل.
+//
+// الحل: تريجر بيشتغل لوحده كل ساعة، بيحسب الحاجات التقيلة دي
+// ويحفظ النتيجة في ملفات JSON صغيرة على Drive. الداشبورد بيقرا
+// الملف الجاهز بس — فبيفتح في ثانية، دايمًا.
+//
+// اللي بيفضل لحظي (مش من اللقطة):
+//   • مبيعات وربح ودين النهاردة (من Daily_Mini_Statics)
+//   • مين موجود دلوقتي (من Connecteam مباشرة)
+//   • رسايل العملاء
+// ═══════════════════════════════════════════════════════════════════
+
+var SNAPSHOT_SHEET = 'اللقطة';
+var SNAP_CHUNK = 45000;   // أقصى حجم للخلية الواحدة في جوجل شيتس ~50 ألف حرف
+
+/* ═══════════════════════════════════════════════════════════════════
+   ⚠️ ليه شيت مش Drive؟
+   النسخة القديمة كانت بتحفظ اللقطة كملف JSON على Drive عن طريق
+   DriveApp.Folder.createFile — ودي محتاجة تصريح الكتابة على Drive
+   كامل (auth/drive). التصريح ده مكانش موجود، فالكتابة كانت بترفض
+   واللقطة تفضل "لسه متبنيتش" مهما اشتغل التريجر.
+
+   الشيتات السكربت بيكتب فيها أصلاً من غير أي تصريح جديد (شيت
+   الموظفين، رسايل SMS، المندوبين...). فحوّلنا اللقطة تتخزن هناك.
+
+   البيانات بتتقسّم على خلايا لأن الخلية الواحدة سقفها ~50 ألف حرف.
+   ═══════════════════════════════════════════════════════════════════ */
+
+function snapSheet_() {
+  var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
+  var sh = ss.getSheetByName(SNAPSHOT_SHEET);
+  if (!sh) {
+    sh = ss.insertSheet(SNAPSHOT_SHEET);
+    sh.appendRow(['الاسم', 'وقت البناء', 'عدد الأجزاء', 'البيانات']);
+    sh.hideSheet();          // مش محتاج تشوفه، ده تخزين داخلي
+  }
+  return sh;
+}
+
+function snapSave_(name, data) {
+  var payload = JSON.stringify({
+    builtAt: Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss'),
+    data: data
+  });
+
+  var parts = [];
+  for (var i = 0; i < payload.length; i += SNAP_CHUNK) {
+    parts.push(payload.substring(i, i + SNAP_CHUNK));
+  }
+  /* الصف الواحد بياخد 100 عمود بالكتير = ~4.5 مليون حرف.
+     لو عدّينا كده يبقى فيه حاجة غلط في البيانات نفسها. */
+  if (parts.length > 100) {
+    throw new Error('اللقطة كبيرة أوي: ' + Math.round(payload.length / 1024) + ' ك.ب');
+  }
+
+  var sh = snapSheet_();
+  var last = sh.getLastRow();
+  var row = -1;
+  if (last > 1) {
+    var names = sh.getRange(2, 1, last - 1, 1).getValues();
+    for (var r = 0; r < names.length; r++) {
+      if (String(names[r][0]) === name) { row = r + 2; break; }
+    }
+  }
+  if (row === -1) row = last + 1;
+
+  /* بنفضّي الصف القديم الأول — لو اللقطة الجديدة أقصر من القديمة،
+     الأجزاء الزيادة كانت هتفضل وتلخبط القراءة. */
+  sh.getRange(row, 1, 1, sh.getMaxColumns()).clearContent();
+
+  var out = [name,
+             Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss'),
+             parts.length].concat(parts);
+  sh.getRange(row, 1, 1, out.length).setValues([out]);
+
+  return Math.round(payload.length / 1024);   // الحجم بالكيلوبايت
+}
+
+function snapLoad_(name) {
+  try {
+    var cached = fxCacheGet_('snap_' + name);
+    if (cached) return cached;
+
+    var sh = SpreadsheetApp.openById(STAFF_SHEET_ID).getSheetByName(SNAPSHOT_SHEET);
+    if (!sh || sh.getLastRow() <= 1) return null;
+
+    var last = sh.getLastRow();
+    var names = sh.getRange(2, 1, last - 1, 1).getValues();
+    var row = -1;
+    for (var r = 0; r < names.length; r++) {
+      if (String(names[r][0]) === name) { row = r + 2; break; }
+    }
+    if (row === -1) return null;
+
+    var n = parseInt(sh.getRange(row, 3).getValue(), 10);
+    if (!n || n < 1) return null;
+
+    var cells = sh.getRange(row, 4, 1, n).getValues()[0];
+    var joined = cells.join('');
+    if (!joined) return null;
+
+    var parsed = JSON.parse(joined);
+    if (!parsed || !parsed.data) return null;
+
+    parsed.data.snapshot_at = parsed.builtAt;
+    fxCachePut_('snap_' + name, parsed.data, 900);   // ربع ساعة في الذاكرة كمان
+    return parsed.data;
+  } catch (e) {
+    Logger.log('خطأ snapLoad_ (' + name + '): ' + e.message);
+    return null;
+  }
+}
+
+// ── الدالة اللي التريجر بينده عليها كل ساعة ──
+function buildSnapshot() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) {
+    Logger.log('⏳ فيه بناء لقطة شغال دلوقتي — سيبناه يكمّل');
+    return;
+  }
+
+  try {
+    var t0 = new Date().getTime();
+    var done = [], failed = [];
+
+    /* سجل المصروفات اليومي + أرشفة الملف الحي — كل ساعة مع اللقطة. كل واحدة
+       لوحدها عشان فشل واحدة ميوقفش اللقطة. */
+    try { recordDailyStats_(); } catch (eS) { Logger.log('خطأ recordDailyStats_: ' + eS.message); }
+    try { logShortageSnapshot_(); } catch (eSh) { Logger.log('خطأ سجل النواقص: ' + eSh.message); }
+    try {
+      var fx = readExpenseFile_();
+      if (fx.ok) archiveExpenses_(parseExpenseRows_(fx.rows));
+    } catch (eA) { Logger.log('خطأ أرشفة المصروفات: ' + eA.message); }
+
+    /* كل واحدة لوحدها: بنحسب، وبنكتب، وبنسجّل السبب لو وقعت.
+       الحساب والكتابة اتنين منفصلين — فشل الكتابة كان بيتخبّى قبل كده. */
+    function build(label, key, calc) {
+      try {
+        var r = calc();
+        if (!r || r.ok === false) {
+          failed.push(label + ': الحساب رجع ' + ((r && r.error) || 'فاضي'));
+          return;
+        }
+        var kb = snapSave_(key, r);
+        done.push(label + ' (' + kb + 'ك.ب)');
+      } catch (e) {
+        failed.push(label + ': ' + e.message);
+      }
+    }
+
+    build('الديون',    'debts',     function () { return getDebtsData(); });
+    build('المخزون',   'inventory', function () { return getInventoryAging_uncached(); });
+    build('المندوبين', 'agents',    function () { return getAgentsData(); });
+
+    // نفضّي الكاش عشان أول فتحة جاية تقرا اللقطة الجديدة
+    ['snap_debts', 'snap_inventory', 'snap_agents', 'fx_home_bundle', 'fx_inv_aging', 'fx_debts']
+      .forEach(fxClearCache_);
+
+    var secs = Math.round((new Date().getTime() - t0) / 1000);
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty('lastSnapshotAt',
+      Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss') + ' (' + secs + ' ثانية)');
+    /* السبب بيتحفظ عشان يظهر في الداشبورد — مش في اللوج بس */
+    props.setProperty('lastSnapshotResult',
+      (failed.length ? '❌ ' + failed.join(' | ') : '✅ ' + done.join('، ')));
+
+    Logger.log('📸 اللقطة: ' + secs + ' ثانية — نجح: ' + (done.join('، ') || 'ولا حاجة') +
+               (failed.length ? ' | فشل: ' + failed.join(' | ') : ''));
+    if (failed.length) {
+      sendTelegramStaff('⚠️ اللقطة فشلت\n' + SEP + '\n' + failed.join('\n'), PERSONAL_CHAT);
+    }
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ── تشغيل التحديث التلقائي كل ساعة (بيتنادى من زرار في الداشبورد) ──
+function setupSnapshotTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'buildSnapshot') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('buildSnapshot').timeBased().everyHours(1).create();
+  Logger.log('✅ التحديث التلقائي اشتغل — هيبني لقطة جديدة كل ساعة');
+  return { ok: true };
+}
+
+function snapshotStatus() {
+  var props = PropertiesService.getScriptProperties();
+  var on = ScriptApp.getProjectTriggers().some(function (t) {
+    return t.getHandlerFunction() === 'buildSnapshot';
+  });
+  var names = ['debts', 'inventory', 'agents'];
+  var files = names.map(function (n) {
+    var s = snapLoad_(n);
+    return { name: n, ready: !!s, builtAt: s ? (s.snapshot_at || '') : '' };
+  });
+  return {
+    ok: true,
+    triggerOn: on,
+    lastRun: props.getProperty('lastSnapshotAt') || '',
+    lastResult: props.getProperty('lastSnapshotResult') || '',
+    files: files
+  };
+}
+
+// ── نسخ تقرا اللقطة الأول، ولو مش موجودة بتحسب عادي ──
+function getDebtsSnap() {
+  var s = snapLoad_('debts');
+  if (s) return s;
+  return fxDebtsCached_();
+}
+
+function getInventorySnap() {
+  var s = snapLoad_('inventory');
+  if (s) return s;
+  return getInventoryAging();
+}
+
+function getAgentsSnap() {
+  var s = snapLoad_('agents');
+  if (s) return s;
+  return getAgentsData();
+}
+
+function getExpiryByMonthSnap() {
+  var inv = getInventorySnap();
+  if (!inv || !inv.ok) return { ok: false, error: (inv && inv.error) || 'تعذّر تحليل المخزون' };
+  return {
+    ok: true,
+    generated_date: inv.generated_date,
+    snapshot_at: inv.snapshot_at || '',
+    expired: inv.expiry_by_month.expired,
+    months: inv.expiry_by_month.months
+  };
+}
+
+// ── الحزمة السريعة للصفحة الرئيسية: لحظي + لقطة ──
+function getHomeBundleFast() {
+  function safe_(label, fn) {
+    try { return fn(); }
+    catch (err) { return { ok: false, error: label + ': ' + err.message }; }
+  }
+
+  return {
+    ok: true,
+    // لحظي
+    daily:       safe_('daily',       function () { return getSystemDailyTotals(); }),
+    attendance:  safe_('attendance',  function () { return getAttendanceLiveV2(); }),
+    maintenance: safe_('maintenance', function () { return getMaintenanceStatus(); }),
+    // من اللقطة
+    expiry:      safe_('expiry',      function () { return getExpiryByMonthSnap(); }),
+    agents:      safe_('agents',      function () { return getAgentsSnap(); }),
+    debts:       safe_('debts',       function () { return getDebtsSnap(); }),
+    generated:   Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm:ss')
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// 👥 حزمة الموظفين — نداء واحد بدل تلاتة
+//
+// المشكلة: صفحة الموظفين كانت بتبعت 3 طلبات (حضور مباشر + سجل + أداء)،
+// واتنين منهم بيكلموا Connecteam. وApps Script بينفّذ طلبات نفس المستخدم
+// واحد ورا التاني، فالمجموع كان بيوصل لدقيقة.
+//
+// الحل: قراءة واحدة من Connecteam بتغطي الفترة كلها، و"مين موجود دلوقتي"
+// بيتحسب من نفس البيانات (الشيفتات المفتوحة النهاردة) بدل نداء تاني.
+// ═══════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════
+// ⚡ كاش عام للنداءات التقيلة اللي مش في اللقطة
+// السبب: getMonthTotalsRaw بيقرا شهر كامل من الملفات، وgetProfitLoss
+// وgetExpensesData بيقروا شيتات كاملة. من غير كاش، كل فتحة صفحة
+// بتعيد الشغل من الأول.
+// ═══════════════════════════════════════════════════════════════════
+/* 🆕 مدة الكاش بتتحدد حسب الفترة نفسها.
+   المشكلة اللي كانت: كل الفترات كانت بكاش 10 دقايق — يعني "اليوم"
+   (بيتغير مع كل فاتورة) بياخد نفس معاملة "الشهر اللي فات"
+   (بيانات مقفولة مش هتتغير). فلو بعت فاتورة دلوقتي كنت تستنى
+   10 دقايق زيادة على تأخير نظام البيع نفسه. */
+function cacheTTL_(params) {
+  var r = (params && params.range) || 'month';
+  if (params && params.from && params.to) return 1800;  // فترة مخصصة = تاريخ ثابت
+  if (r === 'today')      return 45;      // أقل حاجة — البيانات حية
+  if (r === 'yesterday')  return 900;     // خلصت، بس ممكن مرتجع متأخر
+  if (r === 'week')       return 300;
+  if (r === 'month')      return 300;     // فيه النهاردة جواه
+  if (r === 'lastMonth')  return 3600;    // مقفول خلاص
+  return 600;
+}
+
+function cachedCall_(name, params, fn, seconds) {
+  var key = 'fx_c_' + name + '_' + JSON.stringify(params || {});
+  var hit = fxCacheGet_(key);
+  if (hit) { hit.cached = true; return hit; }
+  var out = fn();
+  if (out && out.ok !== false) fxCachePut_(key, out, seconds || 300);
+  return out;
+}
+
+function getStaffHub(params) {
+  try {
+    params = params || {};
+    var tz = 'Africa/Cairo';
+    var now = new Date();
+    var today = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+
+    // مفتاح كاش حسب الفترة المطلوبة
+    var ck = 'fx_hub_' + (params.from ? (params.from + '_' + params.to) : (params.range || 'month'));
+    var cached = fxCacheGet_(ck);
+    if (cached) { cached.cached = true; return cached; }
+
+    // (١) الأداء من شيت الموظفين
+    var kpi = {};
+    try { kpi = getStaffKPIData(params); } catch (e) { kpi = { employees: [], error: e.message }; }
+
+    // (٢) الفترة المطلوبة للحضور — نفس التفسير بالظبط
+    var R = resolveRange_(params);
+    var from = R.from, to = R.to, label = R.label;
+
+    // لو الفترة مش شاملة النهاردة، بنمدّها عشان نعرف مين موجود دلوقتي
+    var ctTo = (to < today) ? today : to;
+
+    // (٣) قراءة واحدة من Connecteam
+    var rows = [], live = [], ctError = null;
+    var r = ctGetShifts_(from, ctTo);
+    if (!r.ok) {
+      ctError = r.error;
+    } else {
+      var map = ctUserMap_();
+      var nowSec = Math.floor(Date.now() / 1000);
+
+      r.shifts.forEach(function (entry) {
+        var nm = ctName_(entry.userId, map);
+        ctShiftsOf_(entry).forEach(function (sh) {
+          var a = ctTs_(sh.start);
+          if (!a) return;
+          var b = ctTs_(sh.end);
+          var startD = new Date(a * 1000);
+          var dateStr = Utilities.formatDate(startD, tz, 'yyyy-MM-dd');
+
+          // شيفت مفتوح النهاردة = الراجل موجود دلوقتي
+          if (!b && dateStr === today) {
+            live.push({ name: nm, checkInTimestamp: a,
+                        elapsedMinutes: Math.round((nowSec - a) / 60) });
+          }
+
+          // السجل: بس الأيام اللي جوه الفترة المطلوبة
+          if (dateStr < from || dateStr > to) return;
+          var endD = b ? new Date(b * 1000) : null;
+          rows.push({
+            date: dateStr,
+            name: nm,
+            checkIn: Utilities.formatDate(startD, tz, 'hh:mm a'),
+            checkOut: endD ? Utilities.formatDate(endD, tz, 'hh:mm a') : 'مفتوح',
+            durationMin: endD ? Math.round((b - a) / 60) : null
+          });
+        });
+      });
+      rows.sort(function (x, y) { return x.date.localeCompare(y.date) || x.name.localeCompare(y.name); });
+    }
+
+    var out = {
+      ok: true,
+      label: label, from: from, to: to,
+      employees: kpi.employees || [],
+      daily: kpi.daily || [],
+      targets: kpi.targets || TARGETS,
+      live: live,
+      liveCount: live.length,
+      rows: rows,
+      attendanceError: ctError
+    };
+
+    fxCachePut_(ck, out, 120);   // دقيقتين
+    return out;
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+// ==== MODULE 95_server_update (split from server/Code.js; load order = file name order) ====
+
+
+/* ═══ 🔄 تحديث السيرفر من زرار في اللوحة ═══
+   Claude بيرفع الكود الجديد على Drive بتاعك (ملف خاص — مش على GitHub عشان فيه مفاتيح البوت)،
+   والزرار ده بيقراه ويحطه مكان الكود الحالي ويعمل New version على نفس الرابط.
+   محتاج مرة واحدة: تشغيل Google Apps Script API من script.google.com/home/usersettings */
+var SERVER_SRC_URL = 'https://raw.githubusercontent.com/elsousypharmacy-create/pharmacy/main/server/Code.js';
+function serverSrc_() {
+  var r = UrlFetchApp.fetch(SERVER_SRC_URL + '?t=' + Date.now(), { muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) return null;
+  var src = r.getContentText('UTF-8');
+  var sig = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, src, Utilities.Charset.UTF_8));
+  return { src: src, sig: sig };
+}
+function serverUpdateInfo() {
+  var s = serverSrc_(), P = PropertiesService.getScriptProperties();
+  return { ok: true, available: !!s, newer: !!s && P.getProperty('SERVER_SRC_SIG') !== s.sig,
+           lastUpdate: P.getProperty('SERVER_UPDATED_AT') || '', autoOn: autoUpdateOn_() };
+}
+/* 🔁 التحديث التلقائي: كل 15 دقيقة يشوف GitHub — لو فيه نسخة جديدة يركّبها ويبعتلك على تيليجرام */
+function autoUpdateOn_() {
+  return ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'autoServerUpdate'; });
+}
+function setAutoUpdate(on) {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'autoServerUpdate') ScriptApp.deleteTrigger(t); });
+  if (on) ScriptApp.newTrigger('autoServerUpdate').timeBased().everyMinutes(15).create();
+  return { ok: true, autoOn: !!on };
+}
+function autoServerUpdate() {
+  try { maybeEnsureTriggers_(); } catch (eT) {}
+  var s = serverSrc_(), P = PropertiesService.getScriptProperties();
+  if (!s || P.getProperty('SERVER_SRC_SIG') === s.sig) return;
+  if (P.getProperty('SERVER_FAILED_SIG') === s.sig) return;          /* النسخة دي فشلت قبل كده — منحاولش كل ربع ساعة */
+  var r = serverUpdate();
+  if (r && r.ok) {
+    P.deleteProperty('SERVER_FAILED_SIG');
+    sendTelegramStaff('🔄 السيرفر اتحدّث تلقائي — نسخة ' + r.version + ' (' + r.at + ')', PERSONAL_CHAT);
+  } else {
+    P.setProperty('SERVER_FAILED_SIG', s.sig);
+    sendTelegramStaff('⚠️ التحديث التلقائي للسيرفر فشل:\n' + ((r && r.error) || 'سبب مش معروف') + '\nالنسخة الحالية شغالة عادي.', PERSONAL_CHAT);
+  }
+}
+function serverUpdate() {
+  var s = serverSrc_();
+  if (!s) return { ok: false, error: 'مقدرتش أوصل للكود الجديد على GitHub' };
+  var src = s.src;
+  /* فحص أمان: الكود لازم يكون كامل قبل ما نحطه */
+  if (src.length < 100000 || src.indexOf('function doGet(') === -1 || src.indexOf('function doPost(') === -1 || src.indexOf('function serverUpdate(') === -1)
+    return { ok: false, error: 'الكود على GitHub ناقص أو مش سليم — مش هحدّث' };
+  /* المفاتيح لازم تكون متخزنة قبل ما نحط نسخة من غير مفاتيح */
+  var P0 = PropertiesService.getScriptProperties();
+  if (!P0.getProperty('BOT_TOKEN') || !P0.getProperty('GEMINI_API_KEY')) return { ok: false, error: 'المفاتيح مش متخزنة — مش هحدّث' };
+  var token = ScriptApp.getOAuthToken(), id = ScriptApp.getScriptId(), H = { Authorization: 'Bearer ' + token };
+  var api = 'https://script.googleapis.com/v1/projects/' + id;
+  var r = UrlFetchApp.fetch(api + '/content', { headers: H, muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) {
+    var msg = r.getContentText();
+    var em = ''; try { em = JSON.parse(msg).error.message; } catch (e) { em = msg; }
+    return { ok: false, error: (/insufficient|scope/i.test(em) ? 'الصلاحيات الجديدة لسه متوافقش عليها — اعمل New version ووافق. ' : '') +
+      'Apps Script API ' + r.getResponseCode() + ': ' + String(em).slice(0, 300) };
+  }
+  var content = JSON.parse(r.getContentText()), done = false;
+  (content.files || []).forEach(function (file) {
+    if (!done && file.type === 'SERVER_JS' && String(file.source || '').indexOf('function doGet(') !== -1) { file.source = src; done = true; }
+  });
+  if (!done) return { ok: false, error: 'مش لاقي ملف الكود الأساسي في المشروع' };
+  r = UrlFetchApp.fetch(api + '/content', { method: 'put', contentType: 'application/json', headers: H, muteHttpExceptions: true,
+    payload: JSON.stringify({ files: content.files }) });
+  if (r.getResponseCode() !== 200) return { ok: false, error: 'حفظ الكود: ' + r.getContentText().slice(0, 200) };
+  var stamp = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm');
+  r = UrlFetchApp.fetch(api + '/versions', { method: 'post', contentType: 'application/json', headers: H, muteHttpExceptions: true,
+    payload: JSON.stringify({ description: 'تحديث من اللوحة ' + stamp }) });
+  if (r.getResponseCode() !== 200) return { ok: false, error: 'New version: ' + r.getContentText().slice(0, 200) };
+  var ver = JSON.parse(r.getContentText()).versionNumber;
+  var depId = (WEB_APP_URL.match(/\/s\/([^/]+)\/exec/) || [])[1];
+  r = UrlFetchApp.fetch(api + '/deployments/' + depId, { method: 'put', contentType: 'application/json', headers: H, muteHttpExceptions: true,
+    payload: JSON.stringify({ deploymentConfig: { scriptId: id, versionNumber: ver, manifestFileName: 'appsscript', description: 'تحديث من اللوحة ' + stamp } }) });
+  if (r.getResponseCode() !== 200) return { ok: false, error: 'Deploy: ' + r.getContentText().slice(0, 200), version: ver };
+  var P = PropertiesService.getScriptProperties();
+  P.setProperty('SERVER_SRC_SIG', s.sig);
+  P.setProperty('SERVER_UPDATED_AT', stamp);
+  try { maybeEnsureTriggers_(); } catch (eT) {}
+  return { ok: true, version: ver, at: stamp };
 }

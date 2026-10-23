@@ -116,7 +116,7 @@ function doGet(e) {
   /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
   var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
                         purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1 };
+                        getBotChats: 1, getBotChat: 1, getChatMedia: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1 };
   if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
     return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
   if (action === 'aiTest') return jsonResponseStaff(aiTest(e.parameter.q));
@@ -132,6 +132,7 @@ function doGet(e) {
   if (action === 'waInfo') return jsonResponseStaff(waInfo());
   if (action === 'waSubscribe') return jsonResponseStaff(waSubscribe());
   if (action === 'getBotChat') return jsonResponseStaff(getBotChat(e.parameter.id));
+  if (action === 'getChatMedia') return jsonResponseStaff(getChatMedia(e.parameter.id, e.parameter.mid));
   if (action === 'botReply') return jsonResponseStaff(botReply(e.parameter.id, e.parameter.text));
   if (action === 'botHold') return jsonResponseStaff(botHold(e.parameter.id, e.parameter.on === '1'));
   if (action === 'botDone') return jsonResponseStaff(botDone(e.parameter.id));
@@ -1827,6 +1828,13 @@ function waEchoBody_(m) {
   if (m.type === 'reaction' || m.type === 'unsupported' || m.type === 'system') return '';
   return '[رسالة]';
 }
+/* ميديا الرسالة (صورة/صوت/فيديو/ملف/ملصق) كـ JSON صغير للسجل: {k:نوع, id:معرّف ميتا, mime} أو فاضي */
+function waMediaOf_(m) {
+  if (!m) return '';
+  var t = m.type === 'voice' ? 'audio' : m.type, o = m[m.type];
+  if (!o || !o.id || ['image', 'audio', 'video', 'document', 'sticker'].indexOf(t) === -1) return '';
+  return JSON.stringify({ k: t, id: String(o.id), mime: o.mime_type || '' });
+}
 /* إيكو تطبيق الواتساب: نسجّله على شات العميل بدور الصيدلي، والبوت ميردّش. */
 function waEcho_(m) {
   if (!m) return;
@@ -1842,7 +1850,7 @@ function waEcho_(m) {
     return;
   }
   var chatId = 'wa_' + peer, stamp = m.timestamp ? cairoStamp_(m.timestamp) : '';
-  var rows = [['pharm', body, stamp]];
+  var rows = [['pharm', body, stamp, id, waMediaOf_(m.type === 'edit' ? (m.edit && m.edit.message) : m)]];
   if (holdEcho_(chatId)) rows.push(['sys', 'الصيدلي رد من الواتساب — البوت ساكت ٣٠ دقيقة', stamp]);
   logChatRows_(chatId, rows);
   /* رد الصيدلي من تطبيق الواتساب = الخلاصة اتقفلت، منسيبش تنبيه "مستني رد" */
@@ -1861,6 +1869,16 @@ function waOne_(m, pname) {
   var chatId = 'wa_' + sid;
   P.setProperty('WA_LAST_IN', Utilities.formatDate(new Date(), 'Africa/Cairo', 'MM-dd HH:mm') + ' ' + m.type);
   cache.put('walast_' + chatId, m.id, 86400);
+  /* سجّل رسالة العميل الأصلية فورًا بوقتها الحقيقي ومعرّفها وميديتها، قبل أي معالجة أو رد. */
+  try {
+    var rb = m.type === 'interactive'
+      ? String(((m.interactive.button_reply || m.interactive.list_reply || {}).title) || '').trim()
+      : waEchoBody_(m);
+    if (rb) {
+      logChatRows_(chatId, [['user', rb, m.timestamp ? cairoStamp_(m.timestamp) : '', m.id, waMediaOf_(m)]]);
+      cache.put('rawon_' + chatId, '1', 600);
+    }
+  } catch (eRaw) { Logger.log('raw log: ' + eRaw.message); }
   /* رقم العميل معروف ومتأكد منه من واتساب نفسه — مفيش "سجّل رقمك".
      لو العميل بيوزرنيم ومفيش رقم (BSUID بس) بنسيب البوت يطلب الرقم بالطريقة العادية. */
   if (waIsPhoneId_(sid) && !P.getProperty('vphone_' + chatId)) {
@@ -2900,7 +2918,7 @@ function getConversationHistory(chatId) {
 var CHAT_LOG_SHEET = 'محادثات البوت';
 function chatLogSheet_() {
   var ss = SpreadsheetApp.openById(STAFF_SHEET_ID), sh = ss.getSheetByName(CHAT_LOG_SHEET);
-  if (!sh) { sh = ss.insertSheet(CHAT_LOG_SHEET); sh.appendRow(['الوقت', 'chat', 'الاسم', 'الموبايل', 'من', 'الرسالة']); sh.setFrozenRows(1); }
+  if (!sh) { sh = ss.insertSheet(CHAT_LOG_SHEET); sh.appendRow(['الوقت', 'chat', 'الاسم', 'الموبايل', 'من', 'الرسالة', 'معرّف واتساب', 'ميديا']); sh.setFrozenRows(1); }
   return sh;
 }
 function chatWho_(chatId) {
@@ -2928,10 +2946,18 @@ function logChatRows_(chatId, rows) {
   try {
     if (!rows || !rows.length || String(chatId) === String(PERSONAL_CHAT)) return;
     if (badChatId_(chatId)) { noteBadChatId_('logChat', chatId, rows[0] && rows[0][1]); return; }
-    var w = chatWho_(chatId), now = cairoStamp_();
-    var vals = rows.filter(function (r) { return r[1]; }).map(function (r) {
+    var w = chatWho_(chatId), now = cairoStamp_(), cc = CacheService.getScriptCache();
+    /* منع التكرار: نفس معرّف واتساب، أو نفس (الدور + النص + الوقت) للعميل والصيدلي، مايتسجلش مرتين. */
+    rows = rows.filter(function (r) {
+      if (!r[1]) return false;
+      if (r[0] !== 'user' && r[0] !== 'pharm') return true;
+      var k = 'lg_' + (r[3] ? String(r[3]) : Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, chatId + '|' + r[0] + '|' + r[1] + '|' + (r[2] || ''))));
+      try { if (cc.get(k)) return false; cc.put(k, '1', 21600); } catch (eC) {}
+      return true;
+    });
+    var vals = rows.map(function (r) {
       /* الاقتباس يخليه نص. من غيره الشيت أحيانًا بيحوّل yyyy-MM-dd لتاريخ والعرض بيتلخبط. */
-      return ["'" + (r[2] || now), String(chatId), w.n, w.p ? "'" + w.p : '', r[0], String(r[1]).slice(0, 4000)];
+      return ["'" + (r[2] || now), String(chatId), w.n, w.p ? "'" + w.p : '', r[0], String(r[1]).slice(0, 4000), r[3] ? "'" + r[3] : '', r[4] || ''];
     });
     if (!vals.length) return;
     /* قفل المستخدم مش قفل السكربت. قفل السكربت بيمسكه التريجر الحي واللقطة دقايق.
@@ -2940,7 +2966,7 @@ function logChatRows_(chatId, rows) {
     try { got = lock.tryLock(8000); } catch (eL) {}
     try {
       var sh = chatLogSheet_();
-      sh.getRange(sh.getLastRow() + 1, 1, vals.length, 6).setValues(vals);
+      sh.getRange(sh.getLastRow() + 1, 1, vals.length, 8).setValues(vals);
     } finally { if (got) { try { lock.releaseLock(); } catch (e2) {} } }
   } catch (e) { Logger.log('خطأ سجل المحادثات: ' + e.message); }
 }
@@ -2953,6 +2979,8 @@ function saveConversationTurn(chatId, userText, botText, botRole, arrivalUnix) {
   var skipUser = /^\[(سؤال محوّل للدكتور|مستني تأكيد الطلب)\]/.test(String(userText || ''));
   var skipBot = /^\[الصيدلي بيرد بنفسه\]/.test(String(botText || ''));
   var now = cairoStamp_(), userT = arrivalUnix ? cairoStamp_(arrivalUnix) : now;
+  /* شات واتساب: رسالة العميل اتسجلت أصلية لحظة وصولها (waOne_) — منسجّلهاش تاني بنسخة معالَجة. */
+  if (isWa_(chatId) && CacheService.getScriptCache().get('rawon_' + chatId)) skipUser = true;
   logChatRows_(chatId, (skipUser ? [] : [['user', userText, userT]]).concat(skipBot ? [] : [[role, botText, now]]));
   try {
     const history = getConversationHistory(chatId);
@@ -5402,7 +5430,7 @@ function chatLogRows_(maxRows) {
   var sh = chatLogSheet_(), n = sh.getLastRow() - 1;
   if (n < 1) return [];
   var take = Math.min(n, maxRows || 6000);
-  return sh.getRange(sh.getLastRow() - take + 1, 1, take, 6).getDisplayValues();
+  return sh.getRange(sh.getLastRow() - take + 1, 1, take, Math.min(8, sh.getMaxColumns())).getDisplayValues();
 }
 function getBotChats() {
   var rows = chatLogRows_(6000), by = {}, P = PropertiesService.getScriptProperties().getProperties();
@@ -5423,11 +5451,35 @@ function getBotChats() {
 }
 function getBotChat(id) {
   id = String(id || '');
-  var msgs = chatLogRows_(8000).filter(function (r) { return r[1] === id; }).slice(-300)
-    .map(function (r) { return { t: r[0], role: r[4], text: r[5] }; });
+  var msgs = chatLogRows_(8000).filter(function (r) { return r[1] === id; }).slice(-400)
+    .map(function (r, i) {
+      var media = null; if (r[7]) { try { media = JSON.parse(r[7]); } catch (e) {} }
+      return { t: String(r[0]).replace(/^'/, ''), role: r[4], text: r[5], media: media, _i: i };
+    });
+  /* زي الواتساب: الترتيب بوقت الرسالة الحقيقي (لو كل الأوقات بصيغة سليمة)، ومن غير تكرار صف مطابق في نفس الثانية. */
+  var okT = msgs.every(function (m) { return /^\d{4}-\d\d-\d\d \d\d:\d\d(:\d\d)?$/.test(m.t); });
+  if (okT) msgs.sort(function (a, b) { return a.t < b.t ? -1 : a.t > b.t ? 1 : a._i - b._i; });
+  var seen = {};
+  msgs = msgs.filter(function (m) {
+    if (m.role !== 'user' && m.role !== 'pharm') return true;
+    var k = m.role + '|' + m.t + '|' + m.text; if (seen[k]) return false; seen[k] = 1; return true;
+  });
+  msgs.forEach(function (m) { delete m._i; });
   var w = chatWho_(id);
   return { ok: true, id: id, name: w.n, phone: w.p, hold: holdOn_(id),
            pending: PropertiesService.getScriptProperties().getProperty('escp_' + id) || '', msgs: msgs };
+}
+/* صورة/صوت من الواتساب للعرض في الداشبورد. المعرّف لازم يكون ظاهر في سجل نفس الشات. ميتا بتحتفظ بالميديا حوالي 30 يوم. */
+function getChatMedia(id, mediaId) {
+  id = String(id || ''); mediaId = String(mediaId || '');
+  if (!/^[A-Za-z0-9_-]{5,80}$/.test(mediaId) || !isWa_(id)) return { ok: false, error: 'معرّف غلط' };
+  var known = chatLogRows_(8000).some(function (r) { return r[1] === id && r[7] && r[7].indexOf('"' + mediaId + '"') !== -1; });
+  if (!known) return { ok: false, error: 'الميديا دي مش في الشات ده' };
+  var blob = waMediaBlob_(mediaId);
+  if (!blob) return { ok: false, error: 'مش لاقي الملف (ممكن يكون عدّى 30 يوم)' };
+  var bytes = blob.getBytes();
+  if (bytes.length > 4500000) return { ok: false, error: 'الملف كبير (' + Math.round(bytes.length / 1048576) + ' ميجا)' };
+  return { ok: true, mime: blob.getContentType() || 'application/octet-stream', b64: Utilities.base64Encode(bytes) };
 }
 function botReply(id, text) {
   id = String(id || ''); text = String(text || '').trim();

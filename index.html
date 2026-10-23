@@ -4250,6 +4250,8 @@ function loadSrvUp(){
     var b = document.getElementById('srvup'); if (!b || !d || !d.ok) return;
     b.innerHTML = (d.newer ? '<div class="state" style="font-size:13px;color:var(--ok)">✨ فيه نسخة جديدة جاهزة (' + esc(d.fileDate) + ')</div>'
                            : '<div class="state" style="font-size:13px">السيرفر محدّث' + (d.lastUpdate ? ' — آخر تحديث ' + esc(d.lastUpdate) : '') + '</div>') +
+      (d.versions >= 0 ? '<div class="state" style="font-size:12.5px;' + (d.versions >= d.versionLimit - 15 ? 'color:var(--err,#d33)' : '') + '">نسخ Apps Script: ' + d.versions + ' / ' + d.versionLimit +
+        (d.versions >= d.versionLimit - 15 ? ' ⚠️ قربت توصل الحد — امسح نسخ قديمة من Project history في script.google.com (الكود مقدرش يمسحها)' : '') + '</div>' : '') +
       '<button class="btn ' + (d.newer ? 'btn-primary' : 'btn-quiet') + '" onclick="runSrvUp()">🔄 حدّث السيرفر</button>' +
       (d.autoOn === undefined ? '' :
         '<div class="state" style="font-size:12.5px;margin-top:8px">' + (d.autoOn ? '🟢 التحديث التلقائي شغّال — بيشيّك كل ربع ساعة ويبعتلك على تيليجرام لما يحدّث' : '⚪ التحديث التلقائي واقف') + '</div>' +

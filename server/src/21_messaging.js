@@ -224,6 +224,13 @@ function waEchoBody_(m) {
   if (m.type === 'reaction' || m.type === 'unsupported' || m.type === 'system') return '';
   return '[رسالة]';
 }
+/* ميديا الرسالة (صورة/صوت/فيديو/ملف/ملصق) كـ JSON صغير للسجل: {k:نوع, id:معرّف ميتا, mime} أو فاضي */
+function waMediaOf_(m) {
+  if (!m) return '';
+  var t = m.type === 'voice' ? 'audio' : m.type, o = m[m.type];
+  if (!o || !o.id || ['image', 'audio', 'video', 'document', 'sticker'].indexOf(t) === -1) return '';
+  return JSON.stringify({ k: t, id: String(o.id), mime: o.mime_type || '' });
+}
 /* إيكو تطبيق الواتساب: نسجّله على شات العميل بدور الصيدلي، والبوت ميردّش. */
 function waEcho_(m) {
   if (!m) return;
@@ -239,7 +246,7 @@ function waEcho_(m) {
     return;
   }
   var chatId = 'wa_' + peer, stamp = m.timestamp ? cairoStamp_(m.timestamp) : '';
-  var rows = [['pharm', body, stamp]];
+  var rows = [['pharm', body, stamp, id, waMediaOf_(m.type === 'edit' ? (m.edit && m.edit.message) : m)]];
   if (holdEcho_(chatId)) rows.push(['sys', 'الصيدلي رد من الواتساب — البوت ساكت ٣٠ دقيقة', stamp]);
   logChatRows_(chatId, rows);
   /* رد الصيدلي من تطبيق الواتساب = الخلاصة اتقفلت، منسيبش تنبيه "مستني رد" */
@@ -258,6 +265,16 @@ function waOne_(m, pname) {
   var chatId = 'wa_' + sid;
   P.setProperty('WA_LAST_IN', Utilities.formatDate(new Date(), 'Africa/Cairo', 'MM-dd HH:mm') + ' ' + m.type);
   cache.put('walast_' + chatId, m.id, 86400);
+  /* سجّل رسالة العميل الأصلية فورًا بوقتها الحقيقي ومعرّفها وميديتها، قبل أي معالجة أو رد. */
+  try {
+    var rb = m.type === 'interactive'
+      ? String(((m.interactive.button_reply || m.interactive.list_reply || {}).title) || '').trim()
+      : waEchoBody_(m);
+    if (rb) {
+      logChatRows_(chatId, [['user', rb, m.timestamp ? cairoStamp_(m.timestamp) : '', m.id, waMediaOf_(m)]]);
+      cache.put('rawon_' + chatId, '1', 600);
+    }
+  } catch (eRaw) { Logger.log('raw log: ' + eRaw.message); }
   /* رقم العميل معروف ومتأكد منه من واتساب نفسه — مفيش "سجّل رقمك".
      لو العميل بيوزرنيم ومفيش رقم (BSUID بس) بنسيب البوت يطلب الرقم بالطريقة العادية. */
   if (waIsPhoneId_(sid) && !P.getProperty('vphone_' + chatId)) {

@@ -243,6 +243,10 @@ button{font-family:inherit}
 .bub.u{align-self:flex-start;background:var(--surface-2)}
 .bub.b{align-self:flex-end;background:color-mix(in srgb,var(--brand) 14%,transparent)}
 .bub.p{align-self:flex-end;background:color-mix(in srgb,var(--ok) 20%,transparent)}
+.bub img.cm{display:block;max-width:100%;max-height:340px;border-radius:10px;margin:-2px 0 4px;cursor:zoom-in}
+.bub audio{display:block;max-width:100%;margin:2px 0 4px}
+.bub .cm-ph{display:inline-block;padding:6px 10px;border-radius:10px;background:var(--surface-2);font-size:12.5px;color:var(--ink-3);margin-bottom:4px;cursor:pointer}
+.day-sep{align-self:center;font-size:11.5px;color:var(--ink-3);background:var(--surface-2);padding:3px 12px;border-radius:8px;margin:6px 0 2px}
 .bub-sys{align-self:center;font-size:11.5px;color:var(--ink-3);background:var(--surface-2);padding:4px 10px;border-radius:99px;text-align:center}
 .chat-send{display:flex;gap:var(--s2);align-items:flex-end}
 .chat-send textarea{flex:1;min-width:0;box-sizing:border-box;padding:10px 12px;border-radius:var(--r2);border:1px solid var(--line);
@@ -781,7 +785,7 @@ function logErr(e){
    كل نداء بيعدّي من هنا — لو الرابط اتغيّر، يتغيّر في مكان واحد. */
 /* 🔒 الأوامر الحساسة بتاخد الرقم السري (بيتطلب مرة ويتحفظ على الجهاز ده) */
 var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1 };
+                      getBotChats: 1, getBotChat: 1, getChatMedia: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1 };
 function adminPin(){
   var p = ''; try { p = localStorage.getItem('adminPin') || ''; } catch (e) {}
   if (!p){ p = (prompt('الرقم السري') || '').trim(); if (p) try { localStorage.setItem('adminPin', p); } catch (e) {} }
@@ -1264,6 +1268,28 @@ function chatWhen(t){
   t = String(t || ''); var d = new Date(), today = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
   return t.slice(0, 10) === today ? t.slice(11, 16) : t.slice(8, 10) + '/' + t.slice(5, 7) + ' ' + t.slice(11, 16);
 }
+var CHAT_MEDIA = {}, CHAT_MEDIA_BUSY = {};
+function chatDay(day){
+  var d = new Date(), t = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  var y = new Date(Date.now() - 864e5), yy = y.getFullYear() + '-' + ('0' + (y.getMonth() + 1)).slice(-2) + '-' + ('0' + y.getDate()).slice(-2);
+  return day === t ? 'النهارده' : day === yy ? 'امبارح' : day.slice(8, 10) + '/' + day.slice(5, 7) + '/' + day.slice(0, 4);
+}
+function chatZoom(src){
+  var o = document.createElement('div');
+  o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+  o.innerHTML = '<img src="' + src + '" style="max-width:96vw;max-height:94vh">'; o.onclick = function(){ o.remove(); };
+  document.body.appendChild(o);
+}
+/* الصورة/الصوت بتتحمّل من واتساب على أول طلب وتتحفظ في الذاكرة بس (مش بتتحمّل تاني كل ٢٠ ثانية) */
+function chatLoadMedia(cid, mid, redraw){
+  if (CHAT_MEDIA[mid] || CHAT_MEDIA_BUSY[mid]) return Promise.resolve();
+  CHAT_MEDIA_BUSY[mid] = 1;
+  return api('getChatMedia', { id: cid, mid: mid }).then(function(r){
+    CHAT_MEDIA[mid] = (r && r.ok) ? { url: 'data:' + r.mime + ';base64,' + r.b64 } : { err: (r && r.error) || 'فشل التحميل' };
+  }).catch(function(){ CHAT_MEDIA[mid] = { err: 'فشل التحميل' }; }).then(function(){
+    delete CHAT_MEDIA_BUSY[mid]; if (CHAT_OPEN === cid && CUR === 'bot') loadChat(cid);
+  });
+}
 function chatName(c){ return c.name || c.phone || ('عميل ' + String(c.id).slice(-4)); }
 function pgChats(){
   CHAT_OPEN = null;
@@ -1325,11 +1351,25 @@ function drawChat(d){
     '<button class="btn ' + (d.hold ? 'btn-primary' : 'btn-quiet') + '" onclick="chatHold(\'' + id + '\',' + (d.hold ? 0 : 1) + ')">' +
       (d.hold ? '▶️ رجّع البوت' : '🤫 امسكها') + '</button></div>';
   if (d.pending) h += '<div class="chat-pend"><span>🔴 محتاجة ردك (من ' + ltr(esc(d.pending)) + ')</span><u onclick="chatDone(\'' + id + '\')">اتعاملت معاها ✓</u></div>';
+  var lastDay = '';
   h += '<div class="chat-thread" id="chatThread">' + (d.msgs.length ? d.msgs.map(function(m){
-    var txt = esc(m.text);
-    if (m.role === 'sys') return '<div class="bub-sys">' + txt + ' · ' + ltr(esc(chatWhen(m.t))) + '</div>';
-    var k = m.role === 'user' ? 'u' : (m.role === 'pharm' ? 'p' : 'b');
-    return '<div class="bub ' + k + '">' + txt + '<small>' + (k === 'u' ? '' : who[k] + ' · ') + ltr(esc(chatWhen(m.t))) + '</small></div>';
+    var day = String(m.t || '').slice(0, 10), sep = '';
+    if (day && day !== lastDay){ lastDay = day; sep = '<div class="day-sep">' + ltr(esc(chatDay(day))) + '</div>'; }
+    var txt = esc(m.text), tm = ltr(esc(String(m.t || '').slice(11, 16)));
+    if (m.role === 'sys') return sep + '<div class="bub-sys">' + txt + ' · ' + tm + '</div>';
+    var k = m.role === 'user' ? 'u' : (m.role === 'pharm' ? 'p' : 'b'), med = '';
+    if (m.media && m.media.id){
+      txt = txt.replace(/^\[(صورة|صوت|فيديو|ملف|ملصق)\]\s*/, '');
+      var cached = CHAT_MEDIA[m.media.id], kind = m.media.k, mid = esc(m.media.id), cid = esc(id);
+      if (cached && cached.url) med = (kind === 'audio') ? '<audio controls preload="none" src="' + cached.url + '"></audio>'
+        : (kind === 'image' || kind === 'sticker') ? '<img class="cm" src="' + cached.url + '" onclick="chatZoom(this.src)">'
+        : '<a class="cm-ph" href="' + cached.url + '" download="file">⬇️ نزّل الملف</a>';
+      else if (cached && cached.err) med = '<span class="cm-ph">' + esc(cached.err) + '</span>';
+      else med = '<span class="cm-ph" onclick="chatLoadMedia(\'' + cid + '\',\'' + mid + '\',true)">' +
+        ({ image: '🖼️ اعرض الصورة', sticker: '🖼️ اعرض الملصق', audio: '🎤 شغّل الصوت', video: '🎬 فيديو', document: '📎 ملف' }[kind] || '📎 ميديا') + '</span>';
+      if (kind === 'video') med = '<span class="cm-ph">🎬 فيديو (افتحه من الواتساب)</span>';
+    }
+    return sep + '<div class="bub ' + k + '">' + med + (med && txt ? '<br>' : '') + txt + '<small>' + (k === 'u' ? '' : who[k] + ' · ') + tm + '</small></div>';
   }).join('') : '<div class="state">مفيش رسايل متسجلة</div>') + '</div>';
   h += '<div class="chat-send"><textarea id="chatInput" rows="2" placeholder="اكتب ردك — هيوصل للعميل من البوت باسم الصيدلي"></textarea>' +
     '<button class="btn btn-primary" id="chatSendBtn" onclick="chatSend(\'' + id + '\')">إرسال</button></div>' +
@@ -1337,6 +1377,9 @@ function drawChat(d){
   box.innerHTML = h;
   var inp2 = document.getElementById('chatInput'); if (inp2 && draft) inp2.value = draft;
   var th2 = document.getElementById('chatThread'); if (th2 && atEnd) th2.scrollTop = th2.scrollHeight;
+  /* آخر ٦ صور تتحمّل لوحدها، واحدة ورا التانية. الباقي بالضغط. */
+  var todo = d.msgs.filter(function(m){ return m.media && (m.media.k === 'image' || m.media.k === 'sticker') && !CHAT_MEDIA[m.media.id] && !CHAT_MEDIA_BUSY[m.media.id]; }).slice(-6);
+  if (todo.length) chatLoadMedia(id, todo[todo.length - 1].media.id);
 }
 function chatSend(id){
   var inp = document.getElementById('chatInput'), txt = inp ? inp.value.trim() : '';

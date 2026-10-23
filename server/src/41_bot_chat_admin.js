@@ -6,7 +6,7 @@ function chatLogRows_(maxRows) {
   var sh = chatLogSheet_(), n = sh.getLastRow() - 1;
   if (n < 1) return [];
   var take = Math.min(n, maxRows || 6000);
-  return sh.getRange(sh.getLastRow() - take + 1, 1, take, 6).getDisplayValues();
+  return sh.getRange(sh.getLastRow() - take + 1, 1, take, Math.min(8, sh.getMaxColumns())).getDisplayValues();
 }
 function getBotChats() {
   var rows = chatLogRows_(6000), by = {}, P = PropertiesService.getScriptProperties().getProperties();
@@ -27,11 +27,35 @@ function getBotChats() {
 }
 function getBotChat(id) {
   id = String(id || '');
-  var msgs = chatLogRows_(8000).filter(function (r) { return r[1] === id; }).slice(-300)
-    .map(function (r) { return { t: r[0], role: r[4], text: r[5] }; });
+  var msgs = chatLogRows_(8000).filter(function (r) { return r[1] === id; }).slice(-400)
+    .map(function (r, i) {
+      var media = null; if (r[7]) { try { media = JSON.parse(r[7]); } catch (e) {} }
+      return { t: String(r[0]).replace(/^'/, ''), role: r[4], text: r[5], media: media, _i: i };
+    });
+  /* زي الواتساب: الترتيب بوقت الرسالة الحقيقي (لو كل الأوقات بصيغة سليمة)، ومن غير تكرار صف مطابق في نفس الثانية. */
+  var okT = msgs.every(function (m) { return /^\d{4}-\d\d-\d\d \d\d:\d\d(:\d\d)?$/.test(m.t); });
+  if (okT) msgs.sort(function (a, b) { return a.t < b.t ? -1 : a.t > b.t ? 1 : a._i - b._i; });
+  var seen = {};
+  msgs = msgs.filter(function (m) {
+    if (m.role !== 'user' && m.role !== 'pharm') return true;
+    var k = m.role + '|' + m.t + '|' + m.text; if (seen[k]) return false; seen[k] = 1; return true;
+  });
+  msgs.forEach(function (m) { delete m._i; });
   var w = chatWho_(id);
   return { ok: true, id: id, name: w.n, phone: w.p, hold: holdOn_(id),
            pending: PropertiesService.getScriptProperties().getProperty('escp_' + id) || '', msgs: msgs };
+}
+/* صورة/صوت من الواتساب للعرض في الداشبورد. المعرّف لازم يكون ظاهر في سجل نفس الشات. ميتا بتحتفظ بالميديا حوالي 30 يوم. */
+function getChatMedia(id, mediaId) {
+  id = String(id || ''); mediaId = String(mediaId || '');
+  if (!/^[A-Za-z0-9_-]{5,80}$/.test(mediaId) || !isWa_(id)) return { ok: false, error: 'معرّف غلط' };
+  var known = chatLogRows_(8000).some(function (r) { return r[1] === id && r[7] && r[7].indexOf('"' + mediaId + '"') !== -1; });
+  if (!known) return { ok: false, error: 'الميديا دي مش في الشات ده' };
+  var blob = waMediaBlob_(mediaId);
+  if (!blob) return { ok: false, error: 'مش لاقي الملف (ممكن يكون عدّى 30 يوم)' };
+  var bytes = blob.getBytes();
+  if (bytes.length > 4500000) return { ok: false, error: 'الملف كبير (' + Math.round(bytes.length / 1048576) + ' ميجا)' };
+  return { ok: true, mime: blob.getContentType() || 'application/octet-stream', b64: Utilities.base64Encode(bytes) };
 }
 function botReply(id, text) {
   id = String(id || ''); text = String(text || '').trim();

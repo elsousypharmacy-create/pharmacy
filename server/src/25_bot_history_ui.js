@@ -18,7 +18,7 @@ function getConversationHistory(chatId) {
 var CHAT_LOG_SHEET = 'محادثات البوت';
 function chatLogSheet_() {
   var ss = SpreadsheetApp.openById(STAFF_SHEET_ID), sh = ss.getSheetByName(CHAT_LOG_SHEET);
-  if (!sh) { sh = ss.insertSheet(CHAT_LOG_SHEET); sh.appendRow(['الوقت', 'chat', 'الاسم', 'الموبايل', 'من', 'الرسالة']); sh.setFrozenRows(1); }
+  if (!sh) { sh = ss.insertSheet(CHAT_LOG_SHEET); sh.appendRow(['الوقت', 'chat', 'الاسم', 'الموبايل', 'من', 'الرسالة', 'معرّف واتساب', 'ميديا']); sh.setFrozenRows(1); }
   return sh;
 }
 function chatWho_(chatId) {
@@ -46,10 +46,18 @@ function logChatRows_(chatId, rows) {
   try {
     if (!rows || !rows.length || String(chatId) === String(PERSONAL_CHAT)) return;
     if (badChatId_(chatId)) { noteBadChatId_('logChat', chatId, rows[0] && rows[0][1]); return; }
-    var w = chatWho_(chatId), now = cairoStamp_();
-    var vals = rows.filter(function (r) { return r[1]; }).map(function (r) {
+    var w = chatWho_(chatId), now = cairoStamp_(), cc = CacheService.getScriptCache();
+    /* منع التكرار: نفس معرّف واتساب، أو نفس (الدور + النص + الوقت) للعميل والصيدلي، مايتسجلش مرتين. */
+    rows = rows.filter(function (r) {
+      if (!r[1]) return false;
+      if (r[0] !== 'user' && r[0] !== 'pharm') return true;
+      var k = 'lg_' + (r[3] ? String(r[3]) : Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, chatId + '|' + r[0] + '|' + r[1] + '|' + (r[2] || ''))));
+      try { if (cc.get(k)) return false; cc.put(k, '1', 21600); } catch (eC) {}
+      return true;
+    });
+    var vals = rows.map(function (r) {
       /* الاقتباس يخليه نص. من غيره الشيت أحيانًا بيحوّل yyyy-MM-dd لتاريخ والعرض بيتلخبط. */
-      return ["'" + (r[2] || now), String(chatId), w.n, w.p ? "'" + w.p : '', r[0], String(r[1]).slice(0, 4000)];
+      return ["'" + (r[2] || now), String(chatId), w.n, w.p ? "'" + w.p : '', r[0], String(r[1]).slice(0, 4000), r[3] ? "'" + r[3] : '', r[4] || ''];
     });
     if (!vals.length) return;
     /* قفل المستخدم مش قفل السكربت. قفل السكربت بيمسكه التريجر الحي واللقطة دقايق.
@@ -58,7 +66,7 @@ function logChatRows_(chatId, rows) {
     try { got = lock.tryLock(8000); } catch (eL) {}
     try {
       var sh = chatLogSheet_();
-      sh.getRange(sh.getLastRow() + 1, 1, vals.length, 6).setValues(vals);
+      sh.getRange(sh.getLastRow() + 1, 1, vals.length, 8).setValues(vals);
     } finally { if (got) { try { lock.releaseLock(); } catch (e2) {} } }
   } catch (e) { Logger.log('خطأ سجل المحادثات: ' + e.message); }
 }
@@ -71,6 +79,8 @@ function saveConversationTurn(chatId, userText, botText, botRole, arrivalUnix) {
   var skipUser = /^\[(سؤال محوّل للدكتور|مستني تأكيد الطلب)\]/.test(String(userText || ''));
   var skipBot = /^\[الصيدلي بيرد بنفسه\]/.test(String(botText || ''));
   var now = cairoStamp_(), userT = arrivalUnix ? cairoStamp_(arrivalUnix) : now;
+  /* شات واتساب: رسالة العميل اتسجلت أصلية لحظة وصولها (waOne_) — منسجّلهاش تاني بنسخة معالَجة. */
+  if (isWa_(chatId) && CacheService.getScriptCache().get('rawon_' + chatId)) skipUser = true;
   logChatRows_(chatId, (skipUser ? [] : [['user', userText, userT]]).concat(skipBot ? [] : [[role, botText, now]]));
   try {
     const history = getConversationHistory(chatId);

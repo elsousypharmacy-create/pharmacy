@@ -133,6 +133,7 @@ var BOT_EMOJI_ALLOW_ = { '✅': 1, '🌿': 1, '📦': 1, '💊': 1 };
 function sanitizeBotEmoji_(text, mode) {
   var s = String(text == null ? '' : text);
   if (!s) return s;
+  if (mode !== 'none' && !botStrict_()) return s;   /* امبارح: مفيش قيد على الإيموجي في الكود */
   try {
     var kept = false;
     s = s.replace(/\p{Extended_Pictographic}/gu, function (ch) {
@@ -149,7 +150,8 @@ function sanitizeBotEmoji_(text, mode) {
 function varyEmoji_(chatId, text) {
   if (!text || String(chatId) === String(PERSONAL_CHAT)) return text;
   if (String(text).indexOf('رد الصيدلي') !== -1 || String(text).indexOf('رد الدكتور') !== -1) return text;
-  return sanitizeBotEmoji_(text, 'one');
+  if (botStrict_()) return sanitizeBotEmoji_(text, 'one');
+  return text;   /* من غير تنويع/تبديل إيموجي: الرد يتبعت زي ما الموديل كتبه */
 }
 function tgApi_(method, payload) {
   try {

@@ -297,14 +297,14 @@ function handleCustomerMessage(chatId, message) {
           return;
         }
       }
-      var drugW = keywordHit_(nText, CONTROLLED_DRUGS_);
+      var drugW = botStrict_() ? keywordHit_(nText, CONTROLLED_DRUGS_) : '';
       if (drugW) {
         var rd = 'الدوا ده من أدوية الجدول ومش بنقدر نصرفه ولا نسعّره من الشات. الدكتور هيكلم حضرتك هنا في أقرب وقت.';
         escalateToDoctor_(chatId, text, 'دوا جدول: ' + drugW);
         logDeliveredTurn_(chatId, text, rd, message.date, sendTelegram_(chatId, rd) !== false);
         return;
       }
-      var compW = keywordHit_(nText, COMPLAINT_MARKERS_);
+      var compW = botStrict_() ? keywordHit_(nText, COMPLAINT_MARKERS_) : '';
       if (compW) {
         var rcpl = 'معلش يا حضرتك، وآسفين على اللي حصل. الدكتور هيكلم حضرتك هنا في أقرب وقت.';
         escalateToDoctor_(chatId, text, 'شكوى: ' + compW);

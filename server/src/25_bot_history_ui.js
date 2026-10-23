@@ -129,10 +129,12 @@ function maybeAskPhone_(chatId) {
   sendTelegramMarkup_(chatId, '📱 سجّل رقم حضرتك بضغطة واحدة عشان نتعرّف على حضرتك ونخدمك أسرع.', KB_SHARE);
 }
 /* إيموجي رد البوت: واحد بالكتير من ✅ 🌿 📦 💊. من غير وشوش أو قلوب أو ورد. mode=none للطوارئ. */
+var EMO_POOL_ = ['🌸', '🌿', '✨', '💙', '🤍', '😊', '🌷', '☀️', '💐', '🙏'];
 var BOT_EMOJI_ALLOW_ = { '✅': 1, '🌿': 1, '📦': 1, '💊': 1 };
 function sanitizeBotEmoji_(text, mode) {
   var s = String(text == null ? '' : text);
   if (!s) return s;
+  if (mode !== 'none' && !botStrict_()) return s;   /* امبارح: مفيش قيد على الإيموجي في الكود */
   try {
     var kept = false;
     s = s.replace(/\p{Extended_Pictographic}/gu, function (ch) {
@@ -149,7 +151,19 @@ function sanitizeBotEmoji_(text, mode) {
 function varyEmoji_(chatId, text) {
   if (!text || String(chatId) === String(PERSONAL_CHAT)) return text;
   if (String(text).indexOf('رد الصيدلي') !== -1 || String(text).indexOf('رد الدكتور') !== -1) return text;
-  return sanitizeBotEmoji_(text, 'one');
+  if (botStrict_()) return sanitizeBotEmoji_(text, 'one');
+  /* تنويع الإيموجي (زي امبارح): أي إيموجي "ودود" بيتبدّل بواحد تاني من القايمة ومش بيتكرر نفس اللي قبله. */
+  var c = CacheService.getScriptCache(), k = 'emo_' + chatId, recent = (c.get(k) || '').split('|').filter(Boolean);
+  var rx = new RegExp(EMO_POOL_.map(function (e) { return e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|'), 'g');
+  var out = String(text).replace(rx, function () {
+    var pick = EMO_POOL_.filter(function (e) { return recent.indexOf(e) === -1; });
+    if (!pick.length) pick = EMO_POOL_.slice();
+    var e = pick[Math.floor(Math.random() * pick.length)];
+    recent.push(e); if (recent.length > 4) recent.shift();
+    return e;
+  });
+  c.put(k, recent.join('|'), 21600);
+  return out;
 }
 function tgApi_(method, payload) {
   try {

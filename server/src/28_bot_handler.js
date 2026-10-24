@@ -111,14 +111,21 @@ function handleCustomerMessageInner_(chatId, message) {
       }
       /* ✍️ روشتة مكتوبة بخط الإيد → الصيدلي بس اللي يقراها ويرد (البوت ميخمّنش أسماء) */
       if (seen && seen.kind === 'prescription' && seen.handwritten) {
-        var guess = (seen.items || []).map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (؟)' : ''); }).join('، ');
+        /* ألبوم فيه روشتة بخط الإيد + علب: الروشتة للدكتور، والعلب البوت يرد عليها بالتوافر والسعر */
+        var boxIt = (seen.items || []).filter(function (it) { return it.fromBox; });
+        var handIt = (seen.items || []).filter(function (it) { return !it.fromBox; });
+        var guess = (handIt.length ? handIt : (seen.items || [])).map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (؟)' : ''); }).join('، ');
         escalateToDoctor_(chatId, '[روشتة بخط الإيد — ' + (pfids.length > 1 ? pfids.length + ' صور فوق' : 'الصورة فوق') + ']' +
           (guess ? '\nقراية تقريبية من البوت (للمساعدة بس): ' + guess : '') + (message.caption ? '\nالعميل كتب: ' + message.caption : ''), '✍️ روشتة بخط الإيد — اقراها ورد على العميل');
-        var rxUser = '[روشتة بخط الإيد' + (message.caption ? ': ' + message.caption : '') + ']';
-        if (holdOn_(chatId)) { saveConversationTurn(chatId, rxUser, '[الصيدلي بيرد بنفسه]', 'bot', message.date); return; }
-        var rr = 'وصلت الروشتة، الدكتور هيقراها ويرد عليك هنا بالمتوفر والأسعار.';
-        logDeliveredTurn_(chatId, rxUser, rr, message.date, sendTelegram_(chatId, rr) !== false);
-        return;
+        if (boxIt.length) {
+          seen = { kind: 'box', items: boxIt, rx: false, label: '', unread: seen.unread || 0, withRx: true };
+        } else {
+          var rxUser = '[روشتة بخط الإيد' + (message.caption ? ': ' + message.caption : '') + ']';
+          if (holdOn_(chatId)) { saveConversationTurn(chatId, rxUser, '[الصيدلي بيرد بنفسه]', 'bot', message.date); return; }
+          var rr = 'وصلت الروشتة، الدكتور هيقراها ويرد عليك هنا بالمتوفر والأسعار.';
+          logDeliveredTurn_(chatId, rxUser, rr, message.date, sendTelegram_(chatId, rr) !== false);
+          return;
+        }
       }
       if (seen && (seen.kind === 'box' || seen.kind === 'prescription') && seen.items && seen.items.length) {
         var pnames = seen.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.use ? ' (' + it.use + ')' : ''); }).join('، ');

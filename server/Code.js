@@ -2628,7 +2628,9 @@ function transcribeVoice_(fileId, mime) {
 
 /* 📷 قراية صورة العميل (علبة دوا أو روشتة) بـ Gemini المجاني */
 var PHOTO_CTX = null;   /* بيتملى أثناء الرد على صورة — العقل بيدوّر بالأسماء اللي فيها */
+var PHOTO_ERR_ = '';
 function readPhoto_(fileIds) {
+  PHOTO_ERR_ = '';
   try {
     fileIds = [].concat(fileIds).slice(0, 6);
     var imgs = [];
@@ -2651,47 +2653,29 @@ function readPhoto_(fileIds) {
       'handwritten: true if it is a prescription written by hand (even partly), false if fully printed/typed.\n' +
       'Reply JSON only: {"kind":"box","handwritten":false,"items":[{"name":"","strength":"","form":"","use":"","sure":true}],"rx":false,"label":""}';
     /* thinking خفيف عشان القراية متاخدش دقيقة. لو الموديل مش بيقبل الإعداد (400) بنعيد من غيره. */
-    function req(model, img, think) {
+    function req(model, img) {
       var gc = { temperature: 0, responseMimeType: 'application/json' };
-      if (think) gc.thinkingConfig = { thinkingLevel: 'low' };
       return { url: 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent',
         method: 'post', contentType: 'application/json', muteHttpExceptions: true, headers: { 'x-goog-api-key': key },
         payload: JSON.stringify({ contents: [{ parts: [img, { text: prompt }] }], generationConfig: gc }) };
     }
     function parse(res, model) {
-      if (res.getResponseCode() !== 200) { Logger.log('photo ' + model + ' ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 200)); return null; }
+      if (res.getResponseCode() !== 200) { PHOTO_ERR_ = model + ' ' + res.getResponseCode() + ': ' + res.getContentText().replace(/\s+/g, ' ').slice(0, 160); Logger.log('photo ' + PHOTO_ERR_); return null; }
       var d = JSON.parse(res.getContentText());
       if (d.usageMetadata) aiTrack_('photo', model, d.usageMetadata.promptTokenCount || 0, d.usageMetadata.candidatesTokenCount || 0);
       var p = d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts;
       return doseJson_((p || []).filter(function (x) { return x.text && !x.thought; }).map(function (x) { return x.text; }).join(''));
     }
-    /* ⚡ كل صورة لوحدها، والموديل الأساسي (3.8) والاحتياطي (3.5) في نفس اللحظة. الأساسي لو رجّع نتيجة هو الأفضل، وإلا الاحتياطي.
-       قبل كده كانوا ورا بعض (٣ موديلات × ١ دقيقة = ٣ دقايق ممكن). دلوقتي أقصى انتظار دقيقة. */
+    /* ⚡ كل صورة لوحدها وكلهم مع بعض على الموديل الأساسي. اللي يفشل يتجرب على الاحتياطي (برضه مع بعض). أقصى انتظار حوالي دقيقة. */
     var T0 = Date.now();
     var M1 = aiKey_('PHOTO_MODEL') || 'gemini-3.8-flash', backups = [AI_DEFAULTS.gemini.bot, GEMINI_MODEL].filter(function (m, i, a) { return m && m !== M1 && a.indexOf(m) === i; });
-    var B1 = backups[0], reqs = [];
-    imgs.forEach(function (im) { reqs.push(req(M1, im, true)); });
-    if (B1) imgs.forEach(function (im) { reqs.push(req(B1, im, true)); });
-    var resp = UrlFetchApp.fetchAll(reqs);
-    /* 400 غالبًا معناها "الموديل مش بيقبل thinkingLevel" → نعيد نفس الطلب من غير الإعداد */
-    var redo = [];
-    resp.forEach(function (r, i) { if (r.getResponseCode() === 400) redo.push(i); });
-    if (redo.length && Date.now() - T0 < 40000) {
-      var again = UrlFetchApp.fetchAll(redo.map(function (i) {
-        var isB = B1 && i >= imgs.length, im = imgs[isB ? i - imgs.length : i];
-        return req(isB ? B1 : M1, im, false);
-      }));
-      redo.forEach(function (i, k) { resp[i] = again[k]; });
-    }
-    var outs = imgs.map(function (im, i) {
-      var o = parse(resp[i], M1);
-      if (!o && B1) o = parse(resp[imgs.length + i], B1);
-      return o;
-    });
-    /* لسه ناقص صورة والوقت لسه معاه؟ آخر محاولة بالموديل التالت (واحدة واحدة) */
-    for (var j = 0; j < outs.length; j++) {
-      if (outs[j] || backups.length < 2 || Date.now() - T0 > 30000) continue;
-      outs[j] = parse(UrlFetchApp.fetchAll([req(backups[1], imgs[j], false)])[0], backups[1]);
+    var outs = UrlFetchApp.fetchAll(imgs.map(function (im) { return req(M1, im); })).map(function (r) { return parse(r, M1); });
+    /* الصور اللي فشلت بس تتجرب على الاحتياطي، كلها مع بعض (مش واحدة واحدة)، ولو لسه فاضل وقت على التالت */
+    for (var bi = 0; bi < backups.length && Date.now() - T0 < 45000; bi++) {
+      var miss = []; outs.forEach(function (o, i) { if (!o) miss.push(i); });
+      if (!miss.length) break;
+      var rs = UrlFetchApp.fetchAll(miss.map(function (i) { return req(backups[bi], imgs[i]); }));
+      miss.forEach(function (i, k) { outs[i] = parse(rs[k], backups[bi]); });
     }
     var good = outs.filter(Boolean);
     if (!good.length) return null;
@@ -4078,6 +4062,7 @@ function handleCustomerMessageInner_(chatId, message) {
       sendTelegram_(chatId, pfids.length > 1 ? 'وصلت الصور، لحظة أشوفها' : 'وصلت الصورة، لحظة أشوفها');
       sendTypingAction_(chatId);
       var seen = readPhoto_(pfids);
+      if (!seen && PHOTO_ERR_) logChatRows_(chatId, [['sys', '📷 تعذّر قراءة الصورة — ' + PHOTO_ERR_]]);
       if (seen && seen.items && seen.items.length) {
         logChatRows_(chatId, [['sys', '📷 البوت قرأ (' + (seen.kind === 'prescription' ? 'روشتة' : 'علبة') + (seen.handwritten ? ' بخط الإيد' : '') + '): ' +
           seen.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (؟)' : ''); }).join('، ')]]);

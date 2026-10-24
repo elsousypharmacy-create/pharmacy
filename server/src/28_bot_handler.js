@@ -104,6 +104,7 @@ function handleCustomerMessageInner_(chatId, message) {
       sendTelegram_(chatId, pfids.length > 1 ? 'وصلت الصور، لحظة أشوفها' : 'وصلت الصورة، لحظة أشوفها');
       sendTypingAction_(chatId);
       var seen = readPhoto_(pfids);
+      if (!seen && PHOTO_ERR_) logChatRows_(chatId, [['sys', '📷 تعذّر قراءة الصورة — ' + PHOTO_ERR_]]);
       if (seen && seen.items && seen.items.length) {
         logChatRows_(chatId, [['sys', '📷 البوت قرأ (' + (seen.kind === 'prescription' ? 'روشتة' : 'علبة') + (seen.handwritten ? ' بخط الإيد' : '') + '): ' +
           seen.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (؟)' : ''); }).join('، ')]]);

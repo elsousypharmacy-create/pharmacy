@@ -430,7 +430,7 @@ function smartCustomerReply_(chatId, text, history, arrivalUnix) {
       reply = 'لسه بنكمّل بيانات الطلب. الأوردر مش بيتسجل غير بعد ملخص وتأكيد من حضرتك.';
     }
     /* رد صورة من غير سؤال → نقفله بسؤال الطلب. جملة "مش متوفر" تفضل لوحدها. */
-    if (PHOTO_CTX && !/مش (موجود|متوفر)[^؟?]*(نوفّر|نوفر|نجيب)/.test(reply) && !/[؟?]\s*$/.test(reply))
+    if (PHOTO_CTX && !/مش (موجود|متوفر)[^؟?]*(نوفّر|نوفر|نجيب)/.test(reply) && !/[؟?]$/.test(String(reply).replace(/[\s\uFE0F\p{Extended_Pictographic}]+$/gu, '')))
       reply += '\n\nتحب حضرتك نجهّز المتوفر ونوصّله؟';
     humanPause_(T_START);
     if (holdOn_(chatId) || sendTelegram_(chatId, reply) === false) { heldSilence_(chatId, text, arrivalUnix); return true; }

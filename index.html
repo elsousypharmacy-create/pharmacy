@@ -239,6 +239,9 @@ button{font-family:inherit}
 .chat-thread{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;padding:var(--s3);
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);margin-bottom:var(--s3)}
 .bub{max-width:86%;padding:9px 12px;border-radius:14px;font-size:var(--t-body);line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.chat-img{display:block;width:100%;max-width:220px;min-height:90px;border-radius:10px;margin:0 0 6px;background:var(--surface-2);cursor:zoom-in;object-fit:cover}
+.chat-zoom{position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:12px}
+.chat-zoom img{max-width:100%;max-height:100%;border-radius:8px}
 .bub small{display:block;font-size:10.5px;color:var(--ink-3);margin-top:4px}
 .bub.u{align-self:flex-start;background:var(--surface-2)}
 .bub.b{align-self:flex-end;background:color-mix(in srgb,var(--brand) 14%,transparent)}
@@ -781,7 +784,7 @@ function logErr(e){
    كل نداء بيعدّي من هنا — لو الرابط اتغيّر، يتغيّر في مكان واحد. */
 /* 🔒 الأوامر الحساسة بتاخد الرقم السري (بيتطلب مرة ويتحفظ على الجهاز ده) */
 var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1 };
+                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1 };
 function adminPin(){
   var p = ''; try { p = localStorage.getItem('adminPin') || ''; } catch (e) {}
   if (!p){ p = (prompt('الرقم السري') || '').trim(); if (p) try { localStorage.setItem('adminPin', p); } catch (e) {} }
@@ -1329,7 +1332,11 @@ function drawChat(d){
     var txt = esc(m.text);
     if (m.role === 'sys') return '<div class="bub-sys">' + txt + ' · ' + ltr(esc(chatWhen(m.t))) + '</div>';
     var k = m.role === 'user' ? 'u' : (m.role === 'pharm' ? 'p' : 'b');
-    return '<div class="bub ' + k + '">' + txt + '<small>' + (k === 'u' ? '' : who[k] + ' · ') + ltr(esc(chatWhen(m.t))) + '</small></div>';
+    var imgs = (m.f ? String(m.f).split(',') : []).map(function(fid){
+      fid = fid.replace(/[^\w-]/g, '');
+      return fid ? '<img class="chat-img" data-pid="' + fid + '" alt="" onclick="chatZoom(\'' + fid + '\')"' + (PHOTO_CACHE[fid] ? ' src="' + PHOTO_CACHE[fid] + '"' : '') + '>' : '';
+    }).join('');
+    return '<div class="bub ' + k + '">' + imgs + txt + '<small>' + (k === 'u' ? '' : who[k] + ' · ') + ltr(esc(chatWhen(m.t))) + '</small></div>';
   }).join('') : '<div class="state">مفيش رسايل متسجلة</div>') + '</div>';
   h += '<div class="chat-send"><textarea id="chatInput" rows="2" placeholder="اكتب ردك — هيوصل للعميل من البوت باسم الصيدلي"></textarea>' +
     '<button class="btn btn-primary" id="chatSendBtn" onclick="chatSend(\'' + id + '\')">إرسال</button></div>' +
@@ -1337,6 +1344,27 @@ function drawChat(d){
   box.innerHTML = h;
   var inp2 = document.getElementById('chatInput'); if (inp2 && draft) inp2.value = draft;
   var th2 = document.getElementById('chatThread'); if (th2 && atEnd) th2.scrollTop = th2.scrollHeight;
+  loadChatImgs();
+}
+var PHOTO_CACHE = {}, PHOTO_FULL = {};
+function loadChatImgs(){
+  var list = Array.prototype.slice.call(document.querySelectorAll('img.chat-img[data-pid]:not([src])'));
+  (function next(){
+    var im = list.shift(); if (!im) return;
+    var fid = im.getAttribute('data-pid');
+    api('botPhoto', { id: fid }).then(function(d){
+      if (d && d.ok){ PHOTO_CACHE[fid] = d.data; im.src = d.data; }
+      else { im.alt = (d && d.error) || 'الصورة مش متاحة'; im.style.minHeight = '0'; }
+      next();
+    }).catch(function(){ next(); });
+  })();
+}
+function chatZoom(fid){
+  var z = document.createElement('div'); z.className = 'chat-zoom';
+  z.onclick = function(){ z.remove(); };
+  var im = document.createElement('img'); im.src = PHOTO_FULL[fid] || PHOTO_CACHE[fid] || ''; z.appendChild(im);
+  document.body.appendChild(z);
+  if (!PHOTO_FULL[fid]) api('botPhoto', { id: fid, full: '1' }).then(function(d){ if (d && d.ok){ PHOTO_FULL[fid] = d.data; im.src = d.data; } });
 }
 function chatSend(id){
   var inp = document.getElementById('chatInput'), txt = inp ? inp.value.trim() : '';

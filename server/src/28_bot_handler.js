@@ -88,6 +88,7 @@ function handleCustomerMessage(chatId, message) {
         pfids = ids.map(function (n) { return got[gk + n]; });
         if (!message.caption) message.caption = MC.get(gk + 'cap') || '';
       }
+      savePhotosForLog_(chatId, pfids);   /* الصور تتحفظ في Drive وتظهر في اللوحة */
       if (holdOn_(chatId)) {
         escalateToDoctor_(chatId, '[' + (pfids.length > 1 ? pfids.length + ' صور' : 'صورة') + ']' + (message.caption ? ' ' + message.caption : ''), 'صورة');
         saveConversationTurn(chatId, '[صورة]' + (message.caption ? ' ' + message.caption : ''), '[الصيدلي بيرد بنفسه]', 'bot', message.date);
@@ -97,6 +98,10 @@ function handleCustomerMessage(chatId, message) {
       sendTelegram_(chatId, pfids.length > 1 ? 'استلمنا الصور (' + pfids.length + ') 🌿 ثواني وبنشوفها لحضرتك' : 'استلمنا الصورة 🌿 ثواني وبنشوفها لحضرتك');
       sendTypingAction_(chatId);
       var seen = readPhoto_(pfids);
+      if (seen && seen.items && seen.items.length) {
+        logChatRows_(chatId, [['sys', '📷 البوت قرأ (' + (seen.kind === 'prescription' ? 'روشتة' : 'علبة') + (seen.handwritten ? ' بخط الإيد' : '') + '): ' +
+          seen.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (؟)' : ''); }).join('، ')]]);
+      }
       /* ✍️ روشتة مكتوبة بخط الإيد → الصيدلي بس اللي يقراها ويرد (البوت ميخمّنش أسماء) */
       if (seen && seen.kind === 'prescription' && seen.handwritten) {
         var guess = (seen.items || []).map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (؟)' : ''); }).join('، ');

@@ -6,7 +6,7 @@ function chatLogRows_(maxRows) {
   var sh = chatLogSheet_(), n = sh.getLastRow() - 1;
   if (n < 1) return [];
   var take = Math.min(n, maxRows || 6000);
-  return sh.getRange(sh.getLastRow() - take + 1, 1, take, 6).getDisplayValues();
+  return sh.getRange(sh.getLastRow() - take + 1, 1, take, 7).getDisplayValues();
 }
 function getBotChats() {
   var rows = chatLogRows_(6000), by = {}, P = PropertiesService.getScriptProperties().getProperties();
@@ -28,7 +28,7 @@ function getBotChats() {
 function getBotChat(id) {
   id = String(id || '');
   var msgs = chatLogRows_(8000).filter(function (r) { return r[1] === id; }).slice(-300)
-    .map(function (r) { return { t: r[0], role: r[4], text: r[5] }; });
+    .map(function (r) { return { t: r[0], role: r[4], text: r[5], f: r[6] || '' }; });
   var w = chatWho_(id);
   return { ok: true, id: id, name: w.n, phone: w.p, hold: holdOn_(id),
            pending: PropertiesService.getScriptProperties().getProperty('escp_' + id) || '', msgs: msgs };
@@ -214,4 +214,61 @@ function setupHandoffReminderTrigger() {
   var r = ensureTriggers_({ which: 'remindPendingHandoffs' });
   Logger.log(r.message || r.error || '');
   return r;
+}
+
+/* ═══ 📷 صور المحادثات: بتتحفظ في فولدر Drive خاص "صور البوت" وبتظهر في اللوحة بالرقم السري بس ═══ */
+var BOT_PHOTO_KEEP_DAYS_ = 90;
+function photoFolder_() {
+  var P = PropertiesService.getScriptProperties(), id = P.getProperty('BOT_PHOTO_FOLDER');
+  if (id) { try { var f = DriveApp.getFolderById(id); if (!f.isTrashed()) return f; } catch (e) {} }
+  var it = DriveApp.getFoldersByName('صور البوت'), fo = it.hasNext() ? it.next() : DriveApp.createFolder('صور البوت');
+  P.setProperty('BOT_PHOTO_FOLDER', fo.getId());
+  return fo;
+}
+function takePendingPhotos_(chatId) {
+  try {
+    var c = CacheService.getScriptCache(), k = 'pimg_' + chatId, v = c.get(k);
+    if (v) c.remove(k);
+    return v || '';
+  } catch (e) { return ''; }
+}
+/* بتتناداه أول ما صور العميل توصل. الـ ids بتتربط بأول صف للعميل في السجل. */
+function savePhotosForLog_(chatId, fileIds) {
+  try {
+    var fo = photoFolder_(), ids = [], stamp = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyyMMdd_HHmmss');
+    (fileIds || []).slice(0, 10).forEach(function (fid, i) {
+      try {
+        var b = tgFileBlob_(fid); if (!b) return;
+        var f = fo.createFile(b.setName(String(chatId) + '_' + stamp + '_' + (i + 1) + '.jpg'));
+        ids.push(f.getId());
+      } catch (e1) { Logger.log('savePhoto: ' + e1.message); }
+    });
+    if (ids.length) CacheService.getScriptCache().put('pimg_' + chatId, ids.join(','), 180);
+    cleanOldBotPhotos_();
+  } catch (e) { Logger.log('savePhotosForLog_: ' + e.message); }
+}
+/* مرة في اليوم (وقت ما صورة جديدة توصل): امسح الصور الأقدم من ٩٠ يوم */
+function cleanOldBotPhotos_() {
+  var P = PropertiesService.getScriptProperties(), today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+  if (P.getProperty('BOT_PHOTO_CLEAN') === today) return;
+  P.setProperty('BOT_PHOTO_CLEAN', today);
+  try {
+    var cut = Utilities.formatDate(new Date(Date.now() - BOT_PHOTO_KEEP_DAYS_ * 86400000), 'UTC', "yyyy-MM-dd'T'HH:mm:ss'Z'");
+    var it = photoFolder_().searchFiles("createdDate < '" + cut + "'"), n = 0;
+    while (it.hasNext() && n < 200) { it.next().setTrashed(true); n++; }
+  } catch (e) { Logger.log('cleanOldBotPhotos_: ' + e.message); }
+}
+/* بترجّع الصورة كـ data URL. full=false → مصغّرة. بترفض أي ملف مش جوه فولدر الصور. */
+function botPhoto(id, full) {
+  id = String(id || '').replace(/[^\w-]/g, '');
+  if (!id) return { ok: false, error: 'مفيش صورة' };
+  try {
+    var f = DriveApp.getFileById(id), fo = photoFolder_(), inside = false, ps = f.getParents();
+    while (ps.hasNext()) if (ps.next().getId() === fo.getId()) inside = true;
+    if (!inside) return { ok: false, error: 'مش من صور البوت' };
+    var b = null;
+    if (!full) { try { b = f.getThumbnail(); } catch (eT) { b = null; } }
+    if (!b) b = f.getBlob();
+    return { ok: true, data: 'data:' + (b.getContentType() || 'image/jpeg') + ';base64,' + Utilities.base64Encode(b.getBytes()) };
+  } catch (e) { return { ok: false, error: 'الصورة اتمسحت أو مش متاحة' }; }
 }

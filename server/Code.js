@@ -116,7 +116,7 @@ function doGet(e) {
   /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
   var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
                         purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1 };
+                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1 };
   if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
     return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
   if (action === 'aiTest') return jsonResponseStaff(aiTest(e.parameter.q));
@@ -135,6 +135,7 @@ function doGet(e) {
   if (action === 'botReply') return jsonResponseStaff(botReply(e.parameter.id, e.parameter.text));
   if (action === 'botHold') return jsonResponseStaff(botHold(e.parameter.id, e.parameter.on === '1'));
   if (action === 'botDone') return jsonResponseStaff(botDone(e.parameter.id));
+  if (action === 'botPhoto') return jsonResponseStaff(botPhoto(e.parameter.id, e.parameter.full === '1'));
   if (action === 'cleanBackups') return jsonResponseStaff(cleanBackups(e.parameter.apply === '1'));
   if (action === 'cleanBackupsAuto') return jsonResponseStaff(cleanBackupsAuto());
   if (action === 'purgeTrashedBackups') return jsonResponseStaff(purgeTrashedBackups());
@@ -2900,7 +2901,9 @@ function getConversationHistory(chatId) {
 var CHAT_LOG_SHEET = 'محادثات البوت';
 function chatLogSheet_() {
   var ss = SpreadsheetApp.openById(STAFF_SHEET_ID), sh = ss.getSheetByName(CHAT_LOG_SHEET);
-  if (!sh) { sh = ss.insertSheet(CHAT_LOG_SHEET); sh.appendRow(['الوقت', 'chat', 'الاسم', 'الموبايل', 'من', 'الرسالة']); sh.setFrozenRows(1); }
+  if (!sh) { sh = ss.insertSheet(CHAT_LOG_SHEET); sh.appendRow(['الوقت', 'chat', 'الاسم', 'الموبايل', 'من', 'الرسالة', 'صور']); sh.setFrozenRows(1); }
+  /* العمود السابع = ids صور Drive (مفصولة بفاصلة). الشيت القديم كان 6 أعمدة. */
+  if (sh.getMaxColumns() < 7) { sh.insertColumnsAfter(sh.getMaxColumns(), 7 - sh.getMaxColumns()); sh.getRange(1, 7).setValue('صور'); }
   return sh;
 }
 function chatWho_(chatId) {
@@ -2929,9 +2932,12 @@ function logChatRows_(chatId, rows) {
     if (!rows || !rows.length || String(chatId) === String(PERSONAL_CHAT)) return;
     if (badChatId_(chatId)) { noteBadChatId_('logChat', chatId, rows[0] && rows[0][1]); return; }
     var w = chatWho_(chatId), now = cairoStamp_();
+    var pend = '';   /* صور العميل اللي لسه واصلة: تتربط بأول صف للعميل */
     var vals = rows.filter(function (r) { return r[1]; }).map(function (r) {
+      var f = '';
+      if (r[0] === 'user' && !pend) { pend = takePendingPhotos_(chatId); f = pend; }
       /* الاقتباس يخليه نص. من غيره الشيت أحيانًا بيحوّل yyyy-MM-dd لتاريخ والعرض بيتلخبط. */
-      return ["'" + (r[2] || now), String(chatId), w.n, w.p ? "'" + w.p : '', r[0], String(r[1]).slice(0, 4000)];
+      return ["'" + (r[2] || now), String(chatId), w.n, w.p ? "'" + w.p : '', r[0], String(r[1]).slice(0, 4000), f];
     });
     if (!vals.length) return;
     /* قفل المستخدم مش قفل السكربت. قفل السكربت بيمسكه التريجر الحي واللقطة دقايق.
@@ -2940,7 +2946,7 @@ function logChatRows_(chatId, rows) {
     try { got = lock.tryLock(8000); } catch (eL) {}
     try {
       var sh = chatLogSheet_();
-      sh.getRange(sh.getLastRow() + 1, 1, vals.length, 6).setValues(vals);
+      sh.getRange(sh.getLastRow() + 1, 1, vals.length, 7).setValues(vals);
     } finally { if (got) { try { lock.releaseLock(); } catch (e2) {} } }
   } catch (e) { Logger.log('خطأ سجل المحادثات: ' + e.message); }
 }
@@ -3976,6 +3982,7 @@ function handleCustomerMessage(chatId, message) {
         pfids = ids.map(function (n) { return got[gk + n]; });
         if (!message.caption) message.caption = MC.get(gk + 'cap') || '';
       }
+      savePhotosForLog_(chatId, pfids);   /* الصور تتحفظ في Drive وتظهر في اللوحة */
       if (holdOn_(chatId)) {
         escalateToDoctor_(chatId, '[' + (pfids.length > 1 ? pfids.length + ' صور' : 'صورة') + ']' + (message.caption ? ' ' + message.caption : ''), 'صورة');
         saveConversationTurn(chatId, '[صورة]' + (message.caption ? ' ' + message.caption : ''), '[الصيدلي بيرد بنفسه]', 'bot', message.date);
@@ -3985,6 +3992,10 @@ function handleCustomerMessage(chatId, message) {
       sendTelegram_(chatId, pfids.length > 1 ? 'استلمنا الصور (' + pfids.length + ') 🌿 ثواني وبنشوفها لحضرتك' : 'استلمنا الصورة 🌿 ثواني وبنشوفها لحضرتك');
       sendTypingAction_(chatId);
       var seen = readPhoto_(pfids);
+      if (seen && seen.items && seen.items.length) {
+        logChatRows_(chatId, [['sys', '📷 البوت قرأ (' + (seen.kind === 'prescription' ? 'روشتة' : 'علبة') + (seen.handwritten ? ' بخط الإيد' : '') + '): ' +
+          seen.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (؟)' : ''); }).join('، ')]]);
+      }
       /* ✍️ روشتة مكتوبة بخط الإيد → الصيدلي بس اللي يقراها ويرد (البوت ميخمّنش أسماء) */
       if (seen && seen.kind === 'prescription' && seen.handwritten) {
         var guess = (seen.items || []).map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (؟)' : ''); }).join('، ');
@@ -5402,7 +5413,7 @@ function chatLogRows_(maxRows) {
   var sh = chatLogSheet_(), n = sh.getLastRow() - 1;
   if (n < 1) return [];
   var take = Math.min(n, maxRows || 6000);
-  return sh.getRange(sh.getLastRow() - take + 1, 1, take, 6).getDisplayValues();
+  return sh.getRange(sh.getLastRow() - take + 1, 1, take, 7).getDisplayValues();
 }
 function getBotChats() {
   var rows = chatLogRows_(6000), by = {}, P = PropertiesService.getScriptProperties().getProperties();
@@ -5424,7 +5435,7 @@ function getBotChats() {
 function getBotChat(id) {
   id = String(id || '');
   var msgs = chatLogRows_(8000).filter(function (r) { return r[1] === id; }).slice(-300)
-    .map(function (r) { return { t: r[0], role: r[4], text: r[5] }; });
+    .map(function (r) { return { t: r[0], role: r[4], text: r[5], f: r[6] || '' }; });
   var w = chatWho_(id);
   return { ok: true, id: id, name: w.n, phone: w.p, hold: holdOn_(id),
            pending: PropertiesService.getScriptProperties().getProperty('escp_' + id) || '', msgs: msgs };
@@ -5611,6 +5622,64 @@ function setupHandoffReminderTrigger() {
   Logger.log(r.message || r.error || '');
   return r;
 }
+
+/* ═══ 📷 صور المحادثات: بتتحفظ في فولدر Drive خاص "صور البوت" وبتظهر في اللوحة بالرقم السري بس ═══ */
+var BOT_PHOTO_KEEP_DAYS_ = 90;
+function photoFolder_() {
+  var P = PropertiesService.getScriptProperties(), id = P.getProperty('BOT_PHOTO_FOLDER');
+  if (id) { try { var f = DriveApp.getFolderById(id); if (!f.isTrashed()) return f; } catch (e) {} }
+  var it = DriveApp.getFoldersByName('صور البوت'), fo = it.hasNext() ? it.next() : DriveApp.createFolder('صور البوت');
+  P.setProperty('BOT_PHOTO_FOLDER', fo.getId());
+  return fo;
+}
+function takePendingPhotos_(chatId) {
+  try {
+    var c = CacheService.getScriptCache(), k = 'pimg_' + chatId, v = c.get(k);
+    if (v) c.remove(k);
+    return v || '';
+  } catch (e) { return ''; }
+}
+/* بتتناداه أول ما صور العميل توصل. الـ ids بتتربط بأول صف للعميل في السجل. */
+function savePhotosForLog_(chatId, fileIds) {
+  try {
+    var fo = photoFolder_(), ids = [], stamp = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyyMMdd_HHmmss');
+    (fileIds || []).slice(0, 10).forEach(function (fid, i) {
+      try {
+        var b = tgFileBlob_(fid); if (!b) return;
+        var f = fo.createFile(b.setName(String(chatId) + '_' + stamp + '_' + (i + 1) + '.jpg'));
+        ids.push(f.getId());
+      } catch (e1) { Logger.log('savePhoto: ' + e1.message); }
+    });
+    if (ids.length) CacheService.getScriptCache().put('pimg_' + chatId, ids.join(','), 180);
+    cleanOldBotPhotos_();
+  } catch (e) { Logger.log('savePhotosForLog_: ' + e.message); }
+}
+/* مرة في اليوم (وقت ما صورة جديدة توصل): امسح الصور الأقدم من ٩٠ يوم */
+function cleanOldBotPhotos_() {
+  var P = PropertiesService.getScriptProperties(), today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+  if (P.getProperty('BOT_PHOTO_CLEAN') === today) return;
+  P.setProperty('BOT_PHOTO_CLEAN', today);
+  try {
+    var cut = Utilities.formatDate(new Date(Date.now() - BOT_PHOTO_KEEP_DAYS_ * 86400000), 'UTC', "yyyy-MM-dd'T'HH:mm:ss'Z'");
+    var it = photoFolder_().searchFiles("createdDate < '" + cut + "'"), n = 0;
+    while (it.hasNext() && n < 200) { it.next().setTrashed(true); n++; }
+  } catch (e) { Logger.log('cleanOldBotPhotos_: ' + e.message); }
+}
+/* بترجّع الصورة كـ data URL. full=false → مصغّرة. بترفض أي ملف مش جوه فولدر الصور. */
+function botPhoto(id, full) {
+  id = String(id || '').replace(/[^\w-]/g, '');
+  if (!id) return { ok: false, error: 'مفيش صورة' };
+  try {
+    var f = DriveApp.getFileById(id), fo = photoFolder_(), inside = false, ps = f.getParents();
+    while (ps.hasNext()) if (ps.next().getId() === fo.getId()) inside = true;
+    if (!inside) return { ok: false, error: 'مش من صور البوت' };
+    var b = null;
+    if (!full) { try { b = f.getThumbnail(); } catch (eT) { b = null; } }
+    if (!b) b = f.getBlob();
+    return { ok: true, data: 'data:' + (b.getContentType() || 'image/jpeg') + ';base64,' + Utilities.base64Encode(b.getBytes()) };
+  } catch (e) { return { ok: false, error: 'الصورة اتمسحت أو مش متاحة' }; }
+}
+
 // ==== MODULE 50_sms_points (split from server/Code.js; load order = file name order) ====
 
 

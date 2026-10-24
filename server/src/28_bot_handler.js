@@ -90,6 +90,7 @@ function handleCustomerMessage(chatId, message) {
       }
       savePhotosForLog_(chatId, pfids);   /* الصور تتحفظ في Drive وتظهر في اللوحة */
       if (holdOn_(chatId)) {
+        pausedAck_(chatId);
         escalateToDoctor_(chatId, '[' + (pfids.length > 1 ? pfids.length + ' صور' : 'صورة') + ']' + (message.caption ? ' ' + message.caption : ''), 'صورة');
         saveConversationTurn(chatId, '[صورة]' + (message.caption ? ' ' + message.caption : ''), '[الصيدلي بيرد بنفسه]', 'bot', message.date);
         return;
@@ -146,6 +147,7 @@ function handleCustomerMessage(chatId, message) {
               caption: '🎤 فويس واتساب\n[#c' + chatId + ']' } });
         } catch (eFv) {}
         heldSilence_(chatId, '[صوت]', message.date);
+        pausedAck_(chatId);
         try {
           PropertiesService.getScriptProperties().setProperty('escp_' + chatId, Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm'));
           PropertiesService.getScriptProperties().deleteProperty('escr_' + chatId);
@@ -181,6 +183,7 @@ function handleCustomerMessage(chatId, message) {
 
     /* 🤫 الصيدلي ماسك المحادثة → الرسالة توصله والبوت ميردش */
     if (holdOn_(chatId)) {
+      pausedAck_(chatId);
       tgApi_('sendMessage', { chat_id: PERSONAL_CHAT, reply_markup: holdKb_(chatId, true),
         text: '💬 ' + (getKnownCustomerName_(chatId) || 'العميل') + (fromVoice ? ' (فويس)' : '') + ':\n"' + text.slice(0, 2500) + '"\n\n↩️ اعمل Reply عشان ترد.\n[#c' + chatId + ']' });
       saveConversationTurn(chatId, text, '[الصيدلي بيرد بنفسه]', 'bot', message.date);

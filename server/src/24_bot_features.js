@@ -114,6 +114,14 @@ function botToggleCmd_(chatId, text) {
   var cmd = String(text || '').split(/\s+/)[0].toLowerCase();
   var at = cmd.indexOf('@');
   if (at !== -1) cmd = cmd.slice(0, at);
+  if (cmd === '/bottest') {
+    var arg = String(text || '').replace(/^\S+\s*/, '').trim();
+    if (arg === 'off') testNumbersSet_([]);
+    else if (arg) testNumbersSet_(arg.split(/[\s,،]+/));
+    sendTelegramStaff('🧪 أرقام التجربة (البوت بيرد عليها حتى وهو واقف): ' + (testNumbers_().join('، ') || 'مفيش') +
+      '\nلتغييرها: /bottest 01120372238 01012345678\nللمسح: /bottest off', PERSONAL_CHAT);
+    return true;
+  }
   if (cmd !== '/botoff' && cmd !== '/boton') return false;
   var pause = cmd === '/botoff';
   botPauseSet_(pause);
@@ -126,7 +134,7 @@ function botToggleCmd_(chatId, text) {
    وقف الواتساب = نفس الإمساك على شاتات wa_* بس، فالرسالة تتسجل وتوصل للصيدلي من غير رد آلي.
    الفحص لحظة الإرسال مش بس أول الرسالة: رد الصيدلي من الواتساب ممكن يوصل والبوت لسه مستني الموديل. */
 function holdOn_(cid) {
-  if (botPaused_() && isWa_(cid)) return true;
+  if (botPaused_() && isWa_(cid) && !isTestChat_(cid)) return true;
   return !!CacheService.getScriptCache().get('hold_' + cid);
 }
 function holdBlocksBotSend_(chatId, text) {
@@ -282,4 +290,32 @@ function confirmPendingOrder_(chatId) {
   delFlow_(chatId, null);
   tgApi_('sendMessage', { chat_id: chatId, text: rr });
   saveConversationTurn(chatId, '[أكد الطلب]', rr);
+}
+/* 🧪 وضع التجربة: والبوت واقف على الواتساب، أرقام التجربة بس بيرد عليها (آخر ١٠ أرقام). الافتراضي رقم الدكتور أحمد. */
+function testNumbers_() {
+  var v = PropertiesService.getScriptProperties().getProperty('BOT_TEST');
+  if (v === null || v === undefined) return ['1120372238'];
+  return String(v).split(',').filter(Boolean);
+}
+function testNumbersSet_(list) {
+  var clean = (list || []).map(function (x) { return String(x).replace(/\D/g, '').slice(-10); }).filter(function (x) { return x.length >= 9; });
+  PropertiesService.getScriptProperties().setProperty('BOT_TEST', clean.join(','));
+}
+function isTestChat_(cid) {
+  if (!isWa_(cid)) return false;
+  var d = String(cid).replace(/\D/g, '').slice(-10);
+  return !!d && testNumbers_().indexOf(d) !== -1;
+}
+/* والبوت واقف: العميل ياخد رسالة واحدة "استلمنا" (مرة كل ساعة) بدل ما يفضل من غير أي رد.
+   مفيش رسالة لو الصيدلي ماسك المحادثة (بيرد بنفسه). الجملة فيها "رد الصيدلي" عشان تعدّي من حاجز الإمساك. */
+function pausedAck_(chatId) {
+  try {
+    if (!isWa_(chatId) || !botPaused_() || isTestChat_(chatId)) return;
+    var c = CacheService.getScriptCache();
+    if (c.get('hold_' + chatId) || c.get('ack_' + chatId)) return;
+    c.put('ack_' + chatId, '1', 3600);
+    var msg = 'استلمنا رسالة حضرتك 🌿 رد الصيدلي هيوصلك هنا في أقرب وقت.';
+    var r = waSend_(String(chatId), msg);
+    if (r && r.ok !== false) logChatRows_(chatId, [['bot', msg]]);
+  } catch (e) { Logger.log('pausedAck_: ' + e.message); }
 }

@@ -125,8 +125,9 @@ function handleCustomerMessageInner_(chatId, message) {
         var ptxt = toAsciiDigits_(String(message.caption || '').trim()) || (seen.kind === 'prescription' ? 'عايز الروشتة دي' : 'عندكم الدوا ده؟');
         if (seen.kind === 'prescription')
           escalateToDoctor_(chatId, '[روشتة — الصورة فوق] قريت منها: ' + pnames + (message.caption ? '\nالعميل كتب: ' + message.caption : ''), 'روشتة — راجعها');
+        if (seen.unread) escalateToDoctor_(chatId, '[' + seen.unread + ' صورة ما اتقرتش من ' + pfids.length + ' — الصور فوق]' + (message.caption ? ' ' + message.caption : ''), '📷 صورة ما اتقرتش — راجعها');
         PHOTO_CTX = seen;
-        try { CacheService.getScriptCache().put('lastphoto_' + chatId, JSON.stringify({ kind: seen.kind, items: seen.items, rx: !!seen.rx, n: pfids.length }), 21600); } catch (eP) {}
+        try { CacheService.getScriptCache().put('lastphoto_' + chatId, JSON.stringify({ kind: seen.kind, items: seen.items, rx: !!seen.rx, n: pfids.length, unread: seen.unread || 0 }), 21600); } catch (eP) {}
         var okp = false;
         if (holdOn_(chatId)) { saveConversationTurn(chatId, '[صورة]' + (message.caption ? ' ' + message.caption : ''), '[الصيدلي بيرد بنفسه]', 'bot', message.date); return; }
         try { okp = smartCustomerReply_(chatId, ptxt + '\n[العميل بعت صورة ' + (seen.kind === 'prescription' ? 'روشتة' : 'منتج') + ' مكتوب فيها: ' + pnames + ']', getConversationHistory(chatId), message.date); } catch (e) {}

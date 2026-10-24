@@ -2668,16 +2668,16 @@ function readPhoto_(fileIds) {
     }
     /* ⚡ كل صورة لوحدها وكلهم مع بعض على الموديل الأساسي. اللي يفشل يتجرب على الاحتياطي (برضه مع بعض). أقصى انتظار حوالي دقيقة. */
     var T0 = Date.now();
-    var M1 = aiKey_('PHOTO_MODEL') || 'gemini-3.8-flash', backups = [AI_DEFAULTS.gemini.bot, GEMINI_MODEL].filter(function (m, i, a) { return m && m !== M1 && a.indexOf(m) === i; });
+    var M1 = aiKey_('PHOTO_MODEL') || AI_DEFAULTS.gemini.bot, backups = [GEMINI_MODEL, 'gemini-3.8-flash'].filter(function (m, i, a) { return m && m !== M1 && a.indexOf(m) === i; });   /* السريع الأول: 3.8 كان بياخد دقيقة */
     var outs = UrlFetchApp.fetchAll(imgs.map(function (im) { return req(M1, im); })).map(function (r) { return parse(r, M1); });
     /* الصور اللي فشلت بس تتجرب على الاحتياطي، كلها مع بعض (مش واحدة واحدة)، ولو لسه فاضل وقت على التالت */
-    for (var bi = 0; bi < backups.length && Date.now() - T0 < 45000; bi++) {
+    for (var bi = 0; bi < backups.length && Date.now() - T0 < 50000; bi++) {
       var miss = []; outs.forEach(function (o, i) { if (!o) miss.push(i); });
       if (!miss.length) break;
       var rs = UrlFetchApp.fetchAll(miss.map(function (i) { return req(backups[bi], imgs[i]); }));
       miss.forEach(function (i, k) { outs[i] = parse(rs[k], backups[bi]); });
     }
-    var good = outs.filter(Boolean);
+    var good = outs.filter(Boolean), unread = outs.length - good.length;
     if (!good.length) return null;
     var seenN = {}, items = [];
     good.forEach(function (o) { (o.items || []).forEach(function (it) {
@@ -2689,7 +2689,7 @@ function readPhoto_(fileIds) {
     var kinds = good.map(function (o) { return o.kind; });
     return { kind: kinds.indexOf('prescription') !== -1 ? 'prescription' : (kinds.indexOf('box') !== -1 ? 'box' : 'other'),
              handwritten: good.some(function (o) { return o.kind === 'prescription' && o.handwritten !== false; }),
-             items: items, rx: good.some(function (o) { return o.rx; }),
+             items: items, unread: unread, rx: good.some(function (o) { return o.rx; }),
              label: (good.filter(function (o) { return o.label; })[0] || {}).label || '' };
   } catch (e) { Logger.log('خطأ readPhoto_: ' + e.message); }
   return null;
@@ -3663,12 +3663,14 @@ function photoLine_(chatId) {
   if (!P) { try { P = JSON.parse(CacheService.getScriptCache().get('lastphoto_' + chatId) || 'null'); } catch (e) { P = null; } }
   if (!P || !P.items || !P.items.length) return '';
   var isRx = P.kind === 'prescription';
+  var unreadLine = P.unread ? ('→ تنبيه مهم: ' + P.unread + ' صورة من اللي بعتها العميل ما اتقرتش (ممكن تكون روشتة أو حاجة تانية). قول للعميل بوضوح وبجملة قصيرة إن فيه صورة الدكتور هيراجعها بنفسه، وماتقولش إن كل الصور اتشافت.\n') : '';
   var names = P.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.use ? ' [استخدامه: ' + it.use + ']' : '') + (it.hand ? ' {من الروشتة}' : '') + (it.sure === false ? ' (مش واضح)' : ''); }).join('، ');
   var s = (fresh ? 'العميل بعت دلوقتي صورة ' : 'آخر صورة بعتها العميل من شوية كانت ') + (isRx ? 'روشتة' : 'علبة/منتج') + ' مكتوب فيها: ' + names + '.\n' +
     (fresh ? '' : '→ لو العميل قال "الصورة" أو "الورقة" أو "اسمه ايه" أو "الدوا ده" يبقى قصده على الصورة دي — قوله الاسم المكتوب فيها على طول ومتطلبش يبعتها تاني.\n') +
     '→ قاعدة الماركة (مهمة جدًا): قول "متوفر" بس لو اسم الصنف في المخزون هو نفس الاسم التجاري اللي في الصورة. ' +
     'نفس المادة الفعالة باسم تاني = منتج تاني (مثال: Xigduo XR ≠ داباليكس اكسار) → الأصناف دي مش متوفرة، ' +
     'وممنوع تقدّم البديل كأنه هو نفس المنتج.\n';
+  s += unreadLine;
   if (isRx) s += '→ دي روشتة' + ((P.n || 1) > 1 ? ' — وكل الأصناف اللي في الصور (حتى العلب) تعتبر من الروشتة' : '') + ': قوله المتوفر منها بالسعر والإجمالي، والمش متوفر يتكتب "مش متوفر" بس. ' +
     'قاعدة المش متوفر: ممنوع تقترح أي بديل أو أي صنف بنفس المادة الفعالة. للأصناف المش متوفرة اكتب مرة واحدة في الآخر بصيغة قريبة من: "مش موجود دلوقتي، تحب نوفّره لحضرتك ولا مستعجل والدكتور يشوفلك حل؟" و escalate=true. متقولش جرعات ومتذكرش أسماء بديلة.\n' +
     '→ أي صنف مكتوب جنبه (مش واضح): اكتبه في سطر لوحده بالشكل ده: الاسم — مش واضح في الروشتة (الدكتور هيأكده). متقولش عليه متوفر ولا مش متوفر.\n' +
@@ -4083,8 +4085,9 @@ function handleCustomerMessageInner_(chatId, message) {
         var ptxt = toAsciiDigits_(String(message.caption || '').trim()) || (seen.kind === 'prescription' ? 'عايز الروشتة دي' : 'عندكم الدوا ده؟');
         if (seen.kind === 'prescription')
           escalateToDoctor_(chatId, '[روشتة — الصورة فوق] قريت منها: ' + pnames + (message.caption ? '\nالعميل كتب: ' + message.caption : ''), 'روشتة — راجعها');
+        if (seen.unread) escalateToDoctor_(chatId, '[' + seen.unread + ' صورة ما اتقرتش من ' + pfids.length + ' — الصور فوق]' + (message.caption ? ' ' + message.caption : ''), '📷 صورة ما اتقرتش — راجعها');
         PHOTO_CTX = seen;
-        try { CacheService.getScriptCache().put('lastphoto_' + chatId, JSON.stringify({ kind: seen.kind, items: seen.items, rx: !!seen.rx, n: pfids.length }), 21600); } catch (eP) {}
+        try { CacheService.getScriptCache().put('lastphoto_' + chatId, JSON.stringify({ kind: seen.kind, items: seen.items, rx: !!seen.rx, n: pfids.length, unread: seen.unread || 0 }), 21600); } catch (eP) {}
         var okp = false;
         if (holdOn_(chatId)) { saveConversationTurn(chatId, '[صورة]' + (message.caption ? ' ' + message.caption : ''), '[الصيدلي بيرد بنفسه]', 'bot', message.date); return; }
         try { okp = smartCustomerReply_(chatId, ptxt + '\n[العميل بعت صورة ' + (seen.kind === 'prescription' ? 'روشتة' : 'منتج') + ' مكتوب فيها: ' + pnames + ']', getConversationHistory(chatId), message.date); } catch (e) {}

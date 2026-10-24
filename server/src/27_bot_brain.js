@@ -243,6 +243,8 @@ function replyMentionsItem_(reply, it) {
    نفس الماركة بشكل تاني (closeWhy=form) مسموح. نفس المادة الفعالة بماركة تانية ممنوعة. */
 function botReplyBlocked_(reply, text, items, history) {
   if (replyHasDosing_(reply)) return 'جرعة';
+  /* الرد ميكشفش قواعد البوت ولا يقول إنه "راجع المخزون" ولا جمل غريبة عن إعادة إرسال */
+  if (/ممنوع\s*نقترح|ممنوع\s*نرشح|مراجعتنا\s*(للمخزون|اكدت)|راجعنا\s*المخزون|اتاكدنا\s*من\s*المخزون|اتبعتت\s*تاني/.test(normalizeArabic(reply))) return 'صياغة ممنوعة';
   var named = (items || []).some(function (it) { return customerNamedItem_(text, history, it); });
   var nreply = normalizeArabic(reply);
   if (/مش لاقي نفس الاسم|بنفس الماده الفعاله/.test(nreply)) return 'قائمة بدائل';
@@ -373,6 +375,7 @@ function smartCustomerReply_(chatId, text, history, arrivalUnix) {
       return true;
     }
 
+    reply = String(reply).replace(/الدكتور الصيدلي/g, 'الدكتور').replace(/الصيدلي (هيتواصل|هيراجع|هيكلم|هيرد|هيتأكد|هيحدد)/g, 'الدكتور $1');
     var blocked = botReplyBlocked_(reply, text, items, history);
     if (blocked) {
       var missingLine = blocked === 'قائمة بدائل';

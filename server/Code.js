@@ -2712,6 +2712,14 @@ function botToggleCmd_(chatId, text) {
   var cmd = String(text || '').split(/\s+/)[0].toLowerCase();
   var at = cmd.indexOf('@');
   if (at !== -1) cmd = cmd.slice(0, at);
+  if (cmd === '/bottest') {
+    var arg = String(text || '').replace(/^\S+\s*/, '').trim();
+    if (arg === 'off') testNumbersSet_([]);
+    else if (arg) testNumbersSet_(arg.split(/[\s,،]+/));
+    sendTelegramStaff('🧪 أرقام التجربة (البوت بيرد عليها حتى وهو واقف): ' + (testNumbers_().join('، ') || 'مفيش') +
+      '\nلتغييرها: /bottest 01120372238 01012345678\nللمسح: /bottest off', PERSONAL_CHAT);
+    return true;
+  }
   if (cmd !== '/botoff' && cmd !== '/boton') return false;
   var pause = cmd === '/botoff';
   botPauseSet_(pause);
@@ -2724,7 +2732,7 @@ function botToggleCmd_(chatId, text) {
    وقف الواتساب = نفس الإمساك على شاتات wa_* بس، فالرسالة تتسجل وتوصل للصيدلي من غير رد آلي.
    الفحص لحظة الإرسال مش بس أول الرسالة: رد الصيدلي من الواتساب ممكن يوصل والبوت لسه مستني الموديل. */
 function holdOn_(cid) {
-  if (botPaused_() && isWa_(cid)) return true;
+  if (botPaused_() && isWa_(cid) && !isTestChat_(cid)) return true;
   return !!CacheService.getScriptCache().get('hold_' + cid);
 }
 function holdBlocksBotSend_(chatId, text) {
@@ -2881,6 +2889,35 @@ function confirmPendingOrder_(chatId) {
   tgApi_('sendMessage', { chat_id: chatId, text: rr });
   saveConversationTurn(chatId, '[أكد الطلب]', rr);
 }
+/* 🧪 وضع التجربة: والبوت واقف على الواتساب، أرقام التجربة بس بيرد عليها (آخر ١٠ أرقام). الافتراضي رقم الدكتور أحمد. */
+function testNumbers_() {
+  var v = PropertiesService.getScriptProperties().getProperty('BOT_TEST');
+  if (v === null || v === undefined) return ['1120372238'];
+  return String(v).split(',').filter(Boolean);
+}
+function testNumbersSet_(list) {
+  var clean = (list || []).map(function (x) { return String(x).replace(/\D/g, '').slice(-10); }).filter(function (x) { return x.length >= 9; });
+  PropertiesService.getScriptProperties().setProperty('BOT_TEST', clean.join(','));
+}
+function isTestChat_(cid) {
+  if (!isWa_(cid)) return false;
+  var d = String(cid).replace(/\D/g, '').slice(-10);
+  return !!d && testNumbers_().indexOf(d) !== -1;
+}
+/* والبوت واقف: العميل ياخد رسالة واحدة "استلمنا" (مرة كل ساعة) بدل ما يفضل من غير أي رد.
+   مفيش رسالة لو الصيدلي ماسك المحادثة (بيرد بنفسه). الجملة فيها "رد الصيدلي" عشان تعدّي من حاجز الإمساك. */
+function pausedAck_(chatId) {
+  try {
+    if (!isWa_(chatId) || !botPaused_() || isTestChat_(chatId)) return;
+    var c = CacheService.getScriptCache();
+    if (c.get('hold_' + chatId) || c.get('ack_' + chatId)) return;
+    c.put('ack_' + chatId, '1', 3600);
+    var msg = 'استلمنا رسالة حضرتك 🌿 رد الصيدلي هيوصلك هنا في أقرب وقت.';
+    var r = waSend_(String(chatId), msg);
+    if (r && r.ok !== false) logChatRows_(chatId, [['bot', msg]]);
+  } catch (e) { Logger.log('pausedAck_: ' + e.message); }
+}
+
 // ==== MODULE 25_bot_history_ui (split from server/Code.js; load order = file name order) ====
 
 
@@ -3693,6 +3730,8 @@ function replyMentionsItem_(reply, it) {
    نفس الماركة بشكل تاني (closeWhy=form) مسموح. نفس المادة الفعالة بماركة تانية ممنوعة. */
 function botReplyBlocked_(reply, text, items, history) {
   if (replyHasDosing_(reply)) return 'جرعة';
+  /* الرد ميكشفش قواعد البوت ولا يقول إنه "راجع المخزون" ولا جمل غريبة عن إعادة إرسال */
+  if (/ممنوع\s*نقترح|ممنوع\s*نرشح|مراجعتنا\s*(للمخزون|اكدت)|راجعنا\s*المخزون|اتاكدنا\s*من\s*المخزون|اتبعتت\s*تاني/.test(normalizeArabic(reply))) return 'صياغة ممنوعة';
   var named = (items || []).some(function (it) { return customerNamedItem_(text, history, it); });
   var nreply = normalizeArabic(reply);
   if (/مش لاقي نفس الاسم|بنفس الماده الفعاله/.test(nreply)) return 'قائمة بدائل';
@@ -3823,6 +3862,7 @@ function smartCustomerReply_(chatId, text, history, arrivalUnix) {
       return true;
     }
 
+    reply = String(reply).replace(/الدكتور الصيدلي/g, 'الدكتور').replace(/الصيدلي (هيتواصل|هيراجع|هيكلم|هيرد|هيتأكد|هيحدد)/g, 'الدكتور $1');
     var blocked = botReplyBlocked_(reply, text, items, history);
     if (blocked) {
       var missingLine = blocked === 'قائمة بدائل';
@@ -3984,6 +4024,7 @@ function handleCustomerMessage(chatId, message) {
       }
       savePhotosForLog_(chatId, pfids);   /* الصور تتحفظ في Drive وتظهر في اللوحة */
       if (holdOn_(chatId)) {
+        pausedAck_(chatId);
         escalateToDoctor_(chatId, '[' + (pfids.length > 1 ? pfids.length + ' صور' : 'صورة') + ']' + (message.caption ? ' ' + message.caption : ''), 'صورة');
         saveConversationTurn(chatId, '[صورة]' + (message.caption ? ' ' + message.caption : ''), '[الصيدلي بيرد بنفسه]', 'bot', message.date);
         return;
@@ -4040,6 +4081,7 @@ function handleCustomerMessage(chatId, message) {
               caption: '🎤 فويس واتساب\n[#c' + chatId + ']' } });
         } catch (eFv) {}
         heldSilence_(chatId, '[صوت]', message.date);
+        pausedAck_(chatId);
         try {
           PropertiesService.getScriptProperties().setProperty('escp_' + chatId, Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm'));
           PropertiesService.getScriptProperties().deleteProperty('escr_' + chatId);
@@ -4075,6 +4117,7 @@ function handleCustomerMessage(chatId, message) {
 
     /* 🤫 الصيدلي ماسك المحادثة → الرسالة توصله والبوت ميردش */
     if (holdOn_(chatId)) {
+      pausedAck_(chatId);
       tgApi_('sendMessage', { chat_id: PERSONAL_CHAT, reply_markup: holdKb_(chatId, true),
         text: '💬 ' + (getKnownCustomerName_(chatId) || 'العميل') + (fromVoice ? ' (فويس)' : '') + ':\n"' + text.slice(0, 2500) + '"\n\n↩️ اعمل Reply عشان ترد.\n[#c' + chatId + ']' });
       saveConversationTurn(chatId, text, '[الصيدلي بيرد بنفسه]', 'bot', message.date);

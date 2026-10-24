@@ -202,7 +202,30 @@ function ensureTriggers_(opts) {
   }
   return { ok: ok, created: created, existed: existed, errors: errors, message: msg, error: errors.length ? msg : '' };
 }
+/* ↩️ رجوع لمرة واحدة للإعدادات المتفق عليها: واتساب واقف على العملاء (رقم التجربة شغال)، محادثة Gemini 3.5 Flash، الصور على الموديل السريع.
+   مبنلمسش: التوصيل والمواعيد وأرقام التجربة والتوكنات والرقم السري وقفل اللوحة. بيبعتلك على تيليجرام إيه اللي اتغيّر (قبل ← بعد). */
+var SETTINGS_RESTORE_MARK_ = 'agreed-2026-10-25';
+function restoreAgreedSettings_() {
+  try {
+    var P = PropertiesService.getScriptProperties();
+    if (P.getProperty('SETTINGS_RESTORED') === SETTINGS_RESTORE_MARK_) return;
+    var want = { BOT_PAUSED: '1', AI_PROVIDER: 'gemini', AI_BOT_MODEL: null, AI_DOSE_MODEL: null, PHOTO_MODEL: null };
+    var changes = [];
+    Object.keys(want).forEach(function (k) {
+      var cur = P.getProperty(k), w = want[k];
+      if ((cur === null || cur === undefined ? null : cur) === w) return;
+      changes.push(k + ': ' + (cur === null || cur === undefined ? '(فاضي)' : cur) + ' ← ' + (w === null ? '(فاضي = الافتراضي)' : w));
+      if (w === null) P.deleteProperty(k); else P.setProperty(k, w);
+    });
+    try { CacheService.getScriptCache().remove('bot_paused'); } catch (e1) {}
+    P.setProperty('SETTINGS_RESTORED', SETTINGS_RESTORE_MARK_);
+    sendTelegramStaff('↩️ رجّعت إعدادات البوت لآخر وضع اتفقنا عليه:\n' +
+      (changes.length ? changes.join('\n') : 'كانت زي ما هي — مفيش حاجة اتغيّرت.') +
+      '\n\nواتساب العملاء واقف (رقم التجربة بيرد). لتشغيله: /boton في الشات ده.', PERSONAL_CHAT);
+  } catch (e) { Logger.log('restoreAgreedSettings_: ' + e.message); }
+}
 function maybeEnsureTriggers_() {
+  restoreAgreedSettings_();
   var P = PropertiesService.getScriptProperties();
   if (P.getProperty('TRIGGERS_ENSURED') === TRIGGERS_ENSURED_MARK_) return;
   var failAt = parseInt(P.getProperty('TRIGGERS_ENSURED_FAIL') || '0', 10);

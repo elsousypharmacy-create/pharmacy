@@ -104,6 +104,7 @@ function maskPhonesInText_(text) {
   });
 }
 function remindPendingHandoffs() {
+  try { waitingDigest_(); } catch (eW) { Logger.log('waitingDigest_: ' + eW.message); }
   var P = PropertiesService.getScriptProperties(), all = {};
   try { all = P.getProperties() || {}; } catch (e) { return; }
   var now = Date.now(), inHours = withinBotHours_();
@@ -291,4 +292,28 @@ function botPhoto(id, full) {
     if (!b) b = f.getBlob();
     return { ok: true, data: 'data:' + (b.getContentType() || 'image/jpeg') + ';base64,' + Utilities.base64Encode(b.getBytes()) };
   } catch (e) { return { ok: false, error: 'الصورة اتمسحت أو مش متاحة' }; }
+}
+
+/* ⏳ عملاء كتبوا ومحدش رد عليهم أكتر من ساعتين: ملخص على تيليجرام (مرة كل 3 ساعات، جوه مواعيد العمل، من غير شاتات التجربة) */
+function waitingDigest_() {
+  var P = PropertiesService.getScriptProperties(), now = Date.now();
+  if (!withinBotHours_()) return;
+  if (now - (parseInt(P.getProperty('WAIT_DIGEST_AT'), 10) || 0) < 3 * 3600000) return;
+  var rows = chatLogRows_(1500), last = {};
+  rows.forEach(function (r) { if (r[1]) last[r[1]] = r; });
+  var list = [];
+  Object.keys(last).forEach(function (id) {
+    var r = last[id];
+    if (r[4] !== 'user' || String(id) === String(PERSONAL_CHAT) || badChatId_(id) || isTestChat_(id)) return;
+    var t0 = 0; try { t0 = Utilities.parseDate(String(r[0]).slice(0, 16), 'Africa/Cairo', 'yyyy-MM-dd HH:mm').getTime(); } catch (e) {}
+    var hrs = (now - t0) / 3600000;
+    if (!t0 || hrs < 2 || hrs > 72) return;
+    list.push({ id: id, name: r[2], phone: r[3], text: String(r[5]).replace(/\s+/g, ' ').slice(0, 45), hrs: Math.floor(hrs) });
+  });
+  if (!list.length) return;
+  P.setProperty('WAIT_DIGEST_AT', String(now));
+  list.sort(function (a, b) { return b.hrs - a.hrs; });
+  sendTelegramStaff('⏳ عملاء مستنيين رد (' + list.length + '):\n' + list.slice(0, 10).map(function (c) {
+    return '• ' + (c.name || maskPhone_(c.phone) || ('عميل ' + String(c.id).slice(-4))) + ' — من ' + c.hrs + ' ساعة: "' + maskPhonesInText_(c.text) + '"';
+  }).join('\n') + '\n\nافتح صفحة "البوت" في اللوحة وردّ عليهم.', PERSONAL_CHAT);
 }

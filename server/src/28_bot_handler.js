@@ -101,7 +101,7 @@ function handleCustomerMessageInner_(chatId, message) {
         return;
       }
       /* 📷 البوت يقرا الصورة: علبة دوا → يرد بالتوافر والسعر · روشتة → المتوفر والإجمالي + تتبعتلك تراجعها */
-      sendTelegram_(chatId, pfids.length > 1 ? 'استلمنا الصور (' + pfids.length + ') 🌿 ثواني وبنشوفها لحضرتك' : 'استلمنا الصورة 🌿 ثواني وبنشوفها لحضرتك');
+      sendTelegram_(chatId, pfids.length > 1 ? 'وصلت الصور، لحظة أشوفها' : 'وصلت الصورة، لحظة أشوفها');
       sendTypingAction_(chatId);
       var seen = readPhoto_(pfids);
       if (seen && seen.items && seen.items.length) {
@@ -115,7 +115,7 @@ function handleCustomerMessageInner_(chatId, message) {
           (guess ? '\nقراية تقريبية من البوت (للمساعدة بس): ' + guess : '') + (message.caption ? '\nالعميل كتب: ' + message.caption : ''), '✍️ روشتة بخط الإيد — اقراها ورد على العميل');
         var rxUser = '[روشتة بخط الإيد' + (message.caption ? ': ' + message.caption : '') + ']';
         if (holdOn_(chatId)) { saveConversationTurn(chatId, rxUser, '[الصيدلي بيرد بنفسه]', 'bot', message.date); return; }
-        var rr = 'استلمنا الروشتة 🌿 الصيدلي هيقراها بنفسه ويرد على حضرتك هنا بالمتوفر والأسعار في أقرب وقت.';
+        var rr = 'وصلت الروشتة، الدكتور هيقراها ويرد عليك هنا بالمتوفر والأسعار.';
         logDeliveredTurn_(chatId, rxUser, rr, message.date, sendTelegram_(chatId, rr) !== false);
         return;
       }
@@ -134,7 +134,7 @@ function handleCustomerMessageInner_(chatId, message) {
       }
       escalateToDoctor_(chatId, '[صورة/روشتة — الصورة فوق الرسالة دي]' + (message.caption ? ' ' + message.caption : ''), 'صورة/روشتة');
       if (holdOn_(chatId)) { saveConversationTurn(chatId, '[صورة]', '[الصيدلي بيرد بنفسه]', 'bot', message.date); return; }
-      const r = 'استلمنا الصورة 🌿 الصيدلي هيراجعها ويرد على حضرتك هنا في أقرب وقت.';
+      const r = 'وصلت الصورة، الدكتور هيراجعها ويرد عليك هنا.';
       logDeliveredTurn_(chatId, '[صورة]', r, message.date, sendTelegram_(chatId, r) !== false);
       return;
     }

@@ -365,7 +365,7 @@ function formatItemLine_(it) {
 }
 
 /* جملة العميل لما الاسم مش موجود. البديل مش بيتقترح؛ الدكتور هو اللي يقرر. */
-var PRODUCT_MISSING_REPLY_ = 'مش متوفر حاليًا، تحب نوفّره ولا مستعجل والدكتور يعرض بديل؟';
+var PRODUCT_MISSING_REPLY_ = 'مش موجود دلوقتي، تحب نوفّره لحضرتك ولا مستعجل والدكتور يشوفلك حل؟';
 
 // بيرجع {text, prices[]} — prices هي الأرقام المسموح للمودل يذكرها
 function buildProductAnswer_(results, askedFor) {

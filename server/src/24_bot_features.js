@@ -337,7 +337,7 @@ function pausedAck_(chatId) {
     var c = CacheService.getScriptCache();
     if (c.get('hold_' + chatId) || c.get('ack_' + chatId)) return;
     c.put('ack_' + chatId, '1', 3600);
-    var msg = 'استلمنا رسالة حضرتك 🌿 رد الصيدلي هيوصلك هنا في أقرب وقت.';
+    var msg = 'وصلتنا رسالتك، رد الصيدلي هيوصلك هنا قريب.';
     var r = waSend_(String(chatId), msg);
     if (r && r.ok !== false) logChatRows_(chatId, [['bot', msg]]);
   } catch (e) { Logger.log('pausedAck_: ' + e.message); }

@@ -190,11 +190,11 @@ function honorName_(nm) {
 }
 
 /* رسالة الترحيب — ثابتة ومنظمة، مش من الموديل */
-function sendWelcome_(chatId, prefix) {
+function sendWelcome_(chatId, prefix, salam) {
   var first = honorName_(getKnownCustomerName_(chatId));
   var t = (prefix ? prefix + '\n\n' : '') + (first
-    ? 'أهلًا بحضرتك يا ' + first + '، نوّرت ' + PHARMACY_NAME + ' 🌿\nنقدر نساعد حضرتك في إيه النهارده؟'
-    : 'أهلًا بحضرتك في ' + PHARMACY_NAME + ' 🌿\nنقدر نساعد حضرتك في:');
+    ? (salam ? 'وعليكم السلام ورحمة الله يا ' + first + ' 🌿\nأقدر أساعدك في إيه؟' : 'أهلًا يا ' + first + ' 🌿\nأقدر أساعدك في إيه؟')
+    : (salam ? 'وعليكم السلام ورحمة الله 🌿\nمعاك ' + PHARMACY_NAME + '، أقدر أساعدك في إيه؟' : 'أهلًا بيك في ' + PHARMACY_NAME + ' 🌿\nأقدر أساعدك في إيه؟'));
   var kb = JSON.parse(JSON.stringify(KB_MENU));
   if (getVerifiedPhone_(chatId)) kb.inline_keyboard[1].pop();   /* مسجل خلاص — نشيل زرار التسجيل */
   tgApi_('sendMessage', { chat_id: chatId, text: t, reply_markup: kb });

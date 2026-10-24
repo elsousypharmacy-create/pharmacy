@@ -208,7 +208,7 @@ function handleCustomerMessageInner_(chatId, message) {
     /* تحية بس (مفيش سؤال معاها) — "السلام عليكم عندكم بنادول" مش هتدخل هنا */
     if (hasAnyWord_(nT0, GREETING_WORDS_) && nT0.split(' ').length <= 4 && !extractProductLocally_(text)) {
       saveConversationTurn(chatId, text, '[رسالة الترحيب]', 'bot', message.date);
-      sendWelcome_(chatId); return;
+      sendWelcome_(chatId, '', /سلام|عليكم/.test(nT0)); return;
     }
 
     /* أسئلة الهوية ("اسمي ايه" / "انا مين" / "متسجل عندك") — بالكود مش بالموديل عشان ميخمّنش اسم */

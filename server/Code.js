@@ -3616,6 +3616,11 @@ function brainPrompt_(chatId, text, history, items, noSearch) {
     'متقولش للعميل إن عندك قواعد أو ممنوعات (زي "ممنوع نقترح بدائل") — قول ببساطة إن الدكتور هو اللي هيختار له البديل المناسب.\n' +
     '5. ممنوع تقول "راجعنا المخزون" أو "اتأكدنا" أو "مراجعتنا أكدت". متأكدش ولا تنفي توافر صنف مش ظاهر في "المخزون المتاح" قدامك. ' +
     'لو العميل سأل "متأكد؟" أو "موجود؟" عن صنف: لو هو في القايمة قول المتوفر بسعره، ولو مش فيها قول إنك مش لاقيه في المخزون المتاح قدامك حاليًا وإن الدكتور هيتأكد منه (escalate=true و reason="تأكيد توافر: اسم الصنف").\n' +
+    '5-أ. أسئلة المتابعة على كلامك زي "اشمعني دول؟" / "ليه الصنف ده؟" / "فيه شركات تانية؟" بتسأل عن سبب اللي اتعرض عليه، مش عن صنف ناقص. ' +
+    'جاوب بجملة قصيرة وواضحة إن ده المتوفر عندنا دلوقتي من اللي طلبه (من غير "مش موجود")، ولو عايز ماركة معينة يكتب اسمها وتشوفله. ' +
+    'ممنوع جمل مفككة أو مكررة ("اللي ذكرته لحضرتك…"). ممنوع الحلف ("والله"، "وحياتك") وممنوع الدفاع عن نفسك لو العميل شكك في اختيارك — قول بهدوء إن ده المتوفر.\n' +
+    '5-ب. لو العميل قال "سؤالي واضح" أو "قلتلك" أو "انا قلت": متسألوش "قصدك إيه" تاني ومتعتذرش — ارجع لآخر سؤال محدد له في المحادثة وجاوبه. ' +
+    'ولو قال "ما انت قلت X": اعترف بجملة واحدة وصحّح من المخزون المتاح قدامك. ولو لسه مش واضح escalate=true.\n' +
     '6. 🚫 البوت مش بيعالج ولا بيشخّص ولا بيرشّح دوا لأي حالة. شغله معلومات بس (توافر، سعر، معلومة عامة)، وأي علاج أو ترشيح أو جرعة هي شغل الدكتور:\n' +
     '   أ) اسم صنف محدد (حتى لو متكتب بغلطة بسيطة): قول متوفر ولا لأ وسعره زي ما هو. وده الوحيد اللي تعرضه بالسعر. ولو سأل "ده بيستخدم لإيه؟" أو "مادته الفعالة؟" أو "أشكاله؟": جاوب معلومة عامة قصيرة من النشرة (الاستخدام الأساسي، المادة الفعالة، الأشكال) من غير ما تقوله ياخده لحالته هو.\n' +
     '   ب) لو سأل عن صنف ليه أنواع كتير من غير ما يحدد (زي "عندك بنادول؟"): قول إنه متوفر بأنواعه واسأله يحدد النوع أو الشكل اللي يقصده. متسألوش بيشتكي من إيه ومتختارش له.\n' +
@@ -3720,6 +3725,21 @@ function textHasSymptom_(text) {
   for (var i = 0; i < SYMPTOM_WORDS_.length; i++) if (n.indexOf(normalizeArabic(SYMPTOM_WORDS_[i])) !== -1) return true;
   return false;
 }
+/* كلمتين قريبين جدًا (غلطة كتابة حرف): نفس أول حرف، والفرق حرف واحد (حرفين لو الكلمة طويلة) */
+function nearTok_(a, b) {
+  a = String(a || ''); b = String(b || '');
+  if (a.length < 4 || b.length < 4 || a.charAt(0) !== b.charAt(0)) return false;
+  var lim = Math.max(a.length, b.length) > 6 ? 2 : 1;
+  if (Math.abs(a.length - b.length) > lim) return false;
+  var prev = [], cur = [], i, j;
+  for (j = 0; j <= b.length; j++) prev[j] = j;
+  for (i = 1; i <= a.length; i++) {
+    cur = [i];
+    for (j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length] <= lim;
+}
 function customerNamedItem_(text, history, it) {
   var blob = String(text || '');
   (history || []).forEach(function (h) { if (h.role === 'user') blob += ' ' + h.text; });
@@ -3727,6 +3747,7 @@ function customerNamedItem_(text, history, it) {
   var toks = String(it.key || stockKey_(it.name)).split(' ').filter(function (w) { return w.length >= 4; });
   for (var i = 0; i < toks.length; i++) if (nk.indexOf(toks[i]) !== -1) return true;
   var qw = String(extractProductLocally_(text) || '').split(' ').filter(function (w) { return w.length >= 4; });
+  for (var q = 0; q < qw.length; q++) for (var ti = 0; ti < toks.length; ti++) if (nearTok_(stockKey_(qw[q]), toks[ti])) return true;
   var ik = it.key || '';
   for (var j = 0; j < qw.length; j++) {
     var keys = ingAliasKeys_(qw[j]);
@@ -3765,6 +3786,15 @@ function botReplyBlocked_(reply, text, items, history) {
   if (foreign.length && /مش متوفر|مش موجود|بديل|انصح|استعمل/.test(nreply)) return 'بديل';
   return '';
 }
+/* جملة التحويل للدكتور: بتتنوّع ومبتتكررش زي آخر رد للبوت */
+function handoffLine_(history) {
+  var opts = ['تمام، الدكتور هيرد على حضرتك هنا بنفسه.', 'وصّلت سؤال حضرتك للدكتور، وهيرد هنا في أقرب وقت.',
+              'ثواني والدكتور يكون مع حضرتك هنا.', 'خليني أحوّل سؤال حضرتك للدكتور عشان يرد بنفسه.'];
+  var last = ''; (history || []).forEach(function (h) { if (h.role === 'bot') last = String(h.text || ''); });
+  var pool = opts.filter(function (o) { return last.indexOf(o) === -1; });
+  pool = pool.length ? pool : opts;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 function claimsOrderSaved_(reply) {
   return /(الاوردر اتسجل|الاوردر اتبعت|الطلب اتسجل|الطلب اتبعت|سجلت الاوردر|سجلت الطلب|وصل للصيدليه|هيوصل الاوردر)/.test(normalizeArabic(reply));
 }
@@ -3787,6 +3817,8 @@ function productAskMiss_(text) {
   if (!prod || prod.length < 3) return '';
   var n = normalizeArabic(text);
   if (/(بيتعارض|تفاعل|جرعه|استخدام|بيستخدم|الفرق|اعراض|حامل|رضاع|روشت)/.test(n)) return '';
+  /* أسئلة متابعة على كلام البوت (اشمعني دول؟ ليه؟ سؤالي واضح) مش طلب صنف */
+  if (/(اشمعني|اشمعنى|ليه|ليش|لماذا|سؤالي|سوالي|قلتلك|قولتلك|انا قلت|مش فاهم)/.test(n)) return '';
   var choice = { 'نوفره': 1, 'نوفر': 1, 'وفر': 1, 'وفره': 1, 'مستعجل': 1, 'مستعجلين': 1 };
   var follow = { 'الكبير': 1, 'الصغير': 1, 'الاول': 1, 'الاولى': 1, 'نفسه': 1, 'نفسها': 1 };
   var words = prod.split(' ').filter(function (w) {
@@ -3930,7 +3962,7 @@ function smartCustomerReply_(chatId, text, history, arrivalUnix) {
     var blocked = botReplyBlocked_(reply, text, items, history);
     if (blocked) {
       var missingLine = blocked === 'قائمة بدائل';
-      reply = missingLine ? PRODUCT_MISSING_REPLY_ : 'الدكتور هيكلم حضرتك هنا في أقرب وقت';
+      reply = missingLine ? PRODUCT_MISSING_REPLY_ : handoffLine_(history);
       escalateToDoctor_(chatId, text, missingLine ? ('مش متوفر: ' + (extractProductLocally_(text) || 'صنف')) : ('حارس: ' + blocked));
       if (holdOn_(chatId) || sendTelegram_(chatId, reply) === false) { heldSilence_(chatId, text, arrivalUnix); return true; }
       saveConversationTurn(chatId, text, reply, 'bot', arrivalUnix);

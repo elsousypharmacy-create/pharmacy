@@ -3673,6 +3673,7 @@ function photoLine_(chatId) {
     'نفس المادة الفعالة باسم تاني = منتج تاني (مثال: Xigduo XR ≠ داباليكس اكسار) → الأصناف دي مش متوفرة، ' +
     'وممنوع تقدّم البديل كأنه هو نفس المنتج.\n';
   s += unreadLine;
+  if (P.withRx) s += '→ العميل بعت معاهم روشتة بخط الإيد: الدكتور هيقراها بنفسه. رد على العلب بس (التوافر والسعر)، وقول في آخر الرد بجملة قصيرة إن الروشتة الدكتور هيقراها ويرد عليه بيها هنا. متذكرش أسماء من الروشتة.\n';
   if (isRx) s += '→ دي روشتة' + ((P.n || 1) > 1 ? ' — وكل الأصناف اللي في الصور (حتى العلب) تعتبر من الروشتة' : '') + ': قوله المتوفر منها بالسعر والإجمالي، والمش متوفر يتكتب "مش متوفر" بس. ' +
     'قاعدة المش متوفر: ممنوع تقترح أي بديل أو أي صنف بنفس المادة الفعالة. للأصناف المش متوفرة اكتب مرة واحدة في الآخر بصيغة قريبة من: "مش لاقيه بنفس الاسم عندي دلوقتي، الدكتور هيتأكد منه ويرد على حضرتك هنا" و escalate=true و reason="تأكيد توافر: اسم الصنف". ممنوع تقول "مش متوفر" بشكل قاطع على صنف من الصورة (الاسم المطبوع ممكن يكون إنجليزي أو ماركة تانية لنفس الدوا). متقولش جرعات ومتذكرش أسماء بديلة.\n' +
     '→ أي صنف مكتوب جنبه (مش واضح): اكتبه في سطر لوحده بالشكل ده: الاسم — مش واضح في الروشتة (الدكتور هيأكده). متقولش عليه متوفر ولا مش متوفر.\n' +
@@ -4091,14 +4092,21 @@ function handleCustomerMessageInner_(chatId, message) {
       }
       /* ✍️ روشتة مكتوبة بخط الإيد → الصيدلي بس اللي يقراها ويرد (البوت ميخمّنش أسماء) */
       if (seen && seen.kind === 'prescription' && seen.handwritten) {
-        var guess = (seen.items || []).map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (؟)' : ''); }).join('، ');
+        /* ألبوم فيه روشتة بخط الإيد + علب: الروشتة للدكتور، والعلب البوت يرد عليها بالتوافر والسعر */
+        var boxIt = (seen.items || []).filter(function (it) { return it.fromBox; });
+        var handIt = (seen.items || []).filter(function (it) { return !it.fromBox; });
+        var guess = (handIt.length ? handIt : (seen.items || [])).map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.sure === false ? ' (؟)' : ''); }).join('، ');
         escalateToDoctor_(chatId, '[روشتة بخط الإيد — ' + (pfids.length > 1 ? pfids.length + ' صور فوق' : 'الصورة فوق') + ']' +
           (guess ? '\nقراية تقريبية من البوت (للمساعدة بس): ' + guess : '') + (message.caption ? '\nالعميل كتب: ' + message.caption : ''), '✍️ روشتة بخط الإيد — اقراها ورد على العميل');
-        var rxUser = '[روشتة بخط الإيد' + (message.caption ? ': ' + message.caption : '') + ']';
-        if (holdOn_(chatId)) { saveConversationTurn(chatId, rxUser, '[الصيدلي بيرد بنفسه]', 'bot', message.date); return; }
-        var rr = 'وصلت الروشتة، الدكتور هيقراها ويرد عليك هنا بالمتوفر والأسعار.';
-        logDeliveredTurn_(chatId, rxUser, rr, message.date, sendTelegram_(chatId, rr) !== false);
-        return;
+        if (boxIt.length) {
+          seen = { kind: 'box', items: boxIt, rx: false, label: '', unread: seen.unread || 0, withRx: true };
+        } else {
+          var rxUser = '[روشتة بخط الإيد' + (message.caption ? ': ' + message.caption : '') + ']';
+          if (holdOn_(chatId)) { saveConversationTurn(chatId, rxUser, '[الصيدلي بيرد بنفسه]', 'bot', message.date); return; }
+          var rr = 'وصلت الروشتة، الدكتور هيقراها ويرد عليك هنا بالمتوفر والأسعار.';
+          logDeliveredTurn_(chatId, rxUser, rr, message.date, sendTelegram_(chatId, rr) !== false);
+          return;
+        }
       }
       if (seen && (seen.kind === 'box' || seen.kind === 'prescription') && seen.items && seen.items.length) {
         var pnames = seen.items.map(function (it) { return it.name + (it.strength ? ' ' + it.strength : '') + (it.use ? ' (' + it.use + ')' : ''); }).join('، ');

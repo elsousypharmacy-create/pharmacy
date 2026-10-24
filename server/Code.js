@@ -2650,26 +2650,49 @@ function readPhoto_(fileIds) {
       'label: usage/storage notes PRINTED on the box only, TRANSLATED to simple Egyptian Arabic (never English), e.g. "Do not crush, cut or chew" → "يتبلع صحيح من غير كسر أو مضغ". Never invent a dose. Empty if none.\n' +
       'handwritten: true if it is a prescription written by hand (even partly), false if fully printed/typed.\n' +
       'Reply JSON only: {"kind":"box","handwritten":false,"items":[{"name":"","strength":"","form":"","use":"","sure":true}],"rx":false,"label":""}';
-    function req(model, img) {
+    /* thinking خفيف عشان القراية متاخدش دقيقة. لو الموديل مش بيقبل الإعداد (400) بنعيد من غيره. */
+    function req(model, img, think) {
+      var gc = { temperature: 0, responseMimeType: 'application/json' };
+      if (think) gc.thinkingConfig = { thinkingLevel: 'low' };
       return { url: 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent',
         method: 'post', contentType: 'application/json', muteHttpExceptions: true, headers: { 'x-goog-api-key': key },
-        payload: JSON.stringify({ contents: [{ parts: [img, { text: prompt }] }], generationConfig: { temperature: 0, responseMimeType: 'application/json' } }) };
+        payload: JSON.stringify({ contents: [{ parts: [img, { text: prompt }] }], generationConfig: gc }) };
     }
     function parse(res, model) {
-      if (res.getResponseCode() !== 200) { Logger.log('photo ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 200)); return null; }
+      if (res.getResponseCode() !== 200) { Logger.log('photo ' + model + ' ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 200)); return null; }
       var d = JSON.parse(res.getContentText());
       if (d.usageMetadata) aiTrack_('photo', model, d.usageMetadata.promptTokenCount || 0, d.usageMetadata.candidatesTokenCount || 0);
       var p = d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts;
       return doseJson_((p || []).filter(function (x) { return x.text && !x.thought; }).map(function (x) { return x.text; }).join(''));
     }
-    /* ⚡ كل صورة لوحدها بس كلهم في نفس الوقت (أدق من صورة واحدة فيها الكل، ومن غير وقت زيادة) */
-    /* 👁️ الصور على Gemini 3.8 Flash (أدق في خط الإيد — مجاني 20 طلب/يوم)؛ لو خلص أو مش متاح → 3.5 Flash → Flash-Lite */
+    /* ⚡ كل صورة لوحدها، والموديل الأساسي (3.8) والاحتياطي (3.5) في نفس اللحظة. الأساسي لو رجّع نتيجة هو الأفضل، وإلا الاحتياطي.
+       قبل كده كانوا ورا بعض (٣ موديلات × ١ دقيقة = ٣ دقايق ممكن). دلوقتي أقصى انتظار دقيقة. */
+    var T0 = Date.now();
     var M1 = aiKey_('PHOTO_MODEL') || 'gemini-3.8-flash', backups = [AI_DEFAULTS.gemini.bot, GEMINI_MODEL].filter(function (m, i, a) { return m && m !== M1 && a.indexOf(m) === i; });
-    var outs = UrlFetchApp.fetchAll(imgs.map(function (im) { return req(M1, im); })).map(function (r) { return parse(r, M1); });
-    outs = outs.map(function (o, i) {
-      for (var b = 0; !o && b < backups.length; b++) o = parse(UrlFetchApp.fetchAll([req(backups[b], imgs[i])])[0], backups[b]);
+    var B1 = backups[0], reqs = [];
+    imgs.forEach(function (im) { reqs.push(req(M1, im, true)); });
+    if (B1) imgs.forEach(function (im) { reqs.push(req(B1, im, true)); });
+    var resp = UrlFetchApp.fetchAll(reqs);
+    /* 400 غالبًا معناها "الموديل مش بيقبل thinkingLevel" → نعيد نفس الطلب من غير الإعداد */
+    var redo = [];
+    resp.forEach(function (r, i) { if (r.getResponseCode() === 400) redo.push(i); });
+    if (redo.length && Date.now() - T0 < 40000) {
+      var again = UrlFetchApp.fetchAll(redo.map(function (i) {
+        var isB = B1 && i >= imgs.length, im = imgs[isB ? i - imgs.length : i];
+        return req(isB ? B1 : M1, im, false);
+      }));
+      redo.forEach(function (i, k) { resp[i] = again[k]; });
+    }
+    var outs = imgs.map(function (im, i) {
+      var o = parse(resp[i], M1);
+      if (!o && B1) o = parse(resp[imgs.length + i], B1);
       return o;
     });
+    /* لسه ناقص صورة والوقت لسه معاه؟ آخر محاولة بالموديل التالت (واحدة واحدة) */
+    for (var j = 0; j < outs.length; j++) {
+      if (outs[j] || backups.length < 2 || Date.now() - T0 > 30000) continue;
+      outs[j] = parse(UrlFetchApp.fetchAll([req(backups[1], imgs[j], false)])[0], backups[1]);
+    }
     var good = outs.filter(Boolean);
     if (!good.length) return null;
     var seenN = {}, items = [];

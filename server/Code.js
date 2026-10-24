@@ -3597,6 +3597,7 @@ function brainPrompt_(chatId, text, history, items, noSearch) {
     '- نوّع جملك ومتكررش نفس الصيغة في رسايل ورا بعض. الإيموجي: مرة كل 3-4 رسايل بس (مش في كل رسالة)، ومن الرموز دي فقط: ✅ 🌿 📦 💊. ممنوع الوشوش والقلوب والورد وأي رمز تاني. في الطوارئ ممنوع أي إيموجي خالص.\n' +
     '- اسأل سؤال يكمّل الكلام لما يكون مفيد، واعرض التوصيل لما يناسب ("تحب حضرتك نوصلهولك؟").\n\n' +
     'القواعد (لازم):\n' +
+    '0. ممنوع تذكر كميات المخزون (عدد العلب المتاحة) ولا تجادل في السعر: لو العميل قال إنه موجود بسعر تاني أو اعترض أو اتضايق، متكررش السعر ومتقولش "سعر رسمي"؛ قول بجملة واحدة إن الدكتور هيراجع ويرد عليه هنا، و escalate=true و reason="اعتراض: ...". ممنوع جمل زي "شرفتنا" أو "يمكن تلاقينا في أسعار تانية" أو "الدكتور صيدلي".\n' +
     '1. التوافر والأسعار من "المخزون المتاح" تحت بس. السعر يتكتب زي ما هو بالظبط. ممنوع تخترع صنف أو سعر.\n' +
     '2. صنف مكتوب جنبه "تطابق قريب (شكل مختلف)": ده نفس المنتج ونفس الماركة بشكل تاني (نقط بدل شراب مثلًا)، مش بديل اخترته أنت. ' +
     'قول بجملة صريحة: "الشكل اللي حضرتك طلبته مش ظاهر عندي، المتوفر: الاسم — السعر". ' +
@@ -3627,6 +3628,7 @@ function brainPrompt_(chatId, text, history, items, noSearch) {
     '   لما تحوّل: قول بلطف وبكلامك إن الدكتور هيكلمه هنا في أقرب وقت، ومتكررش نفس الجملة. كل رسالة تتقيّم لوحدها: متحولش لو الرسالة الجديدة سؤال معلومات عادي (توافر/سعر/استخدام عام).\n' +
     '8. order.lines لازم تضم كل الأصناف اللي العميل وافق عليها في المحادثة كلها (حتى لو وافق بكلمة زي "آه/اه/اخ/تمام/ماشي")، مش آخر صنف بس. ' +
     'ولو العميل قال "على العنوان المسجل" اكتب في address نفس الجملة دي بالظبط والسيستم هيجيب العنوان.\n' +
+    '8-ب. لو الأصناف لسه مش متأكد منها أو مش متوفرة، متطلبش عنوان: التوافر الأول وبعدين العنوان. ولو العميل رد بـ "تمام/ماشي/اه" على سؤالك، كمّل الخطوة اللي بعدها على طول من غير "أساعدك بأي حاجة تاني".\n' +
     '9. التوصيل متاح. متطلبش عنوان إلا لو العميل طلب توصيل فعلًا. لو عايز يطلب: اتأكد من الأصناف والكميات، واطلب الموبايل والعنوان بالتفصيل لو ناقصين. ' +
     'لما يبقى عندك الأصناف + الموبايل + العنوان: املا order (وفي order.lines اكتب اسم كل صنف بالظبط زي ما هو مكتوب في المخزون والكمية)، ' +
     'وفي reply قول جملة قصيرة بس إنك هتبعتله ملخص الطلب يأكده — متقولش إن الأوردر اتسجل أو اتبعت أو وصل للصيدلية. التسجيل بعد تأكيد العميل للملخص بس.\n' +
@@ -3672,15 +3674,15 @@ function photoLine_(chatId) {
     'وممنوع تقدّم البديل كأنه هو نفس المنتج.\n';
   s += unreadLine;
   if (isRx) s += '→ دي روشتة' + ((P.n || 1) > 1 ? ' — وكل الأصناف اللي في الصور (حتى العلب) تعتبر من الروشتة' : '') + ': قوله المتوفر منها بالسعر والإجمالي، والمش متوفر يتكتب "مش متوفر" بس. ' +
-    'قاعدة المش متوفر: ممنوع تقترح أي بديل أو أي صنف بنفس المادة الفعالة. للأصناف المش متوفرة اكتب مرة واحدة في الآخر بصيغة قريبة من: "مش موجود دلوقتي، تحب نوفّره لحضرتك ولا مستعجل والدكتور يشوفلك حل؟" و escalate=true. متقولش جرعات ومتذكرش أسماء بديلة.\n' +
+    'قاعدة المش متوفر: ممنوع تقترح أي بديل أو أي صنف بنفس المادة الفعالة. للأصناف المش متوفرة اكتب مرة واحدة في الآخر بصيغة قريبة من: "مش لاقيه بنفس الاسم عندي دلوقتي، الدكتور هيتأكد منه ويرد على حضرتك هنا" و escalate=true و reason="تأكيد توافر: اسم الصنف". ممنوع تقول "مش متوفر" بشكل قاطع على صنف من الصورة (الاسم المطبوع ممكن يكون إنجليزي أو ماركة تانية لنفس الدوا). متقولش جرعات ومتذكرش أسماء بديلة.\n' +
     '→ أي صنف مكتوب جنبه (مش واضح): اكتبه في سطر لوحده بالشكل ده: الاسم — مش واضح في الروشتة (الدكتور هيأكده). متقولش عليه متوفر ولا مش متوفر.\n' +
     '→ أي صنف متوفر ومكتوب جنبه {من الروشتة}: اكتب بعد سعره "(هيتأكد مع الدكتور)" — لأن قراية خط الإيد ممكن تغلط.\n' +
     '→ اختم دايمًا بسؤال يقفل الطلب لو فيه حاجة متوفرة، زي: "تحب حضرتك نجهّز المتوفر ونوصّله؟"\n';
   else if (P.rx) s += '→ ده دوا بروشتة: متقولش جرعة. قول التوافر والسعر' + (P.label && fresh ? '، والمكتوب على العلبة (بالعربي بس): "' + P.label + '"' : '') +
-    '. لو مش متوفر: ممنوع تقترح أي بديل أو أي صنف بنفس المادة الفعالة. قول بصيغة قريبة من (ونوّع الصياغة): "مش موجود دلوقتي، تحب نوفّره لحضرتك ولا مستعجل والدكتور يشوفلك حل؟" و escalate=true. ' +
+    '. لو مش متوفر: ممنوع تقترح أي بديل أو أي صنف بنفس المادة الفعالة. قول بصيغة قريبة من (ونوّع الصياغة): "مش لاقيه بنفس الاسم عندي دلوقتي، الدكتور هيتأكد منه ويرد على حضرتك هنا" و escalate=true و reason="تأكيد توافر: اسم الصنف". ممنوع تقول "مش متوفر" بشكل قاطع على صنف من الصورة (الاسم المطبوع ممكن يكون إنجليزي أو ماركة تانية لنفس الدوا). ' +
     'والجرعة حسب الدكتور المعالج والدكتور هيأكدها (escalate=true لو سأل عن الاستعمال). ولو متوفر اختم بسؤال: "تحب حضرتك نجهّزه أو نوصّله؟"\n';
   else if (fresh) s += '→ رد على سؤاله عن الأصناف دي (التوافر والسعر، ومعلومة عامة عن استخدامه لو سأل — من غير جرعات: الجرعة والترشيح للدكتور). ' +
-    'ممنوع تقترح أي بديل أو أي صنف بنفس المادة الفعالة. لو مش متوفر قول بصيغة قريبة من (ونوّع الصياغة): "مش موجود دلوقتي، تحب نوفّره لحضرتك ولا مستعجل والدكتور يشوفلك حل؟" و escalate=true.\n';
+    'ممنوع تقترح أي بديل أو أي صنف بنفس المادة الفعالة. لو مش متوفر قول بصيغة قريبة من (ونوّع الصياغة): "مش لاقيه بنفس الاسم عندي دلوقتي، الدكتور هيتأكد منه ويرد على حضرتك هنا" و escalate=true و reason="تأكيد توافر: اسم الصنف". ممنوع تقول "مش متوفر" بشكل قاطع على صنف من الصورة (الاسم المطبوع ممكن يكون إنجليزي أو ماركة تانية لنفس الدوا).\n';
   return s;
 }
 
@@ -3742,7 +3744,7 @@ function replyMentionsItem_(reply, it) {
 function botReplyBlocked_(reply, text, items, history) {
   if (replyHasDosing_(reply)) return 'جرعة';
   /* الرد ميكشفش قواعد البوت ولا يقول إنه "راجع المخزون" ولا جمل غريبة عن إعادة إرسال */
-  if (/ممنوع\s*نقترح|ممنوع\s*نرشح|مراجعتنا\s*(للمخزون|اكدت)|راجعنا\s*المخزون|اتاكدنا\s*من\s*المخزون|اتبعتت\s*تاني/.test(normalizeArabic(reply))) return 'صياغة ممنوعة';
+  if (/سعر\s*(ال)?(رسمي|معتمد)|شرفتنا|اسعار\s*تانيه|يمكن\s*تلاقينا|الدكتور\s*صيدلي|ممنوع\s*نقترح|ممنوع\s*نرشح|مراجعتنا\s*(للمخزون|اكدت)|راجعنا\s*المخزون|اتاكدنا\s*من\s*المخزون|اتبعتت\s*تاني/.test(normalizeArabic(reply))) return 'صياغة ممنوعة';
   var named = (items || []).some(function (it) { return customerNamedItem_(text, history, it); });
   var nreply = normalizeArabic(reply);
   if (/مش لاقي نفس الاسم|بنفس الماده الفعاله/.test(nreply)) return 'قائمة بدائل';
@@ -3768,6 +3770,10 @@ function heldSilence_(chatId, text, arrivalUnix) {
     tgApi_('sendMessage', { chat_id: PERSONAL_CHAT, reply_markup: holdKb_(chatId, true),
       text: '💬 ' + (getKnownCustomerName_(chatId) || 'العميل') + ':\n"' + String(text || '').slice(0, 2500) + '"\n\n↩️ اعمل Reply عشان ترد.\n[#c' + chatId + ']' });
   } catch (e) {}
+  try {
+    var PP = PropertiesService.getScriptProperties();
+    if (!PP.getProperty('escp_' + chatId)) PP.setProperty('escp_' + chatId, Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm'));
+  } catch (eP) {}
   saveConversationTurn(chatId, text, '[الصيدلي بيرد بنفسه]', 'bot', arrivalUnix);
 }
 /* طلب اسم منتج ومفيش نفس المنتج في المخزون (ولا نفس الماركة بشكل تاني).
@@ -3822,6 +3828,20 @@ function smartCustomerReply_(chatId, text, history, arrivalUnix) {
       saveConversationTurn(chatId, text, PRODUCT_MISSING_REPLY_, 'bot', arrivalUnix);
       return true;
     }
+    /* العميل بيعترض أو بيقول "ده موجود" بعد رد البوت → من غير جدال: تحويل للدكتور بجملة واحدة */
+    try {
+      var lastB = ''; (history || []).forEach(function (h) { if (h.role === 'bot') lastB = String(h.text || ''); });
+      var nTx = normalizeArabic(text);
+      if (lastB && /(مش موجود|مش متوفر|مش لاقيه|السعر|جنيه)/.test(normalizeArabic(lastB)) &&
+          /((ده|دا|دى|دي|هو)\s*موجود|مش موجود ازاي|بشتري(ها|ه)?\s*ب|بشتري(ها|ه)?\s*من بر[اه]|هشتري من بر[اه]|اشتري من بر[اه]|اوفرلي|ليه قلت|ليه قولت|مش ب\s*\d|مش بسعر|غالي)/.test(nTx)) {
+        escalateToDoctor_(chatId, text, 'اعتراض: ' + String(text).slice(0, 60));
+        var objR = 'حاضر، الدكتور هيراجع ويرد على حضرتك هنا.';
+        humanPause_(T_START);
+        if (holdOn_(chatId) || sendTelegram_(chatId, objR) === false) { heldSilence_(chatId, text, arrivalUnix); return true; }
+        saveConversationTurn(chatId, text, objR, 'bot', arrivalUnix);
+        return true;
+      }
+    } catch (eOb) {}
     var items = brainCandidates_(text, history, '');
     var res = brainParse_(callGemini(brainPrompt_(chatId, text, history, items)));
     if (!res) res = brainParse_(callGemini(brainPrompt_(chatId, text, history, items)));   /* محاولة تانية لو الرد مش JSON */
@@ -5587,6 +5607,7 @@ function maskPhonesInText_(text) {
   });
 }
 function remindPendingHandoffs() {
+  try { waitingDigest_(); } catch (eW) { Logger.log('waitingDigest_: ' + eW.message); }
   var P = PropertiesService.getScriptProperties(), all = {};
   try { all = P.getProperties() || {}; } catch (e) { return; }
   var now = Date.now(), inHours = withinBotHours_();
@@ -5774,6 +5795,30 @@ function botPhoto(id, full) {
     if (!b) b = f.getBlob();
     return { ok: true, data: 'data:' + (b.getContentType() || 'image/jpeg') + ';base64,' + Utilities.base64Encode(b.getBytes()) };
   } catch (e) { return { ok: false, error: 'الصورة اتمسحت أو مش متاحة' }; }
+}
+
+/* ⏳ عملاء كتبوا ومحدش رد عليهم أكتر من ساعتين: ملخص على تيليجرام (مرة كل 3 ساعات، جوه مواعيد العمل، من غير شاتات التجربة) */
+function waitingDigest_() {
+  var P = PropertiesService.getScriptProperties(), now = Date.now();
+  if (!withinBotHours_()) return;
+  if (now - (parseInt(P.getProperty('WAIT_DIGEST_AT'), 10) || 0) < 3 * 3600000) return;
+  var rows = chatLogRows_(1500), last = {};
+  rows.forEach(function (r) { if (r[1]) last[r[1]] = r; });
+  var list = [];
+  Object.keys(last).forEach(function (id) {
+    var r = last[id];
+    if (r[4] !== 'user' || String(id) === String(PERSONAL_CHAT) || badChatId_(id) || isTestChat_(id)) return;
+    var t0 = 0; try { t0 = Utilities.parseDate(String(r[0]).slice(0, 16), 'Africa/Cairo', 'yyyy-MM-dd HH:mm').getTime(); } catch (e) {}
+    var hrs = (now - t0) / 3600000;
+    if (!t0 || hrs < 2 || hrs > 72) return;
+    list.push({ id: id, name: r[2], phone: r[3], text: String(r[5]).replace(/\s+/g, ' ').slice(0, 45), hrs: Math.floor(hrs) });
+  });
+  if (!list.length) return;
+  P.setProperty('WAIT_DIGEST_AT', String(now));
+  list.sort(function (a, b) { return b.hrs - a.hrs; });
+  sendTelegramStaff('⏳ عملاء مستنيين رد (' + list.length + '):\n' + list.slice(0, 10).map(function (c) {
+    return '• ' + (c.name || maskPhone_(c.phone) || ('عميل ' + String(c.id).slice(-4))) + ' — من ' + c.hrs + ' ساعة: "' + maskPhonesInText_(c.text) + '"';
+  }).join('\n') + '\n\nافتح صفحة "البوت" في اللوحة وردّ عليهم.', PERSONAL_CHAT);
 }
 
 // ==== MODULE 50_sms_points (split from server/Code.js; load order = file name order) ====

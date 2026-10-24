@@ -3939,7 +3939,12 @@ function smartCustomerReply_(chatId, text, history, arrivalUnix) {
 // 9) المعالج الرئيسي لرسالة العميل
 // ===================================================================
 
+/* الرد الأول، وبعدين (في الآخر) نحفظ صور العميل على Drive — العميل مستنيش حفظ الصور */
 function handleCustomerMessage(chatId, message) {
+  try { handleCustomerMessageInner_(chatId, message); }
+  finally { flushPhotoSave_(); }
+}
+function handleCustomerMessageInner_(chatId, message) {
   const cache = CacheService.getScriptCache();
 
   try {
@@ -5682,20 +5687,40 @@ function takePendingPhotos_(chatId) {
     return v || '';
   } catch (e) { return ''; }
 }
-/* بتتناداه أول ما صور العميل توصل. الـ ids بتتربط بأول صف للعميل في السجل. */
-function savePhotosForLog_(chatId, fileIds) {
+/* بتتسجّل أول ما صور العميل توصل، لكن الحفظ الفعلي بيحصل في الآخر (flushPhotoSave_) بعد ما الرد يتبعت. */
+var PHOTO_SAVE_Q_ = null;
+function savePhotosForLog_(chatId, fileIds) { PHOTO_SAVE_Q_ = { chatId: chatId, fileIds: fileIds || [] }; }
+function flushPhotoSave_() {
+  var q = PHOTO_SAVE_Q_; PHOTO_SAVE_Q_ = null;
+  if (!q) return;
   try {
-    var fo = photoFolder_(), ids = [], stamp = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyyMMdd_HHmmss');
+    var ids = savePhotosToDrive_(q.chatId, q.fileIds);
+    if (!ids.length) return;
+    var lock = LockService.getUserLock(), got = false;
+    try { got = lock.tryLock(8000); } catch (eL) {}
+    try {
+      var sh = chatLogSheet_(), last = sh.getLastRow(), from = Math.max(2, last - 80);
+      var vals = sh.getRange(from, 1, last - from + 1, 7).getValues();
+      for (var i = vals.length - 1; i >= 0; i--) {
+        var r = vals[i];
+        if (String(r[1]) === String(q.chatId) && r[4] === 'user' && !r[6]) { sh.getRange(from + i, 7).setValue(ids.join(',')); break; }
+      }
+    } finally { if (got) { try { lock.releaseLock(); } catch (e2) {} } }
+    cleanOldBotPhotos_();
+  } catch (e) { Logger.log('flushPhotoSave_: ' + e.message); }
+}
+function savePhotosToDrive_(chatId, fileIds) {
+  var ids = [];
+  try {
+    var fo = photoFolder_(), stamp = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyyMMdd_HHmmss');
     (fileIds || []).slice(0, 10).forEach(function (fid, i) {
       try {
         var b = tgFileBlob_(fid); if (!b) return;
-        var f = fo.createFile(b.setName(String(chatId) + '_' + stamp + '_' + (i + 1) + '.jpg'));
-        ids.push(f.getId());
+        ids.push(fo.createFile(b.setName(String(chatId) + '_' + stamp + '_' + (i + 1) + '.jpg')).getId());
       } catch (e1) { Logger.log('savePhoto: ' + e1.message); }
     });
-    if (ids.length) CacheService.getScriptCache().put('pimg_' + chatId, ids.join(','), 180);
-    cleanOldBotPhotos_();
-  } catch (e) { Logger.log('savePhotosForLog_: ' + e.message); }
+  } catch (e) { Logger.log('savePhotosToDrive_: ' + e.message); }
+  return ids;
 }
 /* مرة في اليوم (وقت ما صورة جديدة توصل): امسح الصور الأقدم من ٩٠ يوم */
 function cleanOldBotPhotos_() {

@@ -5,7 +5,12 @@
 // 9) المعالج الرئيسي لرسالة العميل
 // ===================================================================
 
+/* الرد الأول، وبعدين (في الآخر) نحفظ صور العميل على Drive — العميل مستنيش حفظ الصور */
 function handleCustomerMessage(chatId, message) {
+  try { handleCustomerMessageInner_(chatId, message); }
+  finally { flushPhotoSave_(); }
+}
+function handleCustomerMessageInner_(chatId, message) {
   const cache = CacheService.getScriptCache();
 
   try {

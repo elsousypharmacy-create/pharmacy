@@ -545,13 +545,13 @@ function cleanBackups(apply, budgetMs) {
   }
   return out;
 }
-function cleanBackupsDaily() { return cleanBackups(true, 240000); }
+function cleanBackupsDaily() { var r = cleanBackups(true, 150000); if (!r.remaining) purgeTrashedBackups(90000); return r; }
 /* مسح نهائي للنسخ الاحتياطية (zip) اللي في سلة المهملات بس — مش بيلمس أي حاجة تانية في السلة */
-function purgeTrashedBackups() {
+function purgeTrashedBackups(budgetMs) {
   var t0 = Date.now();
   var raw = driveListFiles_("name contains 'pharmaclick_backup_' and trashed = true", 'id,name,size').filter(function (f) { return /\.zip$/i.test(f.name || ''); });
   var size = {}; raw.forEach(function (f) { size[f.id] = parseInt(f.size, 10) || 0; });
-  var r = driveBatch_(raw.map(function (f) { return f.id; }), t0, 25000, function (id) {
+  var r = driveBatch_(raw.map(function (f) { return f.id; }), t0, budgetMs || 25000, function (id) {
     return { url: 'https://www.googleapis.com/drive/v3/files/' + id + '?supportsAllDrives=true', method: 'delete' };
   });
   var freed = 0; r.ids.forEach(function (id) { freed += size[id] || 0; });

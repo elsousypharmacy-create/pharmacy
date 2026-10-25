@@ -4448,8 +4448,9 @@ function runClean(apply){
       row('هيتمسح', ltr(num(d.freeMB)) + ' MB', badge(ltr(num(d.remove)), d.remove ? 'warn' : 'ok'));
     if (apply){
       h += '<div class="state">اتنقل لسلة المهملات: ' + ltr(num(d.trashed)) +
-        (d.remaining ? ' — فاضل ' + ltr(num(d.remaining)) + '، دوس "نفّذ" تاني' : ' ✓') + '</div>' +
+        (d.remaining ? ' — فاضل ' + ltr(num(d.remaining)) + '، بيكمّل لوحده...' : ' ✓') + '</div>' +
         (d.remaining ? '' : '<button class="btn btn-danger" onclick="runPurge()">امسح نهائي ورجّع المساحة</button>');
+      if (d.remaining && d.trashed){ setTimeout(function(){ runClean(1); }, 500); box.innerHTML = h; return; }
     }
     if (d.remove || (apply && d.remaining))
       h += '<button class="btn btn-danger" onclick="runClean(1)">نفّذ — انقلهم لسلة المهملات</button>';
@@ -4459,12 +4460,16 @@ function runClean(apply){
 }
 function runPurge(){
   if (!confirm('المسح النهائي مش بيرجع. هيمسح النسخ الاحتياطية اللي في السلة بس. متأكد؟')) return;
+  runPurgeGo_();
+}
+function runPurgeGo_(){
   var box = document.getElementById('cleanbox');
   box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>';
   api('purgeTrashedBackups').then(function(d){
     if (!d || !d.ok){ box.innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + '</div>'; return; }
     box.innerHTML = '<div class="state">اتمسح نهائي: ' + ltr(num(d.deleted)) + ' نسخة · رجع ' + ltr(num(d.freedMB)) + ' MB' +
-      (d.remaining ? '<br>فاضل ' + ltr(num(d.remaining)) + '</div><button class="btn btn-danger" onclick="runPurge()">كمّل</button>' : ' ✓</div>');
+      (d.remaining ? '<br>فاضل ' + ltr(num(d.remaining)) + ' — بيكمّل لوحده...</div>' : ' ✓</div>');
+    if (d.remaining && d.deleted) setTimeout(function(){ runPurgeGo_(); }, 500);
   }).catch(function(e){ box.innerHTML = '<div class="state err">' + esc(String(e)) + '</div>'; });
 }
 function runBackupProbe(){

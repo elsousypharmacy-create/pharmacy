@@ -218,6 +218,13 @@ async function push(p, rec){
 async function saveCall(p, rec){
   rec.at = Date.now(); S.calls[key(p)] = rec; lsSet(S.calls); render(); await push(p, rec);
 }
+let noteTimer = null;
+function saveNoteQuiet(p, note){
+  const cur = S.calls[key(p)]; if(!cur || !cur.status) return;
+  if((cur.note||'') === note) return;
+  const rec = {status:cur.status, note, at:Date.now()};
+  S.calls[key(p)] = rec; lsSet(S.calls); push(p, rec);
+}
 async function clearCall(p){
   delete S.calls[key(p)]; lsSet(S.calls); render(); await push(p, null);
 }
@@ -388,7 +395,7 @@ function slideFor(r, list, i){
 
   const res = el('div','result');
   
-  const ta = el('textarea'); ta.id='note'; ta.placeholder='ملاحظة (سبب البعد، الاتفاق، الميعاد)'; ta.value = (S.draft && S.draft.p===r.p) ? S.draft.v : (rec.note || ''); ta.oninput = () => { S.draft = {p:r.p, v:ta.value}; };
+  const ta = el('textarea'); ta.id='note'; ta.placeholder = rec.status ? 'ملاحظة (بتتحفظ لوحدها)' : 'ملاحظة (بتتسجل مع الحالة اللي هتختارها تحت)'; ta.value = (S.draft && S.draft.p===r.p) ? S.draft.v : (rec.note || ''); ta.oninput = () => { S.draft = {p:r.p, v:ta.value}; if(rec.status){ clearTimeout(noteTimer); noteTimer = setTimeout(() => saveNoteQuiet(r.p, ta.value.trim()), 900); } }; ta.onblur = () => { if(rec.status){ clearTimeout(noteTimer); saveNoteQuiet(r.p, ta.value.trim()); } };
   const opts = el('div','opts');
   if(rec.status!=='blocked') Object.keys(ST).forEach(k=>{
     const b = el('button','opt '+ST[k].c, ST[k].t); b.setAttribute('aria-pressed', rec.status===k);
@@ -429,7 +436,7 @@ function renderMain(top){
     const rows = el('div','rows');
     list.forEach(r=>{
       const b = el('button','row'); const s = stat(r.p);
-      const left = el('div'); left.append(el('div','rn',r.n||'بدون اسم'), el('div','rs',r.p+' · '+r.d+' يوم'));
+      const left = el('div'); left.append(el('div','rn',r.n||'بدون اسم'), el('div','rs',r.p+' · '+r.d+' يوم')); const nt=(S.calls[key(r.p)]||{}).note; if(nt) left.append(el('div','rs','📝 '+nt));
       const right = el('div','chips');
       right.append(el('span','badge t'+r.t, String(r.t)));
       if(s) right.append(el('span','chip '+(ST[s]||BLK).c, (ST[s]||BLK).t));

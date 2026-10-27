@@ -9382,10 +9382,36 @@ function ordersRatios_() {
   return out;
 }
 
+/* رصيد حيّ من STOCK LIVE من غير كاش (فهرس المسح متكيّش 30 دقيقة) — عمودين بس عشان السرعة */
+function ordLiveStock_() {
+  var byCode = {}, byName = {};
+  try {
+    var sh = SpreadsheetApp.openById(STOCK_SHEET_ID).getSheets()[0];
+    var lastCol = sh.getLastColumn(), n = sh.getLastRow() - 1;
+    if (n < 1) return { byCode: byCode, byName: byName };
+    var hdr = sh.getRange(1, 1, 1, lastCol).getDisplayValues()[0], ix = {};
+    hdr.forEach(function (h, i) { ix[String(h || '').trim().toLowerCase()] = i; });
+    if (ix['stock'] === undefined) return { byCode: byCode, byName: byName };
+    function col_(k) { return ix[k] === undefined ? null : sh.getRange(2, ix[k] + 1, n, 1).getDisplayValues(); }
+    var cSt = col_('stock'), cCode = col_('code'), cAr = col_('namear'), cEn = col_('nameen');
+    for (var i = 0; i < n; i++) {
+      var st = parseFloat(String(cSt[i][0]).replace(/,/g, '')) || 0;
+      var code = cCode ? String(cCode[i][0] || '').replace(/[^\d]/g, '') : '';
+      if (code) byCode[code] = st;
+      [cAr, cEn].forEach(function (c) {
+        if (!c) return;
+        var k = doctorNorm_(c[i][0]);
+        if (k && byName[k] === undefined) byName[k] = st;
+      });
+    }
+  } catch (e) {}
+  return { byCode: byCode, byName: byName };
+}
+
 function ordersPage(code, days) {
   try {
     var dd = [3, 7, 14, 30].indexOf(parseInt(days, 10)) !== -1 ? parseInt(days, 10) : 7;
-    var key = 'fx_ord_page_v6_' + dd;
+    var key = 'fx_ord_page_v7_' + dd;
     var hit = fxCacheGet_(key);
     if (hit) return ordersWithMarks_(hit);
 
@@ -9398,6 +9424,7 @@ function ordersPage(code, days) {
     try { byCode = scanIndex_() || {}; } catch (e1) { byCode = {}; }
     var stByName = {};
     try { doctorIndex_().forEach(function (it) { if (!byName[it.h]) { byName[it.h] = it.p; stByName[it.h] = it.s; } }); } catch (e2) {}
+    var liveSt = ordLiveStock_();
     var ratios = ordersRatios_() || { cat: {}, all: 0.8 };
     if (!ratios.cat) ratios.cat = {};
     /* salesVelocity_ الحيّة بترجّع items بالاسم = [كمية، إيراد السطر] + rev.
@@ -9457,8 +9484,9 @@ function ordersPage(code, days) {
               }
               /* الرصيد الحيّ من STOCK LIVE (بيتحدّث كل ~5 دقايق) — قايمة النواقص نفسها بتتحدّث أبطأ،
                  فلو الصنف دخل المخزون بعد آخر تصدير نشيله/نصحّح رصيده بدل ما يفضل ظاهر ناقص */
-              var sc2 = byCode[String(it.code || '').replace(/[^\d]/g, '')];
-              var live = sc2 ? sc2.stock : (stByName[doctorNorm_(it.name)] !== undefined ? stByName[doctorNorm_(it.name)] : null);
+              var lc = String(it.code || '').replace(/[^\d]/g, ''), ln = doctorNorm_(it.name);
+              var live = (lc && liveSt.byCode[lc] !== undefined) ? liveSt.byCode[lc]
+                       : (liveSt.byName[ln] !== undefined ? liveSt.byName[ln] : null);
               live = (live === null || live === undefined || !isFinite(Number(live))) ? null : Number(live);
               if (live !== null) {
                 if (sec === 'zero' && live > 0) { out.restocked++; return; }

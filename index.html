@@ -337,14 +337,15 @@ details.setg[open]{padding-bottom:var(--s3)}
     <button class="ibtn" id="langBtn" onclick="setLang(LANG==='ar'?'en':'ar')">EN</button>
     <button class="ibtn" onclick="toggleTheme()">◐</button>
     <button class="ibtn" onclick="refreshNow()" title="حدّث دلوقتي">⟳</button>
-    <button class="ibtn" onclick="openSheet('more')" title="المزيد">☰</button>
+    <button class="ibtn" onclick="openSheet('settings')" title="الإعدادات" aria-label="الإعدادات">⚙️</button>
   </div>
 </header>
 <div id="botPauseBanner" class="bot-pause" role="status"></div>
 
 <div class="subtabs hide" id="subtabs"></div>
 
-<section class="screen on" id="sc-sales"><div class="wrap" id="p-home"></div><div class="wrap" id="p-sales" style="display:none"></div><div class="wrap" id="p-hr" style="display:none"></div></section>
+<section class="screen on" id="sc-sales"><div class="wrap" id="p-home"></div><div class="wrap" id="p-sales" style="display:none"></div></section>
+<section class="screen" id="sc-team"><div class="wrap" id="p-hr"></div><div class="wrap" id="p-team" style="display:none"></div></section>
 <section class="screen" id="sc-admin"><div class="wrap" id="p-admin"></div></section>
 <section class="screen" id="sc-money"><div class="wrap" id="p-money"></div></section>
 <section class="screen" id="sc-stock"><div class="wrap" id="p-stock"></div></section>
@@ -361,11 +362,11 @@ details.setg[open]{padding-bottom:var(--s3)}
 <div class="toast" id="toast"></div>
 
 <nav class="secnav" id="secnav">
-  <button data-sec="sales" onclick="go('sales')"><svg viewBox="0 0 24 24"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19H2"/></svg><span data-t="nav_sales">مبيعات</span></button>
-  <button data-sec="cust" onclick="go('cust')"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14a6.5 6.5 0 0 1 3.5 6"/></svg><span data-t="nav_cust">عملاء</span></button>
-  <button data-sec="bot" onclick="go('bot')" style="position:relative"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 7V4"/><circle cx="12" cy="3.2" r="1"/><circle cx="9" cy="13" r="1.2"/><circle cx="15" cy="13" r="1.2"/><path d="M2 12v3M22 12v3"/></svg><span>البوت</span><b id="botBadge" class="nbadge" style="display:none"></b></button>
+  <button data-sec="sales" onclick="go('sales')"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg><span data-t="nav_sales">النهاردة</span></button>
+  <button data-sec="cust" onclick="go('cust')" style="position:relative"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14a6.5 6.5 0 0 1 3.5 6"/></svg><span data-t="nav_cust">عملاء</span><b id="botBadge" class="nbadge" style="display:none"></b></button>
   <button data-sec="stock" onclick="go('stock')"><svg viewBox="0 0 24 24"><path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5"/><path d="M12 13v7"/></svg><span data-t="nav_stock">مخزون</span></button>
   <button data-sec="money" onclick="go('money')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2.5"/><circle cx="12" cy="12.5" r="2.6"/></svg><span data-t="nav_money">مالية</span></button>
+  <button data-sec="team" onclick="go('team')"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span data-t="nav_hr">الفريق</span></button>
 </nav>
 
 <script>
@@ -568,8 +569,8 @@ var T = {
   failed:['مقدرتش أحمّل','Could not load'], empty:['مفيش بيانات','No data'],
   updated:['آخر تحديث','Updated'], egp:['جنيه','EGP'],
 
-  nav_home:['عامة','Overview'], nav_sales:['مبيعات','Sales'], nav_money:['مالية','Finance'],
-  nav_hr:['موظفين','People'], nav_stock:['مخزون','Stock'], nav_cust:['عملاء','Customers'],
+  nav_home:['عامة','Overview'], nav_sales:['النهاردة','Today'], nav_money:['الفلوس','Finance'],
+  nav_hr:['الفريق','Team'], nav_stock:['المخزون','Stock'], nav_cust:['العملاء','Customers'],
 
   /* عامة */
   today:['النهاردة','Today'],
@@ -1216,7 +1217,8 @@ function shortMenu(){
 /* ═══════════ ٤) الأقسام ═══════════ */
 var SECTIONS = {
   sales: [['home',  function(){ return tr('today'); }], ['month', function(){ return tr('salesPerf'); }],
-          ['perf',  function(){ return tr('staffToday'); }]],
+          ],
+  team:  [['perf',  function(){ return tr('staffToday'); }], ['pages', function(){ return 'الصفحات'; }]],
   cust:  [['list',  function(){ return tr('customers'); }], ['msgs', function(){ return tr('messages'); }]],
   bot:   [['chats', function(){ return '💬 المحادثات'; }]],
   stock: [['short', function(){ return tr('shortages'); }], ['aging', function(){ return tr('invAging'); }],
@@ -1252,11 +1254,12 @@ function renderTabs(sec, tab){
 function render(sec, tab){
   var key = SECTIONS[sec][tab][0];
   /* كل تاب في المبيعات ليه صندوقه — عشان رد متأخر من تاب ميكتبش فوق تاب تاني */
-  if (sec === 'sales') ['p-home', 'p-sales', 'p-hr'].forEach(function(id, i){
+  var BOXES = { sales: ['p-home', 'p-sales'], team: ['p-hr', 'p-team'] };
+  if (BOXES[sec]) BOXES[sec].forEach(function(id, i){
     var el = document.getElementById(id); if (el) el.style.display = (i === tab) ? '' : 'none';
   });
   ({ count:pgCounts, home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts,
-     perf:pgStaffHub, aging:pgAging, short:pgShort,
+     perf:pgStaffHub, pages:pgTeamPages, aging:pgAging, short:pgShort,
      msgs:pgMessages, list:pgCustomers, agents:pgAgents, docs:pgDoctors, chats:pgChats })[key](key);
 }
 
@@ -1606,6 +1609,18 @@ function drawHome(b, kpi, isOld){
         : '') +
        stamp(tr('srcSales'), upd.slice(-8) || null, tr('live')));
 
+    /* ── الهدف: مبيعات 10,000 وزيارات 150 في اليوم ── */
+    if (!isStaleDay){
+      var gS = goalOf('daily_sales', 10000), gV = goalOf('daily_visits', 150);
+      var bar = function(label, v, g, tone){
+        var p = g ? Math.min(100, Math.round(v / g * 100)) : 0;
+        return '<div style="display:flex;flex-direction:column;gap:5px;padding:6px 0">' +
+          '<div style="display:flex;justify-content:space-between;font-size:13px"><b>' + label + '</b><span>' + ltr(num(v)) + ' / ' + ltr(num(g)) + ' · ' + ltr(p + '%') + '</span></div>' +
+          '<div style="height:8px;border-radius:99px;background:var(--line);overflow:hidden"><div style="height:100%;width:' + p + '%;background:var(--' + tone + ');border-radius:99px"></div></div></div>';
+      };
+      html += card('هدف اليوم', null, bar('المبيعات', salesT, gS, 'brand') + bar('الزيارات', totCust, gV, 'warn'));
+    }
+
     /* ── ٢) محتاج تصرّف — فوق، مش تحت ── */
     var acts = [];
     var overdue = (dt.debtors || []).filter(function(c){
@@ -1629,7 +1644,7 @@ function drawHome(b, kpi, isOld){
     if (weak && weak.reg_pct < 50) acts.push(alertBox('warn',
       esc(weak.name) + ' — ' + tr('regRate') + ' ' + weak.reg_pct + '%',
       tr('target') + ' ' + ltr('75%') + ' · ' + ltr(weak.invoices) + ' ' + tr('invoices'),
-      "go('sales',2)"));
+      "go('team',0)"));
 
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
     if (dueAgents.length) acts.push(alertBox('warn', esc(tr('agentsDue')),
@@ -1683,13 +1698,19 @@ function loadHomeMore(){
     safe(api('getCustomers')),
     safe(api('getShortages', { days: RANGE.short }, SHORTAGE_URL)),
     safe(api('doctorAdmin', { op: 'list' })),
-    safe(api('getExpensesData', rangeParams('exp')))
+    safe(api('getExpensesData', rangeParams('exp'))),
+    safe(api('callsReport'))
   ]).then(function(r){
     var out = [];
-    var cl = Array.isArray(r[0]) ? r[0] : (r[0] && r[0].list) || [];
-    var fol = cl.filter(function(c){ return !c.is_blocked && c.status === ST_ALERT; }).length;
-    if (fol) out.push(alertBox('warn', 'عملاء محتاجين متابعة', ltr(num(fol)) + ' ' + tr('customers'),
-      "CUST_NEXT='follow';go('cust',0)"));
+    var pend = (CHATS || []).filter(function(c){ return c.pending; }).length;
+    if (pend) out.push(alertBox('bad', 'محادثات البوت مستنية رد', ltr(num(pend)), "go('bot')"));
+    var cr = r[4];
+    if (cr && cr.ok){
+      CUST.calls = cr;
+      var doneT = cr.today.done + cr.today.noanswer + cr.today.later + cr.today.wrong;
+      if (cr.left) out.push(alertBox(doneT ? 'brand' : 'warn', 'مكالمات المتابعة',
+        'لسه ' + ltr(num(cr.left)) + ' · النهاردة ' + ltr(num(doneT)), "CUST_NEXT='calls';go('cust',0)"));
+    }
     var z = r[1] && r[1].zero && r[1].zero.summary ? (r[1].zero.summary.total || 0) : 0;
     if (z) out.push(alertBox('bad', 'أصناف خلصانة', ltr(num(z)) + ' ' + tr('items'), "go('stock',0)"));
     var dn = r[2] && r[2].orders ? r[2].orders.filter(function(o){ return o.status !== 'تم'; }).length : 0;
@@ -1738,7 +1759,7 @@ function loadTrends(){
       title: tr('regRate') + ' ' + (rNow > rOld ? tr('trendUp') : tr('trendDown')),
       sub: ltr(rOld + '%') + ' <span style="color:var(--ink-3)">→</span> ' + ltr(rNow + '%') +
            ' · ' + tr('regRate') + ' ' + ltr('75%'),
-      jump: "go('sales',2)"
+      jump: "go('team',0)"
     });
 
     var nNow = avg(recent, function(x){ return x.new_c; }),
@@ -3380,30 +3401,23 @@ function drawCustomers(res, box){
   /* ── الشاشة الأولى ── */
   html += custPerBar();
   if (CUST.sec === 'home'){
-    var waitN = G.recover.filter(function(c){ return c.status === ST_WAIT; }).length;
-    var failN = G.recover.length - waitN;
-
     html += vitals(tr('customers'), null, [
       { value: num(list.length), label: tr('customers'), tone: 'brand' },
-      { value: num(G.follow.length), label: tr('needFollow'), tone: G.follow.length ? 'warn' : 'ok' },
+      { value: CUST.calls ? num(CUST.calls.left) : '…', label: 'محتاج مكالمة', tone: 'warn' },
       { value: dash && dash.return_rate !== undefined ? (dash.return_rate + '%') : '—',
         label: tr('returnRate'), tone: 'brand', note: null, sub: tr('thisMonth') }
     ]);
 
+    html += secBtn('calls', 'warn', 'متابعة المكالمات', 'القايمة · النتايج والملاحظات',
+      CUST.calls ? ltr(num(CUST.calls.left)) : '…', 'لسه', 'setCustSec');
     var perName = CUST_PERS.filter(function(p){ return p[0] === CUST_PER; })[0][1];
     var actAvg = G.active.length && CUST_VIS ? Math.round(G.active.reduce(function(a, c){ return a + (custAvg(c) || 0); }, 0) / G.active.length * 10) / 10 : null;
     html += secBtn('active', 'ok', 'نشطين', 'زاروا خلال ' + perName +
       (actAvg !== null ? ' · متوسط ' + ltr(actAvg) + ' زيارة/شهر' : ''),
       ltr(num(G.active.length)), tr('customers'), 'setCustSec');
-    html += secBtn('follow', G.follow.length ? 'warn' : 'ok', tr('needFollow'), tr('followSub'),
-      ltr(num(G.follow.length)), tr('customers'), 'setCustSec');
-    html += secBtn('recover', G.recover.length ? 'warn' : 'ok', tr('recoverSec'),
-      tr('waitingWord') + ' ' + ltr(num(waitN)) + ' · ' + tr('failedWord') + ' ' + ltr(num(failN)),
-      ltr(num(G.recover.length)), tr('customers'), 'setCustSec');
     html += secBtn('new', 'ok', tr('newSec'), tr('newSub'),
       dash && dash.new_customers !== undefined ? ltr(num(dash.new_customers)) : '…', tr('customers'), 'setCustSec');
-    html += secBtn('calls', 'ok', 'متابعة المكالمات', 'النتايج والملاحظات',
-      CUST.calls ? ltr(num(CUST.calls.today.done + CUST.calls.today.noanswer + CUST.calls.today.later + CUST.calls.today.wrong)) : '…', 'النهاردة', 'setCustSec');
+    html += secBtn('bot', CHATS && CHATS.some(function(c){ return c.pending; }) ? 'warn' : 'ok', 'محادثات البوت', 'واتساب وتليجرام', '', '', 'goBot');
     html += secBtn('blocked', 'ok', tr('blockedSec'), tr('blockedSub'),
       ltr(num(G.blocked.length)), tr('customers'), 'setCustSec');
     html += '<div style="height:8px"></div>';
@@ -3719,6 +3733,28 @@ function callsHtml(d){
       badge(ST[r.status] || r.status, TONE[r.status] || 'brand'));
   }).join('') : emptyState());
   return html;
+}
+
+/* ─────── الفريق: صفحات الموظفين والإدارة ─────── */
+function goBot(){ go('bot'); }
+function pgTeamPages(){
+  var box = document.getElementById('p-team');
+  var link = function(icon, name, sub, url){ return '<a class="tile" href="' + url + '" target="_blank" rel="noopener"><i>' + icon + '</i>' + name + '</a>'; };
+  var tile = function(icon, name, act){ return '<button class="tile" onclick="' + act + '"><i>' + icon + '</i>' + name + '</button>'; };
+  box.innerHTML =
+    card('صفحات الموظفين', 'بتتفتح في صفحة جديدة', '<div class="tiles">' +
+      link('📞', 'متابعة العملاء', '', 'calls.html') +
+      link('🩺', 'تسجيل الإيفنت', '', 'event.html') +
+      link('🏷️', 'الملصقات', '', 'labels.html') +
+      link('🛵', 'الطلبات', '', 'orders.html') +
+      link('📷', 'الماسح', '', 'scan.html') +
+      link('💸', 'مراجعة المصروفات', '', 'expenses.html') +
+      link('🩺', 'صفحة الدكاترة', '', 'doctors.html') +
+    '</div>') +
+    card('الإدارة', null, '<div class="tiles">' +
+      tile('👥', tr('agents'), "go('admin',0)") +
+      tile('👨‍⚕️', tr('doctors'), "go('admin',1)") +
+    '</div>');
 }
 
 /* ─────── عملاء: المندوبين ─────── */

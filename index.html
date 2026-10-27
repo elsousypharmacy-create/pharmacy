@@ -344,7 +344,7 @@ details.setg[open]{padding-bottom:var(--s3)}
 
 <div class="subtabs hide" id="subtabs"></div>
 
-<section class="screen on" id="sc-sales"><div class="wrap" id="p-home"></div><div class="wrap" id="p-sales" style="display:none"></div></section>
+<section class="screen on" id="sc-sales"><div class="wrap" id="p-home"></div></section>
 <section class="screen" id="sc-team"><div class="wrap" id="p-hr"></div><div class="wrap" id="p-team" style="display:none"></div></section>
 <section class="screen" id="sc-admin"><div class="wrap" id="p-admin"></div></section>
 <section class="screen" id="sc-money"><div class="wrap" id="p-money"></div></section>
@@ -1216,14 +1216,13 @@ function shortMenu(){
 
 /* ═══════════ ٤) الأقسام ═══════════ */
 var SECTIONS = {
-  sales: [['home',  function(){ return tr('today'); }], ['month', function(){ return tr('salesPerf'); }],
-          ],
+  sales: [['home',  function(){ return tr('today'); }]],
   team:  [['perf',  function(){ return tr('staffToday'); }], ['pages', function(){ return 'الصفحات'; }]],
   cust:  [['list',  function(){ return tr('customers'); }], ['msgs', function(){ return tr('messages'); }]],
   bot:   [['chats', function(){ return '💬 المحادثات'; }]],
-  stock: [['short', function(){ return tr('shortages'); }], ['aging', function(){ return tr('invAging'); }],
+  stock: [['short', function(){ return tr('shortages'); }], ['expTab', function(){ return 'الصلاحية'; }], ['deadTab', function(){ return 'الراكد'; }], ['aging', function(){ return 'التحليل'; }],
           ['count', function(){ return tr('counts'); }]],
-  money: [['pl',    function(){ return tr('pl'); }], ['exp', function(){ return tr('expenses'); }],
+  money: [['month', function(){ return 'الأداء'; }], ['exp', function(){ return tr('expenses'); }],
           ['debt',  function(){ return tr('debts'); }]],
   /* الإدارة: مش في الشريط — بتتفتح من ⚙️ */
   admin: [['agents',function(){ return tr('agents'); }], ['docs', function(){ return tr('doctors'); }]]
@@ -1254,12 +1253,12 @@ function renderTabs(sec, tab){
 function render(sec, tab){
   var key = SECTIONS[sec][tab][0];
   /* كل تاب في المبيعات ليه صندوقه — عشان رد متأخر من تاب ميكتبش فوق تاب تاني */
-  var BOXES = { sales: ['p-home', 'p-sales'], team: ['p-hr', 'p-team'] };
+  var BOXES = { team: ['p-hr', 'p-team'] };
   if (BOXES[sec]) BOXES[sec].forEach(function(id, i){
     var el = document.getElementById(id); if (el) el.style.display = (i === tab) ? '' : 'none';
   });
   ({ count:pgCounts, home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts,
-     perf:pgStaffHub, pages:pgTeamPages, aging:pgAging, short:pgShort,
+     perf:pgStaffHub, pages:pgTeamPages, aging:pgAging, expTab:pgAging, deadTab:pgAging, short:pgShort,
      msgs:pgMessages, list:pgCustomers, agents:pgAgents, docs:pgDoctors, chats:pgChats })[key](key);
 }
 
@@ -1657,33 +1656,12 @@ function drawHome(b, kpi, isOld){
       (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>'),
       null, stamp(tr('srcSnap'), snapAt || null, tr('hourly')));
 
-    /* ── ٣) اللي اتغيّر (بيتحمّل بعدين) ── */
-    html += '<div id="trends"></div>';
-
-    /* ── ٤) أرقام اليوم — من غير تكرار، والأهداف بشريط ── */
-    html += card(tr('todayNumbers'), null, tot.inv ? (
-      row(tr('avgTicket'), tr('target') + ' ' + ltr(goalOf('avg_invoice', 150)),
-          goal(avgInv, goalOf('avg_invoice', 150))) +
-      row(tr('regRate'), tr('target') + ' ' + ltr(goalOf('registration', 75) + '%'),
-          goal(regPct + '%', goalOf('registration', 75) + '%', regPct >= goalOf('registration', 75))) +
-      rowLite(tr('customersToday'),
-        ltr(tot.reg) + ' ' + tr('registered') + ' · ' + ltr(tot.nreg) + ' ' + tr('notReg'),
-        ltr(num(totCust))) +
-      rowLite(tr('newCust'), ltr(tot.rep) + ' ' + tr('repeat'), ltr(num(tot.newc))) +
-      rowLite(tr('debtToday'), tr('collected') + ' ' + ltr(num(d.debt_paid_today)),
-        ltr(num(d.debt_today))) +
-      (tot.disc ? rowLite(tr('discount'), null, ltr(num(tot.disc))) : '') +
-      (tot.ret ? rowLite(tr('returns'), null, ltr(num(tot.ret))) : '')
-    ) : '<div class="state">' + tr('noSalesYet') + '</div>',
-      null, stamp(tr('srcInv'), null, tr('minutely')));
-
     /* ── ٥) موجودين دلوقتي — الكارت يظهر بس لو فيه حد ── */
     var live = at.live || [];
     if (live.length) html += card(tr('onShiftNow'), null,
       live.map(function(p){ return row(p.name, null, badge(ltr(dur(p.elapsedMinutes)), 'ok')); }).join(''));
 
     box.innerHTML = html;
-    if (!isOld) loadTrends();
     loadHomeMore();
   }catch(e){ logErr(e); if (!isOld) oops(box, "pgHome()"); }
 }
@@ -1790,7 +1768,7 @@ function loadTrends(){
 /* ─────── مبيعات ─────── */
 function setSalesRange(v){ setRange('sales', v, pgSales); }
 function pgSales(){
-  var box = document.getElementById('p-sales');
+  var box = document.getElementById('p-money');
   var p = rangeParams('sales');
 
   /* الفترة اللي المستخدم اختارها بتتبعت زي ما هي للنداءين.
@@ -1838,7 +1816,9 @@ function drawSales(m, k, box){
   /* 🆕 كارت المتوسطات — كان ناقص تمامًا.
      مفيد أكتر من الإجمالي لما تقارن فترات مختلفة الطول. */
   if (days > 1) {
+    var BE = goalOf('breakeven', 7800), adn = m.avg_daily_net || 0;
     html += card(tr('dailyAvg'), label,
+      row('نقطة التعادل', 'لازم صافي اليوم يعدّيها عشان تكسب', badge(ltr(num(BE)), adn >= BE ? 'ok' : 'bad')) +
       row(tr('avgDailyNet'),    tr('perDay'), ltr(num(m.avg_daily_net || 0))) +
       row(tr('avgDailySales'),  tr('perDay'), ltr(num(m.avg_daily_sales || 0))) +
       row(tr('avgDailyProfit'), tr('perDay'), ltr(num(m.avg_daily_profit || 0))) +
@@ -1852,10 +1832,22 @@ function drawSales(m, k, box){
 
   var daily = (k.daily || []).slice(-14).reverse();
   html += card(tr('byDay'), null, daily.length ? daily.map(function(d){
-    return row(d.date, ltr(d.new_c) + ' ' + tr('newCust'), ltr(num(d.sales)));
-  }).join('') : emptyState());
-
+    var be = goalOf('breakeven', 7800);
+    return row(d.date, ltr(d.new_c) + ' ' + tr('newCust'),
+      '<span style="color:var(--' + (d.sales >= be ? 'ok' : 'bad') + ')">' + ltr(num(d.sales)) + '</span>');
+  }).join('') + '<div class="state" style="padding:8px 0 0;text-align:start">الأخضر فوق نقطة التعادل ' + ltr(num(goalOf('breakeven', 7800))) + '، والأحمر تحتها</div>' : emptyState());
+  html += '<div id="trends"></div><div id="plBox"></div>';
   box.innerHTML = html;
+  loadTrends();
+  api('getProfitLoss').then(function(d){
+    var pb = document.getElementById('plBox'); if (!pb || !d || !d.ok) return;
+    pb.innerHTML = (d.exp_stale ? '<div class="state err" style="margin-bottom:10px">' + tr('plStale') + ' ' + ltr(d.exp_stale_days) + ' ' + tr('daysWord') + '</div>' : '') +
+      card(tr('pl'), d.month,
+        row(tr('totalProfit'), null, ltr(num(d.total_profit))) +
+        row(tr('totalExpenses'), null, ltr(num(d.total_expenses))) +
+        row(tr('salaries'), null, ltr(num(d.total_salaries_so_far))) +
+        row(tr('netProfit'), null, '<b style="color:var(--' + (d.net_profit >= 0 ? 'ok' : 'bad') + ')">' + ltr(num(d.net_profit)) + '</b>'));
+  }).catch(function(e){ logErr(e); });
 }
 
 /* ─────── مالية: الربح والخسارة ─────── */
@@ -2222,6 +2214,7 @@ function drawStaffHub(isOld){
   }).join('') + '</div>' : '<div class="card">' + emptyState() + '</div>';
 
   /* موجودين دلوقتي — بس لو فيه حد مش متطابق مع القائمة فوق */
+  html += '<div class="state" style="text-align:start;font-size:12px">الدرجة من 100 = عملاء جداد 35% + تسجيل 30% + تكرار 20% + مرتجعات قليلة 15%، مقارنة بباقي الفريق. أخضر 70+، برتقالي 50+، أحمر أقل.</div>';
   if (HR.live.ok === false) html += card(tr('onShiftNow'), null,
     '<div class="state err">' + esc(HR.live.error) + '</div>');
 
@@ -2294,9 +2287,9 @@ var INV = { data: null, cat: '', shelf: 'all' };
 function setInvCat(c){ INV.cat = c; drawAging(); }
 function setInvShelf(v){ INV.shelf = v; drawAging(); }
 
-function pgAging(){
+function pgAging(key){
   var box = document.getElementById('p-stock');
-  INV_SEC = 'home';
+  INV_SEC = key === 'expTab' ? 'exp' : key === 'deadTab' ? 'dead' : 'home';
   loadInvExtras();
   var seed = cacheGet('inv', {});
   if (seed) { INV.data = seed; drawAging(true); } else busy(box);
@@ -2323,7 +2316,7 @@ var INV_SEC = 'home';   /* home | neg | exp | dead | all */
 var INV_ACC = null;
 var ORD = { sec: 'zero' }, ORD_STAT = null, ORD_BY = {}, ORD_NAMES = [], ORD_CUR = null;
 
-function invOnTab(){ return CUR === 'stock' && TAB === 1; }
+function invOnTab(){ return CUR === 'stock' && ['expTab', 'deadTab', 'aging'].indexOf((SECTIONS.stock[TAB] || [])[0]) >= 0; }
 
 function loadInvExtras(){
   api('countAccuracy', { range: 'all' }).then(function(d){
@@ -2992,7 +2985,7 @@ function shortAct(btn, action, code, name){
 }
 
 /* ─────── عملاء: الرسايل ─────── */
-var MSG = { data: null, type: 'all', failedOnly: false };
+var MSG = { data: null, type: 'all', failedOnly: true };
 
 function setMsgType(v){ MSG.type = v; drawMessages(); }
 function toggleFailed(){ MSG.failedOnly = !MSG.failedOnly; drawMessages(); }
@@ -3399,7 +3392,7 @@ function drawCustomers(res, box){
   var G = custGroups(list), dash = CUST.dash, html = '';
 
   /* ── الشاشة الأولى ── */
-  html += custPerBar();
+  if (CUST.sec === 'active') html += custPerBar();
   if (CUST.sec === 'home'){
     html += vitals(tr('customers'), null, [
       { value: num(list.length), label: tr('customers'), tone: 'brand' },

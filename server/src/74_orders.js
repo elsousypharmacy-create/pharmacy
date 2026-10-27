@@ -189,7 +189,7 @@ function ordersRatios_() {
 function ordersPage(code, days) {
   try {
     var dd = [3, 7, 14, 30].indexOf(parseInt(days, 10)) !== -1 ? parseInt(days, 10) : 7;
-    var key = 'fx_ord_page_v5_' + dd;
+    var key = 'fx_ord_page_v6_' + dd;
     var hit = fxCacheGet_(key);
     if (hit) return ordersWithMarks_(hit);
 
@@ -234,7 +234,7 @@ function ordersPage(code, days) {
     }
 
     var out = { ok: true, days: dd, at: Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm'),
-                sourceFields: null, estimated: 0, total: 0, salesDays: salesDays,
+                sourceFields: null, estimated: 0, total: 0, restocked: 0, salesDays: salesDays,
                 revPerDay: salesDays > 0 ? Math.round((vel.rev || 0) / salesDays) : 0 };
     ['zero', 'low'].forEach(function (sec) {
       var by = {}, data = d[sec];
@@ -259,9 +259,15 @@ function ordersPage(code, days) {
               for (var z = 0; z < ks_.length && stk === null; z++) {
                 if (/stock|رصيد|qty|balance/i.test(ks_[z]) && !/max|min|need|short/i.test(ks_[z])) stk = num_(it[ks_[z]]);
               }
-              if (stk === null) {
-                var sc2 = byCode[String(it.code || '').replace(/[^\d]/g, '')];
-                stk = sc2 ? sc2.stock : (stByName[doctorNorm_(it.name)] !== undefined ? stByName[doctorNorm_(it.name)] : null);
+              /* الرصيد الحيّ من STOCK LIVE (بيتحدّث كل ~5 دقايق) — قايمة النواقص نفسها بتتحدّث أبطأ،
+                 فلو الصنف دخل المخزون بعد آخر تصدير نشيله/نصحّح رصيده بدل ما يفضل ظاهر ناقص */
+              var sc2 = byCode[String(it.code || '').replace(/[^\d]/g, '')];
+              var live = sc2 ? sc2.stock : (stByName[doctorNorm_(it.name)] !== undefined ? stByName[doctorNorm_(it.name)] : null);
+              live = (live === null || live === undefined || !isFinite(Number(live))) ? null : Number(live);
+              if (live !== null) {
+                if (sec === 'zero' && live > 0) { out.restocked++; return; }
+                if (stk !== null && live >= stk + Number(it.shortage || 0) - 1e-9 && live > stk) { out.restocked++; return; }
+                if (stk === null || live > stk) stk = live;
               }
               var cost = pick_(it, /cost|coast|net|after|buy|purchase|صيدلي|تكلف/i, /total|tot_|sum/i), est = false;
               if (cost === null && pub) {

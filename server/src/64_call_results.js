@@ -189,3 +189,32 @@ function callsList_() {
   fxCachePut_('fx_calllist', out, 300);
   return out;
 }
+
+/* مفتاح العميل في شيت النتايج = أول 16 بايت هيكس (32 حرف) من SHA-256 (آخر 10 أرقام) — نفس حساب الصفحة */
+function callsKey_(p) {
+  var b = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, 'calls|' + last10_(p), Utilities.Charset.UTF_8), h = '';
+  for (var i = 0; i < 16; i++) h += ('0' + ((b[i] + 256) % 256).toString(16)).slice(-2);
+  return h;
+}
+
+/* تقرير المتابعة للداشبورد */
+function callsReport_() {
+  var L = callsList_();
+  if (!L || !L.ok) return { ok: false, error: (L && L.error) || 'تعذر قراءة القايمة' };
+  var byKey = {}, tiers = { 1: 0, 2: 0 };
+  L.list.forEach(function (r) { byKey[callsKey_(r.p)] = r; tiers[r.t] = (tiers[r.t] || 0) + 1; });
+  var res = callsGet_().calls, today = cairoDay_(0), cnt = { done: 0, noanswer: 0, later: 0, wrong: 0, blocked: 0 },
+      td = { done: 0, noanswer: 0, later: 0, wrong: 0, blocked: 0 }, recent = [], open = 0;
+  Object.keys(res).forEach(function (k) {
+    var v = res[k], r = byKey[k];
+    if (cnt[v.status] === undefined) return;
+    cnt[v.status]++;
+    var day = v.at ? Utilities.formatDate(new Date(v.at), 'Africa/Cairo', 'yyyy-MM-dd') : '';
+    if (day === today) td[v.status]++;
+    recent.push({ n: r ? r.n : '', p: r ? r.p : '', t: r ? r.t : 0, status: v.status, note: v.note, at: v.at, out: r ? 0 : 1 });
+  });
+  recent.sort(function (a, b) { return b.at - a.at; });
+  /* لسه محدش كلمهم: اللي في القايمة وماعندهمش نتيجة */
+  L.list.forEach(function (r) { if (!res[callsKey_(r.p)]) open++; });
+  return { ok: true, total: L.list.length, tiers: tiers, left: open, all: cnt, today: td, recent: recent.slice(0, 40) };
+}

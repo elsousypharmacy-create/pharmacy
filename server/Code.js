@@ -37,7 +37,7 @@ var LOCKED_GET = { getHomeBundle: 1, getSMSLogFast: 1, getSMSLog: 1, getCustomer
   sendCoupon: 1, getStaffHub: 1, getExpiryByMonth: 1, getAttendanceLive: 1, getAttendanceHistory: 1, getAttendanceLiveV2: 1,
   getAttendanceHistoryV2: 1, diagnoseAll: 1, getBotSettings: 1, maintenanceStatus: 1, maintenanceStop: 1,
   maintenanceResumeLive: 1, maintenanceDedup: 1, maintenanceStartRebuild: 1, backfillExpenses: 1, getExpReviews: 1,
-  ordersPage: 1, orderEfficiency: 1, logShortages: 1 };
+  ordersPage: 1, orderEfficiency: 1, logShortages: 1, callsReport: 1 };
 var LOCKED_POST = { log: 1, block: 1, unblock: 1, setSalaries: 1, retrySMS: 1, testSMS: 1, dismissSMS: 1, payAgent: 1,
   deleteAgentPending: 1, deleteCount: 1, expReview: 1 };
 function dashLocked_(pin) {
@@ -55,6 +55,7 @@ function doGet(e) {
   try { maybeEnsureTriggers_(); } catch (eT) {}
   var action = e.parameter.action;
   if (LOCKED_GET[action] && dashLocked_(e.parameter.pin)) return lockedResp_();
+  if (action === 'callsReport') return jsonResponseStaff(callsReport_());
   if (action === 'callsList') return jsonResponseStaff(callsList_());
   if (action === 'callsGet') return jsonResponseStaff(callsGet_());
   if (action === 'callsSet') return jsonResponseStaff(callsSet_(e.parameter));
@@ -8000,6 +8001,35 @@ function callsList_() {
   var out = { ok: true, at: Date.now(), partial: !!vis.missingDays, list: rows };
   fxCachePut_('fx_calllist', out, 300);
   return out;
+}
+
+/* مفتاح العميل في شيت النتايج = أول 16 بايت هيكس (32 حرف) من SHA-256 (آخر 10 أرقام) — نفس حساب الصفحة */
+function callsKey_(p) {
+  var b = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, 'calls|' + last10_(p), Utilities.Charset.UTF_8), h = '';
+  for (var i = 0; i < 16; i++) h += ('0' + ((b[i] + 256) % 256).toString(16)).slice(-2);
+  return h;
+}
+
+/* تقرير المتابعة للداشبورد */
+function callsReport_() {
+  var L = callsList_();
+  if (!L || !L.ok) return { ok: false, error: (L && L.error) || 'تعذر قراءة القايمة' };
+  var byKey = {}, tiers = { 1: 0, 2: 0 };
+  L.list.forEach(function (r) { byKey[callsKey_(r.p)] = r; tiers[r.t] = (tiers[r.t] || 0) + 1; });
+  var res = callsGet_().calls, today = cairoDay_(0), cnt = { done: 0, noanswer: 0, later: 0, wrong: 0, blocked: 0 },
+      td = { done: 0, noanswer: 0, later: 0, wrong: 0, blocked: 0 }, recent = [], open = 0;
+  Object.keys(res).forEach(function (k) {
+    var v = res[k], r = byKey[k];
+    if (cnt[v.status] === undefined) return;
+    cnt[v.status]++;
+    var day = v.at ? Utilities.formatDate(new Date(v.at), 'Africa/Cairo', 'yyyy-MM-dd') : '';
+    if (day === today) td[v.status]++;
+    recent.push({ n: r ? r.n : '', p: r ? r.p : '', t: r ? r.t : 0, status: v.status, note: v.note, at: v.at, out: r ? 0 : 1 });
+  });
+  recent.sort(function (a, b) { return b.at - a.at; });
+  /* لسه محدش كلمهم: اللي في القايمة وماعندهمش نتيجة */
+  L.list.forEach(function (r) { if (!res[callsKey_(r.p)]) open++; });
+  return { ok: true, total: L.list.length, tiers: tiers, left: open, all: cnt, today: td, recent: recent.slice(0, 40) };
 }
 
 // ==== MODULE 70_inventory_aging (split from server/Code.js; load order = file name order) ====

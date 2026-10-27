@@ -1217,7 +1217,8 @@ function shortMenu(){
 var SECTIONS = {
   sales: [['home',  function(){ return tr('today'); }], ['month', function(){ return tr('salesPerf'); }],
           ['perf',  function(){ return tr('staffToday'); }]],
-  cust:  [['list',  function(){ return tr('customers'); }], ['msgs', function(){ return tr('messages'); }]],
+  cust:  [['list',  function(){ return tr('customers'); }], ['msgs', function(){ return tr('messages'); }],
+          ['follow', function(){ return 'متابعة'; }]],
   bot:   [['chats', function(){ return '💬 المحادثات'; }]],
   stock: [['short', function(){ return tr('shortages'); }], ['aging', function(){ return tr('invAging'); }],
           ['count', function(){ return tr('counts'); }]],
@@ -1257,7 +1258,7 @@ function render(sec, tab){
   });
   ({ count:pgCounts, home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts,
      perf:pgStaffHub, aging:pgAging, short:pgShort,
-     msgs:pgMessages, list:pgCustomers, agents:pgAgents, docs:pgDoctors, chats:pgChats })[key](key);
+     msgs:pgMessages, follow:pgFollow, list:pgCustomers, agents:pgAgents, docs:pgDoctors, chats:pgChats })[key](key);
 }
 
 
@@ -3678,6 +3679,36 @@ function toggleBlock(){
 }
 
 
+
+/* ─────── عملاء: تقرير المتابعة (من صفحة calls.html) ─────── */
+function pgFollow(){
+  var box = document.getElementById('p-cust');
+  apiCached('callsReport', {}, box, drawFollow);
+}
+function drawFollow(d, box){
+  if (!d || !d.ok) { oops(box, "pgFollow()"); return; }
+  var ST = { done:'اتكلمنا', noanswer:'مردش', later:'موعد تاني', wrong:'رقم غلط', blocked:'محظور' };
+  var TONE = { done:'ok', noanswer:'warn', later:'brand', wrong:'bad', blocked:'bad' };
+  var html = vitals('متابعة العملاء', 'النهاردة', [
+    { value: num(d.today.done), label: 'اتكلمنا', tone: 'ok' },
+    { value: num(d.today.noanswer), label: 'مردش', tone: 'warn' },
+    { value: num(d.today.later), label: 'موعد تاني', tone: 'brand' }
+  ]);
+  html += card('القايمة', null,
+    row('لسه محدش كلمهم', null, ltr(num(d.left))) +
+    row('مزمن متأخر', null, ltr(num(d.tiers[1] || 0))) +
+    row('باقي الغايبين', null, ltr(num(d.tiers[2] || 0))) +
+    row('إجمالي القايمة', null, ltr(num(d.total))));
+  html += card('الإجمالي', 'من أول ما بدأت المتابعة',
+    Object.keys(ST).map(function(k){ return rowLite(ST[k], null, ltr(num(d.all[k] || 0))); }).join(''));
+  html += card('آخر النتايج', null, (d.recent || []).length ? d.recent.map(function(r){
+    var when = r.at ? new Date(r.at).toLocaleString('ar-EG', { day:'numeric', month:'numeric', hour:'numeric', minute:'2-digit' }) : '';
+    return row((r.n || r.p || 'عميل خرج من القايمة'),
+      esc(when) + (r.note ? ' · ' + esc(r.note) : ''),
+      badge(ST[r.status] || r.status, TONE[r.status] || 'brand'));
+  }).join('') : emptyState());
+  box.innerHTML = html;
+}
 
 /* ─────── عملاء: المندوبين ─────── */
 function pgAgents(){

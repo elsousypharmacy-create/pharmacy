@@ -194,15 +194,36 @@ let store = null;
 /* ---------- storage: shared db when available, else this browser ---------- */
 function lsGet(){ try{ return JSON.parse(localStorage.getItem('calls-v1')||'{}'); }catch(e){ return {}; } }
 function lsSet(o){ try{ localStorage.setItem('calls-v1', JSON.stringify(o)); }catch(e){} }
+const API = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7ctTVJjckmbTxegDq7E3R3p6aEBzqt275HNL8SBfWg/exec';
+let HK = {}, KH = {}, pending = 0, synced = false;
+async function hashKey(p){
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('calls|'+p));
+  return Array.from(new Uint8Array(d)).slice(0,16).map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function api(params){
+  const r = await fetch(API+'?'+new URLSearchParams(params));
+  const j = await r.json(); if(!j.ok) throw new Error(j.error||'x'); return j;
+}
+async function push(p, rec){
+  pending++;
+  try{ await api({action:'callsSet', key:HK[p], status:rec?rec.status:'', note:rec?(rec.note||''):''}); showNotice(''); }
+  catch(e){ showNotice('تعذر الحفظ على السيرفر. النتيجة محفوظة على الجهاز، جرّب تاني بعد لحظة.'); }
+  finally{ pending--; }
+}
 async function saveCall(p, rec){
-  S.calls[key(p)] = rec; render();
-  if(store){ try{ await store.doc(key(p)).set(rec); }catch(e){ showNotice('تعذر الحفظ على السيرفر. جرّب تاني بعد لحظة.'); } }
-  else lsSet(S.calls);
+  rec.at = Date.now(); S.calls[key(p)] = rec; lsSet(S.calls); render(); await push(p, rec);
 }
 async function clearCall(p){
-  delete S.calls[key(p)]; render();
-  if(store){ try{ await store.doc(key(p)).delete(); }catch(e){ showNotice('تعذر المسح. جرّب تاني.'); } }
-  else lsSet(S.calls);
+  delete S.calls[key(p)]; lsSet(S.calls); render(); await push(p, null);
+}
+async function pull(){
+  if(pending || document.hidden) return;
+  try{
+    const j = await api({action:'callsGet'}); if(pending) return;
+    const o = {};
+    for(const h in j.calls){ if(KH[h]) o[key(KH[h])] = j.calls[h]; }
+    S.calls = o; lsSet(o); S.live = true; synced = true; showNotice(''); render();
+  }catch(e){ if(!synced) showNotice('مفيش اتصال بالسيرفر دلوقتي. النتايج المعروضة من الجهاز ده.'); }
 }
 function showNotice(t){ const n=$('notice'); n.textContent=t; n.hidden=!t; }
 
@@ -412,15 +433,16 @@ function start(){
 S.calls = lsGet();
 render();
 (async () => {
+  for(const r of DATA){ const h = await hashKey(r.p); HK[r.p] = h; KH[h] = r.p; }
+  /* لو في نتايج متسجلة على الجهاز ومش على السيرفر (قبل المزامنة)، نرفعها مرة */
+  const local = lsGet();
+  await pull();
   try{
-    const db = window.claude && await window.claude.use('db');
-    if(!db){ showNotice('الحفظ الفوري بين الموظفين مش شغال هنا. النتايج بتتحفظ على الجهاز ده بس.'); return; }
-    store = db.collection('calls');
-    store.onSnapshot(snap => {
-      const o = {}; snap.docs.forEach(d => { const v = d.data(); if(v) o[d.id] = v; });
-      S.calls = o; S.live = true; showNotice(''); render();
-    }, err => { store = null; showNotice('الحفظ المشترك مش متاح دلوقتي. النتايج بتتحفظ على الجهاز ده بس.'); });
-  }catch(e){ showNotice('الحفظ الفوري بين الموظفين مش شغال هنا. النتايج بتتحفظ على الجهاز ده بس.'); }
+    for(const k in local){ if(!S.calls[k]){ const p = k.slice(1); if(HK[p]) await push(p, local[k]); } }
+  }catch(e){}
+  await pull();
+  setInterval(pull, 15000);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) pull(); });
 })();
 }
 

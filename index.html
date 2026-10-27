@@ -1217,8 +1217,7 @@ function shortMenu(){
 var SECTIONS = {
   sales: [['home',  function(){ return tr('today'); }], ['month', function(){ return tr('salesPerf'); }],
           ['perf',  function(){ return tr('staffToday'); }]],
-  cust:  [['list',  function(){ return tr('customers'); }], ['msgs', function(){ return tr('messages'); }],
-          ['follow', function(){ return 'متابعة'; }]],
+  cust:  [['list',  function(){ return tr('customers'); }], ['msgs', function(){ return tr('messages'); }]],
   bot:   [['chats', function(){ return '💬 المحادثات'; }]],
   stock: [['short', function(){ return tr('shortages'); }], ['aging', function(){ return tr('invAging'); }],
           ['count', function(){ return tr('counts'); }]],
@@ -1258,7 +1257,7 @@ function render(sec, tab){
   });
   ({ count:pgCounts, home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts,
      perf:pgStaffHub, aging:pgAging, short:pgShort,
-     msgs:pgMessages, follow:pgFollow, list:pgCustomers, agents:pgAgents, docs:pgDoctors, chats:pgChats })[key](key);
+     msgs:pgMessages, list:pgCustomers, agents:pgAgents, docs:pgDoctors, chats:pgChats })[key](key);
 }
 
 
@@ -3236,6 +3235,7 @@ function pgCustomers(){
   apiCached('getCustomers', {}, box, drawCustomers);
   loadCustDash();
   loadCustVisits();
+  loadCustCalls();
 }
 
 /* أرقام الاسترجاع من السيرفر — بتوصل بعد القايمة، وبنعيد الرسم لما توصل */
@@ -3402,6 +3402,8 @@ function drawCustomers(res, box){
       ltr(num(G.recover.length)), tr('customers'), 'setCustSec');
     html += secBtn('new', 'ok', tr('newSec'), tr('newSub'),
       dash && dash.new_customers !== undefined ? ltr(num(dash.new_customers)) : '…', tr('customers'), 'setCustSec');
+    html += secBtn('calls', 'ok', 'متابعة المكالمات', 'النتايج والملاحظات',
+      CUST.calls ? ltr(num(CUST.calls.today.done + CUST.calls.today.noanswer + CUST.calls.today.later + CUST.calls.today.wrong)) : '…', 'النهاردة', 'setCustSec');
     html += secBtn('blocked', 'ok', tr('blockedSec'), tr('blockedSub'),
       ltr(num(G.blocked.length)), tr('customers'), 'setCustSec');
     html += '<div style="height:8px"></div>';
@@ -3412,7 +3414,7 @@ function drawCustomers(res, box){
 
   /* ── الأقسام ── */
   var TITLES = { active: 'نشطين', follow: tr('needFollow'), recover: tr('recoverSec'), new: tr('newSec'),
-                 blocked: tr('blockedSec'), all: tr('allCust') };
+                 blocked: tr('blockedSec'), all: tr('allCust'), calls: 'متابعة المكالمات' };
   html = secHead(TITLES[CUST.sec] || '', 'custMenu()', 'setCustSec(\'home\')') + html;
 
   if (CUST.sec === 'active'){
@@ -3420,6 +3422,8 @@ function drawCustomers(res, box){
     html += card('نشطين', ltr(num(G.active.length)) + ' ' + tr('customers'),
       G.active.length ? G.active.map(function(c){ return custRow(c); }).join('') : emptyState());
   }
+
+  if (CUST.sec === 'calls'){ CUST.cur = []; CUST.curTitle = 'متابعة المكالمات'; html += callsHtml(CUST.calls); }
 
   if (CUST.sec === 'follow'){
     CUST.cur = G.follow; CUST.curTitle = tr('needFollow');
@@ -3680,16 +3684,22 @@ function toggleBlock(){
 
 
 
-/* ─────── عملاء: تقرير المتابعة (من صفحة calls.html) ─────── */
-function pgFollow(){
-  var box = document.getElementById('p-cust');
-  apiCached('callsReport', {}, box, drawFollow);
+/* ─────── عملاء: متابعة المكالمات (من صفحة calls.html) — جوه قسم العملاء ─────── */
+function loadCustCalls(){
+  api('callsReport').then(function(d){
+    if (!d || !d.ok) throw new Error((d && d.error) || 'calls');
+    CUST.calls = d; CUST.callsErr = false;
+    if (custOnTab() && CUST.list && CUST.list.length) drawCustomers(CUST.list, document.getElementById('p-cust'));
+  }).catch(function(e){ logErr(e); CUST.callsErr = true;
+    if (custOnTab() && CUST.sec === 'calls' && CUST.list) drawCustomers(CUST.list, document.getElementById('p-cust')); });
 }
-function drawFollow(d, box){
-  if (!d || !d.ok) { oops(box, "pgFollow()"); return; }
+function callsHtml(d){
+  if (!d) return CUST.callsErr
+    ? '<div class="state err">تعذر تحميل المتابعة — <u onclick="CUST.callsErr=false;loadCustCalls();drawCustomers(CUST.list,document.getElementById(\'p-cust\'))">حاول تاني</u></div>'
+    : '<div class="state"><div class="spin"></div></div>';
   var ST = { done:'اتكلمنا', noanswer:'مردش', later:'موعد تاني', wrong:'رقم غلط', blocked:'محظور' };
   var TONE = { done:'ok', noanswer:'warn', later:'brand', wrong:'bad', blocked:'bad' };
-  var html = vitals('متابعة العملاء', 'النهاردة', [
+  var html = vitals('متابعة المكالمات', 'النهاردة', [
     { value: num(d.today.done), label: 'اتكلمنا', tone: 'ok' },
     { value: num(d.today.noanswer), label: 'مردش', tone: 'warn' },
     { value: num(d.today.later), label: 'موعد تاني', tone: 'brand' }
@@ -3701,13 +3711,13 @@ function drawFollow(d, box){
     row('إجمالي القايمة', null, ltr(num(d.total))));
   html += card('الإجمالي', 'من أول ما بدأت المتابعة',
     Object.keys(ST).map(function(k){ return rowLite(ST[k], null, ltr(num(d.all[k] || 0))); }).join(''));
-  html += card('آخر النتايج', null, (d.recent || []).length ? d.recent.map(function(r){
+  html += card('آخر النتايج والملاحظات', null, (d.recent || []).length ? d.recent.map(function(r){
     var when = r.at ? new Date(r.at).toLocaleString('ar-EG', { day:'numeric', month:'numeric', hour:'numeric', minute:'2-digit' }) : '';
     return row((r.n || r.p || 'عميل خرج من القايمة'),
       esc(when) + (r.note ? ' · ' + esc(r.note) : ''),
       badge(ST[r.status] || r.status, TONE[r.status] || 'brand'));
   }).join('') : emptyState());
-  box.innerHTML = html;
+  return html;
 }
 
 /* ─────── عملاء: المندوبين ─────── */

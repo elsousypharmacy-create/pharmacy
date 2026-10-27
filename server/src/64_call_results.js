@@ -36,9 +36,9 @@ function callsSet_(p) {
 /* ═══ قايمة المتابعة الحية: العملاء بيدخلوا ويخرجوا لوحدهم من المبيعات ═══
    الشرايح 2/3/4 من "زيارات يومية" (كل 5 دقايق). المزمن (1) من أصناف آخر 120 يوم، بيتحسب بالليل. */
 var CALLS_CFG_ = {
-  t4: { minVisits: 6, minDays: 30, maxDays: 60, cap: 60 },        /* منتظم غايب */
-  t3: { minSpend: 5000, minDays: 45, cap: 40 },                   /* VIP منقطع */
-  t2: { minVisits: 10, minDays: 14, maxDays: 120, factor: 2, cap: 60 }, /* في خطر: غاب أكتر من ضعف فاصله المعتاد */
+  t4: { minVisits: 6, minDays: 30, maxDays: 60, cap: 99999 },        /* منتظم غايب */
+  t3: { minSpend: 5000, minDays: 45, cap: 99999 },                   /* VIP منقطع */
+  t2: { minVisits: 10, minDays: 14, maxDays: 120, factor: 2, cap: 99999 }, /* في خطر: غاب أكتر من ضعف فاصله المعتاد */
   chronic: { windowDays: 120, minBuys: 3, gapMin: 24, gapMax: 36, overdueMin: 5, maxSince: 150 }
 };
 var ITEMS_SHEET = 'أصناف يومية';

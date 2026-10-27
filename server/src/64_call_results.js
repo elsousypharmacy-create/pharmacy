@@ -36,9 +36,7 @@ function callsSet_(p) {
 /* ═══ قايمة المتابعة الحية: العملاء بيدخلوا ويخرجوا لوحدهم من المبيعات ═══
    الشرايح 2/3/4 من "زيارات يومية" (كل 5 دقايق). المزمن (1) من أصناف آخر 120 يوم، بيتحسب بالليل. */
 var CALLS_CFG_ = {
-  t4: { minVisits: 6, minDays: 30, maxDays: 60, cap: 99999 },        /* منتظم غايب */
-  t3: { minSpend: 5000, minDays: 45, cap: 99999 },                   /* VIP منقطع */
-  t2: { minVisits: 10, minDays: 14, maxDays: 120, factor: 2, cap: 99999 }, /* في خطر: غاب أكتر من ضعف فاصله المعتاد */
+  lapsed: { minDays: 30, minVisits: 2, vipSpend: 5000 },          /* باقي الغايبين: غاب 30 يوم+ وزار مرتين+ ، و VIP لو صرف 5000+ */
   chronic: { windowDays: 120, minBuys: 3, gapMin: 24, gapMax: 36, overdueMin: 5, maxSince: 150 }
 };
 var ITEMS_SHEET = 'أصناف يومية';
@@ -172,25 +170,21 @@ function callsList_() {
       if (c.is_blocked) blocked[k] = 1;
     });
   } catch (e) {}
-  var chronic = callsChronic_(), C = CALLS_CFG_, todayN = dayNum_(cairoDay_(0)), rows = [], b = { 2: [], 3: [], 4: [] };
+  var chronic = callsChronic_(), C = CALLS_CFG_, todayN = dayNum_(cairoDay_(0)), rows = [], rest = [];
   Object.keys(vis.customers).forEach(function (ph) {
     var a = vis.customers[ph], k = last10_(ph);
     if (k.length < 10 || blocked[k] || !a.l) return;
     var d = todayN - dayNum_(a.l);
-    var row = { n: names[k] || '', p: '0' + k, l: a.l, d: d, v: a.v, s: a.s, m: [], o: [], c: 2, b: 0 };
+    var row = { n: names[k] || '', p: '0' + k, l: a.l, d: d, v: a.v, s: a.s, m: [], o: [], c: 2, b: 0, vip: a.s >= C.lapsed.vipSpend ? 1 : 0 };
     var ch = chronic[k];
     if (ch && dayNum_(a.l) <= ch.x) {                       /* لسه ماشتراش بعد آخر مرة */
       row.t = 1; row.c = 1; row.m = ch.m; rows.push(row); return;
     }
-    if (a.s >= C.t3.minSpend && d >= C.t3.minDays) { row.t = 3; b[3].push(row); return; }
-    if (a.v >= C.t2.minVisits && d >= C.t2.minDays && d <= C.t2.maxDays && d > C.t2.factor * (365 / a.v)) { row.t = 2; b[2].push(row); return; }
-    if (a.v >= C.t4.minVisits && d >= C.t4.minDays && d <= C.t4.maxDays) { row.t = 4; b[4].push(row); }
+    if (d >= C.lapsed.minDays && a.v >= C.lapsed.minVisits) { row.t = 2; rest.push(row); }
   });
-  [2, 3, 4].forEach(function (t) {
-    b[t].sort(function (x, y) { return y.s - x.s; });
-    rows = rows.concat(b[t].slice(0, C['t' + t].cap));
-  });
-  rows.sort(function (x, y) { return x.t - y.t || y.s - x.s; });
+  rest.sort(function (x, y) { return y.s - x.s; });
+  rows.sort(function (x, y) { return y.m[0][1] - x.m[0][1]; });
+  rows = rows.concat(rest);
   var out = { ok: true, at: Date.now(), partial: !!vis.missingDays, list: rows };
   fxCachePut_('fx_calllist', out, 300);
   return out;

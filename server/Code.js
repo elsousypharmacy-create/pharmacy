@@ -55,6 +55,7 @@ function doGet(e) {
   try { maybeEnsureTriggers_(); } catch (eT) {}
   var action = e.parameter.action;
   if (LOCKED_GET[action] && dashLocked_(e.parameter.pin)) return lockedResp_();
+  if (action === 'eventAdd') return jsonResponseStaff(eventAdd_(e.parameter));
   if (action === 'callsReport') return jsonResponseStaff(callsReport_());
   if (action === 'callsList') return jsonResponseStaff(callsList_());
   if (action === 'callsGet') return jsonResponseStaff(callsGet_());
@@ -7983,7 +7984,13 @@ function callsList_() {
       if (c.is_blocked) blocked[k] = 1;
     });
   } catch (e) {}
-  var chronic = callsChronic_(), C = CALLS_CFG_, todayN = dayNum_(cairoDay_(0)), rows = [], rest = [];
+  var chronic = callsChronic_(), C = CALLS_CFG_, todayN = dayNum_(cairoDay_(0)), rows = [], rest = [], evMap = {};
+  eventRows_().forEach(function (r) {
+    var k = last10_(r[2]); if (k.length !== 10) return;
+    var reg = String(r[0]).substring(0, 10);
+    evMap[k] = { n: r[1], p: '0' + k, t: 3, l: reg, reg: reg, d: todayN - dayNum_(reg), v: 0, s: 0, m: [], o: [], c: 2, b: 0,
+                 g: String(r[3] || ''), x: String(r[4] || '') };
+  });
   Object.keys(vis.customers).forEach(function (ph) {
     var a = vis.customers[ph], k = last10_(ph);
     if (k.length < 10 || blocked[k] || !a.l) return;
@@ -7991,13 +7998,17 @@ function callsList_() {
     var row = { n: names[k] || '', p: '0' + k, l: a.l, d: d, v: a.v, s: a.s, m: [], o: [], c: 2, b: 0, vip: a.s >= C.lapsed.vipSpend ? 1 : 0 };
     var ch = chronic[k];
     if (ch && dayNum_(a.l) <= ch.x) {                       /* لسه ماشتراش بعد آخر مرة */
-      row.t = 1; row.c = 1; row.m = ch.m; rows.push(row); return;
+      row.t = 1; row.c = 1; row.m = ch.m; rows.push(row); delete evMap[k]; return;
     }
+    if (evMap[k]) { evMap[k].v = a.v; evMap[k].s = a.s; evMap[k].vip = row.vip; if (a.l > evMap[k].reg) evMap[k].bought = 1; return; }
     if (d >= C.lapsed.minDays && a.v >= C.lapsed.minVisits) { row.t = 2; rest.push(row); }
   });
+  var evList = [];
+  Object.keys(evMap).forEach(function (k) { var e = evMap[k]; if (!e.bought && !blocked[k]) { delete e.bought; delete e.reg; evList.push(e); } });
+  evList.sort(function (x, y) { return y.d - x.d; });
   rest.sort(function (x, y) { return y.s - x.s; });
   rows.sort(function (x, y) { return y.m[0][1] - x.m[0][1]; });
-  rows = rows.concat(rest);
+  rows = rows.concat(evList, rest);
   var out = { ok: true, at: Date.now(), partial: !!vis.missingDays, list: rows };
   fxCachePut_('fx_calllist', out, 300);
   return out;
@@ -8014,7 +8025,7 @@ function callsKey_(p) {
 function callsReport_() {
   var L = callsList_();
   if (!L || !L.ok) return { ok: false, error: (L && L.error) || 'تعذر قراءة القايمة' };
-  var byKey = {}, tiers = { 1: 0, 2: 0 };
+  var byKey = {}, tiers = { 1: 0, 2: 0, 3: 0 };
   L.list.forEach(function (r) { byKey[callsKey_(r.p)] = r; tiers[r.t] = (tiers[r.t] || 0) + 1; });
   var res = callsGet_().calls, today = cairoDay_(0), cnt = { done: 0, noanswer: 0, later: 0, wrong: 0, blocked: 0 },
       td = { done: 0, noanswer: 0, later: 0, wrong: 0, blocked: 0 }, recent = [], open = 0;
@@ -8030,6 +8041,43 @@ function callsReport_() {
   /* لسه محدش كلمهم: اللي في القايمة وماعندهمش نتيجة */
   L.list.forEach(function (r) { if (!res[callsKey_(r.p)]) open++; });
   return { ok: true, total: L.list.length, tiers: tiers, left: open, all: cnt, today: td, recent: recent.slice(0, 40) };
+}
+
+/* ═══ ايفنت المعاشات: الممرض بيسجل الاسم والرقم + اختيار سريع، وبيدخلوا قايمة المكالمات كشريحة 3 ═══ */
+var EVENT_SHEET = 'ايفنت المعاشات';
+var EVENT_TAGS_ = { 'ضغط': 1, 'سكر': 1, 'القراية عالية': 1, 'طبيعي': 1, 'عايز توصيل': 1 };
+function eventSheet_() {
+  var sh = getOrCreateSheet_(EVENT_SHEET, ['الوقت', 'الاسم', 'الرقم', 'اختيارات', 'ملاحظة']);
+  sh.getRange('C:C').setNumberFormat('@');
+  return sh;
+}
+function eventAdd_(p) {
+  var name = String(p.name || '').trim().slice(0, 80);
+  var k = last10_(p.phone);
+  if (!name) return { ok: false, error: 'اكتب الاسم' };
+  if (k.length !== 10 || k.charAt(0) !== '1') return { ok: false, error: 'الرقم غلط — لازم 11 رقم يبدأ بـ 01' };
+  var tags = String(p.tags || '').split(',').map(function (s) { return s.trim(); })
+    .filter(function (s) { return EVENT_TAGS_[s]; }).join('، ');
+  var note = String(p.note || '').trim().slice(0, 300);
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var sh = eventSheet_(), n = sh.getLastRow(), row = 0, now = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm');
+    if (n >= 2) {
+      var ph = sh.getRange(2, 3, n - 1, 1).getDisplayValues();
+      for (var i = 0; i < ph.length; i++) if (last10_(ph[i][0]) === k) { row = i + 2; break; }
+    }
+    var vals = [now, name, '0' + k, tags, note];
+    if (row) sh.getRange(row, 1, 1, 5).setValues([vals]); else sh.appendRow(vals);
+    fxClearCache_('fx_calllist');
+    return { ok: true, updated: !!row, total: row ? n - 1 : n };
+  } finally { lock.releaseLock(); }
+}
+function eventRows_() {
+  try {
+    var sh = SpreadsheetApp.openById(STAFF_SHEET_ID).getSheetByName(EVENT_SHEET);
+    if (!sh || sh.getLastRow() < 2) return [];
+    return sh.getRange(2, 1, sh.getLastRow() - 1, 5).getDisplayValues();
+  } catch (e) { return []; }
 }
 
 // ==== MODULE 70_inventory_aging (split from server/Code.js; load order = file name order) ====

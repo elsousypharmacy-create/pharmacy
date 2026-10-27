@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" href="icon-192.png?v=2">
+<title>تسجيل الإيفنت</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#0A0B0D;--card:#141619;--soft:#1C1F24;--line:#25292F;--ink:#F2F4F7;--muted:#9BA3AF;--accent:#1B92D4;--accent-ink:#04121C;--ok:#3DBE8B;--bad:#E5646E;--warn:#E8A33D;color-scheme:dark}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#F4F5F7;--card:#FFFFFF;--soft:#EDEFF2;--line:#E1E4E9;--ink:#14171A;--muted:#5A626C;--accent:#1272A6;--accent-ink:#FFFFFF;--ok:#1E8A5F;--bad:#C33B47;--warn:#9A6410;color-scheme:light}}
+:root[data-theme="light"]{--bg:#F4F5F7;--card:#FFFFFF;--soft:#EDEFF2;--line:#E1E4E9;--ink:#14171A;--muted:#5A626C;--accent:#1272A6;--accent-ink:#FFFFFF;--ok:#1E8A5F;--bad:#C33B47;--warn:#9A6410;color-scheme:light}
+*{box-sizing:border-box}
+html{direction:rtl}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Cairo',system-ui,sans-serif;padding:12px 16px 40px}
+.wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.brand{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 10px;display:flex;align-items:center;gap:10px}
+.brand img{width:32px;height:32px;border-radius:8px;background:#fff}
+.brand h1{font-size:1rem;margin:0}.brand p{margin:0;color:var(--muted);font-size:.8rem}
+form{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+label{font-weight:600;font-size:.9rem}
+input,textarea{width:100%;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:11px 12px;font:inherit;font-size:1.05rem}
+input:focus,textarea:focus{outline:2px solid var(--accent);border-color:transparent}
+#phone{direction:ltr;text-align:right;letter-spacing:.04em}
+textarea{min-height:56px;resize:vertical;font-size:.95rem}
+.tags{display:flex;flex-wrap:wrap;gap:8px}
+.tag{border:1.5px solid var(--line);background:var(--soft);color:var(--ink);border-radius:99px;padding:6px 14px;font:inherit;font-weight:600;cursor:pointer;min-height:40px}
+.tag[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.go{border:0;background:var(--accent);color:var(--accent-ink);border-radius:12px;padding:13px;font:inherit;font-size:1.1rem;font-weight:800;cursor:pointer;min-height:52px}
+.go:disabled{opacity:.6}
+.msg{min-height:1.4em;font-weight:600;font-size:.95rem}
+.msg.ok{color:var(--ok)}.msg.bad{color:var(--bad)}.msg.warn{color:var(--warn)}
+.stat{display:flex;justify-content:space-between;color:var(--muted);font-size:.85rem}
+.stat b{color:var(--ink);font-size:1rem}
+ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+li{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;justify-content:space-between;gap:8px;font-size:.9rem}
+li span{color:var(--muted);direction:ltr}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="brand"><img src="icon-192.png?v=2" alt="شعار صيدلية السوسي"><div><h1>صيدلية د. أحمد السوسي</h1><p>تسجيل حضور الإيفنت</p></div></header>
+
+  <form id="f" autocomplete="off">
+    <div><label for="name">الاسم</label><input id="name" required placeholder="اسم الحاج / الحاجة"></div>
+    <div><label for="phone">رقم الموبايل</label><input id="phone" required type="tel" inputmode="numeric" placeholder="01xxxxxxxxx" maxlength="14"></div>
+    <div><label>اختيار سريع</label><div class="tags" id="tags"></div></div>
+    <div><label for="note">ملاحظة (اختياري)</label><textarea id="note" maxlength="300" placeholder="أي حاجة مهمة للمتابعة"></textarea></div>
+    <button class="go" id="go" type="submit">سجّل</button>
+    <div class="msg" id="msg" role="status"></div>
+  </form>
+
+  <div class="stat"><span>اتسجلوا من الجهاز ده: <b id="cnt">0</b></span><span id="pend"></span></div>
+  <ul id="last"></ul>
+</div>
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7ctTVJjckmbTxegDq7E3R3p6aEBzqt275HNL8SBfWg/exec';
+const TAGS = ['ضغط','سكر','القراية عالية','طبيعي','عايز توصيل'];
+const $ = id => document.getElementById(id);
+const sel = new Set();
+function lsGet(k, d){ try{ return JSON.parse(localStorage.getItem(k)) || d; }catch(e){ return d; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+let done = lsGet('ev-done', []), queue = lsGet('ev-queue', []);
+
+TAGS.forEach(t => {
+  const b = document.createElement('button'); b.type='button'; b.className='tag'; b.textContent=t; b.setAttribute('aria-pressed','false');
+  b.onclick = () => { if(sel.has(t)) sel.delete(t); else sel.add(t); b.setAttribute('aria-pressed', sel.has(t)); };
+  $('tags').append(b);
+});
+
+function normPhone(s){
+  s = String(s).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/\D/g,'');
+  if(s.startsWith('20') && s.length===12) s = '0'+s.slice(2);
+  if(s.length===10 && s[0]==='1') s = '0'+s;
+  return s;
+}
+function draw(){
+  $('cnt').textContent = done.length;
+  $('pend').textContent = queue.length ? ('مستني النت: '+queue.length) : '';
+  const ul = $('last'); ul.textContent='';
+  done.slice(-5).reverse().forEach(r => { const li=document.createElement('li'); li.append(document.createTextNode(r.name)); const s=document.createElement('span'); s.textContent=r.phone; li.append(s); ul.append(li); });
+}
+function msg(t, c){ const m=$('msg'); m.textContent=t; m.className='msg '+(c||''); }
+
+async function send(r){
+  const res = await fetch(API+'?'+new URLSearchParams({action:'eventAdd', name:r.name, phone:r.phone, tags:r.tags, note:r.note}));
+  const j = await res.json();
+  if(!j.ok) { const e = new Error(j.error||'خطأ'); e.final = true; throw e; }
+  return j;
+}
+async function flush(){
+  while(queue.length){
+    try{ await send(queue[0]); done.push(queue.shift()); lsSet('ev-queue', queue); lsSet('ev-done', done); draw(); }
+    catch(e){ if(e.final){ queue.shift(); lsSet('ev-queue', queue); draw(); continue; } break; }
+  }
+}
+
+$('f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = $('name').value.trim(), phone = normPhone($('phone').value);
+  if(!name){ msg('اكتب الاسم','bad'); $('name').focus(); return; }
+  if(!/^01\d{9}$/.test(phone)){ msg('الرقم لازم 11 رقم يبدأ بـ 01','bad'); $('phone').focus(); return; }
+  const r = {name, phone, tags:[...sel].join(','), note:$('note').value.trim()};
+  $('go').disabled = true;
+  try{
+    const j = await send(r);
+    done.push(r); lsSet('ev-done', done);
+    msg(j.updated ? 'اتحدّث — '+name+' كان متسجل قبل كده' : 'اتسجل ✓ '+name, 'ok');
+  }catch(err){
+    if(err.final){ msg(err.message,'bad'); $('go').disabled=false; return; }
+    queue.push(r); lsSet('ev-queue', queue);
+    msg('مفيش نت — اتحفظ على الجهاز وهيتبعت لوحده', 'warn');
+  }
+  $('f').reset(); sel.clear(); document.querySelectorAll('.tag').forEach(b=>b.setAttribute('aria-pressed','false'));
+  $('go').disabled = false; draw(); $('name').focus();
+});
+draw(); flush();
+setInterval(flush, 20000);
+window.addEventListener('online', flush);
+</script>
+</body>
+</html>

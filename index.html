@@ -3708,6 +3708,7 @@ function callsHtml(d){
     row('لسه محدش كلمهم', null, ltr(num(d.left))) +
     row('مزمن متأخر', null, ltr(num(d.tiers[1] || 0))) +
     row('باقي الغايبين', null, ltr(num(d.tiers[2] || 0))) +
+    row('ايفنت المعاشات', null, ltr(num(d.tiers[3] || 0))) +
     row('إجمالي القايمة', null, ltr(num(d.total))));
   html += card('الإجمالي', 'من أول ما بدأت المتابعة',
     Object.keys(ST).map(function(k){ return rowLite(ST[k], null, ltr(num(d.all[k] || 0))); }).join(''));

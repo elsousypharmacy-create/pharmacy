@@ -30,6 +30,7 @@ function doGet(e) {
   try { maybeEnsureTriggers_(); } catch (eT) {}
   var action = e.parameter.action;
   if (LOCKED_GET[action] && dashLocked_(e.parameter.pin)) return lockedResp_();
+  if (action === 'callsList') return jsonResponseStaff(callsList_());
   if (action === 'callsGet') return jsonResponseStaff(callsGet_());
   if (action === 'callsSet') return jsonResponseStaff(callsSet_(e.parameter));
   if (action === 'getBotSettings') return jsonResponseStaff(getBotSettings());

@@ -155,6 +155,11 @@ var EDITOR_TRIGGERS_ = {
     auto: true,
     install: function () { ScriptApp.newTrigger('remindPendingHandoffs').timeBased().everyMinutes(10).create(); }
   },
+  callsChronicRefresh: {
+    label: 'تحديث قايمة المتابعة (المزمن) كل ٣٠ دقيقة',
+    auto: true,
+    install: function () { ScriptApp.newTrigger('callsChronicRefresh').timeBased().everyMinutes(30).create(); }
+  },
   sendWeeklyDebtReminders: {
     label: 'تذكير الديون كل سبت الساعة ١١',
     auto: false,
@@ -166,7 +171,7 @@ var EDITOR_TRIGGERS_ = {
     install: function () { ScriptApp.newTrigger('checkExpiredCoupons').timeBased().atHour(9).everyDays(1).create(); }
   }
 };
-var TRIGGERS_ENSURED_MARK_ = 'handoff10';
+var TRIGGERS_ENSURED_MARK_ = 'handoff10+calls';
 function ensureTriggers_(opts) {
   opts = opts || {};
   var which = String(opts.which || '');

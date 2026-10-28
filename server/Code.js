@@ -12083,7 +12083,10 @@ function getHomeBundleFast() {
     ok: true,
     // لحظي
     daily:       safe_('daily',       function () { return getSystemDailyTotals(); }),
-    attendance:  safe_('attendance',  function () { return getAttendanceLiveV2(); }),
+    attendance:  safe_('attendance',  function () {   // Connecteam بره: نحفظه دقيقة بدل ما نسأله مع كل فتحة
+      var c = fxCacheGet_('fx_att_live'); if (c) return c;
+      var a = getAttendanceLiveV2(); if (a && a.ok) fxCachePut_('fx_att_live', a, 60); return a;
+    }),
     maintenance: safe_('maintenance', function () { return getMaintenanceStatus(); }),
     // من اللقطة
     expiry:      safe_('expiry',      function () { return getExpiryByMonthSnap(); }),

@@ -204,9 +204,16 @@ async function hashKey(p){
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('calls|'+l10(p)));
   return Array.from(new Uint8Array(d)).slice(0,16).map(x=>x.toString(16).padStart(2,'0')).join('');
 }
+/* ⚡ السيرفر السريع (Cloudflare): النتايج بتوصل لكل الموظفين في ثواني. لو وقع بنكلم Google على طول */
+const FAST = '';
 async function api(params){
-  const r = await fetch(API+'?'+new URLSearchParams(params));
-  const j = await r.json(); if(!j.ok) throw new Error(j.error||'x'); return j;
+  const qs = '?'+new URLSearchParams(params);
+  let j = null;
+  if(FAST){
+    try{ const r = await fetch(FAST+qs, {cache:'no-store'}); if(r.ok) j = await r.json(); if(j && j.proxyError) j = null; }catch(e){ j = null; }
+  }
+  if(!j){ const r = await fetch(API+qs); j = await r.json(); }
+  if(!j.ok) throw new Error(j.error||'x'); return j;
 }
 async function push(p, rec){
   pending++;
@@ -492,7 +499,7 @@ $('staffnow').textContent = staffName() || '—'; if(!staffName()) askStaff();
   for(const r of DATA){ const h = await hashKey(r.p); HK[r.p] = h; KH[h] = r.p; }
   await pull(true);
   let n = 0;
-  setInterval(() => pull(++n % 4 === 0), 15000);
+  setInterval(() => pull(++n % (FAST?6:2) === 0), FAST ? 10000 : 30000);   /* السريع: كل 10 ثواني، القايمة كل دقيقة */
   document.addEventListener('visibilitychange', () => { if(!document.hidden) pull(true); });
 })();
 }

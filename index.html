@@ -377,6 +377,11 @@ details.setg[open]{padding-bottom:var(--s3)}
    ══════════════════════════════════════════════════════════ */
 
 var SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7ctTVJjckmbTxegDq7E3R3p6aEBzqt275HNL8SBfWg/exec';
+/* ⚡ السيرفر السريع (Cloudflare): القراية من هنا، ولو وقع بنرجع لـ Google على طول */
+var FAST_URL = '';
+var FAST_READ = { callsGet:1, callsList:1, callsReport:1, getHomeBundle:1, getStaffKPI:1, getSystemDailyTotals:1, getMonthTotalsRaw:1,
+  getBotChats:1, getShortages:1, getStaffHub:1, getExpensesData:1, getSMSLogFast:1, getCustomers:1, getNewCustomersDetail:1,
+  getHistory:1, getDebtsData:1, getProfitLoss:1, getInventoryAging:1 };
 var SHORTAGE_URL = 'https://script.google.com/macros/s/AKfycbyKMrAmkZ9Ipjgy59Kak2nUT0YsW0xfTWVjypo8J1Izaiof-qky7p2-Ebugx--HWjGK8A/exec';
 
 /* ═══════════ ١) القاموس ═══════════
@@ -824,10 +829,15 @@ function api(action, params, base){
   return api_(action, params, base);
 }
 function api_(action, params, base){
-  var url = (base || SCRIPT_URL) + '?action=' + action;
-  for (var k in (params || {})) if (params[k] != null) url += '&' + k + '=' + encodeURIComponent(params[k]);
-  url += '&_ts=' + Date.now();
-  return fetch(url, { cache: 'no-store' }).then(function(r){ return r.json(); });
+  var qs = '?action=' + action;
+  for (var k in (params || {})) if (params[k] != null) qs += '&' + k + '=' + encodeURIComponent(params[k]);
+  var slow = function(){ return fetch((base || SCRIPT_URL) + qs + '&_ts=' + Date.now(), { cache: 'no-store' }).then(function(r){ return r.json(); }); };
+  if (base || !FAST_URL || !FAST_READ[action]) return slow();
+  var ctl = window.AbortController ? new AbortController() : null, tm = ctl && setTimeout(function(){ ctl.abort(); }, 30000);
+  return fetch(FAST_URL + qs, { cache: 'no-store', signal: ctl ? ctl.signal : undefined })
+    .then(function(r){ if (!r.ok) throw new Error('fast ' + r.status); return r.json(); })
+    .then(function(d){ clearTimeout(tm); return d; })
+    .catch(function(){ clearTimeout(tm); return slow(); });
 }
 function post(body){
   var send = function(b){ return fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(b) }).then(function(r){ return r.json(); }); };
@@ -1504,12 +1514,17 @@ function pgHome(){
   var seed = cacheGet('home', {});
   if (seed) drawHome(seed.b, seed.kpi, true); else busy(box);
 
-  Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }) ])
-  .then(function(res){
-    cacheSet('home', {}, { b: res[0], kpi: res[1] });
-    markSync();
-    drawHome(res[0], res[1], false);
-  }).catch(function(e){
+  var loadHome = function(again){
+    return Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }) ])
+    .then(function(res){
+      cacheSet('home', {}, { b: res[0], kpi: res[1] });
+      markSync();
+      drawHome(res[0], res[1], false);
+      /* الرقم كان قديم شوية والسيرفر السريع بيجيب الجديد دلوقتي: نسأل تاني بعد ثواني */
+      if (again && ((res[0] && res[0]._stale) || (res[1] && res[1]._stale))) setTimeout(function(){ loadHome(false).catch(logErr); }, 5000);
+    });
+  };
+  loadHome(true).catch(function(e){
     logErr(e);
     if (!seed) oops(box, "pgHome()");
   });

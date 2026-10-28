@@ -160,6 +160,11 @@ var EDITOR_TRIGGERS_ = {
     auto: true,
     install: function () { ScriptApp.newTrigger('callsChronicRefresh').timeBased().everyMinutes(30).create(); }
   },
+  callsDailySummary: {
+    label: 'ملخص المكالمات على تليجرام كل يوم الساعة ١٠ بالليل',
+    auto: true,
+    install: function () { ScriptApp.newTrigger('callsDailySummary').timeBased().atHour(22).everyDays(1).inTimezone('Africa/Cairo').create(); }
+  },
   sendWeeklyDebtReminders: {
     label: 'تذكير الديون كل سبت الساعة ١١',
     auto: false,
@@ -171,7 +176,7 @@ var EDITOR_TRIGGERS_ = {
     install: function () { ScriptApp.newTrigger('checkExpiredCoupons').timeBased().atHour(9).everyDays(1).create(); }
   }
 };
-var TRIGGERS_ENSURED_MARK_ = 'handoff10+calls';
+var TRIGGERS_ENSURED_MARK_ = 'handoff10+calls+summary';
 function ensureTriggers_(opts) {
   opts = opts || {};
   var which = String(opts.which || '');

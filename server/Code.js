@@ -5738,6 +5738,11 @@ var EDITOR_TRIGGERS_ = {
     auto: true,
     install: function () { ScriptApp.newTrigger('callsChronicRefresh').timeBased().everyMinutes(30).create(); }
   },
+  callsDailySummary: {
+    label: 'ملخص المكالمات على تليجرام كل يوم الساعة ١٠ بالليل',
+    auto: true,
+    install: function () { ScriptApp.newTrigger('callsDailySummary').timeBased().atHour(22).everyDays(1).inTimezone('Africa/Cairo').create(); }
+  },
   sendWeeklyDebtReminders: {
     label: 'تذكير الديون كل سبت الساعة ١١',
     auto: false,
@@ -5749,7 +5754,7 @@ var EDITOR_TRIGGERS_ = {
     install: function () { ScriptApp.newTrigger('checkExpiredCoupons').timeBased().atHour(9).everyDays(1).create(); }
   }
 };
-var TRIGGERS_ENSURED_MARK_ = 'handoff10+calls';
+var TRIGGERS_ENSURED_MARK_ = 'handoff10+calls+summary';
 function ensureTriggers_(opts) {
   opts = opts || {};
   var which = String(opts.which || '');
@@ -7817,13 +7822,17 @@ function getExpensesData(params) {
 var CALLS_SHEET = 'نتايج المتابعة';
 var CALL_STATUSES_ = { done: 1, noanswer: 1, later: 1, wrong: 1 };
 
-function callsSheet_() { return getOrCreateSheet_(CALLS_SHEET, ['المفتاح', 'الحالة', 'ملاحظة', 'الوقت']); }
+function callsSheet_() {
+  var sh = getOrCreateSheet_(CALLS_SHEET, ['المفتاح', 'الحالة', 'ملاحظة', 'الوقت', 'الموظف']);
+  if (sh.getLastColumn() < 5) sh.getRange(1, 5).setValue('الموظف');
+  return sh;
+}
 
 function callsGet_() {
   var sh = callsSheet_(), n = sh.getLastRow(), out = {};
   if (n < 2) return { ok: true, calls: out };
-  sh.getRange(2, 1, n - 1, 4).getValues().forEach(function (r) {
-    if (r[0] && r[1]) out[String(r[0])] = { status: String(r[1]), note: String(r[2] || ''), at: Number(r[3]) || 0 };
+  sh.getRange(2, 1, n - 1, 5).getValues().forEach(function (r) {
+    if (r[0] && r[1]) out[String(r[0])] = { status: String(r[1]), note: String(r[2] || ''), at: Number(r[3]) || 0, by: String(r[4] || '') };
   });
   return { ok: true, calls: out };
 }
@@ -7841,8 +7850,8 @@ function callsSet_(p) {
       for (var i = 0; i < keys.length; i++) if (String(keys[i][0]) === key) { row = i + 2; break; }
     }
     if (!status) { if (row) sh.deleteRow(row); return { ok: true }; }
-    var vals = [[key, status, String(p.note || '').slice(0, 500), Date.now()]];
-    if (row) sh.getRange(row, 1, 1, 4).setValues(vals); else sh.appendRow(vals[0]);
+    var vals = [[key, status, String(p.note || '').slice(0, 500), Date.now(), String(p.by || '').trim().slice(0, 40)]];
+    if (row) sh.getRange(row, 1, 1, 5).setValues(vals); else sh.appendRow(vals[0]);
     return { ok: true };
   } finally { lock.releaseLock(); }
 }
@@ -8028,19 +8037,44 @@ function callsReport_() {
   var byKey = {}, tiers = { 1: 0, 2: 0, 3: 0 };
   L.list.forEach(function (r) { byKey[callsKey_(r.p)] = r; tiers[r.t] = (tiers[r.t] || 0) + 1; });
   var res = callsGet_().calls, today = cairoDay_(0), cnt = { done: 0, noanswer: 0, later: 0, wrong: 0, blocked: 0 },
-      td = { done: 0, noanswer: 0, later: 0, wrong: 0, blocked: 0 }, recent = [], open = 0;
+      td = { done: 0, noanswer: 0, later: 0, wrong: 0, blocked: 0 }, recent = [], open = 0, staff = {};
   Object.keys(res).forEach(function (k) {
     var v = res[k], r = byKey[k];
     if (cnt[v.status] === undefined) return;
     cnt[v.status]++;
     var day = v.at ? Utilities.formatDate(new Date(v.at), 'Africa/Cairo', 'yyyy-MM-dd') : '';
-    if (day === today) td[v.status]++;
-    recent.push({ n: r ? r.n : '', p: r ? r.p : '', t: r ? r.t : 0, status: v.status, note: v.note, at: v.at, out: r ? 0 : 1 });
+    if (day === today) {
+      td[v.status]++;
+      var who = v.by || 'بدون اسم';
+      staff[who] = staff[who] || { name: who, n: 0, done: 0 };
+      staff[who].n++; if (v.status === 'done') staff[who].done++;
+    }
+    recent.push({ n: r ? r.n : '', p: r ? r.p : '', t: r ? r.t : 0, status: v.status, note: v.note, at: v.at, by: v.by, out: r ? 0 : 1 });
   });
   recent.sort(function (a, b) { return b.at - a.at; });
   /* لسه محدش كلمهم: اللي في القايمة وماعندهمش نتيجة */
   L.list.forEach(function (r) { if (!res[callsKey_(r.p)]) open++; });
-  return { ok: true, total: L.list.length, tiers: tiers, left: open, all: cnt, today: td, recent: recent.slice(0, 40) };
+  var staffList = Object.keys(staff).map(function (k) { return staff[k]; }).sort(function (a, b) { return b.n - a.n; });
+  return { ok: true, total: L.list.length, tiers: tiers, left: open, all: cnt, today: td, staff: staffList, recent: recent.slice(0, 40) };
+}
+
+/* 📨 ملخص المكالمات اليومي على تليجرام (تريجر الساعة 10 بالليل) */
+function callsDailySummary() {
+  var r = callsReport_();
+  if (!r || !r.ok) return;
+  var t = r.today, all = t.done + t.noanswer + t.later + t.wrong + t.blocked;
+  var today = cairoDay_(0);
+  var lines = ['📞 ملخص مكالمات المتابعة — ' + today,
+    'اتعمل النهاردة: ' + all + ' مكالمة',
+    '✅ اتكلمنا ' + t.done + ' · 📵 مردش ' + t.noanswer + ' · 🕒 موعد تاني ' + t.later + ' · ❌ رقم غلط ' + t.wrong + (t.blocked ? ' · 🚫 حظر ' + t.blocked : ''),
+    'لسه محتاجين مكالمة: ' + r.left + ' من ' + r.total];
+  if (r.staff.length) lines.push('', '👩‍⚕️ حسب الموظفة:', r.staff.map(function (s) { return '• ' + s.name + ': ' + s.n + ' (اتكلمنا ' + s.done + ')'; }).join('\n'));
+  var notes = r.recent.filter(function (x) {
+    return x.note && x.at && Utilities.formatDate(new Date(x.at), 'Africa/Cairo', 'yyyy-MM-dd') === today;
+  }).slice(0, 10);
+  if (notes.length) lines.push('', '📝 ملاحظات النهاردة:', notes.map(function (x) { return '• ' + (x.n || x.p || 'عميل') + ': ' + x.note; }).join('\n'));
+  if (!all) lines.push('', '⚠️ محدش عمل أي مكالمة النهاردة.');
+  sendTelegramStaff(lines.join('\n'), PERSONAL_CHAT);
 }
 
 /* ═══ ايفنت المعاشات: الممرض بيسجل الاسم والرقم + اختيار سريع، وبيدخلوا قايمة المكالمات كشريحة 3 ═══ */

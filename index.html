@@ -321,7 +321,7 @@ details.setg[open]{padding-bottom:var(--s3)}
   z-index:300;opacity:0;pointer-events:none;transition:.22s;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 </head>
 <body>
 
@@ -581,8 +581,8 @@ var T = {
   lastMove:['آخر حركة','Last activity'], lastPaid:['آخر سداد','Last payment'],
   noPayRec:['مفيش سداد مسجّل','No payment on record'],
   bucketNone:['مفيش سداد مسجّل','No payment on record'],
-  yesterdayNums:['أرقام أمس','Yesterday\u2019s numbers'],
-  notResetYet:['نظام البيع لسه مصفّرش عداد اليوم','POS has not rolled over to today yet'], lastPaid:['آخر سداد','Last payment'],
+  yesterdayNums:['لسه مفتحناش · أرقام أمس','Not open yet · yesterday\u2019s numbers'],
+  notResetYet:['أول فاتورة النهاردة هتصفّر العداد وتظهر أرقام اليوم','The first sale today will reset the counter'], lastPaid:['آخر سداد','Last payment'],
   noPayRec:['مفيش سداد مسجّل','No payment on record'],
   bucketNone:['مفيش سداد مسجّل في آخر سنة','No payment recorded in the past year'],
   soldBy:['البايع','Sold by'],
@@ -1041,8 +1041,17 @@ function exportRows(fn){
 
 /* ═══ التصدير: Excel و PDF ═══
    نفس اللبنة في كل الصفحات — بتاخد صفوف جاهزة وبتطلّع ملف. */
+/* مكتبة Excel تقيلة (حوالي 900 كيلو) — بتتحمّل أول مرة تصدّر بس، مش مع كل فتحة للوحة */
 function toExcel(rows, name){
   if (!rows || !rows.length) { toast(tr('noExport')); return; }
+  if (!window.XLSX){
+    toast(tr('loading') || '…');
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = function(){ toExcel(rows, name); };
+    s.onerror = function(){ toast(tr('failed')); };
+    document.head.appendChild(s); return;
+  }
   try{
     var ws = XLSX.utils.json_to_sheet(rows);
     var wb = XLSX.utils.book_new();
@@ -3717,12 +3726,14 @@ function callsHtml(d){
     row('باقي الغايبين', null, ltr(num(d.tiers[2] || 0))) +
     row('ايفنت المعاشات', null, ltr(num(d.tiers[3] || 0))) +
     row('إجمالي القايمة', null, ltr(num(d.total))));
+  if ((d.staff || []).length) html += card('مكالمات النهاردة حسب الموظفة', null,
+    d.staff.map(function(s){ return row(s.name, 'اتكلمنا ' + ltr(num(s.done)), ltr(num(s.n))); }).join(''));
   html += card('الإجمالي', 'من أول ما بدأت المتابعة',
     Object.keys(ST).map(function(k){ return rowLite(ST[k], null, ltr(num(d.all[k] || 0))); }).join(''));
   html += card('آخر النتايج والملاحظات', null, (d.recent || []).length ? d.recent.map(function(r){
     var when = r.at ? new Date(r.at).toLocaleString('ar-EG', { day:'numeric', month:'numeric', hour:'numeric', minute:'2-digit' }) : '';
     return row((r.n || r.p || 'عميل خرج من القايمة'),
-      esc(when) + (r.note ? ' · ' + esc(r.note) : ''),
+      esc(when) + (r.by ? ' · ' + esc(r.by) : '') + (r.note ? ' · ' + esc(r.note) : ''),
       badge(ST[r.status] || r.status, TONE[r.status] || 'brand'));
   }).join('') : emptyState());
   return html;

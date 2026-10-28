@@ -205,7 +205,7 @@ async function hashKey(p){
   return Array.from(new Uint8Array(d)).slice(0,16).map(x=>x.toString(16).padStart(2,'0')).join('');
 }
 /* ⚡ السيرفر السريع (Cloudflare): النتايج بتوصل لكل الموظفين في ثواني. لو وقع بنكلم Google على طول */
-const FAST = '';
+const FAST = 'https://wispy-cloud-00a7.elsousypharmacy.workers.dev/';
 async function api(params){
   const qs = '?'+new URLSearchParams(params);
   let j = null;

@@ -228,6 +228,23 @@ async function saveCall(p, rec){
   rec.at = Date.now(); S.calls[key(p)] = rec; lsSet(S.calls); render(); await push(p, rec);
 }
 let noteTimer = null;
+let needsRender = false, typingIdle = null, skipBlurRender = false;
+/* الموظف بيكتب: متعملش render عشان الـ textarea مايتدمرش والكيبورد يتقفل */
+function typingNow(){
+  const a = document.activeElement;
+  if(!a) return false;
+  if(a.id === 'note' || a.id === 'staffin') return true;
+  const main = $('main');
+  return !!(main && main.contains(a) && (a.tagName === 'TEXTAREA' || a.tagName === 'INPUT'));
+}
+function flushPendingRender(){
+  if(!needsRender || typingNow() || skipBlurRender) return;
+  render();
+}
+function scheduleTypingFlush(){
+  clearTimeout(typingIdle);
+  typingIdle = setTimeout(flushPendingRender, 900);
+}
 function staffName(){ try{ return localStorage.getItem('calls-staff') || ''; }catch(e){ return ''; } }
 function askStaff(){
   const box = $('staffbox'); box.hidden = false; const i = $('staffin'); i.value = staffName(); i.focus();
@@ -263,7 +280,9 @@ async function pull(withList){
       if(v.status!=='blocked' && v.at && Date.now()-v.at > EXPIRE) continue;   /* النتيجة بتنتهي بعد 60 يوم */
       o[key(KH[h])] = v;
     }
-    S.calls = o; lsSet(o); S.live = true; synced = true; if(listOk) showNotice(''); render();
+    S.calls = o; lsSet(o); S.live = true; synced = true; if(listOk) showNotice('');
+    if(typingNow()){ needsRender = true; scheduleTypingFlush(); }
+    else render();
   }catch(e){ if(!synced) showNotice('مفيش اتصال بالسيرفر دلوقتي. النتايج المعروضة من الجهاز ده.'); }
 }
 function showNotice(t){ const n=$('notice'); n.textContent=t; n.hidden=!t; }
@@ -419,7 +438,7 @@ function slideFor(r, list, i){
 
   const res = el('div','result');
   
-  const ta = el('textarea'); ta.id='note'; ta.placeholder = rec.status ? 'ملاحظة (بتتحفظ لوحدها)' : 'ملاحظة (بتتسجل مع الحالة اللي هتختارها تحت)'; ta.value = (S.draft && S.draft.p===r.p) ? S.draft.v : (rec.note || ''); ta.oninput = () => { S.draft = {p:r.p, v:ta.value}; if(rec.status){ clearTimeout(noteTimer); noteTimer = setTimeout(() => saveNoteQuiet(r.p, ta.value.trim()), 900); } }; ta.onblur = () => { if(rec.status){ clearTimeout(noteTimer); saveNoteQuiet(r.p, ta.value.trim()); } };
+  const ta = el('textarea'); ta.id='note'; ta.placeholder = rec.status ? 'ملاحظة (بتتحفظ لوحدها)' : 'ملاحظة (بتتسجل مع الحالة اللي هتختارها تحت)'; ta.value = (S.draft && S.draft.p===r.p) ? S.draft.v : (rec.note || ''); ta.oninput = () => { S.draft = {p:r.p, v:ta.value}; if(rec.status){ clearTimeout(noteTimer); noteTimer = setTimeout(() => saveNoteQuiet(r.p, ta.value.trim()), 900); } scheduleTypingFlush(); }; ta.onblur = () => { if(rec.status){ clearTimeout(noteTimer); saveNoteQuiet(r.p, ta.value.trim()); } setTimeout(flushPendingRender, 0); };
   const opts = el('div','opts');
   if(rec.status!=='blocked') Object.keys(ST).forEach(k=>{
     const b = el('button','opt '+ST[k].c, ST[k].t); b.setAttribute('aria-pressed', rec.status===k);
@@ -478,17 +497,49 @@ function renderMain(top){
   nav.append(pv,nx); main.style.display='flex'; main.style.flexDirection='column'; main.style.gap='12px'; main.append(nav);
 }
 function render(scrollTop){
+  needsRender = false;
   const hadOpen = document.getElementById('script') && document.getElementById('script').open;
-  const noteVal = document.getElementById('note') ? document.getElementById('note').value : null;
+  const noteEl = document.getElementById('note');
+  const noteFocused = !!(noteEl && document.activeElement === noteEl);
+  const noteVal = noteEl ? noteEl.value : null;
+  const selStart = noteFocused ? noteEl.selectionStart : null;
+  const selEnd = noteFocused ? noteEl.selectionEnd : null;
   renderProgress(); renderTabs(); renderMain();
   $('vSlide').setAttribute('aria-pressed', S.view==='slide'); $('vList').setAttribute('aria-pressed', S.view==='list');
   const sc = document.getElementById('script'); if(sc && hadOpen) sc.open = true;
+  if(noteFocused){
+    const n = document.getElementById('note');
+    if(n){
+      if(noteVal != null) n.value = noteVal;
+      n.focus();
+      try{ n.setSelectionRange(selStart, selEnd); }catch(e){}
+    }
+  }
   if(scrollTop) window.scrollTo({top:0});
 }
 $('vSlide').onclick = () => { S.view='slide'; render(); };
 $('vList').onclick = () => { S.view='list'; render(); };
 $('onlyLeft').onchange = e => { S.left = e.target.checked; render(); };
 document.addEventListener('keydown', e => { if(S.view!=='slide') return; if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT') return; if(e.key==='ArrowLeft') go(1); if(e.key==='ArrowRight') go(-1); });
+/* ضغطة زرار الحالة بتيجي بعد blur. لو عملنا render في الـ blur الزرار بيتدمر قبل الـ click. */
+document.addEventListener('pointerdown', e => {
+  if(!(e.target && e.target.closest && e.target.closest('button, a'))) return;
+  skipBlurRender = true;
+}, true);
+function releaseBlurRender(){
+  if(!skipBlurRender) return;
+  setTimeout(() => { if(!skipBlurRender) return; skipBlurRender = false; flushPendingRender(); }, 0);
+}
+document.addEventListener('pointerup', releaseBlurRender, true);
+document.addEventListener('pointercancel', releaseBlurRender, true);
+document.addEventListener('click', e => {
+  if(!(e.target && e.target.closest && e.target.closest('button, a'))) return;
+  if(!skipBlurRender && !needsRender) return;
+  skipBlurRender = false;
+  setTimeout(flushPendingRender, 0);
+});
+$('staffin').addEventListener('input', scheduleTypingFlush);
+$('staffin').addEventListener('blur', () => setTimeout(flushPendingRender, 0));
 
 /* ---------- boot ---------- */
 function start(){

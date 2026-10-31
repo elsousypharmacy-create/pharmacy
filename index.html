@@ -183,21 +183,12 @@ body.light .m-custom input{color-scheme:light}
 .home-col .card{margin:0}
 @media (min-width:900px){#p-home{max-width:1080px}.home-grid{display:grid;grid-template-columns:1.1fr 1fr;align-items:start}}
 .h-hero{padding:18px}
-.card.cam-card{position:relative;overflow:hidden;padding:18px;background:linear-gradient(135deg,#0E2240 0%,#163E6C 100%);border-color:transparent;color:#fff}
-.cam-card::after{content:"";position:absolute;inset:-40% auto auto -20%;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(27,146,212,.35),transparent 65%);pointer-events:none}
-.cam-top{position:relative;display:flex;align-items:center;gap:12px}
-.cam-ico{width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:23px;flex:none}
-.cam-top h3{margin:0;font-size:17px;color:#fff}
-.cam-top p{margin:2px 0 0;font-size:12px;color:rgba(255,255,255,.62)}
-.cam-btn{position:relative;margin-top:16px;width:100%;border:0;border-radius:14px;padding:14px;font:inherit;font-weight:700;font-size:15px;color:#0E2240;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 18px rgba(0,0,0,.28);transition:transform .12s}
-.cam-btn:active{transform:scale(.98)}
-.cam-btn[disabled]{opacity:.7}
-.cam-res{position:relative;margin-top:12px}
-.cam-chips{display:flex;gap:6px;flex-wrap:wrap}
-.cam-chip{flex:1;min-width:52px;text-align:center;border-radius:10px;padding:7px 4px;font-size:12px;font-weight:700;background:rgba(255,255,255,.1);color:#fff}
-.cam-chip.ok{background:rgba(61,190,139,.22);color:#7BE3B6}
-.cam-chip.bad{background:rgba(229,100,110,.25);color:#FFA3AA}
-.cam-note{margin-top:10px;font-size:12.5px;color:rgba(255,255,255,.78);text-align:center}
+.cam-chips{display:flex;gap:6px;margin-top:10px}
+.cam-chip{flex:1;text-align:center;border-radius:var(--r2);padding:7px 4px;font-size:var(--t-small);font-weight:700;background:var(--surface-2);color:var(--ink-2)}
+.cam-chip.ok{color:var(--ok)}
+.cam-chip.bad{color:var(--bad)}
+.cam-note{margin-top:8px;font-size:var(--t-small);color:var(--ink-2)}
+.task.busy{opacity:.55;pointer-events:none}
 
 .h-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
 .h-top h2{font-size:22px;font-weight:800;letter-spacing:-.4px}
@@ -2144,8 +2135,9 @@ function drawHome(b, kpi, isOld){
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
     if (dueAgents.length) acts.push(task('warn', 'مستحقات مندوبين', ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0))) + ' ' + tr('egp'), dueAgents.length, "go('admin',0)"));
     var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
-    html += '<div class="card cam-card"><div class="cam-top"><div class="cam-ico">📷</div><div><h3>الكاميرات</h3><p>5 كاميرات · الرفوف · الكاونتر · الواجهة · الرصيف</p></div></div>' +
-      '<button class="cam-btn" id="camSnapBtn" onclick="camSnapNow()"><span>📸</span><span>صوّر الكاميرات دلوقتي</span></button><div class="cam-res" id="homeCamSnap"></div></div>';
+    html += '<div class="card"><div class="card-head"><div><h3>الكاميرات</h3></div></div>' +
+      '<div class="task" id="camSnapBtn" style="--tone:var(--brand)" onclick="camSnapNow()" role="button" tabindex="0"><span class="dot"></span><div class="task-m"><b>صوّر الكاميرات دلوقتي</b><small>5 كاميرات · بتتحفظ على الدرايف</small></div><span class="task-n">📸</span><span class="task-a">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></div>' +
+      '<div id="homeCamSnap"></div></div>';
     html += '<div class="card"><div class="card-head"><div><h3>مطلوب النهاردة</h3></div></div>' +
       '<div id="homeMore">' + (HOME_MORE || '') + '</div>' + acts.join('') +
       (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>') + '</div>';
@@ -5156,25 +5148,24 @@ function saveCam(){
 }
 function camSnapNow(){
   var b = document.getElementById('homeCamSnap'), btn = document.getElementById('camSnapBtn'); if (!b) return;
-  if (btn){ btn.disabled = true; btn.firstChild.textContent = '⏳'; btn.lastChild.textContent = 'بسحب اللقطات…'; }
-  b.innerHTML = '<div class="cam-note">حوالي نص دقيقة</div>';
-  var done = function(){ if (btn){ btn.disabled = false; btn.firstChild.textContent = '📸'; btn.lastChild.textContent = 'صوّر الكاميرات دلوقتي'; } };
+  if (btn) btn.classList.add('busy');
+  b.innerHTML = '<div class="cam-note"><div class="spin" style="display:inline-block;vertical-align:middle;margin-inline-end:6px"></div>بسحب اللقطات… حوالي نص دقيقة</div>';
+  var done = function(){ if (btn) btn.classList.remove('busy'); };
   post({ action: 'camSnapNow', pin: adminPin() }).then(function(d){
     done();
     if (d && d.pinError) { try { localStorage.removeItem('adminPin'); } catch (e) {} }
     if (d && d.ok){
       var fl = d.failed || [], chips = [1, 2, 3, 4, 6].map(function(c){ var bad = fl.indexOf(c) >= 0 || fl.indexOf(String(c)) >= 0; return '<div class="cam-chip ' + (bad ? 'bad' : 'ok') + '">' + c + (bad ? ' ✕' : ' ✓') + '</div>'; }).join('');
       b.innerHTML = '<div class="cam-chips">' + chips + '</div><div class="cam-note">اتحفظ ' + d.saved + '/5 الساعة ' + esc(d.time) + ' · اكتبلي «جهّز التقرير» في الشات</div>';
-    } else if (d && d.pinError) b.innerHTML = '<div class="cam-note" style="color:#FFA3AA">❌ ' + esc(d.error) + '</div>';
-    else b.innerHTML = '<div class="cam-note" style="color:#FFA3AA">❌ ' + esc((d && d.error) || 'فشل') + '</div>';
-  }).catch(function(){ done(); b.innerHTML = '<div class="cam-note" style="color:#FFD9A0">السيرفر محتاج تحديث الأول</div><button class="cam-btn" style="margin-top:8px;padding:11px" onclick="camHomeUpdate()"><span>🔄</span><span>حدّث السيرفر وجرّب تاني</span></button>'; });
+    } else b.innerHTML = '<div class="state err" style="font-size:13px">❌ ' + esc((d && d.error) || 'فشل') + '</div>';
+  }).catch(function(){ done(); b.innerHTML = '<div class="cam-note">السيرفر محتاج تحديث الأول</div><button class="btn btn-primary" style="margin-top:8px" onclick="camHomeUpdate()">🔄 حدّث السيرفر وجرّب تاني</button>'; });
 }
 function camHomeUpdate(){
-  var b = document.getElementById('homeCamSnap'); b.innerHTML = '<div class="cam-note">⏳ بيحدّث السيرفر… (حوالي نص دقيقة)</div>';
+  var b = document.getElementById('homeCamSnap'); b.innerHTML = '<div class="cam-note"><div class="spin" style="display:inline-block;vertical-align:middle;margin-inline-end:6px"></div>بيحدّث السيرفر… حوالي نص دقيقة</div>';
   api('serverUpdate').then(function(d){
     if (d && d.ok){ b.innerHTML = '<div class="cam-note">✅ السيرفر اتحدّث</div>'; setTimeout(camSnapNow, 1500); }
-    else b.innerHTML = '<div class="cam-note" style="color:#FFA3AA">❌ ' + esc((d && d.error) || tr('failed')) + '</div>';
-  }).catch(function(){ b.innerHTML = '<div class="cam-note" style="color:#FFA3AA">❌ ' + tr('failed') + '</div>'; });
+    else b.innerHTML = '<div class="state err" style="font-size:13px">❌ ' + esc((d && d.error) || tr('failed')) + '</div>';
+  }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
 function camSendTg(){
   var b = document.getElementById('camtg'); b.innerHTML = '<div class="state"><div class="spin"></div> بسحب اللقطات… (حوالي نص دقيقة)</div>';

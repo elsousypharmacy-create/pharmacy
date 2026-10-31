@@ -1183,6 +1183,7 @@ function heroDots(){
   var s = document.getElementById('heroSlides'), d = document.getElementById('heroDots'); if (!s || !d) return;
   var i = Math.round(Math.abs(s.scrollLeft) / s.clientWidth);
   [].forEach.call(d.children, function(x, j){ x.className = j === i ? 'on' : ''; });
+  try { sessionStorage.setItem('heroSlide', String(i)); } catch (e) {}
 }
 var HOME_DAYS = null, HOME_YK = null, HOME_LIST = [], HOME_SEL = 13;
 /* لما تدوس على عمود: تفاصيل اليوم ده تحت الرسم */
@@ -1624,6 +1625,7 @@ var SECTIONS = {
 var CUR = 'sales', TAB = 0;
 
 function go(sec, tab){
+  if (sec !== CUR || (tab || 0) !== TAB){ try { sessionStorage.removeItem('subCust'); sessionStorage.removeItem('subInv'); } catch (e) {} }
   CUR = sec; TAB = tab || 0;
   try { sessionStorage.setItem('lastPage', JSON.stringify([CUR, TAB])); } catch (e) {}   /* السحب لتحت يرجّعك لنفس الصفحة */
   document.querySelectorAll('.secnav button').forEach(function(b){
@@ -2114,6 +2116,8 @@ function drawHome(b, kpi, isOld){
     loadHomeMore();
     loadHomeDays(salesT, isStaleDay, gS, gV);
     loadHomeMonth();
+    try { var hsI = +sessionStorage.getItem('heroSlide') || 0, hs = document.getElementById('heroSlides');
+      if (hs && hsI){ hs.style.scrollBehavior = 'auto'; hs.scrollLeft = (document.documentElement.dir === 'rtl' ? -1 : 1) * hs.clientWidth * hsI; heroDots(); } } catch (e) {}
   }catch(e){ logErr(e); if (!isOld) oops(box, "pgHome()"); }
 }
 
@@ -2783,7 +2787,7 @@ function setInvShelf(v){ INV.shelf = v; drawAging(); }
 
 function pgAging(key){
   var box = document.getElementById('p-stock');
-  INV_SEC = key === 'expTab' ? 'exp' : key === 'deadTab' ? 'dead' : 'home';
+  INV_SEC = key === 'expTab' ? 'exp' : key === 'deadTab' ? 'dead' : (INV_NEXT || 'home'); INV_NEXT = null;
   loadInvExtras();
   var seed = cacheGet('inv', {});
   if (seed) { INV.data = seed; drawAging(true); } else busy(box);
@@ -2801,7 +2805,7 @@ function pgAging(key){
    كلها زي ما هي جوه كل قسم. الترتيب بالخطورة: السالب فوق لأنه خطأ
    محتاج تصحيح مش مجرد معلومة.
    ═══════════════════════════════════════════════════════════════ */
-var INV_SEC = 'home';   /* home | neg | exp | dead | all */
+var INV_SEC = 'home', INV_NEXT = null;   /* home | neg | exp | dead | all */
 
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3008,7 +3012,7 @@ function expOrder(k){
 }
 function orderMenu(){ openMenu(tr('orderSec'), exportRows('expOrder')); }
 
-function setInvSec(k){ INV_SEC = k; drawAging(false); window.scrollTo(0,0); }
+function setInvSec(k){ try { sessionStorage.setItem('subInv', k); } catch (e) {} INV_SEC = k; drawAging(false); window.scrollTo(0,0); }
 
 /* زرار قسم في الشاشة الأولى */
 function secBtn(key, tone, title, sub, val, valSub, fn){
@@ -3797,6 +3801,7 @@ function custPerBar(){
 }
 
 function setCustSec(k){
+  try { sessionStorage.setItem('subCust', k); } catch (e) {}
   CUST.sec = k; CUST.q = ''; CUST.cls = 'all';
   if (k === 'new' && !CUST.news) loadCustNew();
   drawCustomers(CUST.list, document.getElementById('p-cust'));
@@ -5135,7 +5140,13 @@ try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 (function(){
   /* لو الصفحة اتعمل لها refresh (سحب لتحت) نرجع لنفس القسم والتبويب بدل الرئيسية */
   var last = null; try { last = JSON.parse(sessionStorage.getItem('lastPage') || 'null'); } catch (e) {}
-  if (last && SECTIONS[last[0]] && SECTIONS[last[0]][last[1]]) go(last[0], last[1]); else go('sales', 0);
+  if (last && SECTIONS[last[0]] && SECTIONS[last[0]][last[1]]){
+    var sc = null, si = null; try { sc = sessionStorage.getItem('subCust'); si = sessionStorage.getItem('subInv'); } catch (e) {}
+    CUR = last[0]; TAB = last[1];            /* عشان go ما يمسحش القسم الفرعي */
+    if (sc) CUST_NEXT = sc;
+    if (si) INV_NEXT = si;
+    go(last[0], last[1]);
+  } else go('sales', 0);
 })();
 /* loadBotPauseBanner(); — الشريط الأحمر اتشال */
 

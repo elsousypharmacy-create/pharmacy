@@ -5165,8 +5165,16 @@ function camSnapNow(){
     if (d && d.ok){
       var fl = d.failed || [], chips = [1, 2, 3, 4, 6].map(function(c){ var bad = fl.indexOf(c) >= 0 || fl.indexOf(String(c)) >= 0; return '<div class="cam-chip ' + (bad ? 'bad' : 'ok') + '">' + c + (bad ? ' ✕' : ' ✓') + '</div>'; }).join('');
       b.innerHTML = '<div class="cam-chips">' + chips + '</div><div class="cam-note">اتحفظ ' + d.saved + '/5 الساعة ' + esc(d.time) + ' · اكتبلي «جهّز التقرير» في الشات</div>';
-    } else b.innerHTML = '<div class="cam-note" style="color:#FFA3AA">❌ ' + esc((d && d.error) || tr('failed')) + '</div>';
-  }).catch(function(){ done(); b.innerHTML = '<div class="cam-note" style="color:#FFA3AA">❌ ' + tr('failed') + '</div>'; });
+    } else if (d && d.pinError) b.innerHTML = '<div class="cam-note" style="color:#FFA3AA">❌ ' + esc(d.error) + '</div>';
+    else b.innerHTML = '<div class="cam-note" style="color:#FFA3AA">❌ ' + esc((d && d.error) || 'فشل') + '</div>';
+  }).catch(function(){ done(); b.innerHTML = '<div class="cam-note" style="color:#FFD9A0">السيرفر محتاج تحديث الأول</div><button class="cam-btn" style="margin-top:8px;padding:11px" onclick="camHomeUpdate()"><span>🔄</span><span>حدّث السيرفر وجرّب تاني</span></button>'; });
+}
+function camHomeUpdate(){
+  var b = document.getElementById('homeCamSnap'); b.innerHTML = '<div class="cam-note">⏳ بيحدّث السيرفر… (حوالي نص دقيقة)</div>';
+  api('serverUpdate').then(function(d){
+    if (d && d.ok){ b.innerHTML = '<div class="cam-note">✅ السيرفر اتحدّث</div>'; setTimeout(camSnapNow, 1500); }
+    else b.innerHTML = '<div class="cam-note" style="color:#FFA3AA">❌ ' + esc((d && d.error) || tr('failed')) + '</div>';
+  }).catch(function(){ b.innerHTML = '<div class="cam-note" style="color:#FFA3AA">❌ ' + tr('failed') + '</div>'; });
 }
 function camSendTg(){
   var b = document.getElementById('camtg'); b.innerHTML = '<div class="state"><div class="spin"></div> بسحب اللقطات… (حوالي نص دقيقة)</div>';

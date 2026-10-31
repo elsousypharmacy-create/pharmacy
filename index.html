@@ -117,16 +117,17 @@ button{font-family:inherit}
 
 /* ── الحاوية ── */
 .wrap{padding:var(--s4);max-width:680px;margin:0 auto}
-/* ═══ شكل موحّد لكل الصفحات (زي الرئيسية) ═══ */
-.vitals2{margin-bottom:var(--s3)}
-.v-main small{display:block;font-size:var(--t-small);color:var(--ink-2)}
-.v-main b{display:block;font-size:38px;font-weight:800;letter-spacing:-1.4px;line-height:1.15;text-align:right}
-.v-note{font-size:12.5px;color:var(--ink-2);margin-top:2px}
-.v-note i{font-style:normal;font-weight:750}
-.v-note u{text-decoration:none}
-.v-note.sm{font-size:11px;margin-top:3px}
-.h-mini b[dir=ltr]{text-align:right}
-@media (max-width:400px){.v-main b{font-size:32px}}
+/* ═══ شكل موحّد لكل الصفحات ═══ */
+.vitals2{padding:14px}
+.v-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+.v-head h2{font-size:17px;font-weight:750;letter-spacing:-.3px}
+.v-head span{font-size:var(--t-micro);color:var(--ink-3);white-space:nowrap}
+.v-grid{display:grid;gap:8px;align-items:start}
+.v-tile{background:var(--surface-2);border-radius:var(--r2);padding:10px 12px;min-width:0}
+.v-tile small{display:block;font-size:var(--t-micro);color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v-tile b{display:block;font-size:22px;font-weight:800;letter-spacing:-.6px;line-height:1.25;text-align:right;margin-top:2px}
+.v-tile em{display:block;font-style:normal;font-size:var(--t-micro);color:var(--ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:400px){.v-tile b{font-size:19px}.v-tile{padding:9px 10px}}
 /* الكمبيوتر: الصفحات أعرض والكروت عمودين */
 @media (min-width:1000px){
   .wrap{max-width:1080px}
@@ -957,17 +958,15 @@ function oops(box, again){
 }
 
 /* لبنات جاهزة — كل الصفحات بتستخدمها فمفيش شكلين لنفس الحاجة */
-/* بداية كل صفحة: رقم أساسي كبير + الباقي مربعات صغيرة (نفس شكل الرئيسية) */
+/* بداية كل صفحة: عنوان صغير + مربعات أرقام متساوية ومضغوطة */
 function vitals(title, sub, list, foot){
-  var first = list[0] || {}, rest = list.slice(1);
-  var note = function(v){ return (v.note ? '<i dir="ltr" style="color:var(--' + (v.tone || 'brand') + ')">' + LRI + v.note + PDI + '</i>' : '') + (v.sub ? ' <u>' + esc(v.sub) + '</u>' : ''); };
-  return '<div class="card h-hero vitals2"><div class="h-top"><h2>' + esc(title) + '</h2><span>' + esc(sub || '') + '</span></div>' +
-    '<div class="v-main"><small>' + esc(first.label || '') + '</small><b dir="ltr">' + LRI + (first.value == null ? '—' : first.value) + PDI + '</b>' +
-      ((first.note || first.sub) ? '<div class="v-note">' + note(first) + '</div>' : '') + '</div>' +
-    (rest.length ? '<div class="h-minis" style="grid-template-columns:repeat(' + rest.length + ',1fr)">' + rest.map(function(v){
-      return '<div class="h-mini"><small>' + esc(v.label) + '</small><b dir="ltr">' + LRI + v.value + PDI + '</b>' +
-        ((v.note || v.sub) ? '<div class="v-note sm">' + note(v) + '</div>' : '') + '</div>';
-    }).join('') + '</div>' : '') + (foot || '') + '</div>';
+  var n = Math.min(list.length, 3);
+  return '<div class="card vitals2"><div class="v-head"><h2>' + esc(title) + '</h2><span>' + esc(sub || '') + '</span></div>' +
+    '<div class="v-grid" style="grid-template-columns:repeat(' + n + ',1fr)">' + list.map(function(v){
+      var tone = v.tone && v.tone !== 'brand' && v.tone !== 'slate' ? v.tone : '';
+      return '<div class="v-tile"><small>' + esc(v.label) + '</small><b dir="ltr"' + (tone ? ' style="color:var(--' + tone + ')"' : '') + '>' + LRI + (v.value == null ? '—' : v.value) + PDI + '</b>' +
+        ((v.note || v.sub) ? '<em>' + (v.note ? '<span dir="ltr">' + LRI + v.note + PDI + '</span> ' : '') + (v.sub ? esc(v.sub) : '') + '</em>' : '') + '</div>';
+    }).join('') + '</div>' + (foot || '') + '</div>';
 }
 /* sub بيتحط زي ما هو (ممكن يبقى فيه أرقام معزولة)،
    فأي نص جاي من بيانات لازم يتهرّب قبل ما يتبعت */
@@ -2396,9 +2395,11 @@ function drawStaffHub(isOld){
     'hrMenu()',
     RANGE.perf === 'custom' || RANGE.perf === 'lastMonth');
 
+  var teamSales = list.reduce(function(s, e){ return s + (e.sales || 0); }, 0);
   html += vitals(tr('staffToday'), HR.kpi.label || '', [
-    { value: num(live.length), label: tr('onShiftNow'), tone: live.length ? 'ok' : 'warn',
-      note: num(list.length), sub: tr('staffToday') },
+    RANGE.perf === 'today'
+      ? { value: num(live.length), label: tr('onShiftNow'), tone: live.length ? 'ok' : 'warn', note: num(list.length), sub: 'باعوا' }
+      : { value: num(teamSales), label: 'مبيعات الفريق', note: num(list.length), sub: 'موظفين' },
     { value: pct(totReg, totCust) + '%', label: tr('regRate'),
       tone: pct(totReg, totCust) >= goalOf('registration', 75) ? 'ok' : 'warn',
       note: goalOf('registration', 75) + '%', sub: tr('target') },

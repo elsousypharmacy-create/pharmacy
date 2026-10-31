@@ -118,6 +118,51 @@ button{font-family:inherit}
 
 /* ── الحاوية ── */
 .wrap{padding:var(--s4);max-width:680px;margin:0 auto}
+/* ═══ الرئيسية ═══ */
+.home-grid{display:flex;flex-direction:column;gap:var(--s3)}
+.home-col{display:flex;flex-direction:column;gap:var(--s3);min-width:0}
+.home-col .card{margin:0}
+@media (min-width:900px){#p-home{max-width:1080px}.home-grid{display:grid;grid-template-columns:1.1fr 1fr;align-items:start}}
+.h-hero{padding:18px}
+.h-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+.h-top h2{font-size:22px;font-weight:800;letter-spacing:-.4px}
+.h-top span{font-size:var(--t-small);color:var(--ink-3)}
+.h-tag{font-size:11px;font-weight:700;color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent);padding:2px 8px;border-radius:99px;vertical-align:middle}
+.h-main{display:flex;align-items:center;gap:16px}
+.h-ring{width:112px;height:112px;flex:0 0 auto}
+.h-num{min-width:0}
+.h-num small{display:block;font-size:var(--t-small);color:var(--ink-2)}
+.h-num b{display:block;font-size:40px;font-weight:800;letter-spacing:-1.5px;line-height:1.1}
+.h-num u{display:block;text-decoration:none;font-size:13px;color:var(--ink-2);margin-top:2px}
+.h-cmp{font-size:12.5px;color:var(--ink-2);margin-top:6px;font-weight:600}
+.h-cmp:empty{display:none}
+.h-minis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.h-mini{background:var(--surface-2);border-radius:var(--r2);padding:10px}
+.h-mini small{display:block;font-size:var(--t-micro);color:var(--ink-2)}
+.h-mini b{display:block;font-size:19px;font-weight:750;letter-spacing:-.5px;margin-top:2px;white-space:nowrap}
+.h-mini em{font-style:normal;font-size:12px;color:var(--ink-3);font-weight:600}
+.h-mini u{display:block;text-decoration:none;font-size:var(--t-micro);color:var(--ink-3);margin-top:4px}
+.h-bar{display:block;height:5px;border-radius:99px;background:var(--line);overflow:hidden;direction:ltr}
+.h-bar i{display:block;height:100%;background:var(--warn);border-radius:99px}
+.task{display:flex;align-items:center;gap:10px;padding:12px 2px;border-bottom:1px solid var(--line);cursor:pointer;min-height:52px}
+.task:last-of-type{border-bottom:0}
+.task .dot{width:9px;height:9px;border-radius:99px;background:var(--tone);flex:0 0 auto}
+.task-m{flex:1;min-width:0}
+.task-m b{display:block;font-size:var(--t-body);font-weight:650}
+.task-m small{display:block;font-size:var(--t-small);color:var(--ink-2);margin-top:1px}
+.task-n{font-size:20px;font-weight:800;color:var(--tone);white-space:nowrap}
+.task-a{color:var(--ink-3);font-size:17px}
+.task:active{opacity:.6}
+.h-stats{display:flex;justify-content:space-between;gap:6px;margin-top:10px;font-size:12px;color:var(--ink-2)}
+.h-stats b{color:var(--ink);font-weight:750}
+.h-team{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.h-team:last-child{border-bottom:0}
+.h-dot{width:9px;height:9px;border-radius:99px;background:var(--line);flex:0 0 auto}
+.h-dot.on{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 22%,transparent)}
+.h-tn{flex:1;min-width:0}.h-tn b{display:block;font-size:var(--t-body);font-weight:650}
+.h-tn small{display:block;font-size:var(--t-small);color:var(--ink-2)}
+.h-tv{font-size:16px;font-weight:750}
+@media (max-width:400px){.h-num b{font-size:34px}.h-ring{width:96px;height:96px}.h-mini b{font-size:17px}}
 
 /* ── الكارت ── */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);
@@ -931,6 +976,68 @@ function alertBox(tone, title, sub, jump){
     (jump ? '<span style="color:var(--ink-3);font-size:16px;align-self:center">' +
       (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span>' : '') + '</div>';
 }
+/* سطر مهمة: نقطة + عنوان + رقم كبير على الطرف + سهم */
+function task(tone, title, sub, count, jump){
+  return '<div class="task" style="--tone:var(--' + tone + ')" onclick="' + jump + '" role="button" tabindex="0">' +
+    '<span class="dot"></span><div class="task-m"><b>' + title + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</div>' +
+    '<span class="task-n">' + ltr(typeof count === 'number' ? num(count) : count) + '</span>' +
+    '<span class="task-a">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></div>';
+}
+/* رسم آخر 14 يوم: عمود لكل يوم + خط الهدف */
+var HOME_DAYS = null;
+function isoAdd(s, n){ var d = new Date(s + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+function homeChart(days, salesT, isStale, g){
+  var today = cairoNow().date, map = {};
+  (days || []).forEach(function(x){ map[x.date] = x; });
+  if (!isStale) map[today] = { date: today, sales: salesT, live: true };
+  var list = [];
+  for (var i = 13; i >= 0; i--){ var ds = isoAdd(today, -i); list.push(map[ds] || { date: ds, sales: 0 }); }
+  var max = Math.max(g * 1.15, Math.max.apply(null, list.map(function(x){ return x.sales || 0; })));
+  var W = 336, H = 150, bw = 16, gap = (W - bw * 14) / 13, gy = H - Math.round(g / max * H);
+  var bars = list.map(function(x, i){
+    var h = Math.max(2, Math.round((x.sales || 0) / max * H)), xx = Math.round(i * (bw + gap));
+    var c = x.live ? 'var(--brand)' : (x.sales >= g ? 'var(--ok)' : 'var(--ink-3)');
+    var dn = new Date(x.date + 'T12:00:00Z').toLocaleDateString('ar-EG', { weekday: 'narrow', timeZone: 'UTC' });
+    return '<g><title>' + x.date + ' · ' + num(x.sales || 0) + '</title>' +
+      '<rect x="' + xx + '" y="' + (H - h) + '" width="' + bw + '" height="' + h + '" rx="4" fill="' + c + '" opacity="' + (x.sales ? 1 : .35) + '"/>' +
+      '<text x="' + (xx + bw / 2) + '" y="' + (H + 16) + '" text-anchor="middle" font-size="10" fill="var(--ink-3)" font-family="Cairo,system-ui">' + dn + '</text></g>';
+  }).join('');
+  var done = list.filter(function(x){ return !x.live && x.sales > 0; });
+  var avg = done.length ? Math.round(done.reduce(function(s, x){ return s + x.sales; }, 0) / done.length) : 0;
+  var best = done.reduce(function(b, x){ return x.sales > (b ? b.sales : 0) ? x : b; }, null);
+  var hits = done.filter(function(x){ return x.sales >= g; }).length;
+  return '<svg viewBox="0 -6 ' + W + ' ' + (H + 26) + '" style="width:100%;height:auto;direction:ltr;display:block" role="img" aria-label="مبيعات آخر 14 يوم">' +
+    '<line x1="0" x2="' + W + '" y1="' + gy + '" y2="' + gy + '" stroke="var(--ok)" stroke-dasharray="4 4" stroke-width="1.2"/>' +
+    '<text x="' + W + '" y="' + (gy - 4) + '" text-anchor="end" font-size="10" fill="var(--ok)" font-family="Cairo,system-ui">الهدف ' + num(g) + '</text>' +
+    bars + '</svg>' +
+    '<div class="h-stats"><span>المتوسط <b>' + ltr(num(avg)) + '</b></span><span>أحسن يوم <b>' + ltr(num(best ? best.sales : 0)) + '</b></span><span>وصلنا الهدف <b>' + ltr(hits + '/' + done.length) + '</b></span></div>';
+}
+/* بيجيب آخر 14 يوم بعد ما الشاشة تظهر، ويملا المقارنة بنفس اليوم الأسبوع اللي فات */
+function loadHomeDays(salesT, isStale, g, gV){
+  var today = cairoNow().date, p = { from: isoAdd(today, -14), to: today };
+  var apply = function(k){
+    if (!k || !k.daily) return;
+    HOME_DAYS = k.daily;
+    var ch = document.getElementById('homeChart'); if (ch) ch.innerHTML = homeChart(HOME_DAYS, salesT, isStale, g);
+    var map = {}; HOME_DAYS.forEach(function(x){ map[x.date] = x; });
+    var base = isStale ? isoAdd(today, -1) : today, prev = map[isoAdd(base, -7)];
+    var el = document.getElementById('homeCmp');
+    if (el && prev && prev.sales){
+      var wd = new Date(isoAdd(base, -7) + 'T12:00:00Z').toLocaleDateString('ar-EG', { weekday: 'long', timeZone: 'UTC' });
+      if (isStale || cairoNow().hour >= 18){
+        var dl = Math.round((salesT - prev.sales) / prev.sales * 100);
+        el.innerHTML = '<span style="color:var(--' + (dl >= 0 ? 'ok' : 'bad') + ')">' + (dl >= 0 ? '▲' : '▼') + ' ' + ltr(Math.abs(dl) + '%') + '</span> عن ' + esc(wd) + ' اللي فات';
+      } else el.innerHTML = esc(wd) + ' اللي فات قفل على ' + ltr(num(prev.sales));
+    }
+    if (isStale){
+      var y = map[isoAdd(today, -1)], v = y ? y.total_cust : null;
+      var vs = document.getElementById('homeVisits'), vb = document.getElementById('homeVisitsBar');
+      if (vs && v != null){ vs.innerHTML = ltr(num(v)); if (vb) vb.innerHTML = '<span class="h-bar"><i style="width:' + Math.min(100, Math.round(v / gV * 100)) + '%"></i></span>'; }
+    }
+  };
+  apply(cacheGet('home14', {}));
+  api('getStaffKPI', p).then(function(k){ if (k && k.daily){ cacheSet('home14', {}, k); apply(k); } }).catch(logErr);
+}
 function goal(value, target, suffix){
   var p = target > 0 ? Math.min(100, Math.round(value / target * 100)) : 0;
   var ok = value >= target;
@@ -1655,79 +1762,83 @@ function drawHome(b, kpi, isOld){
     var todayStr = cairoNow().date;
     var isStaleDay = (updDay && updDay < todayStr) || (tot.inv === 0 && salesT > 0);
 
-    html += vitals(isStaleDay ? tr('yesterdayNums') : tr('today'),
-      new Date().toLocaleDateString(LANG === 'ar' ? 'ar-EG' : 'en-GB',{day:'numeric',month:'short',timeZone:'Africa/Cairo'}), [
-      { value: num(salesT), label: tr('salesToday'),
-        tone: isStaleDay ? 'slate' : salesNote.tone,
-        note: isStaleDay ? null : salesNote.num, sub: isStaleDay ? null : salesNote.word },
-      { value: num(d.profit_today), label: tr('profitToday'),
-        tone: isStaleDay ? 'slate' : 'brand',
-        /* أول الصبح المبيعات صفر — القسمة كانت بتطلع NaN */
-        note: salesT > 0 ? (pct(d.profit_today, salesT) + '%') : null,
-        sub: salesT > 0 ? tr('margin') : null },
-      { value: num(tot.inv), label: tr('invoices'), tone: 'brand',
-        note: num(totCust), sub: tr('customersToday') }
-    ], (isStaleDay
-        ? '<div class="state" style="padding:10px 0 0;font-size:11px;color:var(--warn)">' +
-            tr('notResetYet') + '</div>'
-        : '') +
-       stamp(tr('srcSales'), upd.slice(-8) || null, tr('live')));
+    /* ═══ الرئيسية الجديدة: هدف فوق، مهام، آخر 14 يوم، الفريق ═══ */
+    var gS = goalOf('daily_sales', 10000), gV = goalOf('daily_visits', 150);
+    var pS = gS ? Math.round(salesT / gS * 100) : 0;
+    var hit = salesT >= gS;
+    var R = 46, C = 2 * Math.PI * R, fill = Math.min(1, gS ? salesT / gS : 0);
+    var ring = '<svg class="h-ring" viewBox="0 0 110 110" aria-hidden="true">' +
+      '<circle cx="55" cy="55" r="' + R + '" fill="none" stroke="var(--surface-2)" stroke-width="11"/>' +
+      '<circle cx="55" cy="55" r="' + R + '" fill="none" stroke="var(--' + (hit ? 'ok' : 'brand') + ')" stroke-width="11" stroke-linecap="round"' +
+      ' stroke-dasharray="' + (C * fill).toFixed(1) + ' ' + C.toFixed(1) + '" transform="rotate(-90 55 55)"/>' +
+      '<text x="55" y="61" text-anchor="middle" font-size="22" font-weight="800" fill="var(--ink)" font-family="Cairo,system-ui">' + pS + '%</text></svg>';
+    var left = Math.max(0, gS - salesT);
+    var dayWord = isStaleDay ? 'أمس' : 'النهاردة';
+    var visits = isStaleDay ? null : totCust;
+    var mini = function(label, val, sub, tone){
+      return '<div class="h-mini"><small>' + label + '</small><b' + (tone ? ' style="color:var(--' + tone + ')"' : '') + '>' + val + '</b>' + (sub ? '<u>' + sub + '</u>' : '') + '</div>';
+    };
+    var vBar = function(v){
+      var pv = gV ? Math.min(100, Math.round(v / gV * 100)) : 0;
+      return '<span class="h-bar"><i style="width:' + pv + '%"></i></span>';
+    };
+    html += '<div class="home-grid"><div class="home-col">';
+    html += '<div class="card h-hero">' +
+      '<div class="h-top"><h2>' + dayWord + (isStaleDay ? ' <span class="h-tag">لسه مفتحناش</span>' : '') + '</h2>' +
+        '<span>' + esc(new Date(Date.now() - (isStaleDay ? 86400000 : 0)).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Africa/Cairo' })) + '</span></div>' +
+      '<div class="h-main">' + ring + '<div class="h-num"><small>المبيعات</small><b>' + ltr(num(salesT)) + '</b>' +
+        '<u>' + (hit ? '🎯 عدّينا الهدف ' + ltr(num(gS)) : 'فاضل ' + ltr(num(left)) + ' على ' + ltr(num(gS))) + '</u>' +
+        '<div id="homeCmp" class="h-cmp"></div></div></div>' +
+      '<div class="h-minis">' +
+        mini('الزيارات', '<span id="homeVisits">' + (visits == null ? '—' : ltr(num(visits))) + '</span> <em>/ ' + ltr(num(gV)) + '</em>', '<span id="homeVisitsBar">' + (visits == null ? vBar(0) : vBar(visits)) + '</span>') +
+        mini('الربح', ltr(num(d.profit_today || 0)), salesT > 0 ? 'هامش ' + ltr(pct(d.profit_today, salesT) + '%') : '') +
+        (isStaleDay ? mini('أول فاتورة', '—', 'هتصفّر العداد') : mini('متوسط الفاتورة', ltr(num(avgInv)), ltr(num(tot.inv)) + ' فاتورة')) +
+      '</div>' +
+      stamp(tr('srcSales'), upd.slice(-8) || null, tr('live')) + '</div>';
 
-    /* ── الهدف: مبيعات 10,000 وزيارات 150 في اليوم ── */
-    if (!isStaleDay){
-      var gS = goalOf('daily_sales', 10000), gV = goalOf('daily_visits', 150);
-      var bar = function(label, v, g, tone){
-        var p = g ? Math.min(100, Math.round(v / g * 100)) : 0;
-        return '<div style="display:flex;flex-direction:column;gap:5px;padding:6px 0">' +
-          '<div style="display:flex;justify-content:space-between;font-size:13px"><b>' + label + '</b><span>' + ltr(num(v)) + ' / ' + ltr(num(g)) + ' · ' + ltr(p + '%') + '</span></div>' +
-          '<div style="height:8px;border-radius:99px;background:var(--line);overflow:hidden"><div style="height:100%;width:' + p + '%;background:var(--' + tone + ');border-radius:99px"></div></div></div>';
-      };
-      html += card('هدف اليوم', null, bar('المبيعات', salesT, gS, 'brand') + bar('الزيارات', totCust, gV, 'warn'));
-    }
-
-    /* ── ٢) محتاج تصرّف — فوق، مش تحت ── */
+    /* ── مطلوب النهاردة ── */
     var acts = [];
     var overdue = (dt.debtors || []).filter(function(c){
       return (new Date() - new Date(c.lastActivity)) / 86400000 > 30 && c.net > 0;
     });
-    if (overdue.length) acts.push(alertBox('bad', esc(tr('overdueDebt')),
-      ltr(overdue.length) + ' · ' + ltr(num(overdue.reduce(function(a,c){return a+c.net;},0))) + ' ' + tr('egp'),
-      "go('money',2)"));
-
-    if (ex.expired && ex.expired.count) acts.push(alertBox('bad', esc(tr('expiredNow')),
-      ltr(ex.expired.count) + ' ' + tr('items'), "go('stock',1)"));
-
+    if (overdue.length) acts.push(task('bad', 'ديون متأخرة', ltr(num(overdue.reduce(function(a,c){return a+c.net;},0))) + ' ' + tr('egp'), overdue.length, "go('money',2)"));
+    if (ex.expired && ex.expired.count) acts.push(task('bad', 'أصناف منتهية', 'شيلها من الرف', ex.expired.count, "go('stock',1)"));
     var months = ex.months || [], soon = months.length ? months[0] : null;
-    if (soon && soon.count) acts.push(alertBox('warn', esc(tr('expiringSoon')),
-      ltr(soon.count) + ' ' + tr('items') + ' · ' + ltr(num(soon.totalCost)) + ' ' + tr('egp'),
-      "go('stock',1)"));
-
-    /* أضعف موظف في التسجيل — تنبيه بدل جدول كامل */
-    var weak = emps.filter(function(e){ return e.invoices >= 3; })
-                   .sort(function(a,b){ return a.reg_pct - b.reg_pct; })[0];
-    if (weak && weak.reg_pct < 50) acts.push(alertBox('warn',
-      esc(weak.name) + ' — ' + tr('regRate') + ' ' + weak.reg_pct + '%',
-      tr('target') + ' ' + ltr('75%') + ' · ' + ltr(weak.invoices) + ' ' + tr('invoices'),
-      "go('team',0)"));
-
+    if (soon && soon.count) acts.push(task('warn', 'هتنتهي قريب', ltr(num(soon.totalCost)) + ' ' + tr('egp'), soon.count, "go('stock',1)"));
+    var weak = emps.filter(function(e){ return e.invoices >= 3; }).sort(function(a,b){ return a.reg_pct - b.reg_pct; })[0];
+    if (weak && weak.reg_pct < 50) acts.push(task('warn', 'تسجيل ' + esc(weak.name) + ' ضعيف', 'الهدف 75%', weak.reg_pct + '%', "go('team',0)"));
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
-    if (dueAgents.length) acts.push(alertBox('warn', esc(tr('agentsDue')),
-      ltr(dueAgents.length) + ' · ' + ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0))),
-      "go('admin',0)"));
-
+    if (dueAgents.length) acts.push(task('warn', 'مستحقات مندوبين', ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0))) + ' ' + tr('egp'), dueAgents.length, "go('admin',0)"));
     var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
-    html += card(tr('needsAction'), null,
-      (acts.length ? acts.join('') : '') + '<div id="homeMore">' + (HOME_MORE || '') + '</div>' +
-      (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>'),
-      null, stamp(tr('srcSnap'), snapAt || null, tr('hourly')));
+    html += '<div class="card"><div class="card-head"><div><h3>مطلوب النهاردة</h3></div></div>' +
+      '<div id="homeMore">' + (HOME_MORE || '') + '</div>' + acts.join('') +
+      (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>') +
+      stamp(tr('srcSnap'), snapAt || null, tr('hourly')) + '</div>';
+    html += '</div><div class="home-col">';
 
-    /* ── ٥) موجودين دلوقتي — الكارت يظهر بس لو فيه حد ── */
-    var live = at.live || [];
-    if (live.length) html += card(tr('onShiftNow'), null,
-      live.map(function(p){ return row(p.name, null, badge(ltr(dur(p.elapsedMinutes)), 'ok')); }).join(''));
+    /* ── آخر 14 يوم ── */
+    html += '<div class="card"><div class="card-head"><div><h3>آخر 14 يوم</h3><p id="homeChartSub">المبيعات اليومية قصاد الهدف</p></div></div>' +
+      '<div id="homeChart">' + (HOME_DAYS ? homeChart(HOME_DAYS, salesT, isStaleDay, gS) : '<div class="state">…</div>') + '</div></div>';
+
+    /* ── الفريق النهاردة ── */
+    var live = at.live || [], onNow = {};
+    live.forEach(function(p){ onNow[String(p.name || '').trim().split(' ')[0]] = p; });
+    var teamRows = (isStaleDay ? [] : emps.slice().sort(function(a,b){ return b.sales - a.sales; })).map(function(e){
+      var first = String(e.name || '').trim().split(' ')[0], on = onNow[first]; if (on) delete onNow[first];
+      return '<div class="h-team"><span class="h-dot' + (on ? ' on' : '') + '"></span><div class="h-tn"><b>' + esc(e.name) + '</b><small>' +
+        ltr(e.invoices) + ' فاتورة · تسجيل ' + ltr(e.reg_pct + '%') + (on ? ' · ' + ltr(dur(on.elapsedMinutes)) : '') + '</small></div>' +
+        '<b class="h-tv">' + ltr(num(e.sales)) + '</b></div>';
+    });
+    Object.keys(onNow).forEach(function(k){ var p = onNow[k];
+      teamRows.push('<div class="h-team"><span class="h-dot on"></span><div class="h-tn"><b>' + esc(p.name) + '</b><small>حاضر ' + ltr(dur(p.elapsedMinutes)) + '</small></div><b class="h-tv">—</b></div>');
+    });
+    html += '<div class="card"><div class="card-head"><div><h3>الفريق النهاردة</h3><p>الأخضر = حاضر دلوقتي</p></div></div>' +
+      (teamRows.length ? teamRows.join('') : '<div class="state">لسه محدش باع النهاردة</div>') + '</div>';
+    html += '</div></div>';
 
     box.innerHTML = html;
     loadHomeMore();
+    loadHomeDays(salesT, isStaleDay, gS, gV);
   }catch(e){ logErr(e); if (!isOld) oops(box, "pgHome()"); }
 }
 
@@ -1746,21 +1857,21 @@ function loadHomeMore(){
   ]).then(function(r){
     var out = [];
     var pend = (CHATS || []).filter(function(c){ return c.pending; }).length;
-    if (pend) out.push(alertBox('bad', 'محادثات البوت مستنية رد', ltr(num(pend)), "go('bot')"));
+    if (pend) out.push(task('bad', 'رسايل مستنية رد', 'واتساب وتليجرام', pend, "go('bot')"));
     var cr = r[4];
     if (cr && cr.ok){
       CUST.calls = cr;
       var doneT = cr.today.done + cr.today.noanswer + cr.today.later + cr.today.wrong;
-      if (cr.left) out.push(alertBox(doneT ? 'brand' : 'warn', 'مكالمات المتابعة',
-        'لسه ' + ltr(num(cr.left)) + ' · النهاردة ' + ltr(num(doneT)), "CUST_NEXT='calls';go('cust',0)"));
+      if (cr.left) out.push(task(doneT ? 'brand' : 'warn', 'مكالمات المتابعة',
+        'اتعمل النهاردة ' + ltr(num(doneT)), cr.left, "CUST_NEXT='calls';go('cust',0)"));
     }
     var z = r[1] && r[1].zero && r[1].zero.summary ? (r[1].zero.summary.total || 0) : 0;
-    if (z) out.push(alertBox('bad', 'أصناف خلصانة', ltr(num(z)) + ' ' + tr('items'), "go('stock',0)"));
+    if (z) out.push(task('bad', 'أصناف خلصانة', 'محتاجة تتطلب', z, "go('stock',0)"));
     var dn = r[2] && r[2].orders ? r[2].orders.filter(function(o){ return o.status !== 'تم'; }).length : 0;
-    if (dn) out.push(alertBox('warn', 'طلبات دكاترة جديدة', ltr(num(dn)), "go('admin',1)"));
+    if (dn) out.push(task('warn', 'طلبات دكاترة جديدة', 'مستنية رد', dn, "go('admin',1)"));
     var e = r[3];
     if (e && (e.stale || (e.itemizedStaleDays != null && e.itemizedStaleDays > 2)))
-      out.push(alertBox('bad', 'المصروفات واقفة', ltr(e.stale ? e.staleDays : e.itemizedStaleDays) + ' ' + tr('daysWord'), "go('money',1)"));
+      out.push(task('bad', 'المصروفات واقفة', 'سجّلها عشان الصافي يبقى صح', (e.stale ? e.staleDays : e.itemizedStaleDays) + ' يوم', "go('money',1)"));
     HOME_MORE = out.join('');
     var box = document.getElementById('homeMore');
     if (box){ box.innerHTML = HOME_MORE; if (HOME_MORE){ var g = document.getElementById('homeAllGood'); if (g) g.remove(); } }

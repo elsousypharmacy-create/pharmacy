@@ -5750,7 +5750,7 @@ var EDITOR_TRIGGERS_ = {
     install: function () { ScriptApp.newTrigger('callsDailySummary').timeBased().atHour(22).everyDays(1).inTimezone('Africa/Cairo').create(); }
   },
   camAutoSnap: {
-    label: 'سحب لقطات الكاميرات كل 10 دقايق (8 صباحًا → 12 بالليل) على الدرايف',
+    label: 'سحب لقطات الكاميرات كل 10 دقايق (8 صباحًا → 1 بالليل) على الدرايف',
     auto: false,
     install: function () { ScriptApp.newTrigger('camAutoSnap').timeBased().everyMinutes(10).create(); }
   },
@@ -8303,11 +8303,11 @@ function camSendTelegram(d) {
   return { ok: true, sent: media.length, failed: fails };
 }
 
-// ---- سحب تلقائي كل ساعة (8 الصبح → 12 بالليل بتوقيت مصر) على الدرايف: كاميرات الصيدلية / yyyy-MM-dd / HHmm_chN.jpg ----
+// ---- سحب تلقائي كل ساعة (8 الصبح → 1 بالليل بتوقيت مصر) على الدرايف: كاميرات الصيدلية / yyyy-MM-dd / HHmm_chN.jpg ----
 function camRootFolder_() { var it = DriveApp.getFoldersByName('كاميرات الصيدلية'); return it.hasNext() ? it.next() : DriveApp.createFolder('كاميرات الصيدلية'); }
 function camAutoSnap() {
   var hr = Number(Utilities.formatDate(new Date(), 'Africa/Cairo', 'H'));
-  if (hr < 8 && hr !== 0) return;   // برة مواعيد الشغل
+  if (hr < 8 && hr !== 0) return;   // برة مواعيد الشغل (8 الصبح → 1 بالليل: آخر سحبة 12:50)
   var tk = camToken_(); if (tk.error) { PropertiesService.getScriptProperties().setProperty('CAM_SNAP_LAST', 'فشل: ' + tk.error); return; }
   var serial = PropertiesService.getScriptProperties().getProperty('CAM_DEVICE_SERIAL') || 'E10261949';
   var root = camRootFolder_(), day = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd'), hm = Utilities.formatDate(new Date(), 'Africa/Cairo', 'HHmm');
@@ -8327,7 +8327,7 @@ function camAutoOn() {
   try {
     ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'camAutoSnap') ScriptApp.deleteTrigger(t); });
     ScriptApp.newTrigger('camAutoSnap').timeBased().everyMinutes(10).create();
-    return { ok: true, message: 'السحب التلقائي شغال كل 10 دقايق (8 الصبح → 12 بالليل)' };
+    return { ok: true, message: 'السحب التلقائي شغال كل 10 دقايق (8 الصبح → 1 بالليل)' };
   } catch (e) { return { ok: false, error: 'مقدرتش أشغّله: ' + String(e.message || e).slice(0, 160) }; }
 }
 

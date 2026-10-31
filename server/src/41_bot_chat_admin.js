@@ -166,7 +166,7 @@ var EDITOR_TRIGGERS_ = {
     install: function () { ScriptApp.newTrigger('callsDailySummary').timeBased().atHour(22).everyDays(1).inTimezone('Africa/Cairo').create(); }
   },
   camAutoSnap: {
-    label: 'سحب لقطات الكاميرات كل 10 دقايق (8 صباحًا → 12 بالليل) على الدرايف',
+    label: 'سحب لقطات الكاميرات كل 10 دقايق (8 صباحًا → 1 بالليل) على الدرايف',
     auto: false,
     install: function () { ScriptApp.newTrigger('camAutoSnap').timeBased().everyMinutes(10).create(); }
   },

@@ -186,6 +186,35 @@ function ordersRatios_() {
   return out;
 }
 
+/* نواقص جديدة من STOCK LIVE (بيتحدّث كل ~5 دقايق): قايمة النواقص الخارجية بتتأخر، فأي صنف اتباع في آخر dd يوم
+   ورصيده خلص (ناقص) أو نزل تحت الحد الأدنى (قرب يخلص) ومش موجود في القايمة بيتضاف هنا. */
+function ordLiveShortages_(dd) {
+  var res = { zero: [], low: [] };
+  try {
+    var sh = SpreadsheetApp.openById(STOCK_SHEET_ID).getSheets()[0];
+    var lastCol = sh.getLastColumn(), n = sh.getLastRow() - 1;
+    if (n < 1) return res;
+    var hdr = sh.getRange(1, 1, 1, lastCol).getDisplayValues()[0], COL = {};
+    hdr.forEach(function (h, i) { COL[String(h || '').trim().toLowerCase()] = i; });
+    if (COL.stock === undefined || COL.lastselleddate === undefined) return res;
+    var rows = sh.getRange(2, 1, n, lastCol).getDisplayValues();
+    var cut = Utilities.formatDate(new Date(Date.now() - dd * 86400000), 'Africa/Cairo', 'yyyy-MM-dd');
+    function f_(v) { var x = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isFinite(x) ? x : 0; }
+    rows.forEach(function (r) {
+      var last = String(r[COL.lastselleddate] || '');
+      if (!/^\d{4}-\d{2}-\d{2}/.test(last) || last.slice(0, 10) < cut) return;   // مش بيتباع مؤخرًا
+      var st = f_(r[COL.stock]), mn = COL.minstock !== undefined ? f_(r[COL.minstock]) : 0, df = COL.defaultstock !== undefined ? f_(r[COL.defaultstock]) : 0;
+      var sec = st <= 0 ? 'zero' : (mn > 0 && st < mn ? 'low' : '');
+      if (!sec) return;
+      var name = String(r[COL.namear] || '').trim() || String(r[COL.nameen] || '').trim();
+      if (!name || name === '.') return;
+      res[sec].push({ name: name, code: COL.code !== undefined ? String(r[COL.code] || '').trim() : '',
+                      shortage: Math.max(1, Math.ceil(Math.max(df, mn, 1) - Math.max(st, 0))),
+                      price: COL.price !== undefined ? f_(r[COL.price]) : 0, stock: st, cat: invCat_(r, COL) });
+    });
+  } catch (e) {}
+  return res;
+}
 /* رصيد حيّ من STOCK LIVE من غير كاش (فهرس المسح متكيّش 30 دقيقة) — عمودين بس عشان السرعة */
 function ordLiveStock_() {
   var byCode = {}, byName = {};
@@ -212,16 +241,41 @@ function ordLiveStock_() {
   return { byCode: byCode, byName: byName };
 }
 
-function ordersPage(code, days) {
+function ordersPage(code, days, fresh) {
   try {
     var dd = [3, 7, 14, 30].indexOf(parseInt(days, 10)) !== -1 ? parseInt(days, 10) : 7;
-    var key = 'fx_ord_page_v7_' + dd;
-    var hit = fxCacheGet_(key);
+    var key = 'fx_ord_page_v8_' + dd;
+    var hit = fresh ? null : fxCacheGet_(key);
     if (hit) return ordersWithMarks_(hit);
 
     var res = UrlFetchApp.fetch(SHORTAGE_SCRIPT_URL + '?action=getShortages&days=' + dd, { muteHttpExceptions: true });
     var d = JSON.parse(res.getContentText());
     if (!d || d.error) return { ok: false, msg: 'مقدرتش أجيب النواقص دلوقتي' };
+
+    /* نضيف النواقص الجديدة من STOCK LIVE اللي القايمة الخارجية لسه ما شافتهاش */
+    var liveAdded = 0;
+    try {
+      var seen = {};
+      ['zero', 'low'].forEach(function (sec) {
+        var cats = d[sec] && d[sec].categories;
+        if (cats) Object.keys(cats).forEach(function (cat) { Object.keys(cats[cat]).forEach(function (co) { cats[cat][co].forEach(function (it) {
+          var c0 = String(it.code || '').replace(/[^\d]/g, ''); if (c0) seen['c' + c0] = 1;
+          var n0 = doctorNorm_(it.name); if (n0) seen['n' + n0] = 1;
+        }); }); });
+      });
+      var ls = ordLiveShortages_(dd);
+      ['zero', 'low'].forEach(function (sec) {
+        ls[sec].forEach(function (it) {
+          var c1 = String(it.code || '').replace(/[^\d]/g, ''), n1 = doctorNorm_(it.name);
+          if ((c1 && seen['c' + c1]) || (n1 && seen['n' + n1])) return;
+          if (c1) seen['c' + c1] = 1; if (n1) seen['n' + n1] = 1;
+          d[sec] = d[sec] || {}; d[sec].categories = d[sec].categories || {};
+          var cc = d[sec].categories[it.cat] = d[sec].categories[it.cat] || {};
+          (cc['من المخزون مباشرة'] = cc['من المخزون مباشرة'] || []).push({ name: it.name, code: it.code, shortage: it.shortage, price: it.price, stock: it.stock });
+          liveAdded++;
+        });
+      });
+    } catch (eL) {}
 
     /* أسعار من المخزون كاحتياطي: بالكود الأول وبعدين بالاسم */
     var byCode = {}, byName = {};
@@ -262,7 +316,7 @@ function ordersPage(code, days) {
 
     var out = { ok: true, days: dd, at: Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm'),
                 sourceFields: null, estimated: 0, total: 0, restocked: 0, salesDays: salesDays,
-                revPerDay: salesDays > 0 ? Math.round((vel.rev || 0) / salesDays) : 0 };
+                revPerDay: salesDays > 0 ? Math.round((vel.rev || 0) / salesDays) : 0, liveAdded: liveAdded };
     ['zero', 'low'].forEach(function (sec) {
       var by = {}, data = d[sec];
       if (data && data.categories) {

@@ -222,7 +222,7 @@ function migrateLocalMarks(pending){
 }
 function load(force){
   $('list').innerHTML = '<div class="state">بجيب النواقص…</div>';
-  apiGet('ordersPage', { days: $('days').value }).then(function(d){
+  apiGet('ordersPage', force ? { days: $('days').value, fresh: '1' } : { days: $('days').value }).then(function(d){
     if (d && d.lockError){
       $('list').innerHTML = '<div class="state">اللوحة مقفولة<br><button class="q" style="margin-top:10px" onclick="load()">اكتب الرقم السري</button></div>';
       return;

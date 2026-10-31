@@ -54,7 +54,7 @@ function doGet(e) {
   if (action === 'doctorSearch')     return jsonResponseStaff(doctorSearch(e.parameter.q, e.parameter.k));
   if (action === 'doctorOrder')      return jsonResponseStaff(doctorOrder(e.parameter.items, e.parameter.note, e.parameter.k));
   if (action === 'doctorAdmin')      return jsonResponseStaff(doctorAdmin(e.parameter));
-  if (action === 'ordersPage')       return jsonResponseStaff(ordersPage(e.parameter.k, e.parameter.days));
+  if (action === 'ordersPage')       return jsonResponseStaff(ordersPage(e.parameter.k, e.parameter.days, e.parameter.fresh === '1'));
   if (action === 'orderEfficiency')  return jsonResponseStaff(orderEfficiency(e.parameter.days));
   if (action === 'logShortages')     return jsonResponseStaff(logShortageSnapshot_(true));
   if (action === 'markOrdered') {

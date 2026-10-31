@@ -128,3 +128,11 @@ function camAutoSnap() {
     while (fs.hasNext()) { var f = fs.next(); if (/^\d{4}-\d{2}-\d{2}$/.test(f.getName()) && f.getName() < lim) f.setTrashed(true); }
   } catch (e2) {}
 }
+/* تشغيل السحب التلقائي كل 10 دقايق (بيشيل أي تريجر قديم للكاميرات الأول) */
+function camAutoOn() {
+  try {
+    ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'camAutoSnap') ScriptApp.deleteTrigger(t); });
+    ScriptApp.newTrigger('camAutoSnap').timeBased().everyMinutes(10).create();
+    return { ok: true, message: 'السحب التلقائي شغال كل 10 دقايق (10 الصبح → 12 بالليل)' };
+  } catch (e) { return { ok: false, error: 'مقدرتش أشغّله: ' + String(e.message || e).slice(0, 160) }; }
+}

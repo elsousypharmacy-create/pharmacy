@@ -166,9 +166,9 @@ var EDITOR_TRIGGERS_ = {
     install: function () { ScriptApp.newTrigger('callsDailySummary').timeBased().atHour(22).everyDays(1).inTimezone('Africa/Cairo').create(); }
   },
   camAutoSnap: {
-    label: 'سحب لقطات الكاميرات كل ساعة (10 صباحًا → 12 بالليل) على الدرايف',
+    label: 'سحب لقطات الكاميرات كل 10 دقايق (10 صباحًا → 12 بالليل) على الدرايف',
     auto: false,
-    install: function () { ScriptApp.newTrigger('camAutoSnap').timeBased().everyHours(1).create(); }
+    install: function () { ScriptApp.newTrigger('camAutoSnap').timeBased().everyMinutes(10).create(); }
   },
   sendWeeklyDebtReminders: {
     label: 'تذكير الديون كل سبت الساعة ١١',

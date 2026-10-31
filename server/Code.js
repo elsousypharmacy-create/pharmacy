@@ -122,7 +122,7 @@ function doGet(e) {
   /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
   var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
                         purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1 };
+                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1 };
   if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
     return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
   if (action === 'aiTest') return jsonResponseStaff(aiTest(e.parameter.q));
@@ -137,6 +137,7 @@ function doGet(e) {
   if (action === 'getBotChats') return jsonResponseStaff(getBotChats());
   if (action === 'waInfo') return jsonResponseStaff(waInfo());
   if (action === 'camInfo') return jsonResponseStaff(camInfo());
+  if (action === 'camAutoOn') return jsonResponseStaff(camAutoOn());
   if (action === 'waSubscribe') return jsonResponseStaff(waSubscribe());
   if (action === 'getBotChat') return jsonResponseStaff(getBotChat(e.parameter.id));
   if (action === 'botReply') return jsonResponseStaff(botReply(e.parameter.id, e.parameter.text));
@@ -5749,9 +5750,9 @@ var EDITOR_TRIGGERS_ = {
     install: function () { ScriptApp.newTrigger('callsDailySummary').timeBased().atHour(22).everyDays(1).inTimezone('Africa/Cairo').create(); }
   },
   camAutoSnap: {
-    label: 'سحب لقطات الكاميرات كل ساعة (10 صباحًا → 12 بالليل) على الدرايف',
+    label: 'سحب لقطات الكاميرات كل 10 دقايق (10 صباحًا → 12 بالليل) على الدرايف',
     auto: false,
-    install: function () { ScriptApp.newTrigger('camAutoSnap').timeBased().everyHours(1).create(); }
+    install: function () { ScriptApp.newTrigger('camAutoSnap').timeBased().everyMinutes(10).create(); }
   },
   sendWeeklyDebtReminders: {
     label: 'تذكير الديون كل سبت الساعة ١١',
@@ -8320,6 +8321,14 @@ function camAutoSnap() {
     var lim = Utilities.formatDate(new Date(Date.now() - 3 * 86400000), 'Africa/Cairo', 'yyyy-MM-dd'), fs = root.getFolders();
     while (fs.hasNext()) { var f = fs.next(); if (/^\d{4}-\d{2}-\d{2}$/.test(f.getName()) && f.getName() < lim) f.setTrashed(true); }
   } catch (e2) {}
+}
+/* تشغيل السحب التلقائي كل 10 دقايق (بيشيل أي تريجر قديم للكاميرات الأول) */
+function camAutoOn() {
+  try {
+    ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'camAutoSnap') ScriptApp.deleteTrigger(t); });
+    ScriptApp.newTrigger('camAutoSnap').timeBased().everyMinutes(10).create();
+    return { ok: true, message: 'السحب التلقائي شغال كل 10 دقايق (10 الصبح → 12 بالليل)' };
+  } catch (e) { return { ok: false, error: 'مقدرتش أشغّله: ' + String(e.message || e).slice(0, 160) }; }
 }
 
 // ==== MODULE 70_inventory_aging (split from server/Code.js; load order = file name order) ====

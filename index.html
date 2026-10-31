@@ -644,11 +644,11 @@ var T = {
   groupMoney:['فلوس واقفة','Money parked'],
   fixSec:['صلّح','Fix'],
   fixSub:['أرصدة سالبة ودقة الجرد','Negative stock & count accuracy'],
-  expSub:['مرتجع للمورّد قبل ما يبوظ','Return to supplier before it expires'],
+  expSub:['بينتهي خلال 6 شهور — رجّعه للمورّد','Return to supplier before it expires'],
   orderSec:['اطلب','Order'],
   orderSub:['خلصوا أو قربوا يخلصوا','Out or running low'],
   deadOnly:['راكد','Slow-moving'],
-  deadSub2:['اتباع وبطّل — عرض أو خصم','Sold before, stopped — discount'],
+  deadSub2:['ما اتباعش من 6 شهور أو أكتر — اعرضه أو خصّمه','Sold before, stopped — discount'],
   neverSec:['ما اتباعش','Never sold'],
   neverSub:['عمره ما اتباع — راجع الشراء','Never sold — review buying'],
   countAcc:['دقة الجرد','Count accuracy'],
@@ -774,8 +774,8 @@ var T = {
   /* عامة */
   today:['النهاردة','Today'],
   rWeek:['الأسبوع','Week'],
-  bucketFresh:['أقل من شهر','Under a month'], bucket1_3:['١-٣ شهور','1-3 months'],
-  bucket3_6:['٣-٦ شهور','3-6 months'], bucket6:['أكتر من ٦ شهور','Over 6 months'],
+  bucketFresh:['أقل من شهر','Under a month'], bucket1_3:['1-3 شهور','1-3 months'],
+  bucket3_6:['3-6 شهور','3-6 months'], bucket6:['أكتر من ٦ شهور','Over 6 months'],
   sortBy:['ترتيب','Sort'], byAmount:['بالمبلغ','By amount'], byAge:['بالمدة','By age'],
   lastMove:['آخر حركة','Last activity'], lastPaid:['آخر سداد','Last payment'],
   noPayRec:['مفيش سداد مسجّل','No payment on record'],
@@ -796,17 +796,17 @@ var T = {
                  'El Sousy Pharmacy: a special discount on your next order - order now 01143404023'], checkFirst:['راجع حسابه في نظام البيع قبل ما تكلمه','Check their account in the POS first'], noteLastMove:['«آخر حركة» = آخر شراء أو سداد','"Last activity" = last purchase or payment'], rToday:['اليوم','Today'], rYesterday:['أمس','Yesterday'], rMonth:['الشهر','Month'],
   rLastMonth:['الشهر اللي فات','Last month'], rCustom:['فترة','Custom'],
   from:['من','From'], to:['إلى','To'], apply:['طبّق','Apply'],
-  days7:['٧ أيام','7 days'], days14:['١٤ يوم','14 days'], days30:['٣٠ يوم','30 days'],
+  days7:['7 أيام','7 days'], days14:['14 يوم','14 days'], days30:['30 يوم','30 days'],
   beforeDisc:['قبل الخصم','Before discount'], afterDisc:['بعد الخصم','After discount'],
   needed:['المطلوب','Needed'], markOrdered:['اتطلب','Ordered'], markDiscont:['مقطوع','Discontinued'],
   supplier:['مورّد','suppliers'], byEmployee:['كل موظف طلّع دين','Debt raised per employee'],
   agingTitle:['حسب آخر بيع','By last sale'], never:['ما اتباعش','Never sold'],
-  d0_30:['أقل من شهر','Under 30d'], d31_60:['١-٢ شهر','1-2 months'], d61_90:['٢-٣ شهور','2-3 months'],
-  d91_180:['٣-٦ شهور','3-6 months'], d181_365:['٦-١٢ شهر','6-12 months'], d365:['أكتر من سنة','Over a year'],
+  d0_30:['أقل من شهر','Under 30d'], d31_60:['1-2 شهر','1-2 months'], d61_90:['2-3 شهور','2-3 months'],
+  d91_180:['3-6 شهور','3-6 months'], d181_365:['6-12 شهر','6-12 months'], d365:['أكتر من سنة','Over a year'],
   skus:['صنف','SKUs'], health:['صحة المخزون','Stock health'],
   expByMonth:['الصلاحية شهر بشهر','Expiry by month'], deadList:['الأصناف الراكدة','Dead stock items'],
   allCats:['كل الفئات','All categories'], shelfLife:['مدة الصلاحية','Shelf life'],
-  under3:['أقل من ٣ شهور','Under 3 months'], m3_6:['٣-٦ شهور','3-6 months'],
+  under3:['أقل من ٣ شهور','Under 3 months'], m3_6:['3-6 شهور','3-6 months'],
   over6:['أكتر من ٦ شهور','Over 6 months'], noExp:['بدون تاريخ','No date'],
   qty:['رصيد','Qty'], daysIdle:['ساكن','Idle'], expiresOn:['ينتهي','Expires'],
   healthGood:['كويسة','Good'], healthMid:['متوسطة','Fair'], healthBad:['محتاجة تدخّل','Needs work'],
@@ -1537,9 +1537,9 @@ function expExpiry(k){
 /* حسب آخر بيع — كل الشرايح */
 function expAging(k){
   var d = INV.data || {}, rows = [];
-  var LBL = { never:'ما اتباعش', b0_30:'أقل من شهر', b31_60:'١-٢ شهر',
-              b61_90:'٢-٣ شهور', b91_180:'٣-٦ شهور',
-              b181_365:'٦-١٢ شهر', b365plus:'أكتر من سنة' };
+  var LBL = { never:'ما اتباعش', b0_30:'أقل من شهر', b31_60:'1-2 شهر',
+              b61_90:'2-3 شهور', b91_180:'3-6 شهور',
+              b181_365:'6-12 شهر', b365plus:'أكتر من سنة' };
   Object.keys(LBL).forEach(function(k2){
     ((d.aging_items || {})[k2] || []).forEach(function(it){
       rows.push({ 'الشريحة': LBL[k2], 'الصنف': it.name, 'الرصيد': it.stock,
@@ -3041,9 +3041,11 @@ function secBtn(key, tone, title, sub, val, valSub, fn){
 }
 
 /* رأس الشاشة الداخلية */
+/* الكمية: الشرايط بتطلع كسر من العلبة (0.5 = نص علبة) بدل ما تتقرّب لـ 0 */
+function qtyFmt(v){ v = +v || 0; return v % 1 === 0 ? num(v) : String(Math.round(v * 100) / 100); }
 function secHead(title, expFn, backFn){
   return '<div class="sec-head">' +
-    '<button class="ibtn" onclick="' + (backFn || "setInvSec('home')") + '">›</button>' +
+    (backFn === 'none' ? '' : '<button class="ibtn" onclick="' + (backFn || "setInvSec('home')") + '">›</button>') +
     '<h3>' + title + '</h3>' +
     (expFn ? '<button class="ibtn" onclick="' + expFn + '">⤓</button>' : '') +
     '</div>';
@@ -3051,7 +3053,7 @@ function secHead(title, expFn, backFn){
 
 function drawAging(isOld){
   var box = document.getElementById('p-stock'), d = INV.data;
-  if (!d) return;
+  if (!d || CUR !== 'stock' || TAB < 1 || TAB > 3) return;   /* رد متأخر ميكتبش فوق تبويب تاني */
 
   var near  = d.near_expiry_list || [];
   var nearC = near.reduce(function(a, x){ return a + x.cost; }, 0);
@@ -3110,7 +3112,7 @@ function drawAging(isOld){
                  dead: tr('deadOnly'), never: tr('neverSec'), all: tr('allStock') };
   var EXPFN  = { fix: 'negMenu()', exp: 'expiryMenu()', order: 'orderMenu()',
                  dead: 'agingMenu()', never: 'neverSoldMenu()', all: 'catAllMenu()' };
-  html += secHead(TITLES[INV_SEC] || '', EXPFN[INV_SEC]);
+  html += secHead(TITLES[INV_SEC] || '', EXPFN[INV_SEC], TAB === 3 ? null : 'none');
 
   if (INV_SEC === 'fix')   html += invFixHtml(d);
   if (INV_SEC === 'order') html += invOrderHtml();
@@ -3135,7 +3137,7 @@ function drawAging(isOld){
 
   /* فلتر الفئة/الرف — بيظهر في الأقسام اللي ليها فلترة */
   if (INV_SEC === 'dead' || INV_SEC === 'exp')
-    html += ctlBar(ctlBtn(tr('invAging'), true, "void 0"), 'invMenu()', (INV.cat || INV.shelf !== 'all'));
+    html += ctlBar(ctlBtn(INV.cat ? esc(INV.cat) : 'كل الأقسام', true, "invMenu()"), 'invMenu()', (INV.cat || INV.shelf !== 'all'));
 
   /* ═══ قرب الصلاحية ═══ */
   if (INV_SEC === 'exp'){
@@ -3144,7 +3146,7 @@ function drawAging(isOld){
     html += card(tr('nearestFirst'), tr('nearestSub'), soon.length ? soon.map(function(it){
       var dte = it.days_to_expire;
       return '<div class="row"><div class="row-main"><b style="white-space:normal">' + esc(it.name) + '</b>' +
-        '<small>' + ltr(num(it.stock)) + ' ' + tr('unitsWord') + ' · ' + esc(it.expire || '') + '</small></div>' +
+        '<small>' + ltr(qtyFmt(it.stock)) + ' ' + tr('unitsWord') + ' · ' + esc(it.expire || '') + '</small></div>' +
         badge(dte < 0 ? tr('expiredWord') : (ltr(dte) + ' ' + tr('daysWord')), dte <= 90 ? 'bad' : 'warn') +
         '<span class="row-val" style="padding-inline-start:8px">' + ltr(num(it.cost)) + '</span></div>';
     }).join('') : emptyState());
@@ -3208,7 +3210,7 @@ function drawAging(isOld){
       row(tr('stockValue'), null, ltr(num(d.never_sold_total_cost || 0))) +
       nl.slice(0, 40).map(function(it){
         return '<div class="row"><div class="row-main"><b style="white-space:normal">' + esc(it.name) + '</b>' +
-          '<small>' + ltr(num(it.stock)) + ' ' + tr('unitsWord') +
+          '<small>' + ltr(qtyFmt(it.stock)) + ' ' + tr('unitsWord') +
           (it.expire ? ' · ' + esc(it.expire) : '') + '</small></div>' +
           '<span class="row-val">' + ltr(num(it.cost)) + '</span></div>';
       }).join('') +
@@ -3334,7 +3336,7 @@ function catSheet(cat, scope){
     '<button class="btn btn-quiet" onclick="catMenu()">' + tr('exportX') + ' / ' + tr('exportP') + '</button>' +
     (rows.length ? rows.slice(0, 80).map(function(it){
       return '<div class="row"><div class="row-main"><b>' + esc(it.name) + '</b>' +
-        '<small>' + ltr(num(it.stock)) + ' ' + tr('unitsWord') +
+        '<small>' + ltr(qtyFmt(it.stock)) + ' ' + tr('unitsWord') +
         (it.expire ? ' · ' + esc(it.expire) : '') + '</small></div>' +
         '<span class="row-val">' + ltr(num(it.cost)) + '</span></div>';
     }).join('') + (rows.length > 80
@@ -3398,7 +3400,7 @@ function pgShort(){
     SHORT_DATA = d; markSync(); drawShort();
   }).catch(function(e){ logErr(e); if (!seed) oops(box, "pgShort()"); });
   api('orderEfficiency', { days: RANGE.short }).then(function(e){
-    if (e && e.ok){ EFF = e; if (SHORT_DATA && CUR === 'stock') drawShort(); }
+    if (e && e.ok){ EFF = e; if (SHORT_DATA) drawShort(); }
   }).catch(logErr);
 }
 
@@ -3415,10 +3417,11 @@ function effHtml(){
     { value: dur(e.avgHours), label: tr('effAvg'), tone: 'brand' },
     { value: num(e.stale), label: tr('effStale'), tone: e.stale ? 'bad' : 'ok' }
   ]);
-  if (e.trend != null) h += '<div class="state" style="padding:4px 0 10px">' + tr('effTrend') + ': <b style="color:var(--' + tone + ')" dir="ltr">' +
-    (e.trend > 0 ? '+' : '') + e.trend + '</b></div>';
+  if (e.trend != null) h += '<div class="state" style="padding:4px 0 10px">' +
+    (e.trend > 0 ? 'النواقص بتزيد' : e.trend < 0 ? 'النواقص بتقل' : 'النواقص ثابتة') + ' <b style="color:var(--' + tone + ')" dir="ltr">(' +
+    (e.trend > 0 ? '+' : '') + e.trend + ' صنف في اليوم)</b></div>';
   if (hasLost && (L.items || []).length) h += card(tr('effLostT'), tr('effLostNote'), L.items.slice(0, 8).map(function(o){
-    return row(o.name, esc(o.co) + ' · ' + ltr(num(o.daysOut)) + ' ' + tr('effDaysOut') + ' × ' + ltr(num(o.perDay)) + ' ' + tr('effPerDay'),
+    return row(o.name, esc(o.co) + ' · ' + ltr(num(o.daysOut)) + ' ' + tr('effDaysOut') + ' × ' + ltr(o.perDay >= 10 ? num(o.perDay) : (Math.round(o.perDay * 10) / 10)) + ' ' + tr('effPerDay'),
                ltr(num(o.value)) + ' ' + tr('egp'));
   }).join(''));
   if ((e.oldest || []).length) h += card(tr('effOldest'), null, e.oldest.slice(0, 6).map(function(o){
@@ -3432,7 +3435,7 @@ function effHtml(){
 
 function drawShort(){
   var box = document.getElementById('p-stock'), d = SHORT_DATA;
-  if (!d) return;
+  if (!d || CUR !== 'stock' || TAB !== 0) return;   /* رد متأخر ميكتبش فوق تبويب تاني */
   var zero = d.zero || { categories:{}, summary:{} }, low = d.low || { categories:{}, summary:{} };
   var sec = (SHORT_SEC === 'zero') ? zero : low;
   var sum = sec.summary || {};
@@ -3445,7 +3448,7 @@ function drawShort(){
   html += vitals(tr('shortages'), d.generatedAt || '', [
     { value: num((zero.summary||{}).total || 0), label: tr('outOfStock'), tone: 'bad' },
     { value: num((low.summary||{}).total || 0),  label: tr('lowStock'),   tone: 'warn' },
-    { value: num(sum.totalAfter || 0), label: tr('afterDisc'), tone: 'brand' }
+    { value: num(sum.totalAfter || 0), label: 'قيمة الطلب', sub: 'بعد خصم المورّد' }
   ]);
 
   html += effHtml();
@@ -4818,7 +4821,7 @@ function openDue(){
         var lbl = x.days === null ? tr('neverCountedWord') : (ltr(x.days) + ' ' + tr('daysWord'));
         var tone = (x.days === null || x.days > 180) ? 'bad' : (x.days > 90 ? 'warn' : 'ok');
         return '<div class="row"><div class="row-main"><b>' + esc(x.name) + '</b>' +
-          '<small>' + ltr(num(x.stock)) + ' ' + tr('unitsWord') + ' · ' +
+          '<small>' + ltr(qtyFmt(x.stock)) + ' ' + tr('unitsWord') + ' · ' +
           ltr(num(x.value)) + ' ' + tr('egp') + '</small></div>' +
           badge(lbl, tone) + '</div>';
       }).join('');

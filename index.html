@@ -1065,12 +1065,13 @@ function task(tone, title, sub, count, jump){
     '<span class="task-a">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></div>';
 }
 /* رسم آخر 14 يوم: عمود لكل يوم + خط الهدف */
-var HOME_DAYS = null;
+var HOME_DAYS = null, HOME_YK = null;
 function isoAdd(s, n){ var d = new Date(s + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
 function homeChart(days, salesT, isStale, g){
   var today = cairoNow().date, map = {};
   (days || []).forEach(function(x){ map[x.date] = x; });
-  if (!isStale) map[today] = { date: today, sales: salesT, live: true };
+  if (!isStale) map[today] = { date: today, net: salesT, sales: salesT, live: true };
+  Object.keys(map).forEach(function(k){ var x = map[k]; if (x.net != null && x.net > 0) x.sales = x.net; });
   var list = [];
   for (var i = 13; i >= 0; i--){ var ds = isoAdd(today, -i); list.push(map[ds] || { date: ds, sales: 0 }); }
   var max = Math.max(g * 1.15, Math.max.apply(null, list.map(function(x){ return x.sales || 0; })));
@@ -1102,6 +1103,7 @@ function loadHomeDays(salesT, isStale, g, gV){
     var ch = document.getElementById('homeChart'); if (ch) ch.innerHTML = homeChart(HOME_DAYS, salesT, isStale, g);
     var map = {}; HOME_DAYS.forEach(function(x){ map[x.date] = x; });
     var base = isStale ? isoAdd(today, -1) : today, prev = map[isoAdd(base, -7)];
+    if (prev && prev.net > 0) prev = { sales: prev.net };
     var el = document.getElementById('homeCmp');
     if (el && prev && prev.sales){
       var wd = new Date(isoAdd(base, -7) + 'T12:00:00Z').toLocaleDateString('ar-EG', { weekday: 'long', timeZone: 'UTC' });
@@ -1847,7 +1849,32 @@ function drawHome(b, kpi, isOld){
     var upd = String(d.updated_at || '');
     var updDay = (upd.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
     var todayStr = cairoNow().date;
-    var isStaleDay = (updDay && updDay < todayStr) || (tot.inv === 0 && salesT > 0);
+    var isStaleDay = !!kpi._yesterday || (updDay && updDay < todayStr) || (tot.inv === 0 && salesT > 0);
+
+    /* قبل أول فاتورة: نعرض أمس كامل من شيت الموظفين (نفس مصدر صفحة الفريق والأداء) */
+    if (isStaleDay && !kpi._yesterday){
+      var yk = HOME_YK && HOME_YK.day === todayStr ? HOME_YK.k : null;
+      if (yk){ kpi = yk; }
+      else {
+        api('getStaffKPI', { range: 'yesterday' }).then(function(k){
+          if (k && k.employees){ k._yesterday = 1; HOME_YK = { day: todayStr, k: k }; if (CUR === 'sales' && TAB === 0) drawHome(b, k, isOld); }
+        }).catch(logErr);
+      }
+      if (yk){ emps = kpi.employees || []; tot = { inv:0, reg:0, nreg:0, newc:0, rep:0, disc:0, ret:0 };
+        emps.forEach(function(e){ tot.inv += e.invoices; tot.reg += e.registered; tot.nreg += e.not_reg; tot.newc += e.new_c; tot.rep += e.repeat_c; });
+        totCust = tot.reg + tot.nreg; }
+    }
+    /* المبيعات = صافي بعد المرتجعات، من نفس المصدر في كل الصفحات.
+       عداد نظام البيع بيتاخد بس لو شيت الموظفين لسه فاضي. */
+    var netSum = emps.reduce(function(s, e){ return s + (e.net || 0); }, 0);
+    var profitT = d.profit_today || 0;
+    if (emps.length && netSum > 0){
+      salesT = netSum;
+      profitT = emps.reduce(function(s, e){ return s + (e.profit || 0); }, 0);
+    }
+    /* متوسط الفاتورة = إجمالي البيع ÷ عدد الفواتير (قبل المرتجعات) — نفس حساب صفحة الأداء */
+    var grossSum = emps.reduce(function(s, e){ return s + (e.sales || 0); }, 0);
+    avgInv = tot.inv ? Math.round((grossSum || salesT) / tot.inv) : 0;
 
     /* ═══ الرئيسية الجديدة: هدف فوق، مهام، آخر 14 يوم، الفريق ═══ */
     var gS = goalOf('daily_sales', 10000), gV = goalOf('daily_visits', 150);
@@ -1861,7 +1888,7 @@ function drawHome(b, kpi, isOld){
       '<text x="55" y="61" text-anchor="middle" font-size="22" font-weight="800" fill="var(--ink)" font-family="Cairo,system-ui">' + pS + '%</text></svg>';
     var left = Math.max(0, gS - salesT);
     var dayWord = isStaleDay ? 'أمس' : 'النهاردة';
-    var visits = isStaleDay ? null : totCust;
+    var visits = (isStaleDay && !kpi._yesterday) ? null : totCust;
     var mini = function(label, val, sub, tone){
       return '<div class="h-mini"><small>' + label + '</small><b' + (tone ? ' style="color:var(--' + tone + ')"' : '') + '>' + val + '</b>' + (sub ? '<u>' + sub + '</u>' : '') + '</div>';
     };
@@ -1873,13 +1900,13 @@ function drawHome(b, kpi, isOld){
     html += '<div class="card h-hero">' +
       '<div class="h-top"><h2>' + dayWord + (isStaleDay ? ' <span class="h-tag">لسه مفتحناش</span>' : '') + '</h2>' +
         '<span>' + esc(new Date(Date.now() - (isStaleDay ? 86400000 : 0)).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Africa/Cairo' })) + '</span></div>' +
-      '<div class="h-main">' + ring + '<div class="h-num"><small>المبيعات</small><b>' + ltr(num(salesT)) + '</b>' +
+      '<div class="h-main">' + ring + '<div class="h-num"><small>صافي المبيعات</small><b>' + ltr(num(salesT)) + '</b>' +
         '<u>' + (hit ? '🎯 عدّينا الهدف ' + ltr(num(gS)) : 'فاضل ' + ltr(num(left)) + ' على ' + ltr(num(gS))) + '</u>' +
         '<div id="homeCmp" class="h-cmp"></div></div></div>' +
       '<div class="h-minis">' +
         mini('الزيارات', '<span id="homeVisits">' + (visits == null ? '—' : ltr(num(visits))) + '</span> <em>/ ' + ltr(num(gV)) + '</em>', '<span id="homeVisitsBar">' + (visits == null ? vBar(0) : vBar(visits)) + '</span>') +
-        mini('الربح', ltr(num(d.profit_today || 0)), salesT > 0 ? 'هامش ' + ltr(pct(d.profit_today, salesT) + '%') : '') +
-        (isStaleDay ? mini('أول فاتورة', '—', 'هتصفّر العداد') : mini('متوسط الفاتورة', ltr(num(avgInv)), ltr(num(tot.inv)) + ' فاتورة')) +
+        mini('الربح', ltr(num(profitT)), salesT > 0 ? 'هامش ' + ltr(pct(profitT, salesT) + '%') : '') +
+        ((isStaleDay && !kpi._yesterday) ? mini('أول فاتورة', '—', 'هتصفّر العداد') : mini('متوسط الفاتورة', ltr(num(avgInv)), ltr(num(tot.inv)) + ' فاتورة')) +
       '</div>' +
       stamp(tr('srcSales'), upd.slice(-8) || null, tr('live')) + '</div>';
 
@@ -1910,11 +1937,11 @@ function drawHome(b, kpi, isOld){
     /* ── الفريق النهاردة ── */
     var live = at.live || [], onNow = {};
     live.forEach(function(p){ onNow[String(p.name || '').trim().split(' ')[0]] = p; });
-    var teamRows = (isStaleDay ? [] : emps.slice().sort(function(a,b){ return b.sales - a.sales; })).map(function(e){
+    var teamRows = ((isStaleDay && !kpi._yesterday) ? [] : emps.slice().sort(function(a,b){ return b.sales - a.sales; })).map(function(e){
       var first = String(e.name || '').trim().split(' ')[0], on = onNow[first]; if (on) delete onNow[first];
       return '<div class="h-team"><span class="h-dot' + (on ? ' on' : '') + '"></span><div class="h-tn"><b>' + esc(e.name) + '</b><small>' +
         ltr(e.invoices) + ' فاتورة · تسجيل ' + ltr(e.reg_pct + '%') + (on ? ' · ' + ltr(dur(on.elapsedMinutes)) : '') + '</small></div>' +
-        '<b class="h-tv">' + ltr(num(e.sales)) + '</b></div>';
+        '<b class="h-tv">' + ltr(num(e.net || e.sales)) + '</b></div>';
     });
     Object.keys(onNow).forEach(function(k){ var p = onNow[k];
       teamRows.push('<div class="h-team"><span class="h-dot on"></span><div class="h-tn"><b>' + esc(p.name) + '</b><small>حاضر ' + ltr(dur(p.elapsedMinutes)) + '</small></div><b class="h-tv">—</b></div>');
@@ -2456,7 +2483,7 @@ function drawStaffHub(isOld){
     'hrMenu()',
     RANGE.perf === 'custom' || RANGE.perf === 'lastMonth');
 
-  var teamSales = list.reduce(function(s, e){ return s + (e.sales || 0); }, 0);
+  var teamSales = list.reduce(function(s, e){ return s + (e.net || e.sales || 0); }, 0);
   html += vitals(tr('staffToday'), HR.kpi.label || '', [
     RANGE.perf === 'today'
       ? { value: num(live.length), label: tr('onShiftNow'), tone: live.length ? 'ok' : 'warn', note: num(list.length), sub: 'باعوا' }
@@ -2488,7 +2515,7 @@ function drawStaffHub(isOld){
         '</div>' +
       '</div>' +
       '<div class="staff-right">' +
-        '<span class="staff-sales">' + LRI + num(e.sales) + PDI +
+        '<span class="staff-sales">' + LRI + num(e.net || e.sales) + PDI +
           '<u>' + esc(tr('sales')) + '</u></span>' +
         '<span class="staff-score" style="--tone:var(--' + tone + ')">' +
           LRI + e.care_score + PDI + '</span>' +
@@ -2531,7 +2558,7 @@ function staffSheet(i){
       '<div><b>' + tr('onShiftNow') + '</b><small>' + ltr(dur(lv.elapsedMinutes)) + '</small></div></div>' : '') +
 
     '<div class="mini-grid">' +
-      mini(tr('sales'), num(e.sales)) +
+      mini(tr('sales'), num(e.net || e.sales)) +
       mini(tr('profit'), num(e.profit), 'ok') +
       mini(tr('invoices'), num(e.invoices)) +
       mini(tr('avgTicket'), num(e.avg_inv), e.avg_inv >= 150 ? 'ok' : 'warn') +

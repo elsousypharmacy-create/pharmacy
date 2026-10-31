@@ -7199,8 +7199,11 @@ function getStaffKPIData(params) {
     s.repeat_c    += parseInt(data[i][12]) || 0;
     s.days        += 1;
 
-    if (!dailyTotals[rowDate]) dailyTotals[rowDate] = { date: rowDate, sales:0, new_c:0, registered:0, total_cust:0 };
+    if (!dailyTotals[rowDate]) dailyTotals[rowDate] = { date: rowDate, sales:0, net:0, invoices:0, profit:0, new_c:0, registered:0, total_cust:0 };
     dailyTotals[rowDate].sales      += parseInt(data[i][3]) || 0;
+    dailyTotals[rowDate].net        += parseInt(data[i][6]) || 0;     // بعد المرتجعات
+    dailyTotals[rowDate].invoices   += parseInt(data[i][2]) || 0;
+    dailyTotals[rowDate].profit     += parseInt(data[i][14]) || 0;
     dailyTotals[rowDate].new_c      += parseInt(data[i][11]) || 0;
     dailyTotals[rowDate].registered += parseInt(data[i][8]) || 0;
     dailyTotals[rowDate].total_cust += (parseInt(data[i][8]) || 0) + (parseInt(data[i][9]) || 0);

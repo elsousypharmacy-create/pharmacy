@@ -5116,6 +5116,7 @@ function loadCam(){
       '<input id="camSec" type="password" autocomplete="off" placeholder="Secret / الباسورد (لو موجود)" class="chat-search" dir="ltr">' +
       '<input id="camNote" placeholder="ملاحظة (اختياري): اسم الموقع اللي جبت منه المفتاح" class="chat-search" autocomplete="off">' +
       '<button class="btn btn-primary" onclick="saveCam()">💾 احفظ</button>' +
+      '<button class="btn btn-primary" onclick="camSendTg()">📲 ابعت لقطات الكاميرات على تليجرام</button><div id="camtg"></div>' +
       '<button class="btn btn-quiet" onclick="camSrvUp()">🔄 حدّث السيرفر</button><div id="camsrv"></div>' +
       '<button class="btn btn-quiet" onclick="testCam()">🧪 جرّب الربط (قراءة بس + لقطة من كل كاميرا)</button><div id="camtest"></div>' +
       '<div class="state" style="font-size:12px">🔒 المفتاح بيتحفظ في السيرفر بس، وعمره ما بيظهر تاني هنا ولا لأي حد.</div>';
@@ -5129,6 +5130,14 @@ function saveCam(){
     if (d && d.ok){ toast('✓ اتحفظ'); loadCam(); }
     else { if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} toast((d && d.error) || tr('failed')); }
   }).catch(function(){ toast(tr('failed')); });
+}
+function camSendTg(){
+  var b = document.getElementById('camtg'); b.innerHTML = '<div class="state"><div class="spin"></div> بسحب اللقطات… (حوالي نص دقيقة)</div>';
+  post({ action: 'camSendTg', pin: adminPin() }).then(function(d){
+    if (d && d.pinError) { try { localStorage.removeItem('adminPin'); } catch (e) {} }
+    b.innerHTML = d && d.ok ? '<div class="state" style="color:var(--ok)">✅ اتبعت ' + d.sent + ' لقطات على تليجرام' + (d.failed && d.failed.length ? ' — فشل: ' + esc(d.failed.join('، ')) : '') + '</div>'
+                            : '<div class="state err" style="font-size:13px">❌ ' + esc((d && d.error) || tr('failed')) + '</div>';
+  }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
 function camSrvUp(){
   var b = document.getElementById('camsrv'); b.innerHTML = '<div class="state"><div class="spin"></div> بيحدّث… (حوالي نص دقيقة)</div>';

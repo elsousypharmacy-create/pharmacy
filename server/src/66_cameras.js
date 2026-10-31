@@ -80,3 +80,31 @@ function camTest(d) {
   }
   return { ok: true, serial: serial, note: note, devices: devs, shots: shots, folder: folder.getUrl() };
 }
+
+// ---- زرار الداشبورد: لقطات الكاميرات دلوقتي → تليجرام (ألبوم واحد) ----
+var CAM_NAMES_ = { 1: 'كاميرا 1 — الرصيف (برة)', 2: 'كاميرا 2 — الرفوف', 3: 'كاميرا 3 — المكتب والكاونتر', 4: 'كاميرا 4 — الواجهة الزجاج من جوه', 6: 'كاميرا 6 — الرصيف (برة)' };
+function camGrab_(token, serial, ch) {
+  var r = camPost_('/api/hccgw/resource/v1/device/capturePic', { deviceSerial: serial, channelNo: ch }, token);
+  if (!camOk_(r) || !r.json.data.captureUrl) return { error: camErr_(r) };
+  var img = UrlFetchApp.fetch(r.json.data.captureUrl, { muteHttpExceptions: true });
+  if (img.getResponseCode() !== 200) return { error: 'تحميل الصورة HTTP ' + img.getResponseCode() };
+  return { blob: img.getBlob().setName('cam' + ch + '.jpg') };
+}
+function camSendTelegram(d) {
+  var tk = camToken_(); if (tk.error) return { ok: false, error: tk.error };
+  var serial = PropertiesService.getScriptProperties().getProperty('CAM_DEVICE_SERIAL') || 'E10261949';
+  var when = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm');
+  var media = [], payload = { chat_id: String(PERSONAL_CHAT) }, fails = [];
+  [1, 2, 3, 4, 6].forEach(function (ch) {
+    var g = camGrab_(tk.token, serial, ch);
+    if (g.error) { fails.push('كاميرا ' + ch); return; }
+    var k = 'p' + ch; payload[k] = g.blob;
+    media.push({ type: 'photo', media: 'attach://' + k, caption: CAM_NAMES_[ch] + ' — ' + when });
+  });
+  if (!media.length) return { ok: false, error: 'مفيش لقطة اتسحبت' };
+  payload.media = JSON.stringify(media);
+  var r = UrlFetchApp.fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/sendMediaGroup', { method: 'post', payload: payload, muteHttpExceptions: true });
+  var j = {}; try { j = JSON.parse(r.getContentText()); } catch (e) {}
+  if (!j.ok) return { ok: false, error: 'تليجرام: ' + String(j.description || r.getResponseCode()).slice(0, 120) };
+  return { ok: true, sent: media.length, failed: fails };
+}

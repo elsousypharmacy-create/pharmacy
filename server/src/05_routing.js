@@ -195,6 +195,7 @@ function doPost(e) {
 
     if (LOCKED_POST[data.action] && dashLocked_(data.pin)) return lockedResp_();
     if (data.action === 'setBotSettings') return jsonResponseStaff(setBotSettings(data));
+    if (data.action === 'camSendTg') return jsonResponseStaff(adminPinOk_(data.pin) ? camSendTelegram(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'camTest') return jsonResponseStaff(adminPinOk_(data.pin) ? camTest(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'setCamConfig') return jsonResponseStaff(adminPinOk_(data.pin) ? setCamConfig(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'setWaConfig') return jsonResponseStaff(adminPinOk_(data.pin) ? setWaConfig(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });

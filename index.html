@@ -189,6 +189,27 @@ body.light .m-custom input{color-scheme:light}
 .cam-chip.bad{color:var(--bad)}
 .cam-note{margin-top:8px;font-size:var(--t-small);color:var(--ink-2)}
 .task.busy{opacity:.55;pointer-events:none}
+.q-act.busy{opacity:.55;pointer-events:none}
+.q-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.q-act{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px 6px 12px;border:1px solid var(--line);border-radius:var(--r2);background:var(--surface-2);color:var(--ink);font-family:inherit;cursor:pointer;text-align:center;min-height:96px;transition:transform .12s,border-color .12s}
+.q-act:active{transform:scale(.97)}
+.q-act i{font-style:normal;font-size:24px;line-height:1.2}
+.q-act b{font-size:var(--t-body,14px);font-weight:700}
+.q-act small{font-size:var(--t-micro);color:var(--ink-2);line-height:1.35}
+.q-act.q-main{border-color:color-mix(in srgb,var(--brand) 45%,var(--line));background:color-mix(in srgb,var(--brand) 10%,var(--surface-2))}
+.q-act.q-main small{color:var(--brand);font-weight:700}
+.q-act small.bad{color:var(--bad)}
+.sheet.wide .sheet-in{max-width:980px;max-height:92vh}
+.camr-list{display:flex;flex-direction:column;gap:8px}
+.camr-row{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;text-align:start;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r2);background:var(--surface-2);color:var(--ink);font-family:inherit;cursor:pointer}
+.camr-row .cam-chips{grid-column:1/-1;margin-top:6px}
+.camr-rt b{display:block;font-size:16px;font-weight:800}.camr-rt small{color:var(--ink-2);font-size:var(--t-small)}
+.camr-n{font-weight:800;font-size:var(--t-small);padding:5px 12px;border-radius:99px;background:var(--surface)}
+.camr-n.bad,.camr-sum.bad{color:var(--bad)}.camr-n.ok,.camr-sum.ok{color:var(--ok)}
+.camr-bar{display:flex;gap:8px;justify-content:space-between;margin-bottom:10px}.camr-bar .btn{width:auto;min-width:110px;margin:0}
+.camr-sum{font-weight:800;font-size:15px;margin-bottom:10px}
+.camr-page{margin-bottom:12px;border-radius:var(--r2);overflow:hidden;background:var(--surface-2)}
+.camr-page img{display:block;width:100%;height:auto}
 
 .h-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
 .h-top h2{font-size:22px;font-weight:800;letter-spacing:-.4px}
@@ -1038,7 +1059,7 @@ function logErr(e){
    كل نداء بيعدّي من هنا — لو الرابط اتغيّر، يتغيّر في مكان واحد. */
 /* 🔒 الأوامر الحساسة بتاخد الرقم السري (بيتطلب مرة ويتحفظ على الجهاز ده) */
 var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1 };
+                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camReports: 1, camFrame: 1 };
 function adminPin(){
   var p = ''; try { p = localStorage.getItem('adminPin') || ''; } catch (e) {}
   if (!p){ p = (prompt('الرقم السري') || '').trim(); if (p) try { localStorage.setItem('adminPin', p); } catch (e) {} }
@@ -2135,10 +2156,13 @@ function drawHome(b, kpi, isOld){
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
     if (dueAgents.length) acts.push(task('warn', 'مستحقات مندوبين', ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0))) + ' ' + tr('egp'), dueAgents.length, "go('admin',0)"));
     var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
-    html += '<div class="card"><div class="card-head"><div><h3>الكاميرات</h3></div></div>' +
-      '<div class="task" id="camSnapBtn" style="--tone:var(--brand)" onclick="camSnapNow()" role="button" tabindex="0"><span class="dot"></span><div class="task-m"><b>صوّر الكاميرات دلوقتي</b><small>5 كاميرات · بتتحفظ على الدرايف</small></div><span class="task-n">📸</span><span class="task-a">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></div>' +
-      '<div class="task" style="--tone:var(--ink-3)" onclick="homeSrvUp()" role="button" tabindex="0"><span class="dot"></span><div class="task-m"><b>حدّث السيرفر</b><small>دوسها لو حاجة جديدة مش ظاهرة</small></div><span class="task-n">🔄</span><span class="task-a">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></div>' +
-      '<div id="homeCamSnap"></div></div>';
+    html += '<div class="card cam-card"><div class="card-head"><div><h3>الكاميرات</h3><p id="homeCamSub">5 كاميرات · لقطة كل 10 دقايق</p></div></div>' +
+      '<div class="q-acts">' +
+        '<button class="q-act" id="camSnapBtn" onclick="camSnapNow()"><i>📸</i><b>صوّر دلوقتي</b><small>تتحفظ على الدرايف</small></button>' +
+        '<button class="q-act q-main" onclick="camReportsOpen()"><i>📋</i><b>التقارير</b><small id="homeCamRep">افتح آخر تقرير</small></button>' +
+        '<button class="q-act" onclick="homeSrvUp()"><i>🔄</i><b>حدّث السيرفر</b><small>لو حاجة مش ظاهرة</small></button>' +
+      '</div><div id="homeCamSnap"></div></div>';
+    setTimeout(homeCamLatest, 600);
     html += '<div class="card"><div class="card-head"><div><h3>مطلوب النهاردة</h3></div></div>' +
       '<div id="homeMore">' + (HOME_MORE || '') + '</div>' + acts.join('') +
       (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>') + '</div>';
@@ -4516,7 +4540,7 @@ function drawAgents(d, box){
 function openSheet(kind){
   var s = document.getElementById('sheet'), t = document.getElementById('sheet-title'),
       b = document.getElementById('sheet-body');
-  s.classList.add('on');
+  s.classList.add('on'); s.classList.remove('wide');
   if (kind === 'more'){
     t.textContent = 'المزيد';
     var tile = function(icon, name, act){ return '<button class="tile" onclick="' + act + '"><i>' + icon + '</i>' + name + '</button>'; };
@@ -4603,7 +4627,7 @@ function openSheet(kind){
     loadSrvUp();
   }
 }
-function closeSheet(){ document.getElementById('sheet').classList.remove('on'); }
+function closeSheet(){ document.getElementById('sheet').classList.remove('on', 'wide'); }
 
 function snapStatus(){
   api('snapshotStatus').then(function(d){
@@ -4783,7 +4807,7 @@ function askDeleteCount(id, title, lines){
   setTimeout(function(){ var e = document.getElementById('delWord'); e && e.focus(); }, 250);
 }
 
-function closeSheetX(){ document.getElementById('sheet').classList.remove('on'); }
+function closeSheetX(){ document.getElementById('sheet').classList.remove('on', 'wide'); }
 
 function doDeleteCount(id){
   var w = (document.getElementById('delWord') || {}).value || '';
@@ -5146,6 +5170,176 @@ function saveCam(){
     if (d && d.ok){ toast('✓ اتحفظ'); loadCam(); }
     else { if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} toast((d && d.error) || tr('failed')); }
   }).catch(function(){ toast(tr('failed')); });
+}
+/* ═══ 📋 تقارير الكاميرات — Claude بيكتب الملاحظات، واللوحة بترسم الأسهم على اللقطة الأصلية ═══ */
+var CAMR = { list: null, cur: null, frames: {} };
+var CAMR_C = { navy: '#0e2240', navy2: '#163e6c', blue: '#2484c4', red: '#cd303e', grn: '#188c60', ink: '#1a2434', muted: '#6e7a8c', bg: '#f4f6fa' };
+var CAMR_ORDER = [2, 3, 4, 1, 6];
+function camrSheet(title){
+  var s = document.getElementById('sheet'); s.classList.add('on', 'wide');
+  document.getElementById('sheet-title').textContent = title;
+  return document.getElementById('sheet-body');
+}
+function camrNotes(r){ return (r.cams || []).reduce(function(s, c){ return s + (c.items || []).length; }, 0); }
+function camReportsOpen(){
+  var b = camrSheet('📋 تقارير الكاميرات'); busy(b);
+  api('camReports').then(function(d){
+    if (!d || !d.ok){ b.innerHTML = '<div class="state err">' + esc((d && d.error) || 'السيرفر لسه نسخة قديمة — دوس «حدّث السيرفر» من الرئيسية') + '</div>'; return; }
+    CAMR.list = d.reports || [];
+    if (!CAMR.list.length){ b.innerHTML = '<div class="state">لسه مفيش تقارير. اطلب من Claude: «جهّز تقرير الكاميرات»</div>'; return; }
+    b.innerHTML = '<div class="camr-list">' + CAMR.list.map(function(r, i){
+      var n = camrNotes(r);
+      var chips = CAMR_ORDER.map(function(ch){
+        var c = (r.cams || []).filter(function(x){ return x.ch === ch; })[0]; if (!c) return '';
+        var k = (c.items || []).length;
+        return '<span class="cam-chip ' + (k ? 'bad' : 'ok') + '">ك' + ch + (k ? ' · ' + k : ' ✓') + '</span>';
+      }).join('');
+      return '<button class="camr-row" onclick="camReportView(' + i + ')"><div class="camr-rt"><b>' + esc(r.label || r.time) + '</b><small>' + esc(r.dayLabel || r.date) + '</small></div>' +
+        '<div class="camr-n ' + (n ? 'bad' : 'ok') + '">' + (n ? n + ' ملاحظة' : 'كله تمام') + '</div><div class="cam-chips">' + chips + '</div></button>';
+    }).join('') + '</div>';
+  }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+}
+function camrFrame(id){
+  if (CAMR.frames[id]) return Promise.resolve(CAMR.frames[id]);
+  return api('camFrame', { id: id }).then(function(d){
+    if (!d || !d.ok) throw new Error((d && d.error) || 'frame');
+    return new Promise(function(res, rej){ var im = new Image(); im.onload = function(){ CAMR.frames[id] = im; res(im); }; im.onerror = rej; im.src = 'data:' + d.mime + ';base64,' + d.b64; });
+  });
+}
+function camrLogo(){
+  if (CAMR.logo) return Promise.resolve(CAMR.logo);
+  return new Promise(function(res){ var im = new Image(); im.onload = function(){ CAMR.logo = im; res(im); }; im.onerror = function(){ res(null); }; im.src = 'icon-512.png'; });
+}
+function camrFonts(){
+  if (!document.fonts || !document.fonts.load) return Promise.resolve();
+  return Promise.all(['900 44px Cairo', '800 30px Cairo', '700 26px Cairo', '600 22px Cairo', '400 22px Cairo'].map(function(f){ return document.fonts.load(f, 'عربي').catch(function(){}); }));
+}
+function camrRR(x, c, l, t, w, h, r){ x.beginPath(); x.moveTo(l + r, t); x.arcTo(l + w, t, l + w, t + h, r); x.arcTo(l + w, t + h, l, t + h, r); x.arcTo(l, t + h, l, t, r); x.arcTo(l, t, l + w, t, r); x.closePath(); if (c){ x.fillStyle = c; x.fill(); } }
+function camrTxt(x, s, X, Y, font, color, align){ x.font = font; x.fillStyle = color; x.textAlign = align || 'right'; x.direction = 'rtl'; x.textBaseline = 'middle'; x.fillText(s, X, Y); }
+function camrHead(x, W, logo, sub, r){
+  var HH = 150, g = x.createLinearGradient(0, 0, 0, HH); g.addColorStop(0, CAMR_C.navy); g.addColorStop(1, CAMR_C.navy2);
+  x.fillStyle = g; x.fillRect(0, 0, W, HH);
+  if (logo){ x.save(); camrRR(x, null, W - 152, 19, 112, 112, 26); x.clip(); x.drawImage(logo, W - 152, 19, 112, 112); x.restore(); }
+  camrTxt(x, 'صيدلية د. أحمد السوسي', W - 174, 58, '900 44px Cairo', '#fff');
+  camrTxt(x, sub, W - 174, 108, '600 25px Cairo', '#96c8eb');
+  x.direction = 'ltr'; camrTxt(x, r.label || '', 40, 58, '700 30px Cairo', '#fff', 'left'); camrTxt(x, r.date || '', 40, 106, '400 22px Cairo', '#96c8eb', 'left');
+  x.fillStyle = CAMR_C.blue; x.fillRect(0, HH - 5, W, 5);
+  return HH;
+}
+function camrFoot(x, W, H){
+  var FH = 84, y = H - FH; x.fillStyle = CAMR_C.navy; x.fillRect(0, y, W, FH); x.fillStyle = CAMR_C.blue; x.fillRect(0, y, W, 4);
+  camrTxt(x, 'محلة كيل  |  لصاحبها ومديرها د. أحمد السوسي', W - 40, y + 44, '600 23px Cairo', '#fff');
+  x.direction = 'ltr'; camrTxt(x, '01143404023', 40, y + 44, '700 26px Cairo', '#fff', 'left');
+}
+/* صفحة كاميرا: اللقطة + الأسهم والكتابة عليها (الإحداثيات بمقاس اللقطة الأصلي 960×576) */
+function camrDrawCam(im, logo, c, r){
+  var W = 1200, k = W / im.width, PH = Math.round(im.height * k), HH = 150, FH = 84, H = HH + PH + FH;
+  var cv = document.createElement('canvas'); cv.width = W; cv.height = H; var x = cv.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+  camrHead(x, W, logo, 'تقرير الكاميرات  |  كاميرا ' + c.ch + ' — ' + (c.name || ''), r);
+  x.drawImage(im, 0, HH, W, PH);
+  var boxes = [];
+  (c.items || []).forEach(function(it, i){
+    var t1 = it.now, t2 = 'المفروض: ' + it.ideal;
+    x.font = '700 26px Cairo'; var w1 = x.measureText(t1).width; x.font = '600 22px Cairo'; var w2 = x.measureText(t2).width;
+    var w = Math.max(w1, w2) + 80, h = 84;
+    var bx = Math.min(Math.max(it.lab[0] * k - w / 2, 10), W - w - 10), by = HH + Math.min(Math.max(it.lab[1] * k - h / 2, 10), PH - h - 10);
+    var tx = it.to[0] * k, ty = HH + it.to[1] * k, cx = bx + w / 2, cy = by + h / 2;
+    var sx = tx < bx ? bx : (tx > bx + w ? bx + w : cx), sy = ty < by ? by : (ty > by + h ? by + h : cy);
+    var ang = Math.atan2(ty - sy, tx - sx);
+    x.lineCap = 'round';
+    x.strokeStyle = 'rgba(255,255,255,.94)'; x.lineWidth = 9; x.beginPath(); x.moveTo(sx, sy); x.lineTo(tx, ty); x.stroke();
+    x.strokeStyle = CAMR_C.red; x.lineWidth = 4; x.beginPath(); x.moveTo(sx, sy); x.lineTo(tx, ty); x.stroke();
+    var L = 24; x.beginPath(); x.moveTo(tx, ty); x.lineTo(tx - L * Math.cos(ang - .4), ty - L * Math.sin(ang - .4)); x.lineTo(tx - L * Math.cos(ang + .4), ty - L * Math.sin(ang + .4)); x.closePath();
+    x.fillStyle = CAMR_C.red; x.fill(); x.strokeStyle = '#fff'; x.lineWidth = 1.5; x.stroke();
+    boxes.push([bx, by, w, h, t1, t2, i]);
+  });
+  boxes.forEach(function(q){
+    var bx = q[0], by = q[1], w = q[2], h = q[3];
+    camrRR(x, 'rgba(0,0,0,.35)', bx + 2, by + 4, w, h, 18);
+    camrRR(x, 'rgba(255,255,255,.96)', bx, by, w, h, 18);
+    camrRR(x, CAMR_C.red, bx + w - 9, by + 10, 6, h - 20, 3);
+    x.beginPath(); x.arc(bx + w - 36, by + 24, 16, 0, 7); x.fillStyle = CAMR_C.red; x.fill();
+    camrTxt(x, String(q[6] + 1), bx + w - 36, by + 25, '900 20px Cairo', '#fff', 'center');
+    camrTxt(x, q[4], bx + w - 62, by + 26, '700 26px Cairo', CAMR_C.ink);
+    camrTxt(x, q[5], bx + w - 26, by + 60, '600 22px Cairo', CAMR_C.grn);
+  });
+  if (!(c.items || []).length){
+    camrRR(x, 'rgba(255,255,255,.95)', W - 260, HH + 20, 230, 60, 30);
+    camrTxt(x, '✓ كله تمام', W - 145, HH + 51, '700 26px Cairo', CAMR_C.grn, 'center');
+  }
+  camrFoot(x, W, H);
+  return cv;
+}
+function camrDrawCover(logo, r){
+  var W = 1200, H = 1600, cv = document.createElement('canvas'); cv.width = W; cv.height = H; var x = cv.getContext('2d');
+  x.fillStyle = CAMR_C.bg; x.fillRect(0, 0, W, H);
+  camrHead(x, W, logo, 'تقرير الكاميرات', r);
+  camrTxt(x, 'ملخص التقرير', W - 50, 230, '900 40px Cairo', CAMR_C.ink);
+  var y = 290;
+  CAMR_ORDER.forEach(function(ch){
+    var c = (r.cams || []).filter(function(z){ return z.ch === ch; })[0]; if (!c) return;
+    var n = (c.items || []).length, col = n ? CAMR_C.red : CAMR_C.grn;
+    x.save(); x.shadowColor = 'rgba(14,34,64,.15)'; x.shadowBlur = 18; x.shadowOffsetY = 4; camrRR(x, '#fff', 40, y, W - 80, 110, 22); x.restore();
+    x.fillStyle = col; x.fillRect(W - 48, y + 20, 8, 70);
+    camrTxt(x, 'كاميرا ' + ch + ' — ' + (c.name || ''), W - 80, y + 55, '700 32px Cairo', CAMR_C.ink);
+    camrRR(x, n ? '#fdecee' : '#e8f6ec', 70, y + 30, 260, 50, 25);
+    camrTxt(x, n ? n + ' ملاحظة' : 'تمام', 200, y + 56, '700 26px Cairo', col, 'center');
+    y += 140;
+  });
+  camrFoot(x, W, H);
+  return cv;
+}
+function camReportView(i){
+  var r = CAMR.list[i]; CAMR.cur = { r: r, canvases: [] };
+  var b = camrSheet('📋 ' + (r.label || '') + ' · ' + (r.dayLabel || r.date || ''));
+  var n = camrNotes(r);
+  b.innerHTML = '<div class="camr-bar"><button class="btn btn-quiet" onclick="camReportsOpen()">‹ كل التقارير</button>' +
+    '<button class="btn btn-primary" id="camrPdf" onclick="camReportPdf()" disabled>⬇️ PDF</button></div>' +
+    '<div class="camr-sum ' + (n ? 'bad' : 'ok') + '">' + (n ? n + ' ملاحظة في ' + (r.cams || []).filter(function(c){ return (c.items || []).length; }).length + ' كاميرات' : '✓ كله تمام') + '</div>' +
+    '<div id="camrPages"><div class="state"><div class="spin"></div> بجيب اللقطات…</div></div>';
+  var cams = CAMR_ORDER.map(function(ch){ return (r.cams || []).filter(function(c){ return c.ch === ch; })[0]; }).filter(Boolean);
+  Promise.all([camrFonts(), camrLogo()]).then(function(a){
+    var logo = a[1], box = document.getElementById('camrPages'); box.innerHTML = '';
+    var cover = camrDrawCover(logo, r); CAMR.cur.cover = cover;
+    var chain = Promise.resolve();
+    cams.forEach(function(c){
+      var slot = document.createElement('div'); slot.className = 'camr-page'; slot.innerHTML = '<div class="state"><div class="spin"></div> كاميرا ' + c.ch + '…</div>'; box.appendChild(slot);
+      chain = chain.then(function(){
+        return camrFrame(c.file).then(function(im){
+          var cv = camrDrawCam(im, logo, c, r); CAMR.cur.canvases.push(cv);
+          slot.innerHTML = ''; var img = new Image(); img.src = cv.toDataURL('image/jpeg', .9); img.alt = 'كاميرا ' + c.ch; slot.appendChild(img);
+        }).catch(function(e){ slot.innerHTML = '<div class="state err">كاميرا ' + c.ch + ': ' + esc(e.message || tr('failed')) + '</div>'; });
+      });
+    });
+    chain.then(function(){ var p = document.getElementById('camrPdf'); if (p) p.disabled = !CAMR.cur.canvases.length; });
+  });
+}
+function camReportPdf(){
+  var cur = CAMR.cur; if (!cur) return;
+  var go = function(){
+    var J = window.jspdf.jsPDF, pages = [cur.cover].concat(cur.canvases), doc = null;
+    pages.forEach(function(cv){
+      var w = cv.width * .5, h = cv.height * .5;
+      if (!doc) doc = new J({ unit: 'pt', format: [w, h], orientation: w > h ? 'l' : 'p' });
+      else doc.addPage([w, h], w > h ? 'l' : 'p');
+      doc.addImage(cv.toDataURL('image/jpeg', .88), 'JPEG', 0, 0, w, h);
+    });
+    doc.save('تقرير_الكاميرات_' + (cur.r.date || '') + '_' + (cur.r.time || '') + '.pdf');
+  };
+  if (window.jspdf) return go();
+  toast('بجهّز الـ PDF…');
+  var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload = go; s.onerror = function(){ toast(tr('failed')); }; document.head.appendChild(s);
+}
+
+function homeCamLatest(){
+  var el = document.getElementById('homeCamRep'); if (!el || !storedPin()) return;
+  api('camReports').then(function(d){
+    if (!d || !d.ok || !(d.reports || []).length) return;
+    CAMR.list = d.reports; var r = d.reports[0], n = camrNotes(r);
+    el.textContent = 'آخر تقرير ' + (r.label || '') + (n ? ' · ' + n + ' ملاحظة' : ' · تمام');
+    el.className = n ? 'bad' : '';
+  }).catch(function(){});
 }
 function camSnapNow(){
   var b = document.getElementById('homeCamSnap'), btn = document.getElementById('camSnapBtn'); if (!b) return;

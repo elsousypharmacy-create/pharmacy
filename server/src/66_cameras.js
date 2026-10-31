@@ -57,15 +57,15 @@ function camToken_() {
 function camDevices_(token) {
   var r = camPost_('/api/hccgw/resource/v1/devices/get', { pageIndex: 1, pageSize: 50 }, token);
   if (!camOk_(r)) return { error: 'قائمة الأجهزة فشلت: ' + camErr_(r) };
-  var list = r.json.data.list || r.json.data.devices || r.json.data.Device || [];
-  return { list: list };
+  var dd = r.json.data, list = dd.list || dd.devices || dd.Device || dd.deviceList || [];
+  return { list: list, keys: Object.keys(dd).join(','), total: dd.total };
 }
 function camTest(d) {
   var tk = camToken_(); if (tk.error) return { ok: false, error: tk.error };
   var dv = camDevices_(tk.token); if (dv.error) return { ok: false, error: dv.error };
   var devs = dv.list.map(function (x) { return { name: x.name || x.deviceName || '', serial: x.deviceSerial || x.serial || x.id || '', online: x.status !== undefined ? x.status : (x.online !== undefined ? x.online : ''), raw: Object.keys(x).slice(0, 12).join(',') }; });
-  var serial = String(d.serial || '').trim() || (devs[0] && devs[0].serial) || '';
-  if (!serial) return { ok: true, devices: devs, shots: [], note: 'مفيش جهاز في القائمة' };
+  var serial = String(d.serial || '').trim() || (devs[0] && devs[0].serial) || PropertiesService.getScriptProperties().getProperty('CAM_DEVICE_SERIAL') || 'E10261949';
+  var note = devs.length ? '' : 'قائمة الأجهزة فاضية (حقول الرد: ' + dv.keys + ' / total=' + dv.total + ') — جربت الرقم E10261949 مباشرة';
   var it = DriveApp.getFoldersByName('كاميرات الصيدلية'), folder = it.hasNext() ? it.next() : DriveApp.createFolder('كاميرات الصيدلية');
   var stamp = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd_HHmm'), shots = [];
   for (var ch = 1; ch <= 6; ch++) {
@@ -78,5 +78,5 @@ function camTest(d) {
       shots.push({ ch: ch, ok: true, bytes: f.getSize(), url: f.getUrl() });
     } catch (e) { shots.push({ ch: ch, ok: false, error: String(e).slice(0, 160) }); }
   }
-  return { ok: true, serial: serial, devices: devs, shots: shots, folder: folder.getUrl() };
+  return { ok: true, serial: serial, note: note, devices: devs, shots: shots, folder: folder.getUrl() };
 }

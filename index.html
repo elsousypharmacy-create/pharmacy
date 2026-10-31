@@ -122,11 +122,11 @@ button{font-family:inherit}
 .v-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
 .v-head h2{font-size:17px;font-weight:750;letter-spacing:-.3px}
 .v-head span{font-size:var(--t-micro);color:var(--ink-3);white-space:nowrap}
-.v-grid{display:grid;gap:8px;align-items:start}
-.v-tile{background:var(--surface-2);border-radius:var(--r2);padding:10px 12px;min-width:0}
+.v-grid{display:grid;gap:8px;align-items:stretch}
+.v-tile{background:var(--surface-2);border-radius:var(--r2);padding:10px 12px;min-width:0;display:flex;flex-direction:column;min-height:86px}
 .v-tile small{display:block;font-size:var(--t-micro);color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .v-tile b{display:block;font-size:22px;font-weight:800;letter-spacing:-.6px;line-height:1.25;text-align:right;margin-top:2px}
-.v-tile em{display:block;font-style:normal;font-size:var(--t-micro);color:var(--ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v-tile em{display:block;font-style:normal;font-size:var(--t-micro);color:var(--ink-3);margin-top:auto;padding-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:16px}
 @media (max-width:400px){.v-tile b{font-size:19px}.v-tile{padding:9px 10px}}
 /* الكمبيوتر: الصفحات أعرض والكروت عمودين */
 @media (min-width:1000px){
@@ -196,7 +196,8 @@ body.light .m-custom input{color-scheme:light}
 .h-cmp{font-size:12.5px;color:var(--ink-2);margin-top:6px;font-weight:600}
 .h-cmp:empty{display:none}
 .h-minis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
-.h-mini{background:var(--surface-2);border-radius:var(--r2);padding:10px}
+.h-mini{background:var(--surface-2);border-radius:var(--r2);padding:10px;display:flex;flex-direction:column;min-height:86px}
+.h-mini u{margin-top:auto !important;padding-top:4px}
 .h-mini small{display:block;font-size:var(--t-micro);color:var(--ink-2)}
 .h-mini b{display:block;font-size:19px;font-weight:750;letter-spacing:-.5px;margin-top:2px;white-space:nowrap}
 .h-mini em{font-style:normal;font-size:12px;color:var(--ink-3);font-weight:600}
@@ -449,9 +450,10 @@ details.setg[open]{padding-bottom:var(--s3)}
    الأساس كحلي غامق مستوحى من لون اللوجو بدل الرمادي.
    الكروت من غير حدود، والقوايم سطور مش صناديق. */
 :root{
-  --bg:#0B1420; --surface:#13202F; --surface-2:#1B2B3D; --line:#24364B;
-  --ink:#EAF1F8; --ink-2:#93A6BC; --ink-3:#5E7187;
-  --brand:#36A9E1; --ok:#3CCB97; --warn:#F0AE45; --bad:#F06A7E;
+  /* الخلفية الغامقة الأصلية (أسود/رمادي) — أحمد بيفضّلها عن الكحلي */
+  --bg:#0A0B0D; --surface:#141619; --surface-2:#1C1F24; --line:#25292F;
+  --ink:#F2F4F7; --ink-2:#9BA3AF; --ink-3:#5F6670;
+  --brand:#2A9FDB; --ok:#3DBE8B; --warn:#E8A33D; --bad:#E5646E;
   --r3:20px; --r2:14px;
 }
 body.light{
@@ -1074,7 +1076,7 @@ function vitals(title, sub, list, foot){
     '<div class="v-grid" style="grid-template-columns:repeat(' + n + ',1fr)">' + list.map(function(v){
       var tone = v.tone && v.tone !== 'brand' && v.tone !== 'slate' ? v.tone : '';
       return '<div class="v-tile"><small>' + esc(v.label) + '</small><b dir="ltr"' + (tone ? ' style="color:var(--' + tone + ')"' : '') + '>' + LRI + (v.value == null ? '—' : v.value) + PDI + '</b>' +
-        ((v.note || v.sub) ? '<em>' + (v.note ? '<span dir="ltr">' + LRI + v.note + PDI + '</span> ' : '') + (v.sub ? esc(v.sub) : '') + '</em>' : '') + '</div>';
+        '<em>' + (v.note ? '<span dir="ltr">' + LRI + v.note + PDI + '</span> ' : '') + (v.sub ? esc(v.sub) : '') + '</em></div>';
     }).join('') + '</div>' + (foot || '') + '</div>';
 }
 /* sub بيتحط زي ما هو (ممكن يبقى فيه أرقام معزولة)،

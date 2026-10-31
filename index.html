@@ -4450,8 +4450,7 @@ function loadBotSet(){
 function showBotPauseBanner(on){
   var b = document.getElementById('botPauseBanner');
   if (!b) return;
-  b.className = on ? 'bot-pause on' : 'bot-pause';
-  b.textContent = on ? 'بوت الواتساب واقف — الرسايل بتوصل للصيدلي بس' : '';
+  b.className = 'bot-pause'; b.textContent = '';   /* أحمد طلب يتشال: حالة البوت ظاهرة في إعدادات البوت بس */
 }
 function loadBotPauseBanner(){
   var pin0 = ''; try { pin0 = localStorage.getItem('adminPin') || ''; } catch (e) {}
@@ -4653,7 +4652,7 @@ try{
 }catch(e){}
 try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 go('sales', 0);
-loadBotPauseBanner();
+/* loadBotPauseBanner(); — الشريط الأحمر اتشال */
 
 </script>
 </body>

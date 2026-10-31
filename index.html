@@ -2125,6 +2125,8 @@ function drawHome(b, kpi, isOld){
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
     if (dueAgents.length) acts.push(task('warn', 'مستحقات مندوبين', ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0))) + ' ' + tr('egp'), dueAgents.length, "go('admin',0)"));
     var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
+    html += '<div class="card"><div class="card-head"><div><h3>📷 الكاميرات</h3><p>صوّر دلوقتي واحفظ على الدرايف</p></div></div>' +
+      '<button class="btn btn-primary" onclick="camSnapNow()">📸 صوّر الكاميرات دلوقتي</button><div id="homeCamSnap"></div></div>';
     html += '<div class="card"><div class="card-head"><div><h3>مطلوب النهاردة</h3></div></div>' +
       '<div id="homeMore">' + (HOME_MORE || '') + '</div>' + acts.join('') +
       (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>') + '</div>';
@@ -5132,6 +5134,15 @@ function saveCam(){
     if (d && d.ok){ toast('✓ اتحفظ'); loadCam(); }
     else { if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} toast((d && d.error) || tr('failed')); }
   }).catch(function(){ toast(tr('failed')); });
+}
+function camSnapNow(){
+  var b = document.getElementById('homeCamSnap'); if (!b) return;
+  b.innerHTML = '<div class="state"><div class="spin"></div> بسحب اللقطات… (حوالي نص دقيقة)</div>';
+  post({ action: 'camSnapNow', pin: adminPin() }).then(function(d){
+    if (d && d.pinError) { try { localStorage.removeItem('adminPin'); } catch (e) {} }
+    b.innerHTML = d && d.ok ? '<div class="state" style="color:var(--ok)">✅ اتحفظ ' + d.saved + '/5 الساعة ' + esc(d.time) + ' — اكتبلي «جهّز التقرير» في الشات</div>' + (d.failed && d.failed.length ? '<div class="state err" style="font-size:12px">فشل: كاميرا ' + esc(d.failed.join('، ')) + '</div>' : '')
+                            : '<div class="state err" style="font-size:13px">❌ ' + esc((d && d.error) || tr('failed')) + '</div>';
+  }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
 function camSendTg(){
   var b = document.getElementById('camtg'); b.innerHTML = '<div class="state"><div class="spin"></div> بسحب اللقطات… (حوالي نص دقيقة)</div>';

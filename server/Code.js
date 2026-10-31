@@ -221,6 +221,7 @@ function doPost(e) {
 
     if (LOCKED_POST[data.action] && dashLocked_(data.pin)) return lockedResp_();
     if (data.action === 'setBotSettings') return jsonResponseStaff(setBotSettings(data));
+    if (data.action === 'camSnapNow') return jsonResponseStaff(adminPinOk_(data.pin) ? camSnapNow() : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'camSendTg') return jsonResponseStaff(adminPinOk_(data.pin) ? camSendTelegram(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'camTest') return jsonResponseStaff(adminPinOk_(data.pin) ? camTest(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'setCamConfig') return jsonResponseStaff(adminPinOk_(data.pin) ? setCamConfig(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
@@ -8308,7 +8309,11 @@ function camRootFolder_() { var it = DriveApp.getFoldersByName('كاميرات �
 function camAutoSnap() {
   var hr = Number(Utilities.formatDate(new Date(), 'Africa/Cairo', 'H'));
   if (hr < 8 && hr !== 0) return;   // برة مواعيد الشغل (8 الصبح → 1 بالليل: آخر سحبة 12:50)
-  var tk = camToken_(); if (tk.error) { PropertiesService.getScriptProperties().setProperty('CAM_SNAP_LAST', 'فشل: ' + tk.error); return; }
+  camSnapCore_();
+}
+function camSnapNow() { return camSnapCore_(); }
+function camSnapCore_() {
+  var tk = camToken_(); if (tk.error) { PropertiesService.getScriptProperties().setProperty('CAM_SNAP_LAST', 'فشل: ' + tk.error); return { ok: false, error: tk.error }; }
   var serial = PropertiesService.getScriptProperties().getProperty('CAM_DEVICE_SERIAL') || 'E10261949';
   var root = camRootFolder_(), day = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd'), hm = Utilities.formatDate(new Date(), 'Africa/Cairo', 'HHmm');
   var it = root.getFoldersByName(day), dayF = it.hasNext() ? it.next() : root.createFolder(day), ok = 0, bad = [];
@@ -8316,11 +8321,13 @@ function camAutoSnap() {
     try { var g = camGrab_(tk.token, serial, ch); if (g.error) { bad.push(ch); return; } dayF.createFile(g.blob.setName(hm + '_ch' + ch + '.jpg')); ok++; } catch (e) { bad.push(ch); }
   });
   PropertiesService.getScriptProperties().setProperty('CAM_SNAP_LAST', day + ' ' + hm + ' — ' + ok + '/5' + (bad.length ? ' (فشل: ' + bad.join(',') + ')' : ''));
+  var snapRes = { ok: ok > 0, saved: ok, failed: bad, day: day, time: hm.slice(0, 2) + ':' + hm.slice(2), error: ok > 0 ? '' : 'مفيش لقطة اتسحبت' };
   // مسح أي فولدر يوم أقدم من 30 يوم (≈ 1.2 جيجا)
   try {
     var lim = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), 'Africa/Cairo', 'yyyy-MM-dd'), fs = root.getFolders();
     while (fs.hasNext()) { var f = fs.next(); if (/^\d{4}-\d{2}-\d{2}$/.test(f.getName()) && f.getName() < lim) f.setTrashed(true); }
   } catch (e2) {}
+  return snapRes;
 }
 /* تشغيل السحب التلقائي كل 10 دقايق (بيشيل أي تريجر قديم للكاميرات الأول) */
 function camAutoOn() {

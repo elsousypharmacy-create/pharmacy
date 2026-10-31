@@ -160,6 +160,15 @@ html[dir=rtl] .m-track{direction:rtl}
 .m-legend i{display:inline-block;width:10px;height:4px;border-radius:2px;margin-inline-end:4px;vertical-align:middle}
 .m-legend .lg-b{background:var(--brand)}.m-legend .lg-w{background:var(--warn);width:3px;height:10px}
 .m-grid{grid-template-columns:1fr 1fr !important}
+.m-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:-2px 0 12px}
+.m-chips::-webkit-scrollbar{display:none}
+.m-chips button{flex:0 0 auto;border:0;background:var(--surface-2);color:var(--ink-2);font:inherit;font-size:12px;font-weight:650;padding:6px 11px;border-radius:99px;cursor:pointer}
+.m-custom{display:flex;align-items:center;gap:6px;margin:-4px 0 12px;font-size:12px;color:var(--ink-2)}
+.m-custom[hidden]{display:none}
+.m-custom input{flex:1;min-width:0;background:var(--surface-2);border:0;border-radius:10px;color:var(--ink);font:inherit;font-size:12.5px;padding:7px 8px;color-scheme:dark}
+body.light .m-custom input{color-scheme:light}
+.m-custom button{border:0;background:var(--brand);color:#fff;font:inherit;font-weight:700;font-size:12.5px;padding:7px 12px;border-radius:10px;cursor:pointer}
+.m-chips button.on{background:var(--ink);color:var(--bg)}
 @media (min-width:900px){.h-slides{margin:0;padding:0}}
 .h-day{display:flex;flex-direction:column;gap:2px;margin-top:8px;padding:10px 12px;border-radius:var(--r2);background:var(--surface-2);font-size:12.5px;color:var(--ink-2)}
 .h-day > b{color:var(--ink);font-size:13.5px}.h-day span b{color:var(--ink)}
@@ -1096,6 +1105,33 @@ function task(tone, title, sub, count, jump){
 /* رسم آخر 14 يوم: عمود لكل يوم + خط الهدف */
 /* ═══ سلايد «الشهر ده» جنب النهاردة ═══ */
 var HOME_MONTH = (function(){ try { return JSON.parse(localStorage.getItem('homeMonth') || 'null'); } catch (e) { return null; } })();
+/* فترة السلايد: لحد امبارح دايمًا (النهاردة لسه مكملش فبيبوّظ المتوسط) */
+var HOME_MR = { key: 'month' };
+function homeRange(){
+  var today = cairoNow().date, y = isoAdd(today, -1), k = HOME_MR.key;
+  var first = function(d){ return d.slice(0, 8) + '01'; };
+  if (k === 'month'){
+    if (today.slice(8) === '01'){ var pm = first(y); return { from: pm, to: y, label: 'الشهر اللي فات', month: y.slice(0, 7) }; }
+    return { from: first(today), to: y, label: 'الشهر ده لحد امبارح', month: today.slice(0, 7) };
+  }
+  if (k === 'last'){ var lmEnd = isoAdd(first(today), -1); return { from: first(lmEnd), to: lmEnd, label: 'الشهر اللي فات', month: lmEnd.slice(0, 7) }; }
+  if (k === '7')  return { from: isoAdd(today, -7), to: y, label: 'آخر 7 أيام' };
+  if (k === '30') return { from: isoAdd(today, -30), to: y, label: 'آخر 30 يوم' };
+  return { from: HOME_MR.from || first(today), to: HOME_MR.to || y, label: (HOME_MR.from || '') + ' → ' + (HOME_MR.to || '') };
+}
+function setHomeRange(k){
+  if (k === 'custom'){
+    var box = document.getElementById('mCustom'); if (box){ box.hidden = !box.hidden; } return;
+  }
+  if (k === 'apply'){
+    var f = (document.getElementById('mFrom') || {}).value, to = (document.getElementById('mTo') || {}).value;
+    if (!f || !to || f > to){ toast('اختار من وإلى صح'); return; }
+    HOME_MR = { key: 'custom', from: f, to: to };
+  } else HOME_MR = { key: k };
+  loadHomeMonth.at = 0;
+  var el = document.getElementById('heroMonth'); if (el) el.innerHTML = '<div class="state"><div class="spin"></div></div>';
+  loadHomeMonth();
+}
 function monthSlide(M){
   var m = M.m || {}, pl = M.pl || {}, k = M.k || {};
   var days = m.days_with_data || 0, avgNet = m.avg_daily_net || 0, g = goalOf('daily_sales', 10000), be = goalOf('breakeven', 7800);
@@ -1104,27 +1140,32 @@ function monthSlide(M){
   var np = pl.net_profit, gp = m.profit_total || 0;
   var p = g ? Math.min(100, Math.round(avgNet / g * 100)) : 0, bp = g ? Math.min(100, Math.round(be / g * 100)) : 0;
   var tile = function(label, val, sub, tone){ return '<div class="h-mini"><small>' + label + '</small><b' + (tone ? ' style="color:var(--' + tone + ')"' : '') + '>' + val + '</b>' + (sub ? '<u>' + sub + '</u>' : '') + '</div>'; };
-  return '<div class="h-top"><h2>الشهر ده</h2><span>' + ltr(days) + ' يوم</span></div>' +
+  var R = M.r || homeRange();
+  var chip = function(k, l){ return '<button class="' + (HOME_MR.key === k ? 'on' : '') + '" onclick="setHomeRange(\'' + k + '\')">' + l + '</button>'; };
+  return '<div class="h-top"><h2>' + esc(R.label) + '</h2><span>' + ltr(days) + ' يوم</span></div>' +
+    '<div class="m-chips">' + chip('month', 'الشهر') + chip('last', 'اللي فات') + chip('7', '7 أيام') + chip('30', '30 يوم') + chip('custom', 'تحديد') + '</div>' +
+    '<div class="m-custom" id="mCustom"' + (HOME_MR.key === 'custom' ? '' : ' hidden') + '><input type="date" id="mFrom" value="' + R.from + '"><span>إلى</span><input type="date" id="mTo" value="' + R.to + '" max="' + isoAdd(cairoNow().date, -1) + '"><button onclick="setHomeRange(\'apply\')">اعرض</button></div>' +
     '<div class="h-num"><small>متوسط الصافي في اليوم</small><b>' + ltr(num(avgNet)) + '</b>' +
       '<u>' + (avgNet >= be ? 'فوق نقطة التعادل ' + ltr(num(be)) : 'تحت نقطة التعادل ' + ltr(num(be)) + ' بـ ' + ltr(num(be - avgNet))) + '</u></div>' +
     '<div class="m-track"><i style="width:' + p + '%"></i><em style="inset-inline-start:' + bp + '%"></em></div>' +
     '<div class="m-legend"><span><i class="lg-b"></i>المتوسط</span><span><i class="lg-w"></i>التعادل ' + ltr(num(be)) + '</span><span>آخر الشريط = الهدف ' + ltr(num(g)) + '</span></div>' +
     '<div class="h-minis m-grid">' +
-      tile('صافي الشهر', ltr(num(m.net_sales || 0)), ltr(num(m.invoices_total || 0)) + ' فاتورة') +
+      tile('صافي الفترة', ltr(num(m.net_sales || 0)), ltr(num(m.invoices_total || 0)) + ' فاتورة') +
       tile('الزيارات', ltr(num(visits)), ltr(num(Math.round(visits / vDays))) + ' في اليوم') +
       tile('الربح بعد الخصومات', ltr(num(gp)), 'خصومات ' + ltr(num(m.discount_total || 0))) +
-      tile('صافي الربح', np == null ? '—' : ltr(num(np)), 'بعد المصاريف والمرتبات', np == null ? '' : (np >= 0 ? 'ok' : 'bad')) +
+      tile('صافي الربح', np == null ? '—' : ltr(num(np)), np == null ? 'بيتحسب بالشهر بس' : 'الشهر كله بعد المصاريف', np == null ? '' : (np >= 0 ? 'ok' : 'bad')) +
     '</div>';
 }
 function loadHomeMonth(){
   if (loadHomeMonth.at && Date.now() - loadHomeMonth.at < 300000) return;
   loadHomeMonth.at = Date.now();
   function safe(p){ return p.then(function(x){ return x; }, function(e){ logErr(e); return null; }); }
-  Promise.all([ safe(api('getMonthTotalsRaw', { range: 'month' })), safe(api('getProfitLoss', {})), safe(api('getStaffKPI', { range: 'month' })) ])
+  var R = homeRange(), rp = { from: R.from, to: R.to };
+  Promise.all([ safe(api('getMonthTotalsRaw', rp)), R.month ? safe(api('getProfitLoss', { month: R.month })) : Promise.resolve(null), safe(api('getStaffKPI', rp)) ])
   .then(function(r){
     if (!r[0] || r[0].ok === false) return;
-    HOME_MONTH = { m: r[0], pl: (r[1] && r[1].ok !== false) ? r[1] : {}, k: r[2] || {} };
-    try { localStorage.setItem('homeMonth', JSON.stringify({ m: HOME_MONTH.m, pl: { net_profit: HOME_MONTH.pl.net_profit }, k: { daily: (HOME_MONTH.k.daily || []).map(function(x){ return { total_cust: x.total_cust }; }) } })); } catch (e) {}
+    HOME_MONTH = { r: R, m: r[0], pl: (r[1] && r[1].ok !== false) ? r[1] : {}, k: r[2] || {} };
+    if (HOME_MR.key === 'month') try { localStorage.setItem('homeMonth', JSON.stringify({ r: R, m: HOME_MONTH.m, pl: { net_profit: HOME_MONTH.pl.net_profit }, k: { daily: (HOME_MONTH.k.daily || []).map(function(x){ return { total_cust: x.total_cust }; }) } })); } catch (e) {}
     var el = document.getElementById('heroMonth'); if (el) el.innerHTML = monthSlide(HOME_MONTH);
   });
 }

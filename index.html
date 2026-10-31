@@ -144,6 +144,8 @@ button{font-family:inherit}
   background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;font-weight:650;cursor:pointer;min-height:68px}
 .qa svg{width:22px;height:22px;stroke:var(--brand);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .qa:active{transform:scale(.97)}
+.h-day{display:flex;flex-direction:column;gap:2px;margin-top:8px;padding:10px 12px;border-radius:var(--r2);background:var(--surface-2);font-size:12.5px;color:var(--ink-2)}
+.h-day > b{color:var(--ink);font-size:13.5px}.h-day span b{color:var(--ink)}
 .h-share{display:block;height:4px;border-radius:99px;background:var(--surface-2);margin-top:6px;overflow:hidden;direction:ltr}
 .h-share i{display:block;height:100%;background:var(--brand);border-radius:99px;opacity:.75}
 .home-grid{display:flex;flex-direction:column;gap:var(--s3)}
@@ -1075,7 +1077,22 @@ function task(tone, title, sub, count, jump){
     '<span class="task-a">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></div>';
 }
 /* رسم آخر 14 يوم: عمود لكل يوم + خط الهدف */
-var HOME_DAYS = null, HOME_YK = null;
+var HOME_DAYS = null, HOME_YK = null, HOME_LIST = [], HOME_SEL = 13;
+/* لما تدوس على عمود: تفاصيل اليوم ده تحت الرسم */
+function homeDayHtml(i){
+  var x = HOME_LIST[i]; if (!x) return '';
+  var dl = new Date(x.date + 'T12:00:00Z').toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  if (!x.sales) return '<b>' + esc(dl) + '</b><span>مفيش مبيعات متسجلة</span>';
+  var g = goalOf('daily_sales', 10000);
+  return '<b>' + esc(dl) + (x.live ? ' · لحد دلوقتي' : '') + '</b><span>صافي <b>' + ltr(num(x.sales)) + '</b>' +
+    (x.invoices ? ' · ' + ltr(num(x.invoices)) + ' فاتورة' : '') + (x.profit ? ' · ربح ' + ltr(num(x.profit)) : '') +
+    (x.total_cust ? ' · ' + ltr(num(x.total_cust)) + ' زيارة' : '') + ' · ' + ltr(Math.round(x.sales / g * 100) + '%') + ' من الهدف</span>';
+}
+function homeDay(i){
+  HOME_SEL = i;
+  var ch = document.getElementById('homeChart');
+  if (ch && HOME_DAYS) ch.innerHTML = homeChart(HOME_DAYS, HOME_LIST[13] && HOME_LIST[13].live ? HOME_LIST[13].sales : 0, !(HOME_LIST[13] && HOME_LIST[13].live), goalOf('daily_sales', 10000));
+}
 function isoAdd(s, n){ var d = new Date(s + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
 function homeChart(days, salesT, isStale, g){
   var today = cairoNow().date, map = {};
@@ -1091,19 +1108,25 @@ function homeChart(days, salesT, isStale, g){
     var h = Math.max(2, Math.round((x.sales || 0) / max * H)), xx = Math.round(i * (bw + gap));
     var c = x.live ? 'var(--brand)' : (x.sales >= g ? 'var(--ok)' : 'var(--ink-3)');
     var dn = new Date(x.date + 'T12:00:00Z').toLocaleDateString('ar-EG', { weekday: 'narrow', timeZone: 'UTC' });
-    return '<g><title>' + x.date + ' · ' + num(x.sales || 0) + '</title>' +
+    var dd = +x.date.slice(8, 10);
+    return '<g class="cbar" onclick="homeDay(' + i + ')" style="cursor:pointer"><title>' + x.date + ' · ' + num(x.sales || 0) + '</title>' +
+      '<rect x="' + (xx - gap / 2) + '" y="-6" width="' + (bw + gap) + '" height="' + (H + 40) + '" fill="transparent"/>' +
+      (i === HOME_SEL ? '<rect x="' + (xx - 3) + '" y="-6" width="' + (bw + 6) + '" height="' + (H + 6) + '" rx="6" fill="var(--surface-2)"/>' : '') +
       '<rect x="' + xx + '" y="' + (H - h) + '" width="' + bw + '" height="' + h + '" rx="4" fill="' + c + '" opacity="' + (x.sales ? 1 : .35) + '"/>' +
-      ((x.live || i === bestI) && x.sales ? '<text x="' + (i === 13 ? xx + bw : xx + bw / 2) + '" y="' + (H - h - 5) + '" text-anchor="' + (i === 13 ? 'end' : 'middle') + '" font-size="9.5" font-weight="700" fill="' + (x.live ? 'var(--brand)' : 'var(--ink-2)') + '" font-family="Cairo,system-ui">' + (x.sales >= 1000 ? (Math.round(x.sales / 100) / 10) + 'k' : x.sales) + '</text>' : '') +
-      '<text x="' + (xx + bw / 2) + '" y="' + (H + 16) + '" text-anchor="middle" font-size="10" fill="var(--ink-3)" font-family="Cairo,system-ui">' + dn + '</text></g>';
+      ((x.live || i === bestI) && x.sales ? '<text x="' + (i === 13 ? xx + bw : i === 0 ? xx : xx + bw / 2) + '" y="' + (H - h - 5) + '" text-anchor="' + (i === 13 ? 'end' : i === 0 ? 'start' : 'middle') + '" font-size="9.5" font-weight="700" fill="' + (x.live ? 'var(--brand)' : 'var(--ink-2)') + '" font-family="Cairo,system-ui">' + (x.sales >= 1000 ? (Math.round(x.sales / 100) / 10) + 'k' : x.sales) + '</text>' : '') +
+      '<text x="' + (xx + bw / 2) + '" y="' + (H + 15) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="' + (i === HOME_SEL ? 'var(--ink)' : 'var(--ink-2)') + '" font-family="Cairo,system-ui">' + dd + '</text>' +
+      '<text x="' + (xx + bw / 2) + '" y="' + (H + 28) + '" text-anchor="middle" font-size="9" fill="var(--ink-3)" font-family="Cairo,system-ui">' + dn + '</text></g>';
   }).join('');
   var done = list.filter(function(x){ return !x.live && x.sales > 0; });
   var avg = done.length ? Math.round(done.reduce(function(s, x){ return s + x.sales; }, 0) / done.length) : 0;
   var best = done.reduce(function(b, x){ return x.sales > (b ? b.sales : 0) ? x : b; }, null);
   var hits = done.filter(function(x){ return x.sales >= g; }).length;
-  return '<svg viewBox="0 -6 ' + W + ' ' + (H + 26) + '" style="width:100%;height:auto;direction:ltr;display:block" role="img" aria-label="مبيعات آخر 14 يوم">' +
+  HOME_LIST = list;
+  if (HOME_SEL === 13 && !list[13].sales) HOME_SEL = 12;
+  return '<svg viewBox="0 -6 ' + W + ' ' + (H + 40) + '" style="width:100%;height:auto;direction:ltr;display:block" role="img" aria-label="مبيعات آخر 14 يوم">' +
     '<line x1="0" x2="' + W + '" y1="' + gy + '" y2="' + gy + '" stroke="var(--ok)" stroke-dasharray="4 4" stroke-width="1.2"/>' +
     '<text x="' + W + '" y="' + (gy - 4) + '" text-anchor="end" font-size="10" fill="var(--ok)" font-family="Cairo,system-ui">الهدف ' + num(g) + '</text>' +
-    bars + '</svg>' +
+    bars + '</svg>' + '<div id="homeDayInfo" class="h-day">' + homeDayHtml(HOME_SEL) + '</div>' +
     '<div class="h-stats"><span>المتوسط <b>' + ltr(num(avg)) + '</b></span><span>أحسن يوم <b>' + ltr(num(best ? best.sales : 0)) + '</b></span><span>وصلنا الهدف <b>' + ltr(hits + '/' + done.length) + '</b></span></div>';
 }
 /* بيجيب آخر 14 يوم بعد ما الشاشة تظهر، ويملا المقارنة بنفس اليوم الأسبوع اللي فات */
@@ -1994,38 +2017,42 @@ function drawHome(b, kpi, isOld){
 
 /* مهام إضافية للرئيسية — بتتحمّل بعد الشاشة وبتتحدّث كل 10 دقايق بس */
 var HOME_MORE = '', HOME_MORE_AT = 0;
+/* كل مهمة بتتحمّل لوحدها وتظهر أول ما توصل (مش بتستنى أبطأ واحدة)،
+   وآخر نتيجة محفوظة على الموبايل فبتظهر فورًا وانت فاتح */
+var HOME_SLOTS = (function(){ try { return JSON.parse(localStorage.getItem('homeSlots') || '{}'); } catch (e) { return {}; } })();
+var HOME_ORDER = ['bot', 'calls', 'short', 'docs', 'exp'];
+function homeMoreHtml(){ return HOME_ORDER.map(function(k){ return HOME_SLOTS[k] || ''; }).join(''); }
+HOME_MORE = homeMoreHtml();
+function setHomeSlot(k, html){
+  HOME_SLOTS[k] = html || '';
+  try { localStorage.setItem('homeSlots', JSON.stringify(HOME_SLOTS)); } catch (e) {}
+  HOME_MORE = homeMoreHtml();
+  var box = document.getElementById('homeMore');
+  if (box){ box.innerHTML = HOME_MORE; var g = document.getElementById('homeAllGood'); if (g && HOME_MORE) g.remove(); }
+}
 function loadHomeMore(){
-  if (Date.now() - HOME_MORE_AT < 600000) return;
+  var pend = (CHATS || []).filter(function(c){ return c.pending; }).length;
+  setHomeSlot('bot', pend ? task('bad', 'رسايل مستنية رد', 'واتساب وتليجرام', pend, "go('bot')") : '');
+  if (Date.now() - HOME_MORE_AT < 120000) return;
   HOME_MORE_AT = Date.now();
-  function safe(p){ return p.then(function(x){ return x; }, function(e){ logErr(e); return null; }); }
-  Promise.all([
-    safe(api('getCustomers')),
-    safe(api('getShortages', { days: RANGE.short }, SHORTAGE_URL)),
-    safe(api('doctorAdmin', { op: 'list' })),
-    safe(api('getExpensesData', rangeParams('exp'))),
-    safe(api('callsReport'))
-  ]).then(function(r){
-    var out = [];
-    var pend = (CHATS || []).filter(function(c){ return c.pending; }).length;
-    if (pend) out.push(task('bad', 'رسايل مستنية رد', 'واتساب وتليجرام', pend, "go('bot')"));
-    var cr = r[4];
-    if (cr && cr.ok){
-      CUST.calls = cr;
-      var doneT = cr.today.done + cr.today.noanswer + cr.today.later + cr.today.wrong;
-      if (cr.left) out.push(task(doneT ? 'brand' : 'warn', 'مكالمات المتابعة',
-        'اتعمل النهاردة ' + ltr(num(doneT)), cr.left, "CUST_NEXT='calls';go('cust',0)"));
-    }
-    var z = r[1] && r[1].zero && r[1].zero.summary ? (r[1].zero.summary.total || 0) : 0;
-    if (z) out.push(task('bad', 'أصناف خلصانة', 'محتاجة تتطلب', z, "go('stock',0)"));
-    var dn = r[2] && r[2].orders ? r[2].orders.filter(function(o){ return o.status !== 'تم'; }).length : 0;
-    if (dn) out.push(task('warn', 'طلبات دكاترة جديدة', 'مستنية رد', dn, "go('admin',1)"));
-    var e = r[3];
-    if (e && (e.stale || (e.itemizedStaleDays != null && e.itemizedStaleDays > 2)))
-      out.push(task('bad', 'المصروفات واقفة', 'سجّلها عشان الصافي يبقى صح', (e.stale ? e.staleDays : e.itemizedStaleDays) + ' يوم', "go('money',1)"));
-    HOME_MORE = out.join('');
-    var box = document.getElementById('homeMore');
-    if (box){ box.innerHTML = HOME_MORE; if (HOME_MORE){ var g = document.getElementById('homeAllGood'); if (g) g.remove(); } }
-  });
+  api('callsReport').then(function(cr){
+    if (!cr || !cr.ok) return;
+    CUST.calls = cr;
+    var t0 = cr.today || {}, doneT = (t0.done || 0) + (t0.noanswer || 0) + (t0.later || 0) + (t0.wrong || 0);
+    setHomeSlot('calls', cr.left ? task(doneT ? 'brand' : 'warn', 'مكالمات المتابعة', 'اتعمل النهاردة ' + ltr(num(doneT)), cr.left, "CUST_NEXT='calls';go('cust',0)") : '');
+  }).catch(logErr);
+  api('getShortages', { days: RANGE.short }, SHORTAGE_URL).then(function(r){
+    var z = r && r.zero && r.zero.summary ? (r.zero.summary.total || 0) : 0;
+    setHomeSlot('short', z ? task('bad', 'أصناف خلصانة', 'محتاجة تتطلب', z, "go('stock',0)") : '');
+  }).catch(logErr);
+  api('doctorAdmin', { op: 'list' }).then(function(r){
+    var dn = r && r.orders ? r.orders.filter(function(o){ return o.status !== 'تم'; }).length : 0;
+    setHomeSlot('docs', dn ? task('warn', 'طلبات دكاترة جديدة', 'مستنية رد', dn, "go('admin',1)") : '');
+  }).catch(logErr);
+  api('getExpensesData', rangeParams('exp')).then(function(e){
+    var bad = e && (e.stale || (e.itemizedStaleDays != null && e.itemizedStaleDays > 2));
+    setHomeSlot('exp', bad ? task('bad', 'المصروفات واقفة', 'سجّلها عشان الصافي يبقى صح', (e.stale ? e.staleDays : e.itemizedStaleDays) + ' يوم', "go('money',1)") : '');
+  }).catch(logErr);
 }
 
 /* بيقارن آخر ٧ أيام باللي قبلهم ويقول إيه اللي اتحرّك.

@@ -5116,6 +5116,7 @@ function loadCam(){
       '<input id="camSec" type="password" autocomplete="off" placeholder="Secret / الباسورد (لو موجود)" class="chat-search" dir="ltr">' +
       '<input id="camNote" placeholder="ملاحظة (اختياري): اسم الموقع اللي جبت منه المفتاح" class="chat-search" autocomplete="off">' +
       '<button class="btn btn-primary" onclick="saveCam()">💾 احفظ</button>' +
+      '<button class="btn btn-quiet" onclick="camSrvUp()">🔄 حدّث السيرفر</button><div id="camsrv"></div>' +
       '<button class="btn btn-quiet" onclick="testCam()">🧪 جرّب الربط (قراءة بس + لقطة من كل كاميرا)</button><div id="camtest"></div>' +
       '<div class="state" style="font-size:12px">🔒 المفتاح بيتحفظ في السيرفر بس، وعمره ما بيظهر تاني هنا ولا لأي حد.</div>';
   }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
@@ -5128,6 +5129,13 @@ function saveCam(){
     if (d && d.ok){ toast('✓ اتحفظ'); loadCam(); }
     else { if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} toast((d && d.error) || tr('failed')); }
   }).catch(function(){ toast(tr('failed')); });
+}
+function camSrvUp(){
+  var b = document.getElementById('camsrv'); b.innerHTML = '<div class="state"><div class="spin"></div> بيحدّث… (حوالي نص دقيقة)</div>';
+  api('serverUpdate').then(function(d){
+    if (d && d.pinError) { b.innerHTML = ''; return; }
+    b.innerHTML = d && d.ok ? '<div class="state" style="color:var(--ok)">✅ السيرفر اتحدّث — نسخة ' + esc(d.version) + '</div>' : '<div class="state err" style="font-size:13px">' + esc((d && d.error) || tr('failed')) + '</div>';
+  }).catch(function(e){ b.innerHTML = '<div class="state err">' + esc(String(e)) + '</div>'; });
 }
 function testCam(){
   var b = document.getElementById('camtest'); b.innerHTML = '<div class="state"><div class="spin"></div> بجرّب… ممكن ياخد دقيقة</div>';

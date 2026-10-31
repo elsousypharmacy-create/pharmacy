@@ -8316,9 +8316,9 @@ function camAutoSnap() {
     try { var g = camGrab_(tk.token, serial, ch); if (g.error) { bad.push(ch); return; } dayF.createFile(g.blob.setName(hm + '_ch' + ch + '.jpg')); ok++; } catch (e) { bad.push(ch); }
   });
   PropertiesService.getScriptProperties().setProperty('CAM_SNAP_LAST', day + ' ' + hm + ' — ' + ok + '/5' + (bad.length ? ' (فشل: ' + bad.join(',') + ')' : ''));
-  // مسح أي فولدر يوم أقدم من 3 أيام
+  // مسح أي فولدر يوم أقدم من 30 يوم (≈ 1.2 جيجا)
   try {
-    var lim = Utilities.formatDate(new Date(Date.now() - 3 * 86400000), 'Africa/Cairo', 'yyyy-MM-dd'), fs = root.getFolders();
+    var lim = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), 'Africa/Cairo', 'yyyy-MM-dd'), fs = root.getFolders();
     while (fs.hasNext()) { var f = fs.next(); if (/^\d{4}-\d{2}-\d{2}$/.test(f.getName()) && f.getName() < lim) f.setTrashed(true); }
   } catch (e2) {}
 }

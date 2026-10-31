@@ -1487,6 +1487,7 @@ function toPDF(rows, title){
   }).join('');
   w.document.write(
     '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>' + title + '</title>' +
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap">' +
     '<style>@page{margin:14mm}' +
     'body{font-family:Cairo,-apple-system,"Segoe UI",Tahoma,sans-serif;color:#111;font-size:12px}' +
     'h1{font-size:17px;margin:0 0 2px}' +
@@ -1500,7 +1501,7 @@ function toPDF(rows, title){
     '<h1>' + title + ' — صيدلية السوسي</h1>' +
     '<div class="sub">' + new Date().toLocaleString('en-GB') + ' · ' + rows.length + ' سطر</div>' +
     '<table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table>' +
-    '<script>window.onload=function(){setTimeout(function(){window.print();},350);};<\/script>' +
+    '<script>window.onload=function(){(document.fonts?document.fonts.ready:Promise.resolve()).then(function(){setTimeout(function(){window.print();},250);});};<\/script>' +
     '</body></html>');
   w.document.close();
 }
@@ -3055,6 +3056,61 @@ function secBtn(key, tone, title, sub, val, valSub, fn){
 /* رأس الشاشة الداخلية */
 /* الكمية: الشرايط بتطلع كسر من العلبة (0.5 = نص علبة) بدل ما تتقرّب لـ 0 */
 function qtyFmt(v){ v = +v || 0; return v % 1 === 0 ? num(v) : String(Math.round(v * 100) / 100); }
+/* قايمة للعامل: ينزّل الأصناف القريبة من الرف ويحطها قدام أو يجهّزها للمرتجع */
+var EXP_STAFF = [];
+function expStaffText(){
+  var n = 0, lines = ['📋 أصناف بتنتهي خلال 6 شهور — صيدلية السوسي', 'نزّلها من الرف وحطها قدام أو جهّزها للمرتجع', ''];
+  EXP_STAFF.forEach(function(g){
+    lines.push('▪️ ' + g.title + ':');
+    g.items.forEach(function(r){ n++; lines.push('   ☐ ' + r.name + ' — ' + qtyFmt(Math.round(r.stock * 100) / 100) + ' علبة'); });
+    lines.push('');
+  });
+  lines.push('الإجمالي: ' + n + ' صنف');
+  return lines.join('\n');
+}
+function expStaffSheet(){
+  var s = document.getElementById('sheet'), ti = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  s.classList.add('on'); ti.textContent = 'قايمة للعامل';
+  var n = EXP_STAFF.reduce(function(a, g){ return a + g.items.length; }, 0);
+  b.innerHTML = '<div class="state" style="text-align:start;padding:0 0 10px">' + ltr(n) + ' صنف بينتهوا خلال 6 شهور. ابعتها للعامل ينزّلها من الرف ويعلّم على اللي خلّصه.</div>' +
+    '<div class="btn-row" style="margin-bottom:12px"><button class="btn btn-primary" onclick="expStaffShare()">ابعت واتساب</button>' +
+    '<button class="btn btn-quiet" onclick="expStaffCopy()">انسخ</button><button class="btn btn-quiet" onclick="expStaffPrint()">PDF</button></div>' +
+    EXP_STAFF.map(function(g){
+      return '<div class="group-title">' + esc(g.title) + '</div>' + g.items.map(function(r){
+        return '<label class="row" style="cursor:pointer"><span style="display:flex;gap:10px;align-items:center"><input type="checkbox" style="width:20px;height:20px">' +
+          '<b style="font-weight:600">' + esc(r.name) + '</b></span><span class="row-val">' + ltr(qtyFmt(Math.round(r.stock * 100) / 100)) + ' علبة</span></label>';
+      }).join('');
+    }).join('');
+}
+function expStaffShare(){
+  var txt = expStaffText();
+  if (navigator.share) navigator.share({ text: txt }).catch(function(){});
+  else window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
+}
+function expStaffCopy(){
+  var txt = expStaffText();
+  (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function(){ toast('✓ اتنسخت'); }, function(){ toast('مقدرتش أنسخ'); });
+}
+function expStaffPrint(){
+  var w = window.open('', '_blank'); if (!w){ toast('افتح النوافذ المنبثقة'); return; }
+  var n = EXP_STAFF.reduce(function(a, g){ return a + g.items.length; }, 0);
+  w.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>قايمة الصلاحية - صيدلية السوسي</title>' +
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap">' +
+    '<style>@page{margin:12mm}body{font-family:Cairo,Tahoma,sans-serif;color:#111;font-size:13px;margin:0}' +
+    'h1{font-size:19px;margin:0}.sub{color:#555;font-size:12px;margin:2px 0 14px}' +
+    'h2{font-size:15px;margin:16px 0 6px;padding:6px 10px;background:#f1f4f8;border-radius:8px}' +
+    'table{width:100%;border-collapse:collapse}td{padding:7px 8px;border-bottom:1px solid #e6e9ee}' +
+    'td.c{width:26px;font-size:18px;color:#888}td.q{width:90px;text-align:left;direction:ltr;color:#333}' +
+    '.foot{margin-top:18px;color:#555;font-size:12px}</style></head><body>' +
+    '<h1>أصناف بتنتهي خلال 6 شهور — صيدلية السوسي</h1>' +
+    '<div class="sub">' + new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + n + ' صنف · نزّلها من الرف وحطها قدام أو جهّزها للمرتجع</div>' +
+    EXP_STAFF.map(function(g){ return '<h2>' + esc(g.title) + ' (' + g.items.length + ')</h2><table>' + g.items.map(function(r){
+      return '<tr><td class="c">☐</td><td>' + esc(r.name) + '</td><td class="q">' + qtyFmt(Math.round(r.stock * 100) / 100) + ' علبة</td></tr>'; }).join('') + '</table>'; }).join('') +
+    '<div class="foot">اسم العامل: ................................ &nbsp;&nbsp; التوقيع: ....................</div>' +
+    '<script>window.onload=function(){(document.fonts?document.fonts.ready:Promise.resolve()).then(function(){setTimeout(function(){window.print();},250);});};<\/script>' +
+    '</body></html>');
+  w.document.close();
+}
 function stockGo(k){ go('stock', { order: 1, exp: 2, dead: 3 }[k] || 0); }
 function secHead(title, expFn, backFn){
   return '<div class="sec-head">' +
@@ -3174,6 +3230,10 @@ function drawAging(isOld){
       { value: num(Math.round(sum6.c)), label: 'من 3 لـ 6 شهور', tone: sum6.n ? 'warn' : '', note: ltr(sum6.n), sub: 'اعرضه أو رجّعه' }
     ]);
     var keys = Object.keys(groups).sort(function(a, b){ return a === 'x' ? -1 : b === 'x' ? 1 : a < b ? -1 : 1; });
+    EXP_STAFF = keys.map(function(k){ var g = groups[k];
+      return { title: k === 'x' ? 'منتهي — شيله من الرف' : (MN[+k.slice(5, 7) - 1] + ' ' + k.slice(0, 4)),
+               items: Object.keys(g.items).map(function(n){ return g.items[n]; }).sort(function(a, b){ return a.name < b.name ? -1 : 1; }) }; });
+    if (keys.length) html += '<button class="btn btn-primary" style="margin-bottom:12px" onclick="expStaffSheet()">📋 قايمة للعامل: كل اللي بينتهي خلال 6 شهور</button>';
     if (!keys.length) html += '<div class="card">' + emptyState() + '</div>';
     keys.forEach(function(k){
       var g = groups[k], tone = k === 'x' || g.dte <= 90 ? 'bad' : 'warn';

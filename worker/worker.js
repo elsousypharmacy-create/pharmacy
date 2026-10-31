@@ -39,23 +39,36 @@ function goodBody(t) {
   if (!t || t.length > 1500000) return false;
   try { const j = JSON.parse(t); return !!j && j.ok !== false && !j.lockError && !j.pinError; } catch (e) { return false; }
 }
-async function put(env, k, t) {
-  await env.DB.prepare('INSERT INTO c (k, body, at, ref) VALUES (?, ?, ?, 0) ON CONFLICT(k) DO UPDATE SET body = excluded.body, at = excluded.at, ref = 0')
-    .bind(k, t, Date.now()).run();
+/* التخزين: ذاكرة الـ Worker الأول (أسرع حاجة)، وD1 لو مربوطة (بتفضل بعد إعادة التشغيل) */
+const MEM = new Map();
+async function sGet(env, k) {
+  const m = MEM.get(k); if (m) return m;
+  if (!env.DB) return null;
+  try { const r = await env.DB.prepare('SELECT body, at FROM c WHERE k = ?').bind(k).first(); if (r) { const v = { body: r.body, at: r.at, ref: 0 }; MEM.set(k, v); return v; } } catch (e) {}
+  return null;
+}
+async function put(env, k, t, at) {
+  const v = { body: t, at: at || Date.now(), ref: 0 };
+  MEM.set(k, v);
+  if (MEM.size > 300) MEM.delete(MEM.keys().next().value);
+  if (env.DB) await env.DB.prepare('INSERT INTO c (k, body, at, ref) VALUES (?, ?, ?, 0) ON CONFLICT(k) DO UPDATE SET body = excluded.body, at = excluded.at, ref = 0')
+    .bind(k, t, v.at).run();
 }
 async function refresh(env, k, qs, now) {
   /* واحد بس يحدّث في نفس الوقت */
-  const claim = await env.DB.prepare('UPDATE c SET ref = ? WHERE k = ? AND ref < ?').bind(now, k, now - 20000).run();
-  if (!claim.meta || claim.meta.changes !== 1) return;
-  try { const t = await gas(qs); if (goodBody(t)) await put(env, k, t); } catch (e) {}
+  const m = MEM.get(k);
+  if (m) { if (m.ref > now - 20000) return; m.ref = now; }
+  if (env.DB) {
+    const claim = await env.DB.prepare('UPDATE c SET ref = ? WHERE k = ? AND ref < ?').bind(now, k, now - 20000).run();
+    if (!claim.meta || claim.meta.changes !== 1) return;
+  }
+  try { const t = await gas(qs); if (goodBody(t)) await put(env, k, t); } catch (e) { if (m) m.ref = 0; }
 }
 
 async function read(u, env, ctx, action) {
   const qs = gasQs(u);
-  if (!env.DB) return out(await gas(qs), { 'x-cache': 'off' });
   const k = await cacheKey(u), now = Date.now();
-  let row = null;
-  try { row = await env.DB.prepare('SELECT body, at FROM c WHERE k = ?').bind(k).first(); } catch (e) {}
+  const row = await sGet(env, k);
   if (row) {
     const age = now - row.at;
     if (age < TTL[action] * 1000) return out(row.body, { 'x-cache': 'hit' });
@@ -76,14 +89,14 @@ async function callsSet(u, env) {
   if (!/^[0-9a-f]{16,64}$/.test(key) || (status && !CALL_ST[status])) return out(JSON.stringify({ ok: false, error: 'طلب غلط' }));
   const t = await gas(gasQs(u));
   let ok = false; try { ok = JSON.parse(t).ok === true; } catch (e) {}
-  if (ok && env.DB) {
+  if (ok) {
     try {
-      const row = await env.DB.prepare('SELECT body FROM c WHERE k = ?').bind('action=callsGet').first();
+      const row = await sGet(env, 'action=callsGet');
       if (row) {
         const j = JSON.parse(row.body); j.calls = j.calls || {};
         if (status) j.calls[key] = { status, note: (p.get('note') || '').slice(0, 500), at: Date.now(), by: (p.get('by') || '').trim().slice(0, 40) };
         else delete j.calls[key];
-        await env.DB.prepare('UPDATE c SET body = ? WHERE k = ?').bind(JSON.stringify(j), 'action=callsGet').run();
+        await put(env, 'action=callsGet', JSON.stringify(j), row.at);
       }
     } catch (e) {}
   }
@@ -98,7 +111,7 @@ export default {
       if (u.searchParams.get('hub.verify_token') === 'elsousy2026wa')
         return new Response(u.searchParams.get('hub.challenge') || '');
       const action = u.searchParams.get('action');
-      if (action === 'ping') return out(JSON.stringify({ ok: true, fast: true, db: !!env.DB }));
+      if (action === 'ping') return out(JSON.stringify({ ok: true, fast: true, db: !!env.DB, mem: MEM.size, v: 2 }));
       try {
         if (action === 'callsSet') return await callsSet(u, env);
         if (action && TTL[action]) return await read(u, env, ctx, action);

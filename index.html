@@ -2086,10 +2086,11 @@ function drawHome(b, kpi, isOld){
       var pv = gV ? Math.min(100, Math.round(v / gV * 100)) : 0;
       return '<span class="h-bar"><i style="width:' + pv + '%"></i></span>';
     };
-    /* المعدل: الصيدلية بتشتغل تقريبًا من 10 الصبح لـ 12 بالليل */
+    /* المعدل: الصيدلية بتشتغل من 8 الصبح لـ 1 بالليل */
     var paceLine = '';
     if (!isStaleDay && salesT > 0 && !hit){
-      var cn = cairoNow(), hrs = cn.hour + (cn.minute || 0) / 60, OPEN = 10, CLOSE = 24;
+      var cn = cairoNow(), hrs = cn.hour + (cn.minute || 0) / 60, OPEN = 8, CLOSE = 25;
+      if (hrs < 2) hrs += 24;   /* بعد نص الليل لسه في نفس اليوم (بنقفل 1 بالليل) */
       var f = (hrs - OPEN) / (CLOSE - OPEN), leftH = Math.max(0.5, CLOSE - hrs);
       if (f > 0.12 && f < 0.97){
         var proj = Math.round(salesT / f / 50) * 50;

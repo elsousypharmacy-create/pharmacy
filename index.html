@@ -136,6 +136,16 @@ button{font-family:inherit}
   .wrap:not(#p-home) > .ctl,.wrap:not(#p-home) > .vitals2,.wrap:not(#p-home) > .state,.wrap:not(#p-home) > .period{column-span:all}
 }
 /* ═══ الرئيسية ═══ */
+.h-pace{display:flex;flex-direction:column;gap:2px;margin-top:14px;padding:10px 12px;border-radius:var(--r2);
+  background:color-mix(in srgb,var(--brand) 10%,transparent);font-size:12.5px;color:var(--ink-2)}
+.h-pace b{color:var(--ink);font-weight:800}
+.qa-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.qa{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border:0;border-radius:var(--r2);
+  background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;font-weight:650;cursor:pointer;min-height:68px}
+.qa svg{width:22px;height:22px;stroke:var(--brand);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.qa:active{transform:scale(.97)}
+.h-share{display:block;height:4px;border-radius:99px;background:var(--surface-2);margin-top:6px;overflow:hidden;direction:ltr}
+.h-share i{display:block;height:100%;background:var(--brand);border-radius:99px;opacity:.75}
 .home-grid{display:flex;flex-direction:column;gap:var(--s3)}
 .home-col{display:flex;flex-direction:column;gap:var(--s3);min-width:0}
 .home-col .card{margin:0}
@@ -1076,12 +1086,14 @@ function homeChart(days, salesT, isStale, g){
   for (var i = 13; i >= 0; i--){ var ds = isoAdd(today, -i); list.push(map[ds] || { date: ds, sales: 0 }); }
   var max = Math.max(g * 1.15, Math.max.apply(null, list.map(function(x){ return x.sales || 0; })));
   var W = 336, H = 150, bw = 16, gap = (W - bw * 14) / 13, gy = H - Math.round(g / max * H);
+  var bestI = -1, bestV = 0; list.forEach(function(x, i){ if (!x.live && (x.sales || 0) > bestV){ bestV = x.sales; bestI = i; } });
   var bars = list.map(function(x, i){
     var h = Math.max(2, Math.round((x.sales || 0) / max * H)), xx = Math.round(i * (bw + gap));
     var c = x.live ? 'var(--brand)' : (x.sales >= g ? 'var(--ok)' : 'var(--ink-3)');
     var dn = new Date(x.date + 'T12:00:00Z').toLocaleDateString('ar-EG', { weekday: 'narrow', timeZone: 'UTC' });
     return '<g><title>' + x.date + ' · ' + num(x.sales || 0) + '</title>' +
       '<rect x="' + xx + '" y="' + (H - h) + '" width="' + bw + '" height="' + h + '" rx="4" fill="' + c + '" opacity="' + (x.sales ? 1 : .35) + '"/>' +
+      ((x.live || i === bestI) && x.sales ? '<text x="' + (i === 13 ? xx + bw : xx + bw / 2) + '" y="' + (H - h - 5) + '" text-anchor="' + (i === 13 ? 'end' : 'middle') + '" font-size="9.5" font-weight="700" fill="' + (x.live ? 'var(--brand)' : 'var(--ink-2)') + '" font-family="Cairo,system-ui">' + (x.sales >= 1000 ? (Math.round(x.sales / 100) / 10) + 'k' : x.sales) + '</text>' : '') +
       '<text x="' + (xx + bw / 2) + '" y="' + (H + 16) + '" text-anchor="middle" font-size="10" fill="var(--ink-3)" font-family="Cairo,system-ui">' + dn + '</text></g>';
   }).join('');
   var done = list.filter(function(x){ return !x.live && x.sales > 0; });
@@ -1896,19 +1908,37 @@ function drawHome(b, kpi, isOld){
       var pv = gV ? Math.min(100, Math.round(v / gV * 100)) : 0;
       return '<span class="h-bar"><i style="width:' + pv + '%"></i></span>';
     };
+    /* المعدل: الصيدلية بتشتغل تقريبًا من 10 الصبح لـ 12 بالليل */
+    var paceLine = '';
+    if (!isStaleDay && salesT > 0 && !hit){
+      var cn = cairoNow(), hrs = cn.hour + (cn.minute || 0) / 60, OPEN = 10, CLOSE = 24;
+      var f = (hrs - OPEN) / (CLOSE - OPEN), leftH = Math.max(0.5, CLOSE - hrs);
+      if (f > 0.12 && f < 0.97){
+        var proj = Math.round(salesT / f / 50) * 50;
+        paceLine = '<div class="h-pace"><span>على المعدل ده هنقفل على حوالي <b>' + ltr(num(proj)) + '</b></span>' +
+          '<span>محتاجين <b>' + ltr(num(Math.ceil(left / leftH / 10) * 10)) + '</b> في الساعة للهدف</span></div>';
+      }
+    }
     html += '<div class="home-grid"><div class="home-col">';
     html += '<div class="card h-hero">' +
       '<div class="h-top"><h2>' + dayWord + (isStaleDay ? ' <span class="h-tag">لسه مفتحناش</span>' : '') + '</h2>' +
         '<span>' + esc(new Date(Date.now() - (isStaleDay ? 86400000 : 0)).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Africa/Cairo' })) + '</span></div>' +
       '<div class="h-main">' + ring + '<div class="h-num"><small>صافي المبيعات</small><b>' + ltr(num(salesT)) + '</b>' +
         '<u>' + (hit ? '🎯 عدّينا الهدف ' + ltr(num(gS)) : 'فاضل ' + ltr(num(left)) + ' على ' + ltr(num(gS))) + '</u>' +
-        '<div id="homeCmp" class="h-cmp"></div></div></div>' +
+        '<div id="homeCmp" class="h-cmp"></div></div></div>' + paceLine +
       '<div class="h-minis">' +
         mini('الزيارات', '<span id="homeVisits">' + (visits == null ? '—' : ltr(num(visits))) + '</span> <em>/ ' + ltr(num(gV)) + '</em>', '<span id="homeVisitsBar">' + (visits == null ? vBar(0) : vBar(visits)) + '</span>') +
         mini('الربح', ltr(num(profitT)), salesT > 0 ? 'هامش ' + ltr(pct(profitT, salesT) + '%') : '') +
         ((isStaleDay && !kpi._yesterday) ? mini('أول فاتورة', '—', 'هتصفّر العداد') : mini('متوسط الفاتورة', ltr(num(avgInv)), ltr(num(tot.inv)) + ' فاتورة')) +
-      '</div>' +
-      stamp(tr('srcSales'), upd.slice(-8) || null, tr('live')) + '</div>';
+      '</div></div>';
+    /* اختصارات لأكتر حاجات بتتفتح */
+    var qa = function(svg, label, act){ return '<button class="qa" onclick="' + act + '"><svg viewBox="0 0 24 24">' + svg + '</svg><span>' + label + '</span></button>'; };
+    html += '<div class="qa-row">' +
+      qa('<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>', 'المكالمات', "CUST_NEXT='calls';go('cust',0)") +
+      qa('<path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5"/>', 'النواقص', "go('stock',0)") +
+      qa('<path d="M4 5h16v11H8l-4 4z"/>', 'البوت', "go('bot')") +
+      qa('<rect x="2" y="6" width="20" height="13" rx="2.5"/><circle cx="12" cy="12.5" r="2.6"/>', 'الفلوس', "go('money',0)") +
+    '</div>';
 
     /* ── مطلوب النهاردة ── */
     var acts = [];
@@ -1926,28 +1956,33 @@ function drawHome(b, kpi, isOld){
     var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
     html += '<div class="card"><div class="card-head"><div><h3>مطلوب النهاردة</h3></div></div>' +
       '<div id="homeMore">' + (HOME_MORE || '') + '</div>' + acts.join('') +
-      (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>') +
-      stamp(tr('srcSnap'), snapAt || null, tr('hourly')) + '</div>';
+      (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>') + '</div>';
     html += '</div><div class="home-col">';
 
     /* ── آخر 14 يوم ── */
-    html += '<div class="card"><div class="card-head"><div><h3>آخر 14 يوم</h3><p id="homeChartSub">المبيعات اليومية قصاد الهدف</p></div></div>' +
+    html += '<div class="card"><div class="card-head"><div><h3>آخر 14 يوم</h3><p id="homeChartSub">صافي كل يوم · الأخضر عدّى الهدف</p></div></div>' +
       '<div id="homeChart">' + (HOME_DAYS ? homeChart(HOME_DAYS, salesT, isStaleDay, gS) : '<div class="state">…</div>') + '</div></div>';
 
     /* ── الفريق النهاردة ── */
     var live = at.live || [], onNow = {};
     live.forEach(function(p, i){ onNow[i] = p; });
-    var teamRows = ((isStaleDay && !kpi._yesterday) ? [] : emps.slice().sort(function(a,b){ return b.sales - a.sales; })).map(function(e){
-      var on = null;
+    var hm = function(m){ m = Math.max(0, Math.round(m || 0)); return ltr(Math.floor(m / 60) + ':' + ('0' + (m % 60)).slice(-2)) + ' ساعة'; };
+    var teamList = (isStaleDay && !kpi._yesterday) ? [] : emps.slice().sort(function(a,b){ return (b.net || b.sales) - (a.net || a.sales); });
+    var teamTot = teamList.reduce(function(s, e){ return s + (e.net || e.sales || 0); }, 0) || 1;
+    var teamRows = teamList.map(function(e){
+      var on = null, v = e.net || e.sales || 0;
       Object.keys(onNow).some(function(k){ if (sameStaff(e.name, onNow[k].name)){ on = onNow[k]; delete onNow[k]; return true; } });
       return '<div class="h-team"><span class="h-dot' + (on ? ' on' : '') + '"></span><div class="h-tn"><b>' + esc(e.name) + '</b><small>' +
-        ltr(e.invoices) + ' فاتورة · تسجيل ' + ltr(e.reg_pct + '%') + (on ? ' · ' + ltr(dur(on.elapsedMinutes)) : '') + '</small></div>' +
-        '<b class="h-tv">' + ltr(num(e.net || e.sales)) + '</b></div>';
+        ltr(e.invoices) + ' فاتورة · تسجيل ' + ltr(e.reg_pct + '%') + (on ? ' · حاضر ' + hm(on.elapsedMinutes) : '') + '</small>' +
+        '<span class="h-share"><i style="width:' + Math.round(v / teamTot * 100) + '%"></i></span></div>' +
+        '<b class="h-tv">' + ltr(num(v)) + '</b></div>';
     });
     Object.keys(onNow).forEach(function(k){ var p = onNow[k];
-      teamRows.push('<div class="h-team"><span class="h-dot on"></span><div class="h-tn"><b>' + esc(p.name) + '</b><small>حاضر ' + ltr(dur(p.elapsedMinutes)) + '</small></div><b class="h-tv">—</b></div>');
+      teamRows.push('<div class="h-team"><span class="h-dot on"></span><div class="h-tn"><b>' + esc(p.name) + '</b><small>حاضر ' + hm(p.elapsedMinutes) + ' · لسه مباعش</small></div><b class="h-tv">—</b></div>');
     });
-    html += '<div class="card"><div class="card-head"><div><h3>الفريق النهاردة</h3><p>الأخضر = حاضر دلوقتي</p></div></div>' +
+    var liveN = live.length;
+    html += '<div class="card"><div class="card-head"><div><h3>' + (isStaleDay ? 'الفريق أمس' : 'الفريق النهاردة') + '</h3><p>' +
+      (liveN ? ltr(liveN) + ' حاضرين دلوقتي' : 'محدش مسجّل حضور دلوقتي') + '</p></div></div>' +
       (teamRows.length ? teamRows.join('') : '<div class="state">لسه محدش باع النهاردة</div>') + '</div>';
     html += '</div></div>';
 

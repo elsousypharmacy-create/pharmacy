@@ -5260,7 +5260,8 @@ function camrFoot(x, W, H){
 }
 /* صفحة كاميرا: اللقطة + الأسهم والكتابة عليها (الإحداثيات بمقاس اللقطة الأصلي 960×576) */
 function camrDrawCam(im, logo, c, r){
-  var W = 1200, k = W / im.width, PH = Math.round(im.height * k), HH = 150, FH = 84, H = HH + PH + FH;
+  /* الإحداثيات بمقاس الصورة اللي اتحللت (r.space = [عرض، ارتفاع]) — افتراضي مقاس اللقطة نفسها */
+  var W = 1200, PH = Math.round(im.height * W / im.width), k = W / ((r.space && r.space[0]) || im.width), HH = 150, FH = 84, H = HH + PH + FH;
   var cv = document.createElement('canvas'); cv.width = W; cv.height = H; var x = cv.getContext('2d');
   x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
   camrHead(x, W, logo, 'تقرير الكاميرات  |  كاميرا ' + c.ch + ' — ' + (c.name || ''), r);

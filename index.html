@@ -5108,6 +5108,7 @@ function loadCam(){
     var opt = function(v, t){ return '<option value="' + v + '"' + (d.type === v ? ' selected' : '') + '>' + t + '</option>'; };
     b.innerHTML = row('المفتاح', d.hasKey ? '✅ متحط' + (d.savedAt ? ' — ' + esc(d.savedAt) : '') : '❌ لسه') +
       (d.hasSecret ? row('الـ Secret', '✅ متحط') : '') +
+      row('السحب التلقائي', d.lastSnap ? esc(d.lastSnap) : 'لسه ما اشتغلش') +
       (d.typeName ? row('النوع', esc(d.typeName)) : '') + (d.host ? row('الموقع', '<span dir="ltr">' + esc(d.host) + '</span>') : '') +
       '<div class="group-title">' + (d.hasKey ? 'تغيير البيانات' : 'حط المفتاح') + '</div>' +
       '<select id="camType" class="chat-search"><option value="">نوع الـ API…</option>' + opt('hik', 'Hik-Connect / Hik-Partner OpenAPI') + opt('grok', 'API بتاع Grok') + opt('dvr', 'جهاز التسجيل مباشرة (IP)') + opt('other', 'تاني') + '</select>' +
@@ -5116,6 +5117,7 @@ function loadCam(){
       '<input id="camSec" type="password" autocomplete="off" placeholder="Secret / الباسورد (لو موجود)" class="chat-search" dir="ltr">' +
       '<input id="camNote" placeholder="ملاحظة (اختياري): اسم الموقع اللي جبت منه المفتاح" class="chat-search" autocomplete="off">' +
       '<button class="btn btn-primary" onclick="saveCam()">💾 احفظ</button>' +
+      '<button class="btn btn-quiet" onclick="camAuto()">⏱️ شغّل السحب التلقائي كل ساعة</button><div id="camauto"></div>' +
       '<button class="btn btn-primary" onclick="camSendTg()">📲 ابعت لقطات الكاميرات على تليجرام</button><div id="camtg"></div>' +
       '<button class="btn btn-quiet" onclick="camSrvUp()">🔄 حدّث السيرفر</button><div id="camsrv"></div>' +
       '<button class="btn btn-quiet" onclick="testCam()">🧪 جرّب الربط (قراءة بس + لقطة من كل كاميرا)</button><div id="camtest"></div>' +
@@ -5137,6 +5139,12 @@ function camSendTg(){
     if (d && d.pinError) { try { localStorage.removeItem('adminPin'); } catch (e) {} }
     b.innerHTML = d && d.ok ? '<div class="state" style="color:var(--ok)">✅ اتبعت ' + d.sent + ' لقطات على تليجرام' + (d.failed && d.failed.length ? ' — فشل: ' + esc(d.failed.join('، ')) : '') + '</div>'
                             : '<div class="state err" style="font-size:13px">❌ ' + esc((d && d.error) || tr('failed')) + '</div>';
+  }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+}
+function camAuto(){
+  var b = document.getElementById('camauto'); b.innerHTML = '<div class="state"><div class="spin"></div></div>';
+  api('ensureTriggers', { which: 'camAutoSnap' }).then(function(d){
+    b.innerHTML = d && d.ok ? '<div class="state" style="color:var(--ok)">✅ ' + esc(d.message || 'اتفعّل') + '</div>' : '<div class="state err" style="font-size:13px">❌ ' + esc((d && (d.error || d.message)) || tr('failed')) + '</div>';
   }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
 function camSrvUp(){

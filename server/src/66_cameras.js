@@ -5,7 +5,7 @@ function camInfo() {
   try { host = url ? url.replace(/^https?:\/\//, '').split(/[\/?#]/)[0] : ''; } catch (e) {}
   return { ok: true, hasKey: !!P.getProperty('CAM_API_KEY'), hasSecret: !!P.getProperty('CAM_API_SECRET'),
            type: P.getProperty('CAM_API_TYPE') || '', typeName: CAM_TYPES_[P.getProperty('CAM_API_TYPE')] || '',
-           host: host, note: P.getProperty('CAM_API_NOTE') || '', savedAt: P.getProperty('CAM_API_AT') || '' };
+           host: host, note: P.getProperty('CAM_API_NOTE') || '', savedAt: P.getProperty('CAM_API_AT') || '', lastSnap: P.getProperty('CAM_SNAP_LAST') || '' };
 }
 function setCamConfig(d) {
   var P = PropertiesService.getScriptProperties();
@@ -107,4 +107,24 @@ function camSendTelegram(d) {
   var j = {}; try { j = JSON.parse(r.getContentText()); } catch (e) {}
   if (!j.ok) return { ok: false, error: 'تليجرام: ' + String(j.description || r.getResponseCode()).slice(0, 120) };
   return { ok: true, sent: media.length, failed: fails };
+}
+
+// ---- سحب تلقائي كل ساعة (10 الصبح → 12 بالليل بتوقيت مصر) على الدرايف: كاميرات الصيدلية / yyyy-MM-dd / HHmm_chN.jpg ----
+function camRootFolder_() { var it = DriveApp.getFoldersByName('كاميرات الصيدلية'); return it.hasNext() ? it.next() : DriveApp.createFolder('كاميرات الصيدلية'); }
+function camAutoSnap() {
+  var hr = Number(Utilities.formatDate(new Date(), 'Africa/Cairo', 'H'));
+  if (hr < 10 && hr !== 0) return;   // برة مواعيد الشغل
+  var tk = camToken_(); if (tk.error) { PropertiesService.getScriptProperties().setProperty('CAM_SNAP_LAST', 'فشل: ' + tk.error); return; }
+  var serial = PropertiesService.getScriptProperties().getProperty('CAM_DEVICE_SERIAL') || 'E10261949';
+  var root = camRootFolder_(), day = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd'), hm = Utilities.formatDate(new Date(), 'Africa/Cairo', 'HHmm');
+  var it = root.getFoldersByName(day), dayF = it.hasNext() ? it.next() : root.createFolder(day), ok = 0, bad = [];
+  [1, 2, 3, 4, 6].forEach(function (ch) {
+    try { var g = camGrab_(tk.token, serial, ch); if (g.error) { bad.push(ch); return; } dayF.createFile(g.blob.setName(hm + '_ch' + ch + '.jpg')); ok++; } catch (e) { bad.push(ch); }
+  });
+  PropertiesService.getScriptProperties().setProperty('CAM_SNAP_LAST', day + ' ' + hm + ' — ' + ok + '/5' + (bad.length ? ' (فشل: ' + bad.join(',') + ')' : ''));
+  // مسح أي فولدر يوم أقدم من 3 أيام
+  try {
+    var lim = Utilities.formatDate(new Date(Date.now() - 3 * 86400000), 'Africa/Cairo', 'yyyy-MM-dd'), fs = root.getFolders();
+    while (fs.hasNext()) { var f = fs.next(); if (/^\d{4}-\d{2}-\d{2}$/.test(f.getName()) && f.getName() < lim) f.setTrashed(true); }
+  } catch (e2) {}
 }

@@ -3775,12 +3775,16 @@ function loadCustDash(){
 /* زيارات الفترة — أول مرة بتتحسب على دفعات، فبنعيد النداء لحد ما تكمل */
 function loadCustVisits(tries){
   tries = tries || 0;
-  if (CUST_VIS && CUST_VIS.days === CUST_PER && !CUST_VIS.missingDays) return;
+  /* آخر حساب محفوظ على الموبايل (لنفس اليوم) بيظهر فورًا، والجديد بيتجاب ورا */
+  if (!CUST_VIS && !tries) try { var sv = JSON.parse(localStorage.getItem('custVis') || 'null');
+    if (sv && sv.day === cairoNow().date && sv.d && sv.d.days === CUST_PER){ CUST_VIS = sv.d; if (custOnTab() && CUST.list.length) drawCustomers(CUST.list, document.getElementById('p-cust')); } } catch (e) {}
+  if (CUST_VIS && CUST_VIS._fresh) return;
   CUST_VIS_LOADING = true;
   api('getCustomerVisits', { days: CUST_PER }).then(function(d){
     if (!d || !d.ok) throw new Error((d && d.error) || 'visits');
     if (d.days !== CUST_PER) return;
-    CUST_VIS = d;
+    CUST_VIS = d; d._fresh = !d.missingDays;
+    if (!d.missingDays) try { localStorage.setItem('custVis', JSON.stringify({ day: cairoNow().date, d: d })); } catch (e) {}
     CUST_VIS_LOADING = !!d.missingDays && tries < 20;
     if (custOnTab() && CUST.list.length) drawCustomers(CUST.list, document.getElementById('p-cust'));
     if (d.missingDays && tries < 20) loadCustVisits(tries + 1);

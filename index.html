@@ -1162,7 +1162,7 @@ function monthSlide(M){
     '<div class="m-track"><i style="width:' + p + '%"></i><em style="inset-inline-start:' + bp + '%"></em></div>' +
     '<div class="m-legend"><span><i class="lg-b"></i>المتوسط</span><span><i class="lg-w"></i>التعادل ' + ltr(num(be)) + '</span><span>آخر الشريط = الهدف ' + ltr(num(g)) + '</span></div>' +
     '<div class="h-minis m-grid">' +
-      tile('صافي الفترة', ltr(num(m.net_sales || 0)), ltr(num(m.invoices_total || 0)) + ' فاتورة') +
+      tile('صافي الفترة', ltr(num(m.net_sales || 0)), 'بعد مرتجعات ' + ltr(num(m.returns_value_total || 0)) + ' (' + ltr(pct(m.returns_value_total || 0, m.sales_total || 0) + '%') + ')') +
       tile('الزيارات', ltr(num(visits)), ltr(num(Math.round(visits / vDays))) + ' في اليوم') +
       tile('الربح بعد الخصومات', ltr(num(gp)), 'خصومات ' + ltr(num(m.discount_total || 0))) +
       tile('صافي الربح', np == null ? '—' : ltr(num(np)), np == null ? 'بيتحسب بالشهر بس' : 'بعد المصاريف لنفس الأيام', np == null ? '' : (np >= 0 ? 'ok' : 'bad')) +

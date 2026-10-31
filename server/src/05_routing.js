@@ -97,7 +97,7 @@ function doGet(e) {
   /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
   var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
                         purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camReports: 1, camFrame: 1 };
+                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camReports: 1, camFrame: 1, camFrames: 1 };
   if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
     return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
   if (action === 'aiTest') return jsonResponseStaff(aiTest(e.parameter.q));
@@ -115,6 +115,7 @@ function doGet(e) {
   if (action === 'camAutoOn') return jsonResponseStaff(camAutoOn());
   if (action === 'camReports') return jsonResponseStaff(camReports());
   if (action === 'camFrame') return jsonResponseStaff(camFrame(e.parameter.id));
+  if (action === 'camFrames') return jsonResponseStaff(camFrames(e.parameter.ids));
   if (action === 'waSubscribe') return jsonResponseStaff(waSubscribe());
   if (action === 'getBotChat') return jsonResponseStaff(getBotChat(e.parameter.id));
   if (action === 'botReply') return jsonResponseStaff(botReply(e.parameter.id, e.parameter.text));

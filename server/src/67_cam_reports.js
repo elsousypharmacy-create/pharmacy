@@ -35,3 +35,9 @@ function camFrame(id) {
     return { ok: true, mime: f.getMimeType(), b64: Utilities.base64Encode(f.getBlob().getBytes()) };
   } catch (e) { return { ok: false, error: String(e.message || e) }; }
 }
+// كل لقطات التقرير في طلب واحد (أسرع بكتير من 5 طلبات ورا بعض)
+function camFrames(ids) {
+  var out = {};
+  String(ids || '').split(',').slice(0, 8).forEach(function(id){ id = id.trim(); if (id) out[id] = camFrame(id); });
+  return { ok: true, frames: out };
+}

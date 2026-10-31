@@ -503,6 +503,12 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 .sheet-in{border-radius:24px 24px 0 0}
 .set-prefs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
 .set-prefs .btn{margin:0}
+#ptr{position:fixed;top:64px;left:50%;z-index:95;width:38px;height:38px;border-radius:99px;background:var(--surface);
+  display:grid;place-items:center;opacity:0;transform:translate(-50%,0);pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+#ptr svg{width:20px;height:20px;stroke:var(--ink-2);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#ptr.ready svg{stroke:var(--brand)}
+#ptr.spin{opacity:1 !important;animation:ptrspin .7s linear infinite}
+@keyframes ptrspin{to{transform:translate(-50%,40px) rotate(360deg)}}
 </style>
 
 </head>
@@ -5129,6 +5135,33 @@ try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 })();
 /* loadBotPauseBanner(); — الشريط الأحمر اتشال */
 
+
+/* ═══ السحب لتحت = تحديث (التطبيق المتثبّت على iPhone ملوش السحب بتاع Safari) ═══ */
+(function(){
+  var ind = document.createElement('div'); ind.id = 'ptr'; ind.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>';
+  document.body.appendChild(ind);
+  var y0 = null, dy = 0, LIMIT = 70;
+  function sheetOpen(){ var s = document.getElementById('sheet'); return s && s.classList.contains('on'); }
+  document.addEventListener('touchstart', function(e){
+    if (window.scrollY > 0 || sheetOpen() || e.touches.length !== 1) { y0 = null; return; }
+    y0 = e.touches[0].clientY; dy = 0;
+  }, { passive: true });
+  document.addEventListener('touchmove', function(e){
+    if (y0 === null) return;
+    dy = e.touches[0].clientY - y0;
+    if (dy <= 0 || window.scrollY > 0){ ind.style.opacity = 0; return; }
+    var d = Math.min(dy, 120);
+    ind.style.opacity = Math.min(1, d / LIMIT);
+    ind.style.transform = 'translate(-50%,' + (d * 0.6) + 'px) rotate(' + (d * 3) + 'deg)';
+    ind.classList.toggle('ready', dy > LIMIT);
+  }, { passive: true });
+  document.addEventListener('touchend', function(){
+    if (y0 === null) return;
+    var go = dy > LIMIT && window.scrollY <= 0; y0 = null;
+    if (go){ ind.classList.add('spin'); setTimeout(function(){ location.reload(); }, 150); }
+    else { ind.style.opacity = 0; ind.style.transform = 'translate(-50%,0)'; }
+  }, { passive: true });
+})();
 </script>
 </body>
 </html>

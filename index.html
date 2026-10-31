@@ -144,6 +144,23 @@ button{font-family:inherit}
   background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;font-weight:650;cursor:pointer;min-height:68px}
 .qa svg{width:22px;height:22px;stroke:var(--brand);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .qa:active{transform:scale(.97)}
+.h-slides{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:var(--s3);scrollbar-width:none;-webkit-overflow-scrolling:touch;margin:0 calc(-1 * var(--s4));padding:0 var(--s4);scroll-padding:0 var(--s4)}
+.h-slides::-webkit-scrollbar{display:none}
+.h-slide{flex:0 0 100%;scroll-snap-align:center;margin:0 !important;min-width:0}
+.home-col .h-slides{margin-bottom:0}
+.h-dots{display:flex;justify-content:center;gap:6px;margin-top:-4px}
+.h-dots i{width:6px;height:6px;border-radius:99px;background:var(--line);transition:width .2s}
+.h-dots i.on{width:18px;background:var(--brand)}
+#heroMonth .h-num b{font-size:40px}
+.m-track{position:relative;height:8px;border-radius:99px;background:var(--surface-2);margin-top:14px;direction:ltr}
+html[dir=rtl] .m-track{direction:rtl}
+.m-track i{display:block;height:100%;border-radius:99px;background:var(--brand)}
+.m-track em{position:absolute;top:-4px;width:2px;height:16px;background:var(--warn);border-radius:2px}
+.m-legend{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--ink-3);margin-top:6px}
+.m-legend i{display:inline-block;width:10px;height:4px;border-radius:2px;margin-inline-end:4px;vertical-align:middle}
+.m-legend .lg-b{background:var(--brand)}.m-legend .lg-w{background:var(--warn);width:3px;height:10px}
+.m-grid{grid-template-columns:1fr 1fr !important}
+@media (min-width:900px){.h-slides{margin:0;padding:0}}
 .h-day{display:flex;flex-direction:column;gap:2px;margin-top:8px;padding:10px 12px;border-radius:var(--r2);background:var(--surface-2);font-size:12.5px;color:var(--ink-2)}
 .h-day > b{color:var(--ink);font-size:13.5px}.h-day span b{color:var(--ink)}
 .h-share{display:block;height:4px;border-radius:99px;background:var(--surface-2);margin-top:6px;overflow:hidden;direction:ltr}
@@ -1077,6 +1094,45 @@ function task(tone, title, sub, count, jump){
     '<span class="task-a">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></div>';
 }
 /* رسم آخر 14 يوم: عمود لكل يوم + خط الهدف */
+/* ═══ سلايد «الشهر ده» جنب النهاردة ═══ */
+var HOME_MONTH = (function(){ try { return JSON.parse(localStorage.getItem('homeMonth') || 'null'); } catch (e) { return null; } })();
+function monthSlide(M){
+  var m = M.m || {}, pl = M.pl || {}, k = M.k || {};
+  var days = m.days_with_data || 0, avgNet = m.avg_daily_net || 0, g = goalOf('daily_sales', 10000), be = goalOf('breakeven', 7800);
+  var visits = (k.daily || []).reduce(function(s, x){ return s + (x.total_cust || 0); }, 0);
+  var vDays = (k.daily || []).filter(function(x){ return x.total_cust > 0; }).length || days || 1;
+  var np = pl.net_profit, gp = m.profit_total || 0;
+  var p = g ? Math.min(100, Math.round(avgNet / g * 100)) : 0, bp = g ? Math.min(100, Math.round(be / g * 100)) : 0;
+  var tile = function(label, val, sub, tone){ return '<div class="h-mini"><small>' + label + '</small><b' + (tone ? ' style="color:var(--' + tone + ')"' : '') + '>' + val + '</b>' + (sub ? '<u>' + sub + '</u>' : '') + '</div>'; };
+  return '<div class="h-top"><h2>الشهر ده</h2><span>' + ltr(days) + ' يوم</span></div>' +
+    '<div class="h-num"><small>متوسط الصافي في اليوم</small><b>' + ltr(num(avgNet)) + '</b>' +
+      '<u>' + (avgNet >= be ? 'فوق نقطة التعادل ' + ltr(num(be)) : 'تحت نقطة التعادل ' + ltr(num(be)) + ' بـ ' + ltr(num(be - avgNet))) + '</u></div>' +
+    '<div class="m-track"><i style="width:' + p + '%"></i><em style="inset-inline-start:' + bp + '%"></em></div>' +
+    '<div class="m-legend"><span><i class="lg-b"></i>المتوسط</span><span><i class="lg-w"></i>التعادل ' + ltr(num(be)) + '</span><span>آخر الشريط = الهدف ' + ltr(num(g)) + '</span></div>' +
+    '<div class="h-minis m-grid">' +
+      tile('صافي الشهر', ltr(num(m.net_sales || 0)), ltr(num(m.invoices_total || 0)) + ' فاتورة') +
+      tile('الزيارات', ltr(num(visits)), ltr(num(Math.round(visits / vDays))) + ' في اليوم') +
+      tile('الربح بعد الخصومات', ltr(num(gp)), 'خصومات ' + ltr(num(m.discount_total || 0))) +
+      tile('صافي الربح', np == null ? '—' : ltr(num(np)), 'بعد المصاريف والمرتبات', np == null ? '' : (np >= 0 ? 'ok' : 'bad')) +
+    '</div>';
+}
+function loadHomeMonth(){
+  if (loadHomeMonth.at && Date.now() - loadHomeMonth.at < 300000) return;
+  loadHomeMonth.at = Date.now();
+  function safe(p){ return p.then(function(x){ return x; }, function(e){ logErr(e); return null; }); }
+  Promise.all([ safe(api('getMonthTotalsRaw', { range: 'month' })), safe(api('getProfitLoss', {})), safe(api('getStaffKPI', { range: 'month' })) ])
+  .then(function(r){
+    if (!r[0] || r[0].ok === false) return;
+    HOME_MONTH = { m: r[0], pl: (r[1] && r[1].ok !== false) ? r[1] : {}, k: r[2] || {} };
+    try { localStorage.setItem('homeMonth', JSON.stringify({ m: HOME_MONTH.m, pl: { net_profit: HOME_MONTH.pl.net_profit }, k: { daily: (HOME_MONTH.k.daily || []).map(function(x){ return { total_cust: x.total_cust }; }) } })); } catch (e) {}
+    var el = document.getElementById('heroMonth'); if (el) el.innerHTML = monthSlide(HOME_MONTH);
+  });
+}
+function heroDots(){
+  var s = document.getElementById('heroSlides'), d = document.getElementById('heroDots'); if (!s || !d) return;
+  var i = Math.round(Math.abs(s.scrollLeft) / s.clientWidth);
+  [].forEach.call(d.children, function(x, j){ x.className = j === i ? 'on' : ''; });
+}
 var HOME_DAYS = null, HOME_YK = null, HOME_LIST = [], HOME_SEL = 13;
 /* لما تدوس على عمود: تفاصيل اليوم ده تحت الرسم */
 function homeDayHtml(i){
@@ -1943,7 +1999,7 @@ function drawHome(b, kpi, isOld){
       }
     }
     html += '<div class="home-grid"><div class="home-col">';
-    html += '<div class="card h-hero">' +
+    html += '<div class="h-slides" id="heroSlides" onscroll="heroDots()"><div class="card h-hero h-slide">' +
       '<div class="h-top"><h2>' + dayWord + (isStaleDay ? ' <span class="h-tag">لسه مفتحناش</span>' : '') + '</h2>' +
         '<span>' + esc(new Date(Date.now() - (isStaleDay ? 86400000 : 0)).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Africa/Cairo' })) + '</span></div>' +
       '<div class="h-main">' + ring + '<div class="h-num"><small>صافي المبيعات</small><b>' + ltr(num(salesT)) + '</b>' +
@@ -1953,15 +2009,9 @@ function drawHome(b, kpi, isOld){
         mini('الزيارات', '<span id="homeVisits">' + (visits == null ? '—' : ltr(num(visits))) + '</span> <em>/ ' + ltr(num(gV)) + '</em>', '<span id="homeVisitsBar">' + (visits == null ? vBar(0) : vBar(visits)) + '</span>') +
         mini('الربح', ltr(num(profitT)), salesT > 0 ? 'هامش ' + ltr(pct(profitT, salesT) + '%') : '') +
         ((isStaleDay && !kpi._yesterday) ? mini('أول فاتورة', '—', 'هتصفّر العداد') : mini('متوسط الفاتورة', ltr(num(avgInv)), ltr(num(tot.inv)) + ' فاتورة')) +
-      '</div></div>';
-    /* اختصارات لأكتر حاجات بتتفتح */
-    var qa = function(svg, label, act){ return '<button class="qa" onclick="' + act + '"><svg viewBox="0 0 24 24">' + svg + '</svg><span>' + label + '</span></button>'; };
-    html += '<div class="qa-row">' +
-      qa('<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>', 'المكالمات', "CUST_NEXT='calls';go('cust',0)") +
-      qa('<path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5"/>', 'النواقص', "go('stock',0)") +
-      qa('<path d="M4 5h16v11H8l-4 4z"/>', 'البوت', "go('bot')") +
-      qa('<rect x="2" y="6" width="20" height="13" rx="2.5"/><circle cx="12" cy="12.5" r="2.6"/>', 'الفلوس', "go('money',0)") +
-    '</div>';
+      '</div></div>' +
+      '<div class="card h-hero h-slide" id="heroMonth">' + (HOME_MONTH ? monthSlide(HOME_MONTH) : '<div class="state"><div class="spin"></div></div>') + '</div>' +
+      '</div><div class="h-dots" id="heroDots"><i class="on"></i><i></i></div>';
 
     /* ── مطلوب النهاردة ── */
     var acts = [];
@@ -2012,6 +2062,7 @@ function drawHome(b, kpi, isOld){
     box.innerHTML = html;
     loadHomeMore();
     loadHomeDays(salesT, isStaleDay, gS, gV);
+    loadHomeMonth();
   }catch(e){ logErr(e); if (!isOld) oops(box, "pgHome()"); }
 }
 

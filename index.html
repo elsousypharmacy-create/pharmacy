@@ -516,7 +516,10 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 #ptr.spin{opacity:1 !important;animation:ptrspin .7s linear infinite}
 @keyframes ptrspin{to{transform:translate(-50%,40px) rotate(360deg)}}
 .exp-m{padding:14px 16px}
-.exp-h{display:flex;align-items:center;gap:10px;padding-bottom:10px;margin-bottom:4px;border-bottom:1px solid var(--line)}
+.exp-h{display:flex;align-items:center;gap:10px;cursor:pointer}
+.exp-m.open .exp-h{padding-bottom:10px;margin-bottom:4px;border-bottom:1px solid var(--line)}
+.exp-arw{color:var(--ink-3);font-size:18px;width:14px;text-align:center}
+.exp-m{margin-bottom:8px}
 .exp-h .dot{width:9px;height:9px;border-radius:99px;background:var(--tone);flex:0 0 auto}
 .exp-h div{flex:1;min-width:0}.exp-h b{display:block;font-size:16px;font-weight:750}
 .exp-h small{display:block;font-size:12px;color:var(--ink-2)}
@@ -3224,7 +3227,7 @@ function drawAging(isOld){
     var MN = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
     var groups = {}, sumX = { n: 0, c: 0 }, sum3 = { n: 0, c: 0 }, sum6 = { n: 0, c: 0 }, sum12 = { n: 0, c: 0 };
     var addIt = function(it){
-      var dte = it.days_to_expire; if (dte == null || dte > 365) return;
+      var dte = it.days_to_expire; if (dte == null || dte > 180) return;   /* 6 شهور لقدام بس */
       var k = dte < 0 ? 'x' : String(it.expire || '').slice(0, 7);
       var g = groups[k] || (groups[k] = { key: k, dte: dte, items: {}, n: 0, c: 0 });
       var nm = String(it.name || '');
@@ -3234,17 +3237,16 @@ function drawAging(isOld){
       var b = dte < 0 ? sumX : dte <= 90 ? sum3 : dte <= 180 ? sum6 : sum12; b.n++; b.c += +it.cost || 0;
     };
     near.forEach(addIt);
-    ((d.expiry_items || {}).e6_12 || []).forEach(addIt);
     Object.keys(groups).forEach(function(k){ var g = groups[k];
       g.n = Object.keys(g.items).length;
       g.title = k === 'x' ? 'منتهي فعلًا — شيله من الرف' : (MN[+k.slice(5, 7) - 1] + ' ' + k.slice(0, 4));
       g.rows = Object.keys(g.items).map(function(n){ return g.items[n]; }).sort(function(a, b){ return b.cost - a.cost; });
     });
     EXP_GROUPS = groups;
-    html += vitals('الصلاحية', 'لحد سنة', [
-      { value: num(Math.round(sumX.c + sum3.c)), label: 'خلال 3 شهور', tone: (sumX.n + sum3.n) ? 'bad' : '', note: ltr(sumX.n + sum3.n), sub: 'شامل المنتهي' },
-      { value: num(Math.round(sum6.c)), label: 'من 3 لـ 6 شهور', tone: sum6.n ? 'warn' : '', note: ltr(sum6.n), sub: 'اعرضه أو رجّعه' },
-      { value: num(Math.round(sum12.c)), label: 'من 6 لـ 12 شهر', note: ltr(sum12.n), sub: 'تابعه' }
+    html += vitals('الصلاحية', '6 شهور لقدام', [
+      { value: num(Math.round(sumX.c)), label: 'منتهي', tone: sumX.n ? 'bad' : '', note: ltr(sumX.n), sub: 'شيله من الرف' },
+      { value: num(Math.round(sum3.c)), label: 'خلال 3 شهور', tone: sum3.n ? 'bad' : '', note: ltr(sum3.n), sub: 'رجّعه دلوقتي' },
+      { value: num(Math.round(sum6.c)), label: 'من 3 لـ 6 شهور', tone: sum6.n ? 'warn' : '', note: ltr(sum6.n), sub: 'اعرضه أو رجّعه' }
     ]);
     var keys = Object.keys(groups).sort(function(a, b){ return a === 'x' ? -1 : b === 'x' ? 1 : a < b ? -1 : 1; });
     var k6 = keys.filter(function(k){ return groups[k].dte <= 180; });
@@ -3255,17 +3257,16 @@ function drawAging(isOld){
     var shownLater = false;
     keys.forEach(function(k){
       var g = groups[k], tone = k === 'x' || g.dte <= 90 ? 'bad' : g.dte <= 180 ? 'warn' : 'brand';
-      if (!shownLater && g.dte > 180){ shownLater = true; html += '<div class="group-title" style="padding-top:12px">من 6 لـ 12 شهر — للمتابعة</div>'; }
-      var open = !!EXP_OPEN[k], LIM = 5, rows = open ? g.rows : g.rows.slice(0, LIM);
-      html += '<div class="card exp-m" style="--tone:var(--' + tone + ')"><div class="exp-h"><span class="dot"></span><div><b>' + esc(g.title) + '</b>' +
+      var open = !!EXP_OPEN[k], rows = open ? g.rows : [];
+      html += '<div class="card exp-m' + (open ? ' open' : '') + '" style="--tone:var(--' + tone + ')"><div class="exp-h" onclick="expToggle(\'' + k + '\')" role="button"><span class="dot"></span><div><b>' + esc(g.title) + '</b>' +
         '<small>' + ltr(g.n) + ' صنف' + (k === 'x' ? '' : ' · بعد ' + ltr(Math.max(0, g.dte)) + ' يوم') + '</small></div>' +
         '<span class="exp-v">' + ltr(num(Math.round(g.c))) + '</span>' +
-        '<button class="exp-pdf" onclick="expMonthPDF(\'' + k + '\')" aria-label="PDF">PDF</button></div>' +
+        '<button class="exp-pdf" onclick="event.stopPropagation();expMonthPDF(\'' + k + '\')" aria-label="PDF">PDF</button>' +
+        '<span class="exp-arw">' + (open ? '⌄' : '‹') + '</span></div>' +
         rows.map(function(r){
           return '<div class="exp-r"><span class="exp-n">' + esc(r.name) + '</span><span class="exp-q">' + ltr(qtyFmt(Math.round(r.stock * 100) / 100)) + ' ' + tr('unitsWord') + '</span>' +
             '<span class="exp-c">' + ltr(num(Math.round(r.cost))) + '</span></div>';
         }).join('') +
-        (g.rows.length > LIM ? '<button class="exp-more" onclick="expToggle(\'' + k + '\')">' + (open ? 'اقفل' : 'اعرض الكل (' + ltr(g.rows.length) + ')') + '</button>' : '') +
         '</div>';
     });
     var later = d.expiry_by_month && d.expiry_by_month.later;

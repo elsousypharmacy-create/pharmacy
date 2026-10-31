@@ -5116,6 +5116,7 @@ function loadCam(){
       '<input id="camSec" type="password" autocomplete="off" placeholder="Secret / الباسورد (لو موجود)" class="chat-search" dir="ltr">' +
       '<input id="camNote" placeholder="ملاحظة (اختياري): اسم الموقع اللي جبت منه المفتاح" class="chat-search" autocomplete="off">' +
       '<button class="btn btn-primary" onclick="saveCam()">💾 احفظ</button>' +
+      '<button class="btn btn-quiet" onclick="testCam()">🧪 جرّب الربط (قراءة بس + لقطة من كل كاميرا)</button><div id="camtest"></div>' +
       '<div class="state" style="font-size:12px">🔒 المفتاح بيتحفظ في السيرفر بس، وعمره ما بيظهر تاني هنا ولا لأي حد.</div>';
   }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
@@ -5127,6 +5128,16 @@ function saveCam(){
     if (d && d.ok){ toast('✓ اتحفظ'); loadCam(); }
     else { if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} toast((d && d.error) || tr('failed')); }
   }).catch(function(){ toast(tr('failed')); });
+}
+function testCam(){
+  var b = document.getElementById('camtest'); b.innerHTML = '<div class="state"><div class="spin"></div> بجرّب… ممكن ياخد دقيقة</div>';
+  post({ action: 'camTest', pin: adminPin() }).then(function(d){
+    if (!d || !d.ok){ if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} b.innerHTML = '<div class="state err">❌ ' + esc((d && d.error) || tr('failed')) + '</div>'; return; }
+    var h = '<div class="state" style="color:var(--ok)">✅ الربط شغال</div>';
+    (d.devices || []).forEach(function(x){ h += row(esc(x.name || 'جهاز'), '<span dir="ltr">' + esc(x.serial) + ' · ' + esc(String(x.online)) + '</span>'); });
+    (d.shots || []).forEach(function(s){ h += row('كاميرا ' + s.ch, s.ok ? '✅ ' + Math.round(s.bytes / 1024) + ' KB' : '❌ ' + esc(s.error || '')); });
+    b.innerHTML = h;
+  }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
 function waSub(){
   var b = document.getElementById('wasub'); b.innerHTML = '<div class="state"><div class="spin"></div></div>';

@@ -24,3 +24,59 @@ function setCamConfig(d) {
   P.setProperty('CAM_API_AT', Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm'));
   return { ok: true };
 }
+
+// ---- Hik-Connect (HikCentral Connect) OpenAPI — اختبار قراءة بس: توكن + قائمة الأجهزة + لقطة من كل قناة ----
+var CAM_DEFAULT_HOST_ = 'https://ieu.hikcentralconnect.com';
+function camBase_() {
+  var u = String(PropertiesService.getScriptProperties().getProperty('CAM_API_URL') || '').trim();
+  if (!u) return CAM_DEFAULT_HOST_;
+  u = u.replace(/\/+$/, '');
+  return /^https?:\/\//i.test(u) ? u : 'https://' + u;
+}
+function camPost_(path, body, token) {
+  var h = { 'Content-Type': 'application/json' };
+  if (token) h['Token'] = token;
+  var r = UrlFetchApp.fetch(camBase_() + path, { method: 'post', contentType: 'application/json', headers: h, payload: JSON.stringify(body || {}), muteHttpExceptions: true });
+  var txt = r.getContentText(), j = null;
+  try { j = JSON.parse(txt); } catch (e) {}
+  return { code: r.getResponseCode(), json: j, text: txt };
+}
+function camOk_(r) { return r.code === 200 && r.json && (String(r.json.errorCode) === '0' || r.json.errorCode === undefined) && r.json.data; }
+function camErr_(r) { return 'HTTP ' + r.code + ' ' + String((r.json && (r.json.message || r.json.errorCode)) || r.text || '').slice(0, 160); }
+function camToken_() {
+  var P = PropertiesService.getScriptProperties(), tok = P.getProperty('CAM_TOKEN'), exp = Number(P.getProperty('CAM_TOKEN_EXP') || 0);
+  if (tok && exp - Date.now() > 3600 * 1000) return { token: tok };
+  var k = P.getProperty('CAM_API_KEY'), s = P.getProperty('CAM_API_SECRET');
+  if (!k || !s) return { error: 'المفتاح أو الـ Secret مش متحطين' };
+  var r = camPost_('/api/hccgw/platform/v1/token/get', { appKey: k, secretKey: s });
+  if (!camOk_(r) || !r.json.data.accessToken) return { error: 'التوكن فشل: ' + camErr_(r).replace(k, '***').replace(s, '***') };
+  var e = Date.parse(r.json.data.expireTime || '') || (Date.now() + 6 * 24 * 3600 * 1000);
+  P.setProperty('CAM_TOKEN', r.json.data.accessToken); P.setProperty('CAM_TOKEN_EXP', String(e));
+  return { token: r.json.data.accessToken };
+}
+function camDevices_(token) {
+  var r = camPost_('/api/hccgw/resource/v1/devices/get', { pageNo: 1, pageSize: 50 }, token);
+  if (!camOk_(r)) return { error: 'قائمة الأجهزة فشلت: ' + camErr_(r) };
+  var list = r.json.data.list || r.json.data.devices || r.json.data.Device || [];
+  return { list: list };
+}
+function camTest(d) {
+  var tk = camToken_(); if (tk.error) return { ok: false, error: tk.error };
+  var dv = camDevices_(tk.token); if (dv.error) return { ok: false, error: dv.error };
+  var devs = dv.list.map(function (x) { return { name: x.name || x.deviceName || '', serial: x.deviceSerial || x.serial || x.id || '', online: x.status !== undefined ? x.status : (x.online !== undefined ? x.online : ''), raw: Object.keys(x).slice(0, 12).join(',') }; });
+  var serial = String(d.serial || '').trim() || (devs[0] && devs[0].serial) || '';
+  if (!serial) return { ok: true, devices: devs, shots: [], note: 'مفيش جهاز في القائمة' };
+  var it = DriveApp.getFoldersByName('كاميرات الصيدلية'), folder = it.hasNext() ? it.next() : DriveApp.createFolder('كاميرات الصيدلية');
+  var stamp = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd_HHmm'), shots = [];
+  for (var ch = 1; ch <= 6; ch++) {
+    try {
+      var r = camPost_('/api/hccgw/resource/v1/device/capturePic', { deviceSerial: serial, channelNo: ch }, tk.token);
+      if (!camOk_(r) || !r.json.data.captureUrl) { shots.push({ ch: ch, ok: false, error: camErr_(r) }); continue; }
+      var img = UrlFetchApp.fetch(r.json.data.captureUrl, { muteHttpExceptions: true });
+      if (img.getResponseCode() !== 200) { shots.push({ ch: ch, ok: false, error: 'تحميل الصورة HTTP ' + img.getResponseCode() }); continue; }
+      var f = folder.createFile(img.getBlob().setName('test_' + stamp + '_ch' + ch + '.jpg'));
+      shots.push({ ch: ch, ok: true, bytes: f.getSize(), url: f.getUrl() });
+    } catch (e) { shots.push({ ch: ch, ok: false, error: String(e).slice(0, 160) }); }
+  }
+  return { ok: true, serial: serial, devices: devs, shots: shots, folder: folder.getUrl() };
+}

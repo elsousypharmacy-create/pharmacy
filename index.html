@@ -1149,7 +1149,7 @@ function monthSlide(M){
   var R = M.r || homeRange();
   var chip = function(k, l){ return '<button class="' + (HOME_MR.key === k ? 'on' : '') + '" onclick="setHomeRange(\'' + k + '\')">' + l + '</button>'; };
   return '<div class="h-top"><h2>' + esc(R.label) + '</h2><span>' + ltr(days) + ' يوم</span></div>' +
-    '<div class="m-chips">' + chip('month', 'الشهر') + chip('last', 'اللي فات') + chip('7', '7 أيام') + chip('30', '30 يوم') + chip('custom', 'تحديد') + '</div>' +
+    '<div class="m-chips">' + chip('month', 'الشهر') + chip('last', 'اللي فات') + chip('7', '7 أيام') + chip('custom', 'تحديد') + '</div>' +
     '<div class="m-custom" id="mCustom"' + (HOME_MR.key === 'custom' ? '' : ' hidden') + '><input type="date" id="mFrom" value="' + R.from + '"><span>إلى</span><input type="date" id="mTo" value="' + R.to + '" max="' + isoAdd(cairoNow().date, -1) + '"><button onclick="setHomeRange(\'apply\')">اعرض</button></div>' +
     '<div class="h-num"><small>متوسط الصافي في اليوم</small><b>' + ltr(num(avgNet)) + '</b>' +
       '<u>' + (avgNet >= be ? 'فوق نقطة التعادل ' + ltr(num(be)) : 'تحت نقطة التعادل ' + ltr(num(be)) + ' بـ ' + ltr(num(be - avgNet))) + '</u></div>' +

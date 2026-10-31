@@ -1250,6 +1250,7 @@ var CUR = 'sales', TAB = 0;
 
 function go(sec, tab){
   CUR = sec; TAB = tab || 0;
+  try { sessionStorage.setItem('lastPage', JSON.stringify([CUR, TAB])); } catch (e) {}   /* السحب لتحت يرجّعك لنفس الصفحة */
   document.querySelectorAll('.secnav button').forEach(function(b){
     b.classList.toggle('on', b.dataset.sec === sec);
   });
@@ -4651,7 +4652,11 @@ try{
     document.body.classList.contains('light') ? '#F4F5F7' : '#0A0B0D');
 }catch(e){}
 try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
-go('sales', 0);
+(function(){
+  /* لو الصفحة اتعمل لها refresh (سحب لتحت) نرجع لنفس القسم والتبويب بدل الرئيسية */
+  var last = null; try { last = JSON.parse(sessionStorage.getItem('lastPage') || 'null'); } catch (e) {}
+  if (last && SECTIONS[last[0]] && SECTIONS[last[0]][last[1]]) go(last[0], last[1]); else go('sales', 0);
+})();
 /* loadBotPauseBanner(); — الشريط الأحمر اتشال */
 
 </script>

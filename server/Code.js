@@ -8200,6 +8200,7 @@ var STOCK_HEADERS = {
   totnetcoast:    'totnetcoast',   // إجمالي التكلفة الصافية (سعر الصيدلي)
   totprice:       'totprice',      // إجمالي السعر (سعر الجمهور)
   category:       'category',      // الفئة (الأدوية، التجميل...)
+  code:           'code',          // كود الصنف (للتصحيح اليدوي للقسم)
   multistock:     'multistock',    // كميات الدفعات مفصولة بفاصلة
   multiexpire:    'multiexpire'    // صلاحيات الدفعات بنفس الترتيب
 };
@@ -8212,7 +8213,7 @@ function invBuildColMap_(headerRow) {
     if (h) map[h] = i;
   }
   /* الأعمدة دي لو ناقصة الكود بيشتغل عادي — مش سبب لإيقاف التحليل */
-  var OPTIONAL = { multistock: 1, multiexpire: 1 };
+  var OPTIONAL = { multistock: 1, multiexpire: 1, code: 1 };
   var cols = {}, missing = [];
   Object.keys(STOCK_HEADERS).forEach(function(key) {
     var wanted = STOCK_HEADERS[key].toLowerCase();
@@ -8326,8 +8327,7 @@ function getInventoryAging_uncached() {
           stock: invRound_(stock, 2),
           cost: invRound_(cost, 2),
           price: parseFloat(row[STOCK_COL.price]) || 0,
-          category: (STOCK_COL.category !== undefined
-            ? (String(row[STOCK_COL.category] || '').trim() || 'غير مصنّف') : 'غير مصنّف'),
+          category: invCat_(row, STOCK_COL),
           id: String(row[STOCK_COL.id] || '')
         });
         negativeQty += stock;
@@ -8341,8 +8341,7 @@ function getInventoryAging_uncached() {
       /* توزيع كل المخزون على الفئات — كان موجود للراكد وقرب الصلاحية
          بس، ومش موجود للمخزون كله. ده أهم مكان: بيوريك فلوسك
          موزّعة إزاي على الأدوية والتجميل وأدوات طبية. */
-      var catAll = (STOCK_COL.category !== undefined
-        ? (String(row[STOCK_COL.category] || '').trim() || 'غير مصنّف') : 'غير مصنّف');
+      var catAll = invCat_(row, STOCK_COL);
       if (!allByCategory[catAll]) allByCategory[catAll] = { count: 0, cost: 0, retail: 0, units: 0 };
       allByCategory[catAll].count++;
       allByCategory[catAll].cost   += cost;
@@ -8435,8 +8434,7 @@ function getInventoryAging_uncached() {
 
          دلوقتي "عمره ما اتباع" تصنيف منفصل، والراكد = اتباع فعلاً
          وعدّى عليه أكتر من 180 يوم. */
-      var itemCat2 = (STOCK_COL.category !== undefined
-        ? (String(row[STOCK_COL.category] || '').trim() || 'غير مصنّف') : 'غير مصنّف');
+      var itemCat2 = invCat_(row, STOCK_COL);
 
       if (daysSince !== null && daysSince > 180) {
         slowTotalCost += cost;
@@ -8456,8 +8454,7 @@ function getInventoryAging_uncached() {
 
       // ---- شرايح الصلاحية ----
       /* الشرايح من الدفعات — كل دفعة بصلاحيتها وتكلفتها هي */
-      var itemCat = (STOCK_COL.category !== undefined
-        ? (String(row[STOCK_COL.category] || '').trim() || 'غير مصنّف') : 'غير مصنّف');
+      var itemCat = invCat_(row, STOCK_COL);
 
       batches.forEach(function (b) {
         var bd = invParseDate_(b.expire, tz);
@@ -8631,6 +8628,46 @@ function testInventoryAging() {
   Logger.log('شرايح الـ Aging: ' + JSON.stringify(r.aging));
   Logger.log('شرايح الصلاحية: ' + JSON.stringify(r.expiry));
 }
+
+/* ═══ أقسام المخزون: نظام البيع فيه ~140 صنف في قسم غلط (دوا تحت «تجميل»، كريمات تحت «أدوية»…).
+   القسم بيتحسب من اسم الصنف بقواعد، والتصحيح اليدوي في شيت «تصنيف يدوي» بيغلب أي حاجة. */
+var INV_CAT_RULES_ = [["أدوات ومستلزمات طبية", "كانولا|سرنج|شاش|بلاستر|جهاز|ترمومتر|كحول|جوانتي|قفاز|كمامه|ماسك (اكسجين|نيبو|وجه طبي)|نيبولايزر|رباط|حزام|ركبه|انكل|ارم سلينج|كوندوم|عازل|قسطره|كيس (جمع )?بول|مبوله|لانست|شرائط (سكر|قياس)|test strip|تورنيكيت|tourniquet|جبيره|كولار|ستوكينج|stocking|سماعه|قطن طبي|خافض لسان|مشد|شنطه ماء|قربه|ني سبورت|knee|سبورت|support|ماء اكسجين|بيتادين|جنتيانا"], ["عناية بالبشرة والشعر", "مزيل مكياج|مزبل مكياج|مكياج|صبغه|لون شعر|لاكتويل|شعر لوشن|شعر فود|شعر ماسك|شامبو|shampoo|بلسم|صابون|soap|عطر|perfume|كولونيا|ديودر|deo|سن ?سكري|sunscreen|فاسلين|فاسجي|vaseline|اسيتون|اظافر|nail|شافينج|shaving|معجون|toothpaste|فرشاه|brush|واكس|wax|مبيض شرائط"], ["حفاضات وفوط", "حفاض|حفايض|بامبرز|pampers|diaper|بيبي جوي|سيتي بيبي|جيرماني (بيبي|كير)|مولفكس|molfix|فوط|فوطه|بادس|الويز|always|صوفي|sofy|بانتيز"], ["مستلزمات أطفال", "سكات|ببرون|رضاعه|زجاجه|feeding|bottle|soother|pacifier|باسيفي|تيذر|عضاضه|بيبي تشيك|حلمه"], ["أدوية", "\\d+(\\.\\d+)?\\s*(مج|مجم|ملجم|mg|مكج|mcg|ميكروجرام|ام |ام$|م\\.ج|وحده|iu)|حبه|حبوب|حبيبات|قرص|اقراص|كبسول|كابسول|tab |caps|امبول|ampoule|فيال|vial|حقنه|حقن |تحميل|لبوس|suppos|شراب|syrup|معلق|susp|نقط|قطره|drops|فوار|effervescent|كيس|اكياس|sachet|مرهم|oint|بخاخ (انف|فم)|inhaler|دووش|مهبلي"], ["ألبان وأغذية أطفال", "حليب|سيريلاك|cerelac|بيبيلاك|نيستوجين|هيرو بيبي|هيرو ايار|بيبي ميل|سيميلاك|similac|ابتاميل|aptamil"], ["عناية بالبشرة والشعر", "كريم|cream|لوشن|lotion|جل|gel|غسول|cleanser|سيروم|serum|مرطب|زيت|oil|ماسك|mask|تونر|بودر|powder|مزيل|سبراي|spray|ليب|lip|شرائط|بخاخ", ["الادوية"]]];
+var INV_POS_MAP_ = { 'الادوية': 'أدوية', 'التجميل': 'عناية بالبشرة والشعر', 'منتجات جلدية': 'عناية بالبشرة والشعر',
+  'ادوات طبية': 'أدوات ومستلزمات طبية', 'حفاضات اطفال': 'حفاضات وفوط', 'فوط نسائية': 'حفاضات وفوط',
+  'حفايض كبار السن': 'حفاضات وفوط', 'حليب وبودرة': 'ألبان وأغذية أطفال' };
+var INV_CAT_OVR_ = null, INV_CAT_RX_ = null;
+function invCatOverrides_() {
+  if (INV_CAT_OVR_) return INV_CAT_OVR_;
+  INV_CAT_OVR_ = {};
+  try {
+    var sh = SpreadsheetApp.openById(STAFF_SHEET_ID).getSheetByName('تصنيف يدوي');
+    if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 3).getValues().forEach(function (r) {
+      var cat = String(r[2] || '').trim(); if (!cat) return;
+      if (r[0] !== '') INV_CAT_OVR_['c:' + String(r[0]).trim()] = cat;
+      if (r[1] !== '') INV_CAT_OVR_['n:' + String(r[1]).trim()] = cat;
+    });
+  } catch (e) {}
+  return INV_CAT_OVR_;
+}
+function invCatNorm_(s) { return String(s || '').toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي'); }
+function invCat_(row, COL) {
+  var pos = COL.category !== undefined ? String(row[COL.category] || '').trim() : '';
+  var ar = COL.namear !== undefined ? String(row[COL.namear] || '').trim() : '';
+  var en = COL.nameen !== undefined ? String(row[COL.nameen] || '').trim() : '';
+  var code = COL.code !== undefined ? String(row[COL.code] || '').trim() : '';
+  var ovr = invCatOverrides_();
+  if (code && ovr['c:' + code]) return ovr['c:' + code];
+  if (ar && ovr['n:' + ar]) return ovr['n:' + ar];
+  if (!INV_CAT_RX_) INV_CAT_RX_ = INV_CAT_RULES_.map(function (x) { return { cat: x[0], rx: new RegExp(x[1]), skip: x[2] || [] }; });
+  var n = invCatNorm_(ar + ' ' + en);
+  for (var i = 0; i < INV_CAT_RX_.length; i++) {
+    var r = INV_CAT_RX_[i];
+    if (r.skip.indexOf(pos) >= 0) continue;
+    if (r.rx.test(n)) return r.cat;
+  }
+  return INV_POS_MAP_[pos] || (pos || 'غير مصنّف');
+}
+
 // ==== MODULE 71_agents (split from server/Code.js; load order = file name order) ====
 
 

@@ -253,7 +253,7 @@ function beep(){
 function poll(){
   api('labelsFeed', { since: SINCE }).then(function(d){
     if (!d || !d.ok) throw new Error((d && d.error) || 'feed');
-    status(true, 'شغال · ' + new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }));
+    status(true, 'شغال · ' + new Date().toLocaleTimeString('ar-EG-u-nu-latn', { hour: '2-digit', minute: '2-digit' }));
     INVS = d.invoices || [];
     if (FIRST){ FIRST = false; SINCE = d.maxId; ls('lblSince', String(SINCE)); }
     else {
@@ -481,7 +481,7 @@ function labelCSS(W, H){
     '.cp .t{justify-content:center;text-align:center;line-height:1.1;margin-top:.2mm}.t>span{display:block;width:88%;margin:0 auto}.cp .t>span{width:86%}.cp .n{line-height:1.05;margin-top:0}.cp .f{line-height:1;padding-top:.2mm}.lg{height:1.6em;width:1.6em;vertical-align:-.45em;margin-inline-end:.3em;object-fit:contain}.h img{object-fit:contain}.cp .n{text-align:center}.cp .f{border-top:0;justify-content:center;font-weight:800;color:#000}';
 }
 function labelHTML(it, age, wt, W, H){
-  var date = new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'numeric', year: '2-digit' });
+  var date = new Date().toLocaleDateString('ar-EG-u-nu-latn', { day: 'numeric', month: 'numeric', year: '2-digit' });
   var who = ageTxt(age) + (wt ? ' · ' + wt + ' كجم' : '');
   var logo = LOGO_BW;   /* لوجو أبيض وأسود صافي — الطابعة الحرارية بتطبع الرمادي نقط باهتة */
   var s = Math.min(W, H * 1.6);   /* أساس أحجام الخط بالمقاس */

@@ -453,7 +453,7 @@ function slideFor(r, list, i){
     S.draft = null; S.idx = i; saveCall(r.p,{status:'blocked',note:ta.value.trim(),at:Date.now()});
   };
   const row = el('div','ctrl');
-  const info = el('span','saved', rec.at ? 'اتحفظ '+new Date(rec.at).toLocaleString('ar-EG',{day:'numeric',month:'numeric',hour:'numeric',minute:'2-digit'}) : 'لسه متكلمش');
+  const info = el('span','saved', rec.at ? 'اتحفظ '+new Date(rec.at).toLocaleString('ar-EG-u-nu-latn',{day:'numeric',month:'numeric',hour:'numeric',minute:'2-digit'}) : 'لسه متكلمش');
   row.append(info);
   const act = el('div','chips');
   if(rec.status && rec.status!=='blocked'){ const cl = el('button','btn','مسح النتيجة'); cl.onclick = () => clearCall(r.p); act.append(cl); } act.append(bk);

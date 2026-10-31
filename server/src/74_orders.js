@@ -217,34 +217,39 @@ function ordLiveShortages_(dd) {
 }
 /* رصيد حيّ من STOCK LIVE من غير كاش (فهرس المسح متكيّش 30 دقيقة) — عمودين بس عشان السرعة */
 function ordLiveStock_() {
-  var byCode = {}, byName = {};
+  var byCode = {}, byName = {}, minCode = {}, minName = {};
   try {
     var sh = SpreadsheetApp.openById(STOCK_SHEET_ID).getSheets()[0];
     var lastCol = sh.getLastColumn(), n = sh.getLastRow() - 1;
-    if (n < 1) return { byCode: byCode, byName: byName };
+    if (n < 1) return { byCode: byCode, byName: byName, minCode: minCode, minName: minName };
     var hdr = sh.getRange(1, 1, 1, lastCol).getDisplayValues()[0], ix = {};
     hdr.forEach(function (h, i) { ix[String(h || '').trim().toLowerCase()] = i; });
-    if (ix['stock'] === undefined) return { byCode: byCode, byName: byName };
+    if (ix['stock'] === undefined) return { byCode: byCode, byName: byName, minCode: minCode, minName: minName };
     function col_(k) { return ix[k] === undefined ? null : sh.getRange(2, ix[k] + 1, n, 1).getDisplayValues(); }
-    var cSt = col_('stock'), cCode = col_('code'), cAr = col_('namear'), cEn = col_('nameen');
+    /* الكود في قايمة النواقص ممكن يكون code أو id أو باركود — نسجّل التلاتة */
+    var cSt = col_('stock'), cMin = col_('minstock'), cAr = col_('namear'), cEn = col_('nameen');
+    var cKeys = ['code', 'id', 'gtin'].map(col_).filter(function (c) { return c; });
     for (var i = 0; i < n; i++) {
       var st = parseFloat(String(cSt[i][0]).replace(/,/g, '')) || 0;
-      var code = cCode ? String(cCode[i][0] || '').replace(/[^\d]/g, '') : '';
-      if (code) byCode[code] = st;
+      var mn = cMin ? (parseFloat(String(cMin[i][0]).replace(/,/g, '')) || 0) : 0;
+      cKeys.forEach(function (c) {
+        var code = String(c[i][0] || '').replace(/[^\d]/g, '');
+        if (code && byCode[code] === undefined) { byCode[code] = st; minCode[code] = mn; }
+      });
       [cAr, cEn].forEach(function (c) {
         if (!c) return;
         var k = doctorNorm_(c[i][0]);
-        if (k && byName[k] === undefined) byName[k] = st;
+        if (k && byName[k] === undefined) { byName[k] = st; minName[k] = mn; }
       });
     }
   } catch (e) {}
-  return { byCode: byCode, byName: byName };
+  return { byCode: byCode, byName: byName, minCode: minCode, minName: minName };
 }
 
 function ordersPage(code, days, fresh) {
   try {
     var dd = [3, 7, 14, 30].indexOf(parseInt(days, 10)) !== -1 ? parseInt(days, 10) : 7;
-    var key = 'fx_ord_page_v8_' + dd;
+    var key = 'fx_ord_page_v9_' + dd;
     var hit = fresh ? null : fxCacheGet_(key);
     if (hit) return ordersWithMarks_(hit);
 
@@ -346,8 +351,11 @@ function ordersPage(code, days, fresh) {
               var live = (lc && liveSt.byCode[lc] !== undefined) ? liveSt.byCode[lc]
                        : (liveSt.byName[ln] !== undefined ? liveSt.byName[ln] : null);
               live = (live === null || live === undefined || !isFinite(Number(live))) ? null : Number(live);
+              var lmin = (lc && liveSt.byCode[lc] !== undefined) ? liveSt.minCode[lc] : (liveSt.byName[ln] !== undefined ? liveSt.minName[ln] : 0);
               if (live !== null) {
                 if (sec === 'zero' && live > 0) { out.restocked++; return; }
+                /* قرب يخلص: لو الرصيد الحيّ رجع للحد الأدنى أو أكتر يبقى دخل */
+                if (sec === 'low' && lmin > 0 && live >= lmin && (stk === null || live > stk)) { out.restocked++; return; }
                 if (stk !== null && live >= stk + Number(it.shortage || 0) - 1e-9 && live > stk) { out.restocked++; return; }
                 if (stk === null || live > stk) stk = live;
               }

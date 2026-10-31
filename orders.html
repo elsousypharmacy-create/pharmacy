@@ -363,7 +363,7 @@ function draw(){
     (MARK_SRC === 'server'
       ? 'علامة "اتطلب" ظاهرة على كل الأجهزة لحد آخر اليوم'
       : 'علامة "اتطلب" على الجهاز ده بس — السيرفر مرجّعش العلامات') +
-    (DATA.liveAdded === undefined ? ' · ⚠️ السيرفر نسخة قديمة: دوس «حدّث السيرفر» في الداشبورد' : (' · من المخزون المباشر: ' + DATA.liveAdded + ' صنف'));
+    (DATA.liveAdded === undefined ? ' · ⚠️ السيرفر نسخة قديمة: دوس «حدّث السيرفر» في الداشبورد' : (' · من المخزون المباشر: ' + DATA.liveAdded + ' صنف' + (DATA.restocked ? ' · اتشال ' + DATA.restocked + ' صنف دخل' : '')));
 }
 function tog(i){ var c = DATA[SEC][i]; OPEN[SEC + c.co] = !OPEN[SEC + c.co]; draw(); }
 function mark(i, j, v){

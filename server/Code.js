@@ -122,7 +122,7 @@ function doGet(e) {
   /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
   var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
                         purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1 };
+                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1 };
   if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
     return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
   if (action === 'aiTest') return jsonResponseStaff(aiTest(e.parameter.q));
@@ -136,6 +136,7 @@ function doGet(e) {
   if (action === 'ensureTriggers') return jsonResponseStaff(ensureTriggers_({ which: e.parameter.which || '' }));
   if (action === 'getBotChats') return jsonResponseStaff(getBotChats());
   if (action === 'waInfo') return jsonResponseStaff(waInfo());
+  if (action === 'camInfo') return jsonResponseStaff(camInfo());
   if (action === 'waSubscribe') return jsonResponseStaff(waSubscribe());
   if (action === 'getBotChat') return jsonResponseStaff(getBotChat(e.parameter.id));
   if (action === 'botReply') return jsonResponseStaff(botReply(e.parameter.id, e.parameter.text));
@@ -219,6 +220,7 @@ function doPost(e) {
 
     if (LOCKED_POST[data.action] && dashLocked_(data.pin)) return lockedResp_();
     if (data.action === 'setBotSettings') return jsonResponseStaff(setBotSettings(data));
+    if (data.action === 'setCamConfig') return jsonResponseStaff(adminPinOk_(data.pin) ? setCamConfig(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'setWaConfig') return jsonResponseStaff(adminPinOk_(data.pin) ? setWaConfig(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'expReview') return jsonResponseStaff(expReview(data));
     if (data.action === 'log') saveHistory(data);
@@ -8180,6 +8182,33 @@ function getDailyRaw(p) {
     d.setUTCDate(d.getUTCDate() + 1);
   }
   return { ok: true, from: from, to: to, days: days };
+}
+
+// ==== MODULE 66_cameras — ربط الكاميرات (المفاتيح بتتحفظ في Script Properties بس، وعمرها ما بترجع للوحة) ====
+var CAM_TYPES_ = { hik: 'Hik-Connect / Hik-Partner OpenAPI', grok: 'API بتاع Grok', dvr: 'جهاز التسجيل مباشرة (IP)', other: 'تاني' };
+function camInfo() {
+  var P = PropertiesService.getScriptProperties(), url = P.getProperty('CAM_API_URL') || '', host = '';
+  try { host = url ? url.replace(/^https?:\/\//, '').split(/[\/?#]/)[0] : ''; } catch (e) {}
+  return { ok: true, hasKey: !!P.getProperty('CAM_API_KEY'), hasSecret: !!P.getProperty('CAM_API_SECRET'),
+           type: P.getProperty('CAM_API_TYPE') || '', typeName: CAM_TYPES_[P.getProperty('CAM_API_TYPE')] || '',
+           host: host, note: P.getProperty('CAM_API_NOTE') || '', savedAt: P.getProperty('CAM_API_AT') || '' };
+}
+function setCamConfig(d) {
+  var P = PropertiesService.getScriptProperties();
+  var key = String(d.key || '').trim(), sec = String(d.secret || '').trim(), url = String(d.url || '').trim(),
+      type = String(d.type || '').trim(), note = String(d.note || '').trim().slice(0, 200);
+  if (type && !CAM_TYPES_[type]) return { ok: false, error: 'نوع غلط' };
+  if (key && (key.length < 6 || key.length > 4000)) return { ok: false, error: 'المفتاح شكله غلط' };
+  if (sec && sec.length > 4000) return { ok: false, error: 'الـ Secret طويل زيادة' };
+  if (url && !/^(https?:\/\/)?[\w.-]+(:\d+)?(\/.*)?$/i.test(url)) return { ok: false, error: 'الرابط شكله غلط' };
+  if (!key && !sec && !url && !type && !note) return { ok: false, error: 'مفيش حاجة تتحفظ' };
+  if (key) P.setProperty('CAM_API_KEY', key);
+  if (sec) P.setProperty('CAM_API_SECRET', sec);
+  if (url) P.setProperty('CAM_API_URL', url);
+  if (type) P.setProperty('CAM_API_TYPE', type);
+  if (note) P.setProperty('CAM_API_NOTE', note);
+  P.setProperty('CAM_API_AT', Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm'));
+  return { ok: true };
 }
 
 // ==== MODULE 70_inventory_aging (split from server/Code.js; load order = file name order) ====

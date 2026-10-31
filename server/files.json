@@ -23,6 +23,7 @@
   "src/63_expenses.js",
   "src/64_call_results.js",
   "src/65_raw_days.js",
+  "src/66_cameras.js",
   "src/70_inventory_aging.js",
   "src/71_agents.js",
   "src/72_scan.js",

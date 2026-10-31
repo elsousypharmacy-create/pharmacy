@@ -3777,7 +3777,7 @@ function loadCustVisits(tries){
   tries = tries || 0;
   /* آخر حساب محفوظ على الموبايل (لنفس اليوم) بيظهر فورًا، والجديد بيتجاب ورا */
   if (!CUST_VIS && !tries) try { var sv = JSON.parse(localStorage.getItem('custVis') || 'null');
-    if (sv && sv.day === cairoNow().date && sv.d && sv.d.days === CUST_PER){ CUST_VIS = sv.d; if (custOnTab() && CUST.list.length) drawCustomers(CUST.list, document.getElementById('p-cust')); } } catch (e) {}
+    if (sv && sv.day === cairoNow().date && sv.d && sv.d.days === CUST_PER){ CUST_VIS = sv.d; CUST_VIS._fresh = false; if (custOnTab() && CUST.list.length) drawCustomers(CUST.list, document.getElementById('p-cust')); } } catch (e) {}
   if (CUST_VIS && CUST_VIS._fresh) return;
   CUST_VIS_LOADING = true;
   api('getCustomerVisits', { days: CUST_PER }).then(function(d){

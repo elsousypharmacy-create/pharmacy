@@ -2064,6 +2064,7 @@ function drawHome(b, kpi, isOld){
     /* متوسط الفاتورة = إجمالي البيع ÷ عدد الفواتير (قبل المرتجعات) — نفس حساب صفحة الأداء */
     var grossSum = emps.reduce(function(s, e){ return s + (e.sales || 0); }, 0);
     avgInv = tot.inv ? Math.round((grossSum || salesT) / tot.inv) : 0;
+    var retCnt = emps.reduce(function(s, e){ return s + (e.returns || 0); }, 0), retVal = emps.reduce(function(s, e){ return s + (e.returns_val || 0); }, 0);
 
     /* ═══ الرئيسية الجديدة: هدف فوق، مهام، آخر 14 يوم، الفريق ═══ */
     var gS = goalOf('daily_sales', 10000), gV = goalOf('daily_visits', 150);
@@ -2103,10 +2104,11 @@ function drawHome(b, kpi, isOld){
       '<div class="h-main">' + ring + '<div class="h-num"><small>صافي المبيعات</small><b>' + ltr(num(salesT)) + '</b>' +
         '<u>' + (hit ? '🎯 عدّينا الهدف ' + ltr(num(gS)) : 'فاضل ' + ltr(num(left)) + ' على ' + ltr(num(gS))) + '</u>' +
         '<div id="homeCmp" class="h-cmp"></div></div></div>' + paceLine +
-      '<div class="h-minis">' +
+      '<div class="h-minis" style="grid-template-columns:repeat(2,1fr)">' +
         mini('الزيارات', '<span id="homeVisits">' + (visits == null ? '—' : ltr(num(visits))) + '</span> <em>/ ' + ltr(num(gV)) + '</em>', '<span id="homeVisitsBar">' + (visits == null ? vBar(0) : vBar(visits)) + '</span>') +
         mini('الربح', ltr(num(profitT)), salesT > 0 ? 'هامش ' + ltr(pct(profitT, salesT) + '%') : '') +
         ((isStaleDay && !kpi._yesterday) ? mini('أول فاتورة', '—', 'هتصفّر العداد') : mini('متوسط الفاتورة', ltr(num(avgInv)), ltr(num(tot.inv)) + ' فاتورة')) +
+        mini('المرتجع', ltr(num(retVal)) + ' ' + tr('egp'), ltr(num(retCnt)) + ' مرتجع' + (salesT > 0 && retVal > 0 ? ' · ' + ltr(pct(retVal, salesT + retVal) + '%') : '')) +
       '</div></div>' +
       '<div class="card h-hero h-slide" id="heroMonth">' + (HOME_MONTH ? monthSlide(HOME_MONTH) : '<div class="state"><div class="spin"></div></div>') + '</div>' +
       '</div><div class="h-dots" id="heroDots"><i class="on"></i><i></i></div>';

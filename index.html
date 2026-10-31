@@ -1110,7 +1110,11 @@ function task(tone, title, sub, count, jump){
 }
 /* رسم آخر 14 يوم: عمود لكل يوم + خط الهدف */
 /* ═══ سلايد «الشهر ده» جنب النهاردة ═══ */
-var HOME_MONTH = (function(){ try { return JSON.parse(localStorage.getItem('homeMonth') || 'null'); } catch (e) { return null; } })();
+var HOME_MONTH = (function(){
+  /* النسخة المحفوظة تتعرض بس لو لنفس الفترة (أول الشهر لحد امبارح) */
+  try { var h = JSON.parse(localStorage.getItem('homeMonth') || 'null'); var y = isoAdd(cairoNow().date, -1);
+    return h && h.r && h.r.to === y && h.m && h.m.to === y ? h : null; } catch (e) { return null; }
+})();
 /* فترة السلايد: لحد امبارح دايمًا (النهاردة لسه مكملش فبيبوّظ المتوسط) */
 var HOME_MR = { key: 'month' };
 function homeRange(){

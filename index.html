@@ -2137,6 +2137,7 @@ function drawHome(b, kpi, isOld){
     var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
     html += '<div class="card"><div class="card-head"><div><h3>الكاميرات</h3></div></div>' +
       '<div class="task" id="camSnapBtn" style="--tone:var(--brand)" onclick="camSnapNow()" role="button" tabindex="0"><span class="dot"></span><div class="task-m"><b>صوّر الكاميرات دلوقتي</b><small>5 كاميرات · بتتحفظ على الدرايف</small></div><span class="task-n">📸</span><span class="task-a">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></div>' +
+      '<div class="task" style="--tone:var(--ink-3)" onclick="homeSrvUp()" role="button" tabindex="0"><span class="dot"></span><div class="task-m"><b>حدّث السيرفر</b><small>دوسها لو حاجة جديدة مش ظاهرة</small></div><span class="task-n">🔄</span><span class="task-a">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></div>' +
       '<div id="homeCamSnap"></div></div>';
     html += '<div class="card"><div class="card-head"><div><h3>مطلوب النهاردة</h3></div></div>' +
       '<div id="homeMore">' + (HOME_MORE || '') + '</div>' + acts.join('') +
@@ -5159,6 +5160,14 @@ function camSnapNow(){
       b.innerHTML = '<div class="cam-chips">' + chips + '</div><div class="cam-note">اتحفظ ' + d.saved + '/5 الساعة ' + esc(d.time) + ' · اكتبلي «جهّز التقرير» في الشات</div>';
     } else b.innerHTML = '<div class="state err" style="font-size:13px">❌ ' + esc((d && d.error) || 'فشل') + '</div>';
   }).catch(function(){ done(); b.innerHTML = '<div class="cam-note">السيرفر محتاج تحديث الأول</div><button class="btn btn-primary" style="margin-top:8px" onclick="camHomeUpdate()">🔄 حدّث السيرفر وجرّب تاني</button>'; });
+}
+function homeSrvUp(){
+  var b = document.getElementById('homeCamSnap'); if (!b) return;
+  b.innerHTML = '<div class="cam-note"><div class="spin" style="display:inline-block;vertical-align:middle;margin-inline-end:6px"></div>بيحدّث السيرفر… حوالي نص دقيقة</div>';
+  api('serverUpdate').then(function(d){
+    if (d && d.pinError){ b.innerHTML = ''; return; }
+    b.innerHTML = d && d.ok ? '<div class="cam-note" style="color:var(--ok)">✅ السيرفر اتحدّث — نسخة ' + esc(d.version) + '</div>' : '<div class="state err" style="font-size:13px">❌ ' + esc((d && d.error) || tr('failed')) + '</div>';
+  }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
 function camHomeUpdate(){
   var b = document.getElementById('homeCamSnap'); b.innerHTML = '<div class="cam-note"><div class="spin" style="display:inline-block;vertical-align:middle;margin-inline-end:6px"></div>بيحدّث السيرفر… حوالي نص دقيقة</div>';

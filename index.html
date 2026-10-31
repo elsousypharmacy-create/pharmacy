@@ -170,6 +170,10 @@ body.light .m-custom input{color-scheme:light}
 .m-custom button{border:0;background:var(--brand);color:#fff;font:inherit;font-weight:700;font-size:12.5px;padding:7px 12px;border-radius:10px;cursor:pointer}
 .m-chips button.on{background:var(--ink);color:var(--bg)}
 @media (min-width:900px){.h-slides{margin:0;padding:0}}
+.c-goal{margin-top:12px}
+.c-goal-t{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-2);margin-bottom:5px}
+.c-goal-b{height:7px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.c-goal-b i{display:block;height:100%;border-radius:99px}
 .h-day{display:flex;flex-direction:column;gap:2px;margin-top:8px;padding:10px 12px;border-radius:var(--r2);background:var(--surface-2);font-size:12.5px;color:var(--ink-2)}
 .h-day > b{color:var(--ink);font-size:13.5px}.h-day span b{color:var(--ink)}
 .h-share{display:block;height:4px;border-radius:99px;background:var(--surface-2);margin-top:6px;overflow:hidden;direction:ltr}
@@ -3916,7 +3920,15 @@ function drawCustomers(res, box){
       { value: visReady ? num(G.active.length) : '…', label: 'اشتروا آخر ' + (CUST_PER === 30 ? 'شهر' : CUST_PER + ' يوم'),
         note: visReady ? pct(G.active.length, list.length) + '%' : null, sub: visReady ? 'من المسجلين' : null },
       { value: visReady ? num(repeat) : '…', label: 'رجعوا تاني', note: visReady ? pct(repeat, G.active.length) + '%' : null, sub: visReady ? 'جم مرتين+' : null }
-    ]);
+    ], visReady ? (function(){
+      /* الهدف: 40% في الشهر، 65% في 3 شهور (المزمن + المكالمات + التسجيل) */
+      var tgt = CUST_PER <= 30 ? goalOf('active_30', 40) : CUST_PER <= 90 ? goalOf('active_90', 65) : 75;
+      var cur = pct(G.active.length, list.length), need = Math.max(0, Math.ceil(list.length * tgt / 100) - G.active.length);
+      var w = Math.min(100, Math.round(cur / tgt * 100));
+      return '<div class="c-goal"><div class="c-goal-t"><span>هدف النشطين ' + ltr(tgt + '%') + '</span><span>' +
+        (need ? 'ناقص ' + ltr(num(need)) + ' عميل' : '🎯 وصلنا') + '</span></div>' +
+        '<div class="c-goal-b"><i style="width:' + w + '%;background:var(--' + (cur >= tgt ? 'ok' : 'warn') + ')"></i></div></div>';
+    })() : '');
 
     html += secBtn('calls', 'warn', 'متابعة المكالمات', 'القايمة · النتايج والملاحظات',
       CUST.calls ? ltr(num(CUST.calls.left)) : '…', 'لسه', 'setCustSec');

@@ -3836,6 +3836,9 @@ function custDays(c){
     var d = Math.round((Date.parse(cairoNow().date + 'T00:00:00Z') - Date.parse(ld + 'T00:00:00Z')) / 86400000);
     if (!isNaN(d) && d >= 0) return d;
   }
+  /* الزيارات اتحسبت من فواتير نظام البيع والعميل مش فيها = مجاش في الفترة.
+     خانة days_since في شيت الـ CRM بايظة (529 عميل مكتوب عندهم 0) فمش بنعتمد عليها. */
+  if (CUST_VIS && CUST_VIS.customers && !CUST_VIS.missingDays) return null;
   var v = c.days_since;
   if (v === null || v === undefined || v === '') return null;
   v = parseFloat(v);
@@ -3902,11 +3905,13 @@ function drawCustomers(res, box){
   /* ── الشاشة الأولى ── */
   if (CUST.sec === 'active') html += custPerBar();
   if (CUST.sec === 'home'){
+    var visReady = CUST_VIS && CUST_VIS.customers && !CUST_VIS.missingDays;
+    var repeat = visReady ? G.active.filter(function(c){ var v = custVis(c); return v && v.v >= 2; }).length : null;
     html += vitals(tr('customers'), null, [
-      { value: num(list.length), label: tr('customers'), tone: 'brand' },
-      { value: CUST.calls ? num(CUST.calls.left) : '…', label: 'محتاج مكالمة', tone: 'warn' },
-      { value: dash && dash.return_rate !== undefined ? (dash.return_rate + '%') : '—',
-        label: tr('returnRate'), tone: 'brand', note: null, sub: tr('thisMonth') }
+      { value: num(list.length), label: 'مسجلين' },
+      { value: visReady ? num(G.active.length) : '…', label: 'اشتروا آخر ' + (CUST_PER === 30 ? 'شهر' : CUST_PER + ' يوم'),
+        note: visReady ? pct(G.active.length, list.length) + '%' : null, sub: visReady ? 'من المسجلين' : null },
+      { value: visReady ? num(repeat) : '…', label: 'رجعوا تاني', note: visReady ? pct(repeat, G.active.length) + '%' : null, sub: visReady ? 'جم مرتين+' : null }
     ]);
 
     html += secBtn('calls', 'warn', 'متابعة المكالمات', 'القايمة · النتايج والملاحظات',
@@ -3915,7 +3920,7 @@ function drawCustomers(res, box){
     var actAvg = G.active.length && CUST_VIS ? Math.round(G.active.reduce(function(a, c){ return a + (custAvg(c) || 0); }, 0) / G.active.length * 10) / 10 : null;
     html += secBtn('active', 'ok', 'نشطين', 'زاروا خلال ' + perName +
       (actAvg !== null ? ' · متوسط ' + ltr(actAvg) + ' زيارة/شهر' : ''),
-      ltr(num(G.active.length)), tr('customers'), 'setCustSec');
+      visReady ? ltr(num(G.active.length)) : '…', tr('customers'), 'setCustSec');
     html += secBtn('new', 'ok', tr('newSec'), tr('newSub'),
       dash && dash.new_customers !== undefined ? ltr(num(dash.new_customers)) : '…', tr('customers'), 'setCustSec');
     html += secBtn('bot', CHATS && CHATS.some(function(c){ return c.pending; }) ? 'warn' : 'ok', 'محادثات البوت', 'واتساب وتليجرام', '', '', 'goBot');

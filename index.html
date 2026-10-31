@@ -62,12 +62,15 @@ button{font-family:inherit}
   display:flex;align-items:center;justify-content:space-between;gap:var(--s3);
 }
 .brand{display:flex;align-items:center;gap:var(--s2);min-width:0}
+.brand > div{min-width:0}
 .mark{width:32px;height:32px;border-radius:50%;flex-shrink:0;background:#fff;padding:3px;
   object-fit:contain;box-shadow:0 0 0 1px var(--line)}
-.brand h1{font-size:var(--t-title);font-weight:700;letter-spacing:-.3px;white-space:nowrap}
+.brand h1{font-size:var(--t-title);font-weight:700;letter-spacing:-.3px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
 .brand p{font-size:var(--t-micro);color:var(--ink-3);margin-top:1px;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .tools{display:flex;gap:var(--s2);flex-shrink:0}
+#sync.old{color:var(--warn)}
 .bot-pause{display:none;background:var(--bad);color:#fff;text-align:center;font-weight:800;
   padding:12px 14px;font-size:16px;line-height:1.45;position:sticky;top:0;z-index:85}
 .bot-pause.on{display:block}
@@ -94,14 +97,19 @@ button{font-family:inherit}
 .sec-head{display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s4)}
 .sec-head h3{flex:1;font-size:16px;font-weight:700}
 
-.ibtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);
+.ibtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);
   background:var(--surface);color:var(--ink-2);display:grid;place-items:center;
-  cursor:pointer;font-size:13px;font-weight:700}
+  cursor:pointer;font-size:16px;font-weight:700}
+/* الشاشات الضيقة: ٤ زراير ٤٤px لازم يسيبوا مكان لاسم الصيدلية */
+@media (max-width:400px){
+  .top{padding:var(--s3)}
+  .tools{gap:6px}
+}
 
 /* ── تبويبات القسم ── */
 .subtabs{display:flex;gap:6px;overflow-x:auto;padding:10px var(--s4);
   border-bottom:1px solid var(--line);background:var(--bg);
-  position:sticky;top:59px;z-index:70;scrollbar-width:none}
+  position:sticky;top:69px;z-index:70;scrollbar-width:none}
 .subtabs::-webkit-scrollbar{display:none}
 .subtabs.hide{display:none}
 .subtabs button{flex-shrink:0;background:var(--surface-2);border:0;color:var(--ink-2);
@@ -209,6 +217,8 @@ button{font-family:inherit}
 @keyframes sp{to{transform:rotate(360deg)}}
 .state.err{color:var(--bad)}
 .state u{cursor:pointer}
+.state .retry{display:block;margin:var(--s3) auto 0;min-height:44px;padding:10px 22px;border-radius:var(--r2);
+  border:0;background:var(--brand);color:#fff;font-size:var(--t-body);font-weight:700;cursor:pointer}
 
 /* ── شريط الأقسام ── */
 .secnav{position:fixed;bottom:0;left:0;right:0;z-index:90;
@@ -217,10 +227,13 @@ button{font-family:inherit}
   border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);
   padding:6px 2px calc(6px + env(safe-area-inset-bottom))}
 .secnav button{background:0;border:0;cursor:pointer;display:flex;flex-direction:column;
-  align-items:center;gap:3px;color:var(--ink-3);font-size:10px;font-weight:600;padding:4px 0}
+  align-items:center;gap:3px;color:var(--ink-3);font-size:12px;font-weight:600;padding:6px 0 4px;
+  border-radius:var(--r2);position:relative}
 .secnav button svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9;
   stroke-linecap:round;stroke-linejoin:round}
-.secnav button.on{color:var(--brand)}
+.secnav button.on{color:var(--brand);font-weight:800;background:color-mix(in srgb,var(--brand) 12%,transparent)}
+.secnav button.on::before{content:"";position:absolute;top:-6px;left:25%;right:25%;height:3px;
+  border-radius:0 0 3px 3px;background:var(--brand)}
 .nbadge{position:absolute;top:0;left:calc(50% + 6px);min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;
   border-radius:99px;background:var(--bad);color:#fff;font-size:10px;font-weight:700;line-height:17px;text-align:center}
 
@@ -313,6 +326,9 @@ details.setg[open]{padding-bottom:var(--s3)}
 .sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s3)}
 .sheet-head b{font-size:var(--t-title);font-weight:700}
 .sheet-head span{font-size:var(--t-small);color:var(--ink-2);cursor:pointer}
+.sheet-close{position:sticky;bottom:0;display:block;width:100%;min-height:48px;margin-top:var(--s3);
+  border:1px solid var(--line);border-radius:var(--r2);background:var(--surface-2);color:var(--ink);
+  font-size:15px;font-weight:700;cursor:pointer}
 
 /* ── التوست ── */
 .toast{position:fixed;bottom:92px;left:50%;transform:translateX(-50%) translateY(20px);
@@ -336,7 +352,7 @@ details.setg[open]{padding-bottom:var(--s3)}
   <div class="tools">
     <button class="ibtn" id="langBtn" onclick="setLang(LANG==='ar'?'en':'ar')">EN</button>
     <button class="ibtn" onclick="toggleTheme()">◐</button>
-    <button class="ibtn" onclick="refreshNow()" title="حدّث دلوقتي">⟳</button>
+    <button class="ibtn" id="refreshBtn" onclick="refreshNow()" title="حدّث دلوقتي">⟳</button>
     <button class="ibtn" onclick="openSheet('settings')" title="الإعدادات" aria-label="الإعدادات">⚙️</button>
   </div>
 </header>
@@ -354,8 +370,9 @@ details.setg[open]{padding-bottom:var(--s3)}
 
 <div class="sheet" id="sheet" onclick="if(event.target===this)closeSheet()">
   <div class="sheet-in">
-    <div class="sheet-head"><b id="sheet-title"></b><span onclick="closeSheet()" data-t="close">إقفال</span></div>
+    <div class="sheet-head"><b id="sheet-title"></b></div>
     <div id="sheet-body"></div>
+    <button class="sheet-close" onclick="closeSheet()" data-t="close">إقفال</button>
   </div>
 </div>
 
@@ -635,6 +652,7 @@ var T = {
   exportPSub:['نسخة جاهزة للطباعة','Ready to print'],
   couponSub:['خصم للعملاء اللي بعدوا','Discount for lapsed customers'],
   pointsSub:['اكتب رقم وشوف رصيده','Enter a number to see the balance'], turnover:['نسبة الراكد','Dead ratio'], cached:['محفوظ','cached'], refreshing:['بيحدّث…','refreshing…'],
+  refreshOk:['اتحدّث','Updated'], refreshFail:['التحديث فشل','Refresh failed'],
   refresh:['حدّث','Refresh'], target:['الهدف','Target'], checkStaff:['شوف الموظفين','See staff'],
   belowTarget:['تحت الهدف','Below target'], weakest:['أضعف مؤشر','Weakest metric'],
   margin:['هامش','margin'],
@@ -771,8 +789,27 @@ function toggleTheme(){
   var meta = document.querySelector('meta[name=theme-color]');
   if (meta) meta.setAttribute('content', on ? '#F4F5F7' : '#0A0B0D');
 }
+/* وقت القاهرة — الصيدلية في مصر حتى لو الموبايل في بلد تاني */
+function cairoNow(){
+  var p = {};
+  try{
+    new Intl.DateTimeFormat('en-US', { timeZone: 'Africa/Cairo', hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+      .formatToParts(new Date()).forEach(function(x){ p[x.type] = x.value; });
+  }catch(e){
+    var n = new Date();
+    p = { year: '' + n.getFullYear(), month: ('0' + (n.getMonth() + 1)).slice(-2), day: ('0' + n.getDate()).slice(-2),
+          hour: '' + n.getHours(), minute: '' + n.getMinutes() };
+  }
+  return { date: p.year + '-' + p.month + '-' + p.day, hour: +p.hour % 24, minute: +p.minute };
+}
+/* نفس تاريخ القاهرة بعد عدد أيام (YYYY-MM-DD) */
+function cairoDate(addDays){
+  return new Date(Date.parse(cairoNow().date + 'T00:00:00Z') + (addDays || 0) * 86400000).toISOString().slice(0, 10);
+}
 function markSync(){
   var el = document.getElementById('sync');
+  if (el) el.classList.remove('old');
   if (el) el.textContent = new Date().toLocaleTimeString(LANG === 'ar' ? 'ar-EG' : 'en-US', {hour:'2-digit',minute:'2-digit'});
 }
 
@@ -851,7 +888,7 @@ function post(body){
 function busy(box){ box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>'; }
 function oops(box, again){
   box.innerHTML = '<div class="state err">' + tr('failed') +
-    ' — <u onclick="' + again + '">' + tr('retry') + '</u></div>';
+    ' <button class="retry" onclick="' + again + '">' + tr('retry') + '</button></div>';
 }
 
 /* لبنات جاهزة — كل الصفحات بتستخدمها فمفيش شكلين لنفس الحاجة */
@@ -995,7 +1032,7 @@ function askDates(key, redraw){
   var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
   document.getElementById('sheet').classList.add('on');
   t.textContent = tr('rCustom');
-  var today = new Date().toISOString().slice(0,10);
+  var today = cairoNow().date;
   b.innerHTML =
     '<div class="group-title">' + tr('from') + '</div>' +
     '<input id="dFrom" type="date" value="' + today + '" style="width:100%;padding:11px;border-radius:12px;' +
@@ -1286,7 +1323,7 @@ function render(sec, tab){
 /* ─────── 💬 محادثات البوت: كل اللي العملاء قالوه والبوت رد بيه، وترد من هنا ─────── */
 var CHATS = null, CHAT_Q = '', CHAT_OPEN = null;
 function chatWhen(t){
-  t = String(t || ''); var d = new Date(), today = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  t = String(t || ''); var today = cairoNow().date;
   return t.slice(0, 10) === today ? t.slice(11, 16) : t.slice(8, 10) + '/' + t.slice(5, 7) + ' ' + t.slice(11, 16);
 }
 function chatName(c){ return c.name || c.phone || ('عميل ' + String(c.id).slice(-4)); }
@@ -1295,7 +1332,7 @@ function pgChats(){
   var box = document.getElementById('p-bot');
   if (!CHATS) busy(box); else drawChats();
   api('getBotChats').then(function(d){
-    if (!d || !d.ok){ if (!CHATS) box.innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + ' — <u onclick="pgChats()">' + tr('retry') + '</u></div>'; return; }
+    if (!d || !d.ok){ if (!CHATS) box.innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + ' <button class="retry" onclick="pgChats()">' + tr('retry') + '</button></div>'; return; }
     CHATS = d.chats || [];
     chatBadge();
     if (CUR === 'bot' && !CHAT_OPEN) drawChats();
@@ -1335,7 +1372,7 @@ function openChat(id){
 function loadChat(id){
   return api('getBotChat', { id: id }).then(function(d){
     if (CHAT_OPEN !== id || CUR !== 'bot') return;
-    if (!d || !d.ok){ document.getElementById('p-bot').innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + ' — <u onclick="openChat(\'' + id + '\')">' + tr('retry') + '</u></div>'; return; }
+    if (!d || !d.ok){ document.getElementById('p-bot').innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + ' <button class="retry" onclick="openChat(\'' + id + '\')">' + tr('retry') + '</button></div>'; return; }
     drawChat(d);
   }).catch(function(){ if (CHAT_OPEN === id) oops(document.getElementById('p-bot'), 'openChat(\'' + id + '\')'); });
 }
@@ -1528,6 +1565,7 @@ function pgHome(){
   loadHome(true).catch(function(e){
     logErr(e);
     if (!seed) oops(box, "pgHome()");
+    else { var el = document.getElementById('sync'); if (el){ el.textContent = tr('cached'); el.classList.add('old'); } }
   });
 
   startAutoRefresh();
@@ -1577,7 +1615,7 @@ function drawHome(b, kpi, isOld){
 
     var salesT = d.sales_today || 0, salesY = d.sales_yesterday || 0;
     /* قبل ٦ المسا المقارنة بأمس مضلّلة (اليوم لسه مكملش)، فنعرض التقدّم بدل الفرق */
-    var lateDay = new Date().getHours() >= 18;
+    var lateDay = cairoNow().hour >= 18;
     var delta = salesY > 0 ? Math.round((salesT - salesY) / salesY * 100) : 0;
     var progress = salesY > 0 ? Math.round(salesT / salesY * 100) : 0;
     var salesNote = lateDay
@@ -1587,8 +1625,10 @@ function drawHome(b, kpi, isOld){
 
     /* ── ١) المؤشرات ── */
     var html = '';
-    markSync();
-    if (isOld) toast(tr('cached') + ' · ' + tr('refreshing'));
+    if (isOld){
+      var syncEl = document.getElementById('sync');
+      if (syncEl){ syncEl.textContent = tr('cached') + ' · ' + tr('refreshing'); syncEl.classList.add('old'); }
+    }
 
 
 
@@ -1612,11 +1652,11 @@ function drawHome(b, kpi, isOld){
        والمبيعات مش صفر → الرقم ده بتاع يوم فات. */
     var upd = String(d.updated_at || '');
     var updDay = (upd.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
-    var todayStr = new Date().toLocaleDateString('en-CA');
+    var todayStr = cairoNow().date;
     var isStaleDay = (updDay && updDay < todayStr) || (tot.inv === 0 && salesT > 0);
 
     html += vitals(isStaleDay ? tr('yesterdayNums') : tr('today'),
-      new Date().toLocaleDateString(LANG === 'ar' ? 'ar-EG' : 'en-GB',{day:'numeric',month:'short'}), [
+      new Date().toLocaleDateString(LANG === 'ar' ? 'ar-EG' : 'en-GB',{day:'numeric',month:'short',timeZone:'Africa/Cairo'}), [
       { value: num(salesT), label: tr('salesToday'),
         tone: isStaleDay ? 'slate' : salesNote.tone,
         note: isStaleDay ? null : salesNote.num, sub: isStaleDay ? null : salesNote.word },
@@ -1992,12 +2032,29 @@ function toggleBucket(k){ DEBT.open[k] = !DEBT.open[k]; drawDebts(); }
 function refreshNow(){
   var el = document.getElementById('sync');
   if (el) el.textContent = '⏳';
-  apiFresh('refreshNow', {}).then(function(){
+  apiFresh('refreshNow', {}).then(function(d){
+    if (!d || d.ok === false || d.error) throw new Error((d && d.error) || 'refreshNow');
     ['debts','sales','getShortages','getProfitLoss','getExpensesData'].forEach(function(k){
       try{ localStorage.removeItem(cacheKey(k, {})); }catch(e){}
     });
+    refreshMark(true);
     render(CUR, TAB);
-  }).catch(function(e){ logErr(e); render(CUR, TAB); });
+  }).catch(function(e){
+    logErr(e);
+    if (el){ el.textContent = tr('cached'); el.classList.add('old'); }
+    refreshMark(false);
+    render(CUR, TAB);
+  });
+}
+/* ✓ أو ⚠ على زرار ⟳ ثانيتين وبعدين يرجع */
+function refreshMark(ok){
+  var b = document.getElementById('refreshBtn');
+  if (!b) return;
+  clearTimeout(b._t);
+  b.textContent = ok ? '✓' : '⚠';
+  b.style.color = ok ? 'var(--ok)' : 'var(--warn)';
+  b.title = ok ? tr('refreshOk') : tr('refreshFail');
+  b._t = setTimeout(function(){ b.textContent = '⟳'; b.style.color = ''; b.title = 'حدّث دلوقتي'; }, 2000);
 }
 
 function pgDebts(){
@@ -2482,7 +2539,7 @@ function invOrderHtml(){
 }
 
 function orderText(co, items){
-  var L = [tr('orderTitle') + ' — ' + co, new Date().toLocaleDateString('en-CA'), ''];
+  var L = [tr('orderTitle') + ' — ' + co, cairoNow().date, ''];
   items.forEach(function(it){ L.push('• ' + it.name + ' × ' + it.qty); });
   return L.join('\n');
 }
@@ -3168,7 +3225,7 @@ function couponSheet(){
   var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
   document.getElementById('sheet').classList.add('on');
   t.textContent = tr('sendCoupon');
-  var d30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+  var d30 = cairoDate(30);
   b.innerHTML =
     '<div class="group-title">' + tr('couponText') + '</div>' +
     '<textarea id="cpMsg" rows="3" style="width:100%;padding:12px;border-radius:12px;' +
@@ -3279,7 +3336,7 @@ function pgCustomers(){
 
 /* أرقام الاسترجاع من السيرفر — بتوصل بعد القايمة، وبنعيد الرسم لما توصل */
 function loadCustDash(){
-  var today = new Date().toLocaleDateString('en-CA'), from = today.slice(0, 8) + '01';
+  var today = cairoNow().date, from = today.slice(0, 8) + '01';
   api('getDashboard', { from: from, to: today }).then(function(d){
     if (d && d.range){
       CUST.dash = d;
@@ -3349,8 +3406,7 @@ function custLastDate(c){
 function custDays(c){
   var ld = custLastDate(c);
   if (ld){
-    var t = new Date(); t.setHours(0, 0, 0, 0);
-    var d = Math.round((t - new Date(ld + 'T00:00:00')) / 86400000);
+    var d = Math.round((Date.parse(cairoNow().date + 'T00:00:00Z') - Date.parse(ld + 'T00:00:00Z')) / 86400000);
     if (!isNaN(d) && d >= 0) return d;
   }
   var v = c.days_since;
@@ -3727,7 +3783,7 @@ function loadCustCalls(){
 }
 function callsHtml(d){
   if (!d) return CUST.callsErr
-    ? '<div class="state err">تعذر تحميل المتابعة — <u onclick="CUST.callsErr=false;loadCustCalls();drawCustomers(CUST.list,document.getElementById(\'p-cust\'))">حاول تاني</u></div>'
+    ? '<div class="state err">تعذر تحميل المتابعة <button class="retry" onclick="CUST.callsErr=false;loadCustCalls();drawCustomers(CUST.list,document.getElementById(\'p-cust\'))">' + tr('retry') + '</button></div>'
     : '<div class="state"><div class="spin"></div></div>';
   var ST = { done:'اتكلمنا', noanswer:'مردش', later:'موعد تاني', wrong:'رقم غلط', blocked:'محظور' };
   var TONE = { done:'ok', noanswer:'warn', later:'brand', wrong:'bad', blocked:'bad' };

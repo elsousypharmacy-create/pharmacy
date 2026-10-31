@@ -331,7 +331,12 @@ button{font-family:inherit}
 .tile i{font-style:normal;font-size:24px;line-height:1}
 /* ── أقسام الإعدادات ── */
 details.setg{border:1px solid var(--line);border-radius:var(--r2);margin-bottom:var(--s2);padding:0 var(--s3)}
-details.setg>summary{cursor:pointer;padding:14px 0;font-weight:650;list-style:none;display:flex;justify-content:space-between}
+details.setg>summary{cursor:pointer;padding:14px 0;font-weight:650;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px}
+details.setg>summary b{display:block;font-size:15px}
+details.setg>summary small{display:block;font-size:12px;color:var(--ink-3);font-weight:500;margin-top:2px}
+.set-status{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.set-line{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px 0 12px}
+.set-line b{display:block;font-size:15px}.set-line small{display:block;font-size:12px;color:var(--ink-2)}
 details.setg>summary::-webkit-details-marker{display:none}
 details.setg>summary::after{content:'▾';color:var(--ink-3)}
 details.setg[open]>summary::after{content:'▴'}
@@ -4017,58 +4022,58 @@ function openSheet(kind){
   }
   if (kind === 'settings'){
     t.textContent = tr('settings');
+    var grp = function(icon, title, sub, body, open){
+      return '<details class="setg"' + (open ? ' open' : '') + '><summary><span><b>' + icon + ' ' + title + '</b><small>' + sub + '</small></span></summary>' + body + '</details>';
+    };
     b.innerHTML =
-      '<details class="setg" open><summary>🛵 التشغيل — التوصيل وقفل اللوحة</summary>' +
-        '<div id="botset"><div class="state"><div class="spin"></div></div></div>' +
-      '</details>' +
-      '<details class="setg"><summary>🤖 البوت والذكاء الاصطناعي</summary>' +
-        '<button class="btn btn-quiet" onclick="closeSheet();go(\'bot\')">💬 محادثات البوت</button>' +
+      '<div id="setStatus" class="set-status"></div>' +
+      grp('🤖', 'بوت الواتساب', 'تشغيل/إيقاف · اختبار · الموديل',
+        '<div id="botpause"><div class="state"><div class="spin"></div></div></div>' +
+        '<button class="btn btn-quiet" onclick="closeSheet();go(\'bot\')">💬 افتح المحادثات</button>' +
         '<div class="btn-row"><button class="btn btn-quiet" onclick="runAiTest()">اختبر الرد</button>' +
         '<button class="btn btn-quiet" onclick="runBotStatus()">سرعة البوت</button></div>' +
         '<div id="aibox"></div>' +
-        '<div class="group-title">🟢 واتساب</div>' +
-        '<button class="btn btn-quiet" onclick="loadWa()">اعرض بيانات ربط واتساب</button><div id="wabox"></div>' +
-        '<div class="group-title">الموديل — اختار اللي على مزاجك</div>' +
-        '<div id="aiuse"></div>' +
+        '<div class="group-title">الموديل</div><div id="aiuse"></div>' +
         '<div id="aicfg"><div class="state"><div class="spin"></div></div></div>' +
-      '</details>' +
-      '<details class="setg"><summary>🛠️ الصيانة</summary>' +
-        '<div class="group-title">تنبيهات البوت</div>' +
-        '<button class="btn btn-primary" onclick="runEnsureTriggers()">تفعيل التنبيهات التلقائية</button>' +
-        '<button class="btn btn-quiet" onclick="runEnsureTriggers(\'sendWeeklyDebtReminders\')">تفعيل تذكير الديون (بيبعت SMS كل سبت)</button>' +
-        '<button class="btn btn-quiet" onclick="runEnsureTriggers(\'checkExpiredCoupons\')">تفعيل فحص الكوبونات (كل يوم ٩)</button>' +
-        '<div id="trigbox"></div>' +
-        '<div class="group-title">🔄 تحديث السيرفر</div>' +
+        '<div class="group-title">ربط واتساب</div>' +
+        '<button class="btn btn-quiet" onclick="loadWa()">اعرض بيانات الربط</button><div id="wabox"></div>', true) +
+      grp('🛵', 'التوصيل', 'الرسوم · المناطق · المواعيد · المسافة',
+        '<div id="botset"><div class="state"><div class="spin"></div></div></div>') +
+      grp('🔒', 'قفل اللوحة', 'الرقم السري للمبيعات والعملاء والديون',
+        '<div id="botlock"><div class="state"><div class="spin"></div></div></div>') +
+      grp('🔄', 'السيرفر والتنبيهات', 'حدّث السيرفر · فعّل التنبيهات · تحديث البيانات',
+        '<div class="group-title">تحديث السيرفر</div>' +
         '<div id="srvup"><div class="state"><div class="spin"></div></div></div>' +
-        '<div class="group-title">التحديث التلقائي للبيانات</div>' +
+        '<div class="group-title">التنبيهات التلقائية</div>' +
+        '<button class="btn btn-primary" onclick="runEnsureTriggers()">فعّل التنبيهات</button>' +
+        '<div id="trigbox"></div>' +
+        '<div class="group-title">تحديث البيانات كل ساعة</div>' +
         '<div id="snapbox" class="state"><div class="spin"></div></div>' +
         '<div class="btn-row"><button class="btn btn-quiet" onclick="snap(\'snapshotRefresh\')">' + tr('refreshNow') + '</button>' +
-        '<button class="btn btn-primary" id="snapEnable" onclick="snap(\'snapshotEnable\')">' + tr('enableAuto') + '</button></div>' +
-        '<button class="btn btn-quiet" onclick="runDiag()">' + tr('startCheck') + '</button>' +
-        '<div id="diagbox"></div>' +
-        '<div class="group-title">' + tr('snapSpeed') + '</div>' +
-        '<button class="btn btn-quiet" onclick="runSnapTime()">' + tr('measureSnap') + '</button>' +
-        '<div id="snaptime"></div>' +
-        '<div class="group-title">' + tr('expFillTitle') + '</div>' +
-        '<button class="btn btn-quiet" onclick="runExpBackfill()">' + tr('expFillBtn') + '</button>' +
-        '<div id="expfill"></div>' +
-        '<div class="group-title">فحص النسخة الاحتياطية (المصروفات)</div>' +
-        '<button class="btn btn-quiet" onclick="runBackupProbe()">افحص</button>' +
-        '<div id="bkbox"></div>' +
-        '<div class="group-title">تنظيف مساحة Drive</div>' +
-        '<button class="btn btn-quiet" onclick="runClean(0)">احسب هيمسح كام</button>' +
-        '<div id="cleanbox"></div>' +
-        '<div class="group-title">' + tr('scanReady') + '</div>' +
-        '<button class="btn btn-quiet" onclick="runScanReady()">' + tr('checkScan') + '</button>' +
-        '<div id="scanbox"></div>' +
+        '<button class="btn btn-primary" id="snapEnable" onclick="snap(\'snapshotEnable\')">' + tr('enableAuto') + '</button></div>') +
+      grp('🧰', 'أدوات متقدمة', 'فحص · نسخ احتياطي · تنظيف · مفاتيح · الأخطاء',
+        '<div class="group-title">تذكيرات إضافية</div>' +
+        '<button class="btn btn-quiet" onclick="runEnsureTriggers(\'sendWeeklyDebtReminders\')">تذكير الديون (SMS كل سبت)</button>' +
+        '<button class="btn btn-quiet" onclick="runEnsureTriggers(\'checkExpiredCoupons\')">فحص الكوبونات (كل يوم 9)</button>' +
+        '<div class="group-title">فحص السيستم</div>' +
+        '<div class="btn-row"><button class="btn btn-quiet" onclick="runDiag()">' + tr('startCheck') + '</button>' +
+        '<button class="btn btn-quiet" onclick="runSnapTime()">' + tr('measureSnap') + '</button></div>' +
+        '<div id="diagbox"></div><div id="snaptime"></div>' +
+        '<div class="group-title">المصروفات</div>' +
+        '<div class="btn-row"><button class="btn btn-quiet" onclick="runExpBackfill()">' + tr('expFillBtn') + '</button>' +
+        '<button class="btn btn-quiet" onclick="runBackupProbe()">فحص النسخة الاحتياطية</button></div>' +
+        '<div id="expfill"></div><div id="bkbox"></div>' +
+        '<div class="group-title">Drive والجرد</div>' +
+        '<div class="btn-row"><button class="btn btn-quiet" onclick="runClean(0)">تنظيف مساحة Drive</button>' +
+        '<button class="btn btn-quiet" onclick="runScanReady()">' + tr('checkScan') + '</button></div>' +
+        '<div id="cleanbox"></div><div id="scanbox"></div>' +
         '<div class="group-title">مفتاح بوت طلب النواقص</div>' +
         '<button class="btn btn-quiet" onclick="showOrdersBotKey()">اعرض أو أنشئ المفتاح</button>' +
         '<div id="ordkey"></div>' +
         '<div class="group-title">' + tr('errorLog') + '</div>' +
         (ERRORS.length ? ERRORS.slice().reverse().map(function(e){
           return row(e.m, ltr(e.t));
-        }).join('') : '<div class="state">' + tr('noErrors') + '</div>') +
-      '</details>';
+        }).join('') : '<div class="state">' + tr('noErrors') + '</div>'));
     snapStatus();
     loadAiCfg();
     loadAiUsage();
@@ -4665,9 +4670,16 @@ function toggleBotPause(paused){
 }
 function drawBotSet(){
   var d = BOT_SET, box = document.getElementById('botset'); if (!box || !d) return;
+  var pb = document.getElementById('botpause');
+  if (pb) pb.innerHTML = '<div class="set-line"><span><b>البوت ' + (d.paused ? 'واقف' : 'شغّال') + '</b><small>' +
+      (d.paused ? 'الرسايل بتوصل للصيدلي بس' : 'بيرد على العملاء لوحده') + '</small></span>' +
+    '<button class="btn ' + (d.paused ? 'btn-primary' : 'btn-danger') + '" style="width:auto;margin:0;padding:10px 16px" onclick="toggleBotPause(' + (d.paused ? '0' : '1') + ')">' +
+      (d.paused ? '▶️ شغّله' : '⛔ وقّفه') + '</button></div>';
+  var ss = document.getElementById('setStatus');
+  if (ss) ss.innerHTML = badge('🤖 البوت ' + (d.paused ? 'واقف' : 'شغّال'), d.paused ? 'warn' : 'ok') + ' ' +
+    badge(d.lock ? '🔒 اللوحة مقفولة' : '🔓 اللوحة مفتوحة', d.lock ? 'ok' : 'warn') + ' ' +
+    badge(d.freeDelivery ? '🛵 توصيل مجاني' : '🛵 توصيل بفلوس', 'brand');
   box.innerHTML =
-    '<button class="btn ' + (d.paused ? 'btn-primary' : 'btn-danger') + '" style="font-size:17px;font-weight:800;padding:14px 12px" onclick="toggleBotPause(' + (d.paused ? '0' : '1') + ')">' +
-      (d.paused ? '▶️ شغّل بوت الواتساب' : '⛔ وقف بوت الواتساب') + '</button>' +
     '<small style="color:var(--ink-2)">رسوم التوصيل بالجنيه (فاضي = هتتأكد، و0 = مجاني)</small>' + aiInp('bsFee', 'مثلًا 10', 'number', d.fee) +
     '<label style="display:flex;gap:8px;align-items:center;margin:6px 0 10px"><input type="checkbox" id="bsFree"' + (d.freeDelivery ? ' checked' : '') + '> ' +
       'التوصيل مجاني (البوت يقول «التوصيل مجاني» ومش هيقول إن الرسوم هتتأكد)</label>' +
@@ -4675,6 +4687,9 @@ function drawBotSet(){
     '<textarea id="bsAreas" dir="rtl" placeholder="محلة كيل&#10;المحلة الكبرى" style="width:100%;min-height:72px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);margin-bottom:8px;font-family:inherit">' + esc(d.areas || '') + '</textarea>' +
     '<small style="color:var(--ink-2)">مواعيد العمل (البوت بيقولها لو اتسأل، وتذكير التحويل يسكت برهها لو اتقرأت)</small>' + aiInp('bsHours', 'مثلًا: كل يوم من 9 الصبح لـ 2 بالليل', 'text', d.hours) +
     '<small style="color:var(--ink-2)">أقصى مسافة للتوصيل بالكيلو (0 = من غير حد)</small>' + aiInp('bsKm', '10', 'number', String(d.maxKm)) +
+    '<div class="state" style="font-size:12px;text-align:start;padding:4px 0 8px">الحفظ محتاج الرقم السري من «قفل اللوحة».</div>' +
+    '<button class="btn btn-primary" onclick="saveBotSet()"' + (d.pinSet ? '' : ' disabled') + '>احفظ التوصيل</button>';
+  var lb = document.getElementById('botlock'); if (lb) lb.innerHTML =
     '<label style="display:flex;gap:8px;align-items:center;margin:6px 0 10px"><input type="checkbox" id="bsLock"' + (d.lock ? ' checked' : '') + '> ' +
       '🔒 اقفل اللوحة بالرقم السري (المبيعات والعملاء والديون وطلب النواقص مش هتفتح من غيره)</label>' +
     aiInp('bsPin', d.pinSet ? 'الرقم السري' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي فوق', 'password') +

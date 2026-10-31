@@ -3747,6 +3747,28 @@ var CUST_PERS = [[30, 'شهر'], [60, 'شهرين'], [90, '3 شهور'], [180, '
 var CUST_PER = 30;
 try { CUST_PER = parseInt(localStorage.getItem('custPer'), 10) || 30; } catch (e) {}
 var CUST_VIS = null, CUST_VIS_LOADING = false;
+/* «غابوا من شهر لـ 3 شهور»: محتاجين آخر زيارة في 90 يوم، منفصلة عن فترة «نشطين» */
+var CUST_V90 = (function(){ try { var s = JSON.parse(localStorage.getItem('custV90') || 'null'); return s && s.day === cairoNow().date ? s.d : null; } catch (e) { return null; } })();
+function loadCustV90(tries){
+  tries = tries || 0;
+  if (CUST_V90 && CUST_V90._fresh) return;
+  api('getCustomerVisits', { days: 90 }).then(function(d){
+    if (!d || !d.ok || d.days !== 90) return;
+    if (d.missingDays && tries < 20){ loadCustV90(tries + 1); return; }
+    d._fresh = true; CUST_V90 = d;
+    try { localStorage.setItem('custV90', JSON.stringify({ day: cairoNow().date, d: d })); } catch (e) {}
+    if (custOnTab() && CUST.list.length) drawCustomers(CUST.list, document.getElementById('p-cust'));
+  }).catch(logErr);
+}
+function lapsedList(list){
+  if (!CUST_V90 || !CUST_V90.customers) return null;
+  var today = Date.parse(cairoNow().date + 'T00:00:00Z');
+  return list.filter(function(c){ return !c.is_blocked; }).map(function(c){
+    var v = CUST_V90.customers[custPhone(c.phone)]; if (!v || !v.l) return null;
+    var d = Math.round((today - Date.parse(v.l + 'T00:00:00Z')) / 86400000);
+    return (d > 30 && d <= 90) ? { c: c, d: d, v: v } : null;
+  }).filter(Boolean).sort(function(a, b){ return b.v.s - a.v.s; });
+}
 var CUST = { sec: 'home', list: [], dash: null, news: null, q: '', cls: 'all',
              cur: [], curTitle: '', one: null, hist: null, confirmBlock: false };
 var CUST_LOG = { type: 'call', result: 'answered' };
@@ -3762,6 +3784,7 @@ function pgCustomers(){
   loadCustDash();
   loadCustVisits();
   loadCustCalls();
+  loadCustV90();
 }
 
 /* أرقام الاسترجاع من السيرفر — بتوصل بعد القايمة، وبنعيد الرسم لما توصل */
@@ -3937,6 +3960,9 @@ function drawCustomers(res, box){
     html += secBtn('active', 'ok', 'نشطين', 'زاروا خلال ' + perName +
       (actAvg !== null ? ' · متوسط ' + ltr(actAvg) + ' زيارة/شهر' : ''),
       visReady ? ltr(num(G.active.length)) : '…', tr('customers'), 'setCustSec');
+    var LP = lapsedList(list);
+    html += secBtn('lapsed', 'warn', 'غابوا من شهر لـ 3 شهور', 'كانوا بيشتروا ووقفوا — أسهل ناس ترجع',
+      LP ? ltr(num(LP.length)) : '…', tr('customers'), 'setCustSec');
     html += secBtn('new', 'ok', tr('newSec'), tr('newSub'),
       dash && dash.new_customers !== undefined ? ltr(num(dash.new_customers)) : '…', tr('customers'), 'setCustSec');
     html += secBtn('bot', CHATS && CHATS.some(function(c){ return c.pending; }) ? 'warn' : 'ok', 'محادثات البوت', 'واتساب وتليجرام', '', '', 'goBot');
@@ -3949,7 +3975,7 @@ function drawCustomers(res, box){
   }
 
   /* ── الأقسام ── */
-  var TITLES = { active: 'نشطين', follow: tr('needFollow'), recover: tr('recoverSec'), new: tr('newSec'),
+  var TITLES = { lapsed: 'غابوا من شهر لـ 3 شهور', active: 'نشطين', follow: tr('needFollow'), recover: tr('recoverSec'), new: tr('newSec'),
                  blocked: tr('blockedSec'), all: tr('allCust'), calls: 'متابعة المكالمات' };
   html = secHead(TITLES[CUST.sec] || '', 'custMenu()', 'setCustSec(\'home\')') + html;
 
@@ -3957,6 +3983,18 @@ function drawCustomers(res, box){
     CUST.cur = G.active; CUST.curTitle = 'نشطين';
     html += card('نشطين', ltr(num(G.active.length)) + ' ' + tr('customers'),
       G.active.length ? G.active.map(function(c){ return custRow(c); }).join('') : emptyState());
+  }
+
+  if (CUST.sec === 'lapsed'){
+    var LP2 = lapsedList(list) || [];
+    CUST.cur = LP2.map(function(x){ return x.c; }); CUST.curTitle = 'غابوا من شهر لـ 3 شهور';
+    html += '<div class="state" style="padding:0 0 10px;text-align:start">مترتبين بالأكتر صرفًا في آخر 3 شهور. اتصل بيهم من «متابعة المكالمات» أو دوس على العميل.</div>';
+    html += card('غابوا من شهر لـ 3 شهور', ltr(num(LP2.length)) + ' ' + tr('customers'),
+      !CUST_V90 ? '<div class="state"><div class="spin"></div></div>' :
+      LP2.length ? LP2.map(function(x){
+        return custRow(x.c, '<span style="text-align:end"><b style="display:block;font-size:13px">' + ltr(num(x.v.s)) + ' ج</b>' +
+          badge('من ' + ltr(x.d) + ' يوم', x.d > 60 ? 'bad' : 'warn') + '</span>');
+      }).join('') : emptyState());
   }
 
   if (CUST.sec === 'calls'){ CUST.cur = []; CUST.curTitle = 'متابعة المكالمات'; html += callsHtml(CUST.calls); }

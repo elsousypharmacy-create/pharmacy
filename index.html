@@ -1143,7 +1143,7 @@ function setHomeRange(k){
   loadHomeMonth();
 }
 function monthSlide(M){
-  var m = M.m || {}, pl = M.pl || {}, k = M.k || {};
+  var m = M.m || {}, pl = M.pl || {}, k = M.k || {}, R = M.r || homeRange();
   var days = m.days_with_data || 0, avgNet = m.avg_daily_net || 0, g = goalOf('daily_sales', 10000), be = goalOf('breakeven', 7800);
   var visits = (k.daily || []).reduce(function(s, x){ return s + (x.total_cust || 0); }, 0);
   var vDays = (k.daily || []).filter(function(x){ return x.total_cust > 0; }).length || days || 1;
@@ -1152,7 +1152,6 @@ function monthSlide(M){
   else if (pl.net_profit != null) np = pl.net_profit;
   var p = g ? Math.min(100, Math.round(avgNet / g * 100)) : 0, bp = g ? Math.min(100, Math.round(be / g * 100)) : 0;
   var tile = function(label, val, sub, tone){ return '<div class="h-mini"><small>' + label + '</small><b' + (tone ? ' style="color:var(--' + tone + ')"' : '') + '>' + val + '</b>' + (sub ? '<u>' + sub + '</u>' : '') + '</div>'; };
-  var R = M.r || homeRange();
   var chip = function(k, l){ return '<button class="' + (HOME_MR.key === k ? 'on' : '') + '" onclick="setHomeRange(\'' + k + '\')">' + l + '</button>'; };
   return '<div class="h-top"><h2>' + esc(R.label) + '</h2><span>' + ltr(days) + ' يوم</span></div>' +
     '<div class="m-chips">' + chip('month', 'الشهر') + chip('last', 'اللي فات') + chip('7', '7 أيام') + chip('custom', 'تحديد') + '</div>' +

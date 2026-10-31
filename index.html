@@ -524,6 +524,17 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 .exp-h div{flex:1;min-width:0}.exp-h b{display:block;font-size:16px;font-weight:750}
 .exp-h small{display:block;font-size:12px;color:var(--ink-2)}
 .exp-v{font-size:18px;font-weight:800;color:var(--tone)}
+.v-filter{display:inline-flex;align-items:center;gap:5px;border:0;background:var(--surface-2);color:var(--ink-2);font:inherit;font-size:12px;font-weight:650;padding:6px 10px;border-radius:99px;cursor:pointer;white-space:nowrap}
+.v-filter.on{background:var(--brand);color:#fff}
+.exp-hint{font-size:12.5px;color:var(--ink-2);margin:0 2px 10px}
+.exp-ck{width:26px;height:26px;border-radius:99px;border:2px solid var(--line);background:transparent;color:transparent;font-size:14px;font-weight:900;flex:0 0 auto;cursor:pointer;display:grid;place-items:center;padding:0}
+.exp-ck.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.exp-m.sel{box-shadow:inset 0 0 0 2px var(--brand)}
+.exp-empty{opacity:.55}
+.exp-bar{position:fixed;left:12px;right:12px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:92;max-width:560px;margin:0 auto;
+  display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:18px;background:var(--surface);box-shadow:0 10px 30px rgba(0,0,0,.45);border:1px solid var(--line)}
+.exp-bar span{flex:1;font-size:13px;color:var(--ink-2)}.exp-bar b{color:var(--ink)}
+.exp-bar .btn{width:auto;margin:0;padding:10px 14px}
 .exp-pdf{border:0;background:var(--surface-2);color:var(--ink-2);font:inherit;font-size:11px;font-weight:700;padding:5px 9px;border-radius:8px;cursor:pointer;margin-inline-start:4px}
 .exp-more{display:block;width:100%;margin-top:8px;border:0;background:var(--surface-2);color:var(--ink);font:inherit;font-size:13px;font-weight:650;padding:9px;border-radius:10px;cursor:pointer}
 .exp-r{display:flex;align-items:baseline;gap:8px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent);font-size:13.5px}
@@ -3062,7 +3073,29 @@ function secBtn(key, tone, title, sub, val, valSub, fn){
 /* الكمية: الشرايط بتطلع كسر من العلبة (0.5 = نص علبة) بدل ما تتقرّب لـ 0 */
 function qtyFmt(v){ v = +v || 0; return v % 1 === 0 ? num(v) : String(Math.round(v * 100) / 100); }
 /* قايمة للعامل: ينزّل الأصناف القريبة من الرف ويحطها قدام أو يجهّزها للمرتجع */
-var EXP_STAFF = [], EXP_GROUPS = {}, EXP_OPEN = {};
+var EXP_STAFF = [], EXP_GROUPS = {}, EXP_OPEN = {}, EXP_SEL = {};
+function expSel(k){ EXP_SEL[k] = !EXP_SEL[k]; var y = window.scrollY; drawAging(false); window.scrollTo(0, y); }
+function expSelClear(){ EXP_SEL = {}; var y = window.scrollY; drawAging(false); window.scrollTo(0, y); }
+function expSelGroups(){
+  return Object.keys(EXP_SEL).filter(function(k){ return EXP_SEL[k] && EXP_GROUPS[k] && !EXP_GROUPS[k].empty; }).sort(function(a, b){ return a === 'x' ? -1 : b === 'x' ? 1 : a < b ? -1 : 1; })
+    .map(function(k){ var g = EXP_GROUPS[k]; return { title: g.title, items: g.rows.slice().sort(function(a, b){ return a.name < b.name ? -1 : 1; }) }; });
+}
+/* شارك: PDF بخط Cairo (منه تبعته واتساب أو تحفظه) أو نص على طول */
+function expShareSel(){
+  var GR = expSelGroups(); if (!GR.length) return;
+  var s = document.getElementById('sheet'), ti = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  s.classList.add('on'); ti.textContent = 'شارك مع العامل';
+  b.innerHTML = '<div class="state" style="text-align:start;padding:0 0 12px">' + GR.map(function(g){ return esc(g.title) + ' (' + ltr(g.items.length) + ')'; }).join(' · ') + '</div>' +
+    '<button class="btn btn-primary" onclick="closeSheet();expPDF(expSelGroups(), \'أصناف قربت تنتهي\')">PDF بخط Cairo</button>' +
+    '<button class="btn btn-quiet" onclick="expShareText()">ابعت كنص (واتساب)</button>';
+}
+function expShareText(){
+  var GR = expSelGroups(), n = 0, L = ['📋 أصناف قربت تنتهي — صيدلية السوسي', 'نزّلها من الرف وحطها قدام أو جهّزها للمرتجع', ''];
+  GR.forEach(function(g){ L.push('▪️ ' + g.title + ':'); g.items.forEach(function(r){ n++; L.push('   ☐ ' + r.name + ' — ' + qtyFmt(Math.round(r.stock * 100) / 100) + ' علبة'); }); L.push(''); });
+  L.push('الإجمالي: ' + n + ' صنف');
+  var txt = L.join('\n');
+  if (navigator.share) navigator.share({ text: txt }).catch(function(){}); else window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
+}
 function expToggle(k){ EXP_OPEN[k] = !EXP_OPEN[k]; var y = window.scrollY; drawAging(false); window.scrollTo(0, y); }
 function expMonthPDF(k){
   var g = EXP_GROUPS[k]; if (!g) return;
@@ -3217,33 +3250,40 @@ function drawAging(isOld){
   }
 
   /* فلتر الفئة/الرف — بيظهر في الأقسام اللي ليها فلترة */
-  if (INV_SEC === 'dead' || INV_SEC === 'exp')
-    html += ctlBar(ctlBtn(INV.cat ? esc(INV.cat) : 'كل الأقسام', true, "invMenu()"), 'invMenu()', (INV.cat || INV.shelf !== 'all'));
+  /* فلتر القسم: زرار صغير جوه الكارت بدل سطر لوحده */
+  var invFilt = '<button class="v-filter' + ((INV.cat || INV.shelf !== 'all') ? ' on' : '') + '" onclick="event.stopPropagation();invMenu()">' +
+    '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>' +
+    esc(INV.cat || 'كل الأقسام') + '</button>';
 
   /* ═══ قرب الصلاحية ═══ */
   if (INV_SEC === 'exp'){
     /* مترتبة بالشهر لحد سنة: كل شهر كارت، والأقرب فوق. اللون = قد إيه الوقت ضاق.
        الشهر الكبير بيتقفل على أول 5 أصناف ويتفرد بدوسة، وكل شهر ليه PDF لوحده */
     var MN = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+    /* الـ 6 شهور الجايين بالتقويم (مثلاً من نوفمبر لأبريل) — كلهم بيظهروا حتى الفاضي */
+    var WIN = [], c0 = cairoNow().date;
+    for (var wi = 1; wi <= 6; wi++){ var dt = new Date(Date.UTC(+c0.slice(0, 4), +c0.slice(5, 7) - 1 + wi, 1)); WIN.push(dt.toISOString().slice(0, 7)); }
     var groups = {}, sumX = { n: 0, c: 0 }, sum3 = { n: 0, c: 0 }, sum6 = { n: 0, c: 0 }, sum12 = { n: 0, c: 0 };
     var addIt = function(it){
-      var dte = it.days_to_expire; if (dte == null || dte > 180) return;   /* 6 شهور لقدام بس */
+      var dte = it.days_to_expire; if (dte == null) return;
       var k = dte < 0 ? 'x' : String(it.expire || '').slice(0, 7);
+      if (k !== 'x' && WIN.indexOf(k) < 0) return;   /* 6 شهور لقدام بس */
       var g = groups[k] || (groups[k] = { key: k, dte: dte, items: {}, n: 0, c: 0 });
       var nm = String(it.name || '');
       var row = g.items[nm] || (g.items[nm] = { name: nm, stock: 0, cost: 0, dte: dte });
       row.stock += +it.stock || 0; row.cost += +it.cost || 0; row.dte = Math.min(row.dte, dte);
       g.c += +it.cost || 0; g.dte = Math.min(g.dte, dte);
-      var b = dte < 0 ? sumX : dte <= 90 ? sum3 : dte <= 180 ? sum6 : sum12; b.n++; b.c += +it.cost || 0;
+      var b = dte < 0 ? sumX : dte <= 90 ? sum3 : sum6; b.n++; b.c += +it.cost || 0;
     };
     near.forEach(addIt);
-    Object.keys(groups).forEach(function(k){ var g = groups[k];
+    ((d.expiry_items || {}).e6_12 || []).forEach(addIt);
+    WIN.forEach(function(k){ if (!groups[k]) groups[k] = { key: k, dte: Math.round((Date.parse(k + '-01') - Date.parse(c0)) / 86400000), items: {}, n: 0, c: 0, empty: true }; });    Object.keys(groups).forEach(function(k){ var g = groups[k];
       g.n = Object.keys(g.items).length;
-      g.title = k === 'x' ? 'منتهي فعلًا — شيله من الرف' : (MN[+k.slice(5, 7) - 1] + ' ' + k.slice(0, 4));
+      g.title = k === 'x' ? 'منتهي فعلًا' : (MN[+k.slice(5, 7) - 1] + ' ' + k.slice(0, 4));
       g.rows = Object.keys(g.items).map(function(n){ return g.items[n]; }).sort(function(a, b){ return b.cost - a.cost; });
     });
     EXP_GROUPS = groups;
-    html += vitals('الصلاحية', '6 شهور لقدام', [
+    html += vitals('الصلاحية', '@@F@@', [
       { value: num(Math.round(sumX.c)), label: 'منتهي', tone: sumX.n ? 'bad' : '', note: ltr(sumX.n), sub: 'شيله من الرف' },
       { value: num(Math.round(sum3.c)), label: 'خلال 3 شهور', tone: sum3.n ? 'bad' : '', note: ltr(sum3.n), sub: 'رجّعه دلوقتي' },
       { value: num(Math.round(sum6.c)), label: 'من 3 لـ 6 شهور', tone: sum6.n ? 'warn' : '', note: ltr(sum6.n), sub: 'اعرضه أو رجّعه' }
@@ -3252,13 +3292,20 @@ function drawAging(isOld){
     var k6 = keys.filter(function(k){ return groups[k].dte <= 180; });
     EXP_STAFF = k6.map(function(k){ var g = groups[k];
       return { title: g.title, items: g.rows.slice().sort(function(a, b){ return a.name < b.name ? -1 : 1; }) }; });
-    if (k6.length) html += '<button class="btn btn-primary" style="margin-bottom:12px" onclick="expStaffSheet()">📋 قايمة للعامل: كل اللي بينتهي خلال 6 شهور</button>';
+    html = html.replace('<span>@@F@@</span>', invFilt);
+    html += '<div class="exp-hint">علّم ✓ على الشهور اللي عايز تبعتها للعامل، وبعدين «شارك»</div>';
     if (!keys.length) html += '<div class="card">' + emptyState() + '</div>';
     var shownLater = false;
     keys.forEach(function(k){
       var g = groups[k], tone = k === 'x' || g.dte <= 90 ? 'bad' : g.dte <= 180 ? 'warn' : 'brand';
-      var open = !!EXP_OPEN[k], rows = open ? g.rows : [];
-      html += '<div class="card exp-m' + (open ? ' open' : '') + '" style="--tone:var(--' + tone + ')"><div class="exp-h" onclick="expToggle(\'' + k + '\')" role="button"><span class="dot"></span><div><b>' + esc(g.title) + '</b>' +
+      if (g.empty){
+        html += '<div class="card exp-m exp-empty"><div class="exp-h"><span class="dot" style="background:var(--line)"></span><div><b>' + esc(g.title) + '</b><small>مفيش أصناف بتنتهي الشهر ده</small></div></div></div>';
+        return;
+      }
+      var open = !!EXP_OPEN[k], rows = open ? g.rows : [], sel = !!EXP_SEL[k];
+      html += '<div class="card exp-m' + (open ? ' open' : '') + (sel ? ' sel' : '') + '" style="--tone:var(--' + tone + ')"><div class="exp-h" onclick="expToggle(\'' + k + '\')" role="button">' +
+        '<button class="exp-ck' + (sel ? ' on' : '') + '" onclick="event.stopPropagation();expSel(\'' + k + '\')" aria-label="اختار الشهر">✓</button>' +
+        '<div><b>' + esc(g.title) + '</b>' +
         '<small>' + ltr(g.n) + ' صنف' + (k === 'x' ? '' : ' · بعد ' + ltr(Math.max(0, g.dte)) + ' يوم') + '</small></div>' +
         '<span class="exp-v">' + ltr(num(Math.round(g.c))) + '</span>' +
         '<button class="exp-pdf" onclick="event.stopPropagation();expMonthPDF(\'' + k + '\')" aria-label="PDF">PDF</button>' +
@@ -3269,8 +3316,14 @@ function drawAging(isOld){
         }).join('') +
         '</div>';
     });
-    var later = d.expiry_by_month && d.expiry_by_month.later;
-    if (later && later.count) html += '<div style="text-align:center;margin-top:4px">' + expBtn("expiryMenu()") + '</div>';
+    var selK = keys.filter(function(k){ return EXP_SEL[k] && groups[k] && !groups[k].empty; });
+    if (selK.length){
+      var selN = selK.reduce(function(a, k){ return a + groups[k].n; }, 0);
+      html += '<div class="exp-bar"><span><b>' + ltr(selK.length) + ' شهر</b> · ' + ltr(selN) + ' صنف</span>' +
+        '<button class="btn btn-quiet" onclick="expSelClear()">إلغاء</button>' +
+        '<button class="btn btn-primary" onclick="expShareSel()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-inline-end:6px"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>شارك</button></div>' +
+        '<div style="height:70px"></div>';
+    }
   }
 
   /* ═══ راكد ═══ */
@@ -3284,7 +3337,7 @@ function drawAging(isOld){
       return '<div class="row" style="cursor:pointer" onclick="agingSheet(\'' + x[0] + '\',\'' + x[1] + '\')">' +
         '<div class="row-main"><b>' + tr(x[1]) + '</b><small>' + ltr(g.skus) + ' ' + tr('skus') + '</small></div>' +
         '<span class="row-val" style="color:var(--' + tone + ')">' + ltr(num(g.cost)) + '</span></div>';
-    }).join('') || emptyState(), expBtn("agingMenu()"));
+    }).join('') || emptyState(), '<span style="display:flex;gap:6px;align-items:center">' + invFilt + expBtn("agingMenu()") + '</span>');
 
     var cats = d.slow_category_summary || [];
     html += card(tr('deadStock'),

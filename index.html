@@ -521,6 +521,8 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 .exp-h div{flex:1;min-width:0}.exp-h b{display:block;font-size:16px;font-weight:750}
 .exp-h small{display:block;font-size:12px;color:var(--ink-2)}
 .exp-v{font-size:18px;font-weight:800;color:var(--tone)}
+.exp-pdf{border:0;background:var(--surface-2);color:var(--ink-2);font:inherit;font-size:11px;font-weight:700;padding:5px 9px;border-radius:8px;cursor:pointer;margin-inline-start:4px}
+.exp-more{display:block;width:100%;margin-top:8px;border:0;background:var(--surface-2);color:var(--ink);font:inherit;font-size:13px;font-weight:650;padding:9px;border-radius:10px;cursor:pointer}
 .exp-r{display:flex;align-items:baseline;gap:8px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent);font-size:13.5px}
 .exp-r:last-child{border-bottom:0}
 .exp-n{flex:1;min-width:0;font-weight:600}
@@ -3057,7 +3059,12 @@ function secBtn(key, tone, title, sub, val, valSub, fn){
 /* الكمية: الشرايط بتطلع كسر من العلبة (0.5 = نص علبة) بدل ما تتقرّب لـ 0 */
 function qtyFmt(v){ v = +v || 0; return v % 1 === 0 ? num(v) : String(Math.round(v * 100) / 100); }
 /* قايمة للعامل: ينزّل الأصناف القريبة من الرف ويحطها قدام أو يجهّزها للمرتجع */
-var EXP_STAFF = [];
+var EXP_STAFF = [], EXP_GROUPS = {}, EXP_OPEN = {};
+function expToggle(k){ EXP_OPEN[k] = !EXP_OPEN[k]; var y = window.scrollY; drawAging(false); window.scrollTo(0, y); }
+function expMonthPDF(k){
+  var g = EXP_GROUPS[k]; if (!g) return;
+  expPDF([{ title: g.title, items: g.rows.slice().sort(function(a, b){ return a.name < b.name ? -1 : 1; }) }], 'صلاحية ' + g.title);
+}
 function expStaffText(){
   var n = 0, lines = ['📋 أصناف بتنتهي خلال 6 شهور — صيدلية السوسي', 'نزّلها من الرف وحطها قدام أو جهّزها للمرتجع', ''];
   EXP_STAFF.forEach(function(g){
@@ -3091,9 +3098,10 @@ function expStaffCopy(){
   var txt = expStaffText();
   (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function(){ toast('✓ اتنسخت'); }, function(){ toast('مقدرتش أنسخ'); });
 }
-function expStaffPrint(){
+function expStaffPrint(){ expPDF(EXP_STAFF, 'أصناف بتنتهي خلال 6 شهور'); }
+function expPDF(GR, heading){
   var w = window.open('', '_blank'); if (!w){ toast('افتح النوافذ المنبثقة'); return; }
-  var n = EXP_STAFF.reduce(function(a, g){ return a + g.items.length; }, 0);
+  var n = GR.reduce(function(a, g){ return a + g.items.length; }, 0);
   w.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>قايمة الصلاحية - صيدلية السوسي</title>' +
     '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap">' +
     '<style>@page{margin:12mm}body{font-family:Cairo,Tahoma,sans-serif;color:#111;font-size:13px;margin:0}' +
@@ -3102,9 +3110,9 @@ function expStaffPrint(){
     'table{width:100%;border-collapse:collapse}td{padding:7px 8px;border-bottom:1px solid #e6e9ee}' +
     'td.c{width:26px;font-size:18px;color:#888}td.q{width:90px;text-align:left;direction:ltr;color:#333}' +
     '.foot{margin-top:18px;color:#555;font-size:12px}</style></head><body>' +
-    '<h1>أصناف بتنتهي خلال 6 شهور — صيدلية السوسي</h1>' +
+    '<h1>' + esc(heading) + ' — صيدلية السوسي</h1>' +
     '<div class="sub">' + new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + n + ' صنف · نزّلها من الرف وحطها قدام أو جهّزها للمرتجع</div>' +
-    EXP_STAFF.map(function(g){ return '<h2>' + esc(g.title) + ' (' + g.items.length + ')</h2><table>' + g.items.map(function(r){
+    GR.map(function(g){ return '<h2>' + esc(g.title) + ' (' + g.items.length + ')</h2><table>' + g.items.map(function(r){
       return '<tr><td class="c">☐</td><td>' + esc(r.name) + '</td><td class="q">' + qtyFmt(Math.round(r.stock * 100) / 100) + ' علبة</td></tr>'; }).join('') + '</table>'; }).join('') +
     '<div class="foot">اسم العامل: ................................ &nbsp;&nbsp; التوقيع: ....................</div>' +
     '<script>window.onload=function(){(document.fonts?document.fonts.ready:Promise.resolve()).then(function(){setTimeout(function(){window.print();},250);});};<\/script>' +
@@ -3211,49 +3219,57 @@ function drawAging(isOld){
 
   /* ═══ قرب الصلاحية ═══ */
   if (INV_SEC === 'exp'){
-    /* مترتبة بالشهر: كل شهر كارت فيه أصنافه، والأقرب فوق. اللون = قد إيه الوقت ضاق */
+    /* مترتبة بالشهر لحد سنة: كل شهر كارت، والأقرب فوق. اللون = قد إيه الوقت ضاق.
+       الشهر الكبير بيتقفل على أول 5 أصناف ويتفرد بدوسة، وكل شهر ليه PDF لوحده */
     var MN = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-    var groups = {}, sumX = { n: 0, c: 0 }, sum3 = { n: 0, c: 0 }, sum6 = { n: 0, c: 0 };
-    near.forEach(function(it){
-      var dte = it.days_to_expire, k = dte < 0 ? 'x' : String(it.expire || '').slice(0, 7);
+    var groups = {}, sumX = { n: 0, c: 0 }, sum3 = { n: 0, c: 0 }, sum6 = { n: 0, c: 0 }, sum12 = { n: 0, c: 0 };
+    var addIt = function(it){
+      var dte = it.days_to_expire; if (dte == null || dte > 365) return;
+      var k = dte < 0 ? 'x' : String(it.expire || '').slice(0, 7);
       var g = groups[k] || (groups[k] = { key: k, dte: dte, items: {}, n: 0, c: 0 });
       var nm = String(it.name || '');
       var row = g.items[nm] || (g.items[nm] = { name: nm, stock: 0, cost: 0, dte: dte });
       row.stock += +it.stock || 0; row.cost += +it.cost || 0; row.dte = Math.min(row.dte, dte);
       g.c += +it.cost || 0; g.dte = Math.min(g.dte, dte);
-      var b = dte < 0 ? sumX : dte <= 90 ? sum3 : sum6; b.n++; b.c += +it.cost || 0;
+      var b = dte < 0 ? sumX : dte <= 90 ? sum3 : dte <= 180 ? sum6 : sum12; b.n++; b.c += +it.cost || 0;
+    };
+    near.forEach(addIt);
+    ((d.expiry_items || {}).e6_12 || []).forEach(addIt);
+    Object.keys(groups).forEach(function(k){ var g = groups[k];
+      g.n = Object.keys(g.items).length;
+      g.title = k === 'x' ? 'منتهي فعلًا — شيله من الرف' : (MN[+k.slice(5, 7) - 1] + ' ' + k.slice(0, 4));
+      g.rows = Object.keys(g.items).map(function(n){ return g.items[n]; }).sort(function(a, b){ return b.cost - a.cost; });
     });
-    Object.keys(groups).forEach(function(k){ groups[k].n = Object.keys(groups[k].items).length; });
-    html += vitals('قرب الصلاحية', 'خلال 6 شهور', [
-      { value: num(Math.round(sumX.c)), label: 'منتهي', tone: sumX.n ? 'bad' : '', note: ltr(sumX.n), sub: 'صنف' },
-      { value: num(Math.round(sum3.c)), label: 'خلال 3 شهور', tone: sum3.n ? 'bad' : '', note: ltr(sum3.n), sub: 'رجّعه دلوقتي' },
-      { value: num(Math.round(sum6.c)), label: 'من 3 لـ 6 شهور', tone: sum6.n ? 'warn' : '', note: ltr(sum6.n), sub: 'اعرضه أو رجّعه' }
+    EXP_GROUPS = groups;
+    html += vitals('الصلاحية', 'لحد سنة', [
+      { value: num(Math.round(sumX.c + sum3.c)), label: 'خلال 3 شهور', tone: (sumX.n + sum3.n) ? 'bad' : '', note: ltr(sumX.n + sum3.n), sub: 'شامل المنتهي' },
+      { value: num(Math.round(sum6.c)), label: 'من 3 لـ 6 شهور', tone: sum6.n ? 'warn' : '', note: ltr(sum6.n), sub: 'اعرضه أو رجّعه' },
+      { value: num(Math.round(sum12.c)), label: 'من 6 لـ 12 شهر', note: ltr(sum12.n), sub: 'تابعه' }
     ]);
     var keys = Object.keys(groups).sort(function(a, b){ return a === 'x' ? -1 : b === 'x' ? 1 : a < b ? -1 : 1; });
-    EXP_STAFF = keys.map(function(k){ var g = groups[k];
-      return { title: k === 'x' ? 'منتهي — شيله من الرف' : (MN[+k.slice(5, 7) - 1] + ' ' + k.slice(0, 4)),
-               items: Object.keys(g.items).map(function(n){ return g.items[n]; }).sort(function(a, b){ return a.name < b.name ? -1 : 1; }) }; });
-    if (keys.length) html += '<button class="btn btn-primary" style="margin-bottom:12px" onclick="expStaffSheet()">📋 قايمة للعامل: كل اللي بينتهي خلال 6 شهور</button>';
+    var k6 = keys.filter(function(k){ return groups[k].dte <= 180; });
+    EXP_STAFF = k6.map(function(k){ var g = groups[k];
+      return { title: g.title, items: g.rows.slice().sort(function(a, b){ return a.name < b.name ? -1 : 1; }) }; });
+    if (k6.length) html += '<button class="btn btn-primary" style="margin-bottom:12px" onclick="expStaffSheet()">📋 قايمة للعامل: كل اللي بينتهي خلال 6 شهور</button>';
     if (!keys.length) html += '<div class="card">' + emptyState() + '</div>';
+    var shownLater = false;
     keys.forEach(function(k){
-      var g = groups[k], tone = k === 'x' || g.dte <= 90 ? 'bad' : 'warn';
-      var title = k === 'x' ? 'منتهي فعلًا — شيله من الرف' : (MN[+k.slice(5, 7) - 1] + ' ' + k.slice(0, 4));
-      var sub = k === 'x' ? '' : 'بعد ' + ltr(Math.max(0, g.dte)) + ' يوم';
-      var rows = Object.keys(g.items).map(function(n){ return g.items[n]; }).sort(function(a, b){ return b.cost - a.cost; });
-      html += '<div class="card exp-m" style="--tone:var(--' + tone + ')"><div class="exp-h"><span class="dot"></span><div><b>' + esc(title) + '</b>' +
-        '<small>' + ltr(g.n) + ' صنف' + (sub ? ' · ' + sub : '') + '</small></div><span class="exp-v">' + ltr(num(Math.round(g.c))) + '</span></div>' +
+      var g = groups[k], tone = k === 'x' || g.dte <= 90 ? 'bad' : g.dte <= 180 ? 'warn' : 'brand';
+      if (!shownLater && g.dte > 180){ shownLater = true; html += '<div class="group-title" style="padding-top:12px">من 6 لـ 12 شهر — للمتابعة</div>'; }
+      var open = !!EXP_OPEN[k], LIM = 5, rows = open ? g.rows : g.rows.slice(0, LIM);
+      html += '<div class="card exp-m" style="--tone:var(--' + tone + ')"><div class="exp-h"><span class="dot"></span><div><b>' + esc(g.title) + '</b>' +
+        '<small>' + ltr(g.n) + ' صنف' + (k === 'x' ? '' : ' · بعد ' + ltr(Math.max(0, g.dte)) + ' يوم') + '</small></div>' +
+        '<span class="exp-v">' + ltr(num(Math.round(g.c))) + '</span>' +
+        '<button class="exp-pdf" onclick="expMonthPDF(\'' + k + '\')" aria-label="PDF">PDF</button></div>' +
         rows.map(function(r){
           return '<div class="exp-r"><span class="exp-n">' + esc(r.name) + '</span><span class="exp-q">' + ltr(qtyFmt(Math.round(r.stock * 100) / 100)) + ' ' + tr('unitsWord') + '</span>' +
             '<span class="exp-c">' + ltr(num(Math.round(r.cost))) + '</span></div>';
-        }).join('') + '</div>';
+        }).join('') +
+        (g.rows.length > LIM ? '<button class="exp-more" onclick="expToggle(\'' + k + '\')">' + (open ? 'اقفل' : 'اعرض الكل (' + ltr(g.rows.length) + ')') + '</button>' : '') +
+        '</div>';
     });
-    /* اللي بعد 6 شهور: ملخص بالشهر بس */
-    var L6 = ((d.expiry_by_month && d.expiry_by_month.months) || []).filter(function(m){ return m.count; });
     var later = d.expiry_by_month && d.expiry_by_month.later;
-    if (later && later.count) html += card('بعد 6 شهور', 'مش محتاج تصرّف دلوقتي',
-      '<div class="row" style="cursor:pointer" onclick="expSheet(\'later\')"><div class="row-main"><b>' + tr('laterMonths') + '</b>' +
-      '<small>' + ltr(later.count) + ' ' + tr('items') + '</small></div><span class="row-val">' + ltr(num(later.totalCost)) + '</span></div>', expBtn("expiryMenu()"));
-    else if (L6.length) html += '<div style="text-align:center;margin-top:4px">' + expBtn("expiryMenu()") + '</div>';
+    if (later && later.count) html += '<div style="text-align:center;margin-top:4px">' + expBtn("expiryMenu()") + '</div>';
   }
 
   /* ═══ راكد ═══ */

@@ -8242,7 +8242,7 @@ function camToken_() {
   return { token: r.json.data.accessToken };
 }
 function camDevices_(token) {
-  var r = camPost_('/api/hccgw/resource/v1/devices/get', { pageNo: 1, pageSize: 50 }, token);
+  var r = camPost_('/api/hccgw/resource/v1/devices/get', { pageIndex: 1, pageSize: 50 }, token);
   if (!camOk_(r)) return { error: 'قائمة الأجهزة فشلت: ' + camErr_(r) };
   var list = r.json.data.list || r.json.data.devices || r.json.data.Device || [];
   return { list: list };

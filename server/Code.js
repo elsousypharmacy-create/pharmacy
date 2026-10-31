@@ -37,7 +37,7 @@ var LOCKED_GET = { getHomeBundle: 1, getSMSLogFast: 1, getSMSLog: 1, getCustomer
   sendCoupon: 1, getStaffHub: 1, getExpiryByMonth: 1, getAttendanceLive: 1, getAttendanceHistory: 1, getAttendanceLiveV2: 1,
   getAttendanceHistoryV2: 1, diagnoseAll: 1, getBotSettings: 1, maintenanceStatus: 1, maintenanceStop: 1,
   maintenanceResumeLive: 1, maintenanceDedup: 1, maintenanceStartRebuild: 1, backfillExpenses: 1, getExpReviews: 1,
-  ordersPage: 1, orderEfficiency: 1, logShortages: 1, callsReport: 1 };
+  ordersPage: 1, orderEfficiency: 1, logShortages: 1, callsReport: 1, getDailyRaw: 1 };
 var LOCKED_POST = { log: 1, block: 1, unblock: 1, setSalaries: 1, retrySMS: 1, testSMS: 1, dismissSMS: 1, payAgent: 1,
   deleteAgentPending: 1, deleteCount: 1, expReview: 1 };
 function dashLocked_(pin) {
@@ -57,6 +57,7 @@ function doGet(e) {
   if (LOCKED_GET[action] && dashLocked_(e.parameter.pin)) return lockedResp_();
   if (action === 'eventAdd') return jsonResponseStaff(eventAdd_(e.parameter));
   if (action === 'callsReport') return jsonResponseStaff(callsReport_());
+  if (action === 'getDailyRaw') return jsonResponseStaff(getDailyRaw(e.parameter));
   if (action === 'callsList') return jsonResponseStaff(callsList_());
   if (action === 'callsGet') return jsonResponseStaff(callsGet_());
   if (action === 'callsSet') return jsonResponseStaff(callsSet_(e.parameter));
@@ -6628,6 +6629,17 @@ function getProfitLossData(params) {
       });
     }
 
+    /* الأيام اللي خلصت: من ملفات نظام البيع الكاملة (شيت الموظفين بيفوّت فواتير).
+       المبيعات هنا = صافي بعد المرتجعات، والربح بعد الخصم والمرتجعات. */
+    try {
+      var dd = new Date(cutoff + 'T12:00:00Z'), endD = new Date(end + 'T12:00:00Z');
+      while (dd <= endD) {
+        var ds = dd.toISOString().slice(0, 10);
+        if (ds < today) { var rd = rawDay_(ds); if (rd.has) { dailySales[ds] = rd.net; dailyProfit[ds] = rd.profit; } }
+        dd.setUTCDate(dd.getUTCDate() + 1);
+      }
+    } catch (e) {}
+
     /* المصروفات من نفس المصدر الموحّد (ملف Drive + الأرشيف).
        قبل كده كانت بتقرا Monthly_Expenses لوحده — وده فيه يناير بس. */
     const dailyExpenses = {};
@@ -8115,6 +8127,59 @@ function eventRows_() {
     if (!sh || sh.getLastRow() < 2) return [];
     return sh.getRange(2, 1, sh.getLastRow() - 1, 5).getDisplayValues();
   } catch (e) { return []; }
+}
+
+// ==== MODULE 65_raw_days: أرقام كل يوم من ملفات نظام البيع الخام (المصدر الأدق) ====
+// شيت الموظفين بيتحدّث لحظيًا بس بيفوّته فواتير (اتأكدنا: أوائل أكتوبر الربح أقل بـ 10–25%).
+// الأيام اللي خلصت بتتحسب من الملف الكامل، وبتتحفظ 6 ساعات.
+
+function rawDay_(dateStr) {
+  var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+  var ck = 'rawday3_' + dateStr, cache = CacheService.getScriptCache();
+  if (dateStr < today) { var c = cache.get(ck); if (c) return JSON.parse(c); }
+  var folder = DriveApp.getFolderById(SALES_FOLDER);
+  var read = function (name) { var it = folder.getFilesByName(name); return it.hasNext() ? it.next().getBlob().getDataAsString('UTF-8') : ''; };
+  var content = read('sales' + dateStr + '.txt') + '\n' + read('Returnsales' + dateStr + '.txt');
+  var out = { date: dateStr, gross: 0, ret: 0, net: 0, profit: 0, invoices: 0, returns: 0, disc: 0, visits: 0, has: false };
+  if (content.length < 20) return out;
+  var seen = {}, phones = {}, noPhone = 0;
+  var re = /VALUES\s*\(((?:&#\d+;|[^;])+)\)/g, m;
+  while ((m = re.exec(content)) !== null) {
+    var tuples = extractTuples('(' + m[1] + ')');
+    for (var t = 0; t < tuples.length; t++) {
+      var v; try { v = parseValues(tuples[t]); } catch (e) { continue; }
+      if (!v || v.length < 55) continue;
+      var type = String(v[2]).trim(); if (type !== 'sale' && type !== 'return') continue;
+      var ben = parseFloat(v[54]) || 0;
+      out.profit += type === 'sale' ? ben : -ben;
+      var key = v[1] + '_' + type; if (seen[key]) continue; seen[key] = 1;
+      var paid = (parseFloat(v[35]) || 0) + (parseFloat(v[39]) || 0);
+      if (type === 'sale') {
+        out.invoices++; out.gross += paid; out.disc += parseFloat(v[27]) || 0;
+        var ph = String(v[45] || '').trim();
+        if (ph.length > 3) phones[ph] = 1; else noPhone++;
+      } else { out.returns++; out.ret += paid; }
+    }
+  }
+  out.has = out.invoices > 0 || out.returns > 0;
+  out.visits = Object.keys(phones).length + noPhone;
+  ['gross', 'ret', 'profit', 'disc'].forEach(function (k) { out[k] = Math.round(out[k]); });
+  out.net = out.gross - out.ret;
+  if (dateStr < today) try { cache.put(ck, JSON.stringify(out), 21600); } catch (e) {}
+  return out;
+}
+
+function getDailyRaw(p) {
+  var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+  var from = String(p.from || ''), to = String(p.to || today);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) return { ok: false, error: 'التاريخ غلط' };
+  var days = [], d = new Date(from + 'T12:00:00Z'), end = new Date(to + 'T12:00:00Z');
+  for (var i = 0; d <= end && i < 62; i++) {
+    var ds = d.toISOString().slice(0, 10);
+    if (ds < today) days.push(rawDay_(ds));
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return { ok: true, from: from, to: to, days: days };
 }
 
 // ==== MODULE 70_inventory_aging (split from server/Code.js; load order = file name order) ====

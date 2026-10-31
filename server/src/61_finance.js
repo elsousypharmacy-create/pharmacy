@@ -226,6 +226,17 @@ function getProfitLossData(params) {
       });
     }
 
+    /* الأيام اللي خلصت: من ملفات نظام البيع الكاملة (شيت الموظفين بيفوّت فواتير).
+       المبيعات هنا = صافي بعد المرتجعات، والربح بعد الخصم والمرتجعات. */
+    try {
+      var dd = new Date(cutoff + 'T12:00:00Z'), endD = new Date(end + 'T12:00:00Z');
+      while (dd <= endD) {
+        var ds = dd.toISOString().slice(0, 10);
+        if (ds < today) { var rd = rawDay_(ds); if (rd.has) { dailySales[ds] = rd.net; dailyProfit[ds] = rd.profit; } }
+        dd.setUTCDate(dd.getUTCDate() + 1);
+      }
+    } catch (e) {}
+
     /* المصروفات من نفس المصدر الموحّد (ملف Drive + الأرشيف).
        قبل كده كانت بتقرا Monthly_Expenses لوحده — وده فيه يناير بس. */
     const dailyExpenses = {};

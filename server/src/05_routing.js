@@ -12,7 +12,7 @@ var LOCKED_GET = { getHomeBundle: 1, getSMSLogFast: 1, getSMSLog: 1, getCustomer
   sendCoupon: 1, getStaffHub: 1, getExpiryByMonth: 1, getAttendanceLive: 1, getAttendanceHistory: 1, getAttendanceLiveV2: 1,
   getAttendanceHistoryV2: 1, diagnoseAll: 1, getBotSettings: 1, maintenanceStatus: 1, maintenanceStop: 1,
   maintenanceResumeLive: 1, maintenanceDedup: 1, maintenanceStartRebuild: 1, backfillExpenses: 1, getExpReviews: 1,
-  ordersPage: 1, orderEfficiency: 1, logShortages: 1, callsReport: 1 };
+  ordersPage: 1, orderEfficiency: 1, logShortages: 1, callsReport: 1, getDailyRaw: 1 };
 var LOCKED_POST = { log: 1, block: 1, unblock: 1, setSalaries: 1, retrySMS: 1, testSMS: 1, dismissSMS: 1, payAgent: 1,
   deleteAgentPending: 1, deleteCount: 1, expReview: 1 };
 function dashLocked_(pin) {
@@ -32,6 +32,7 @@ function doGet(e) {
   if (LOCKED_GET[action] && dashLocked_(e.parameter.pin)) return lockedResp_();
   if (action === 'eventAdd') return jsonResponseStaff(eventAdd_(e.parameter));
   if (action === 'callsReport') return jsonResponseStaff(callsReport_());
+  if (action === 'getDailyRaw') return jsonResponseStaff(getDailyRaw(e.parameter));
   if (action === 'callsList') return jsonResponseStaff(callsList_());
   if (action === 'callsGet') return jsonResponseStaff(callsGet_());
   if (action === 'callsSet') return jsonResponseStaff(callsSet_(e.parameter));

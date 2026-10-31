@@ -1141,7 +1141,11 @@ document.addEventListener('visibilitychange', function(){
    الفترات الأطول باختيارك. */
 var RANGE = { sales:'today', exp:'month', att:'today', perf:'today', debt:'month', short:'7' };
 /* قبل 10 الصبح (بتوقيت مصر) النهاردة لسه فاضي: الأداء والفريق يفتحوا على أمس */
-try { if (cairoNow().hour < 10){ RANGE.sales = 'yesterday'; RANGE.perf = 'yesterday'; } } catch (e) {}
+try {
+  var _hs = JSON.parse(localStorage.getItem('c:home:{}') || 'null'), _d = _hs && _hs.d && _hs.d.b && _hs.d.b.daily;
+  var _upd = _d ? (String(_d.updated_at || '').match(/\d{4}-\d{2}-\d{2}/) || [''])[0] : '';
+  if (cairoNow().hour < 10 || (_upd && _upd < cairoNow().date)){ RANGE.sales = 'yesterday'; RANGE.perf = 'yesterday'; }
+} catch (e) {}
 var CUSTOM = {};
 
 function rangeParams(key){

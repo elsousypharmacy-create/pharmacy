@@ -1936,9 +1936,10 @@ function drawHome(b, kpi, isOld){
 
     /* ── الفريق النهاردة ── */
     var live = at.live || [], onNow = {};
-    live.forEach(function(p){ onNow[String(p.name || '').trim().split(' ')[0]] = p; });
+    live.forEach(function(p, i){ onNow[i] = p; });
     var teamRows = ((isStaleDay && !kpi._yesterday) ? [] : emps.slice().sort(function(a,b){ return b.sales - a.sales; })).map(function(e){
-      var first = String(e.name || '').trim().split(' ')[0], on = onNow[first]; if (on) delete onNow[first];
+      var on = null;
+      Object.keys(onNow).some(function(k){ if (sameStaff(e.name, onNow[k].name)){ on = onNow[k]; delete onNow[k]; return true; } });
       return '<div class="h-team"><span class="h-dot' + (on ? ' on' : '') + '"></span><div class="h-tn"><b>' + esc(e.name) + '</b><small>' +
         ltr(e.invoices) + ' فاتورة · تسجيل ' + ltr(e.reg_pct + '%') + (on ? ' · ' + ltr(dur(on.elapsedMinutes)) : '') + '</small></div>' +
         '<b class="h-tv">' + ltr(num(e.net || e.sales)) + '</b></div>';
@@ -2449,17 +2450,37 @@ function setHub(d){
 
 /* بيلزق الحضور بالأداء — الاسم في Connecteam ممكن يختلف عن اسم نظام البيع،
    فبنطابق بأول كلمة مشتركة */
+/* نفس الموظف بأسماء مختلفة: نظام البيع بالعربي وConnecteam بالإنجليزي */
+var STAFF_ALIASES = { 'ahmed shaat': 'احمد شعت', 'ahmed shaath': 'احمد شعت', 'ahmad shaat': 'احمد شعت' };
+function staffKey(n){
+  n = String(n || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (STAFF_ALIASES[n]) n = STAFF_ALIASES[n];
+  var EN = { ahmed:'احمد', ahmad:'احمد', hamada:'حماده', hamadah:'حماده', walaa:'ولاء', wala:'ولاء', mostafa:'مصطفي', mustafa:'مصطفي', ayman:'ايمن', abdelsalam:'عبدالسلام', shaat:'شعت' };
+  n = n.split(' ').map(function(w){ return EN[w] || w; }).join(' ');
+  n = n.replace(/^(الدكتورة|الدكتور|دكتورة|دكتور|د\.|استاذة|استاذ|أستاذة|أستاذ|أ\.)\s*/, '');
+  return n.replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').trim();
+}
+function sameStaff(a, b){
+  var x = staffKey(a), y = staffKey(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  var fx = x.split(' ')[0], fy = y.split(' ')[0];
+  if (fx !== fy) return x.indexOf(fy) === 0 || y.indexOf(fx) === 0 ? (x.indexOf(' ') < 0 || y.indexOf(' ') < 0) : false;
+  return x.indexOf(' ') < 0 || y.indexOf(' ') < 0;
+}
 function matchShifts(name){
   var rows = (HR.hist.rows || []);
   var key = String(name || '').replace(/^(دكتور|دكتورة|استاذ|د\.|أستاذ)\s*/, '').trim().split(/\s+/)[0];
   if (!key) return [];
   return rows.filter(function(x){
-    return String(x.name || '').toLowerCase().indexOf(key.toLowerCase()) !== -1 ||
+    return sameStaff(name, x.name) || String(x.name || '').toLowerCase().indexOf(key.toLowerCase()) !== -1 ||
            key.toLowerCase().indexOf(String(x.name || '').split(/\s+/)[0].toLowerCase()) !== -1;
   });
 }
 function liveFor(name){
   var key = String(name || '').replace(/^(دكتور|دكتورة|استاذ|د\.|أستاذ)\s*/, '').trim().split(/\s+/)[0];
+  var exact = (HR.live.live || []).filter(function(p){ return sameStaff(name, p.name); })[0];
+  if (exact) return exact;
   return (HR.live.live || []).filter(function(p){
     return String(p.name || '').toLowerCase().indexOf(key.toLowerCase()) !== -1 ||
            key.toLowerCase().indexOf(String(p.name || '').split(/\s+/)[0].toLowerCase()) !== -1;

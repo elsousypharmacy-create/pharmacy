@@ -515,6 +515,17 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 #ptr.ready svg{stroke:var(--brand)}
 #ptr.spin{opacity:1 !important;animation:ptrspin .7s linear infinite}
 @keyframes ptrspin{to{transform:translate(-50%,40px) rotate(360deg)}}
+.exp-m{padding:14px 16px}
+.exp-h{display:flex;align-items:center;gap:10px;padding-bottom:10px;margin-bottom:4px;border-bottom:1px solid var(--line)}
+.exp-h .dot{width:9px;height:9px;border-radius:99px;background:var(--tone);flex:0 0 auto}
+.exp-h div{flex:1;min-width:0}.exp-h b{display:block;font-size:16px;font-weight:750}
+.exp-h small{display:block;font-size:12px;color:var(--ink-2)}
+.exp-v{font-size:18px;font-weight:800;color:var(--tone)}
+.exp-r{display:flex;align-items:baseline;gap:8px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent);font-size:13.5px}
+.exp-r:last-child{border-bottom:0}
+.exp-n{flex:1;min-width:0;font-weight:600}
+.exp-q{color:var(--ink-2);font-size:12px;white-space:nowrap}
+.exp-c{min-width:48px;text-align:end;font-weight:700;white-space:nowrap}
 </style>
 
 </head>
@@ -639,7 +650,7 @@ var T = {
   neverSold:['بضاعة عمرها ما اتباعت','Never sold'],
   neverSoldSub:['مش راكدة — دي بضاعة لسه ما اتباعتش أول مرة',
                 'Not slow-moving — never had a first sale'],
-  laterMonths:['بعد ٦ شهور','Beyond 6 months'],
+  laterMonths:['بعد 6 شهور','Beyond 6 months'],
   groupAct:['محتاج تصرّف','Needs action'],
   groupMoney:['فلوس واقفة','Money parked'],
   fixSec:['صلّح','Fix'],
@@ -3114,7 +3125,8 @@ function drawAging(isOld){
                  dead: tr('deadOnly'), never: tr('neverSec'), all: tr('allStock') };
   var EXPFN  = { fix: 'negMenu()', exp: 'expiryMenu()', order: 'orderMenu()',
                  dead: 'agingMenu()', never: 'neverSoldMenu()', all: 'catAllMenu()' };
-  html += secHead(TITLES[INV_SEC] || '', EXPFN[INV_SEC], TAB === 0 ? null : 'none');
+  /* لما القسم مفتوح كتبويب لوحده (الصلاحية/الراكد) عنوانه في الكارت اللي تحت، فمفيش داعي لرأس تاني */
+  if (TAB === 0) html += secHead(TITLES[INV_SEC] || '', EXPFN[INV_SEC]);
 
   if (INV_SEC === 'fix')   html += invFixHtml(d);
   if (INV_SEC === 'order') html += invOrderHtml();
@@ -3143,40 +3155,45 @@ function drawAging(isOld){
 
   /* ═══ قرب الصلاحية ═══ */
   if (INV_SEC === 'exp'){
-    /* الترتيب بالأقرب انتهاءً — الوقت هو الضاغط هنا مش القيمة */
-    var soon = near.slice().sort(function(a, b){ return a.days_to_expire - b.days_to_expire; }).slice(0, 15);
-    html += card(tr('nearestFirst'), tr('nearestSub'), soon.length ? soon.map(function(it){
-      var dte = it.days_to_expire;
-      return '<div class="row"><div class="row-main"><b style="white-space:normal">' + esc(it.name) + '</b>' +
-        '<small>' + ltr(qtyFmt(it.stock)) + ' ' + tr('unitsWord') + ' · ' + esc(it.expire || '') + '</small></div>' +
-        badge(dte < 0 ? tr('expiredWord') : (ltr(dte) + ' ' + tr('daysWord')), dte <= 90 ? 'bad' : 'warn') +
-        '<span class="row-val" style="padding-inline-start:8px">' + ltr(num(it.cost)) + '</span></div>';
-    }).join('') : emptyState());
-
-    var months  = (d.expiry_by_month && d.expiry_by_month.months) || [];
-    var expired = d.expiry_by_month && d.expiry_by_month.expired;
-    html += card(tr('expByMonth'), null,
-      ((expired && expired.count)
-        ? '<div class="row" style="cursor:pointer" onclick="expSheet(\'expired\')">' +
-            '<div class="row-main"><b style="color:var(--bad)">' + tr('expiredNow') + '</b>' +
-            '<small>' + ltr(expired.count) + ' ' + tr('items') + '</small></div>' +
-            '<span class="row-val" style="color:var(--bad)">' + ltr(num(expired.totalCost)) + '</span></div>'
-        : '') +
-      months.filter(function(m){ return m.count; }).map(function(m, i){
-        return '<div class="row" style="cursor:pointer" onclick="expSheet(' + i + ')">' +
-          '<div class="row-main"><b>' + esc(m.label) + '</b>' +
-          '<small>' + ltr(m.count) + ' ' + tr('items') + '</small></div>' +
-          '<span class="row-val">' + ltr(num(m.totalCost)) + '</span></div>';
-      }).join('') +
-      (function(){
-        var L = d.expiry_by_month && d.expiry_by_month.later;
-        if (!L || !L.count) return '';
-        return '<div class="row" style="cursor:pointer" onclick="expSheet(\'later\')">' +
-          '<div class="row-main"><b>' + tr('laterMonths') + '</b>' +
-          '<small>' + ltr(L.count) + ' ' + tr('items') + '</small></div>' +
-          '<span class="row-val">' + ltr(num(L.totalCost)) + '</span></div>';
-      })() || emptyState(),
-      expBtn("expiryMenu()"));
+    /* مترتبة بالشهر: كل شهر كارت فيه أصنافه، والأقرب فوق. اللون = قد إيه الوقت ضاق */
+    var MN = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+    var groups = {}, sumX = { n: 0, c: 0 }, sum3 = { n: 0, c: 0 }, sum6 = { n: 0, c: 0 };
+    near.forEach(function(it){
+      var dte = it.days_to_expire, k = dte < 0 ? 'x' : String(it.expire || '').slice(0, 7);
+      var g = groups[k] || (groups[k] = { key: k, dte: dte, items: {}, n: 0, c: 0 });
+      var nm = String(it.name || '');
+      var row = g.items[nm] || (g.items[nm] = { name: nm, stock: 0, cost: 0, dte: dte });
+      row.stock += +it.stock || 0; row.cost += +it.cost || 0; row.dte = Math.min(row.dte, dte);
+      g.c += +it.cost || 0; g.dte = Math.min(g.dte, dte);
+      var b = dte < 0 ? sumX : dte <= 90 ? sum3 : sum6; b.n++; b.c += +it.cost || 0;
+    });
+    Object.keys(groups).forEach(function(k){ groups[k].n = Object.keys(groups[k].items).length; });
+    html += vitals('قرب الصلاحية', 'خلال 6 شهور', [
+      { value: num(Math.round(sumX.c)), label: 'منتهي', tone: sumX.n ? 'bad' : '', note: ltr(sumX.n), sub: 'صنف' },
+      { value: num(Math.round(sum3.c)), label: 'خلال 3 شهور', tone: sum3.n ? 'bad' : '', note: ltr(sum3.n), sub: 'رجّعه دلوقتي' },
+      { value: num(Math.round(sum6.c)), label: 'من 3 لـ 6 شهور', tone: sum6.n ? 'warn' : '', note: ltr(sum6.n), sub: 'اعرضه أو رجّعه' }
+    ]);
+    var keys = Object.keys(groups).sort(function(a, b){ return a === 'x' ? -1 : b === 'x' ? 1 : a < b ? -1 : 1; });
+    if (!keys.length) html += '<div class="card">' + emptyState() + '</div>';
+    keys.forEach(function(k){
+      var g = groups[k], tone = k === 'x' || g.dte <= 90 ? 'bad' : 'warn';
+      var title = k === 'x' ? 'منتهي فعلًا — شيله من الرف' : (MN[+k.slice(5, 7) - 1] + ' ' + k.slice(0, 4));
+      var sub = k === 'x' ? '' : 'بعد ' + ltr(Math.max(0, g.dte)) + ' يوم';
+      var rows = Object.keys(g.items).map(function(n){ return g.items[n]; }).sort(function(a, b){ return b.cost - a.cost; });
+      html += '<div class="card exp-m" style="--tone:var(--' + tone + ')"><div class="exp-h"><span class="dot"></span><div><b>' + esc(title) + '</b>' +
+        '<small>' + ltr(g.n) + ' صنف' + (sub ? ' · ' + sub : '') + '</small></div><span class="exp-v">' + ltr(num(Math.round(g.c))) + '</span></div>' +
+        rows.map(function(r){
+          return '<div class="exp-r"><span class="exp-n">' + esc(r.name) + '</span><span class="exp-q">' + ltr(qtyFmt(Math.round(r.stock * 100) / 100)) + ' ' + tr('unitsWord') + '</span>' +
+            '<span class="exp-c">' + ltr(num(Math.round(r.cost))) + '</span></div>';
+        }).join('') + '</div>';
+    });
+    /* اللي بعد 6 شهور: ملخص بالشهر بس */
+    var L6 = ((d.expiry_by_month && d.expiry_by_month.months) || []).filter(function(m){ return m.count; });
+    var later = d.expiry_by_month && d.expiry_by_month.later;
+    if (later && later.count) html += card('بعد 6 شهور', 'مش محتاج تصرّف دلوقتي',
+      '<div class="row" style="cursor:pointer" onclick="expSheet(\'later\')"><div class="row-main"><b>' + tr('laterMonths') + '</b>' +
+      '<small>' + ltr(later.count) + ' ' + tr('items') + '</small></div><span class="row-val">' + ltr(num(later.totalCost)) + '</span></div>', expBtn("expiryMenu()"));
+    else if (L6.length) html += '<div style="text-align:center;margin-top:4px">' + expBtn("expiryMenu()") + '</div>';
   }
 
   /* ═══ راكد ═══ */

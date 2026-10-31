@@ -121,18 +121,43 @@ function camSnapCore_() {
   var tk = camToken_(); if (tk.error) { PropertiesService.getScriptProperties().setProperty('CAM_SNAP_LAST', 'فشل: ' + tk.error); return { ok: false, error: tk.error }; }
   var serial = PropertiesService.getScriptProperties().getProperty('CAM_DEVICE_SERIAL') || 'E10261949';
   var root = camRootFolder_(), day = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd'), hm = Utilities.formatDate(new Date(), 'Africa/Cairo', 'HHmm');
-  var it = root.getFoldersByName(day), dayF = it.hasNext() ? it.next() : root.createFolder(day), ok = 0, bad = [];
+  var it = root.getFoldersByName(day), dayF = it.hasNext() ? it.next() : root.createFolder(day), ok = 0, bad = [], made = [];
   [1, 2, 3, 4, 6].forEach(function (ch) {
-    try { var g = camGrab_(tk.token, serial, ch); if (g.error) { bad.push(ch); return; } dayF.createFile(g.blob.setName(hm + '_ch' + ch + '.jpg')); ok++; } catch (e) { bad.push(ch); }
+    try { var g = camGrab_(tk.token, serial, ch); if (g.error) { bad.push(ch); return; } made.push({ ch: ch, id: dayF.createFile(g.blob.setName(hm + '_ch' + ch + '.jpg')).getId() }); ok++; } catch (e) { bad.push(ch); }
   });
-  PropertiesService.getScriptProperties().setProperty('CAM_SNAP_LAST', day + ' ' + hm + ' — ' + ok + '/5' + (bad.length ? ' (فشل: ' + bad.join(',') + ')' : ''));
-  var snapRes = { ok: ok > 0, saved: ok, failed: bad, day: day, time: hm.slice(0, 2) + ':' + hm.slice(2), error: ok > 0 ? '' : 'مفيش لقطة اتسحبت' };
-  // مسح أي فولدر يوم أقدم من 30 يوم (≈ 1.2 جيجا)
+  var small = 0;
+  try { small = camSmallAll_(dayF, hm, made); } catch (eS) {}   // النسخ الصغيرة: لو فشلت السحب يكمّل عادي
+  PropertiesService.getScriptProperties().setProperty('CAM_SNAP_LAST', day + ' ' + hm + ' — الأصلية ' + ok + '/5 + الصغيرة ' + small + '/' + ok + (bad.length ? ' (فشل: ' + bad.join(',') + ')' : ''));
+  var snapRes = { ok: ok > 0, saved: ok, small: small, failed: bad, day: day, time: hm.slice(0, 2) + ':' + hm.slice(2), error: ok > 0 ? '' : 'مفيش لقطة اتسحبت' };
+  // مسح أي فولدر يوم أقدم من 30 يوم (≈ 1.2 جيجا) — الصغيرة جوه نفس الفولدر فبتتمسح معاها
   try {
     var lim = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), 'Africa/Cairo', 'yyyy-MM-dd'), fs = root.getFolders();
     while (fs.hasNext()) { var f = fs.next(); if (/^\d{4}-\d{2}-\d{2}$/.test(f.getName()) && f.getName() < lim) f.setTrashed(true); }
   } catch (e2) {}
   return snapRes;
+}
+/* نسخة صغيرة (عرض 640، أقل من ~60KB) جنب كل لقطة: HHmm_chN_s.jpg — من thumbnail الدرايف نفسه
+   (Apps Script مفيهوش مكتبة صور). أدوات الشات بتقطع الملفات الكبيرة، فالصغيرة بتنزل كاملة. */
+function camSmallAll_(dayF, hm, made) {
+  if (!made.length) return 0;
+  var auth = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, pending = made.slice(), done = 0;
+  for (var attempt = 0; attempt < 3 && pending.length; attempt++) {
+    Utilities.sleep(2000);   // الدرايف محتاج ثواني يعمل الـ thumbnail للملف الجديد
+    pending = pending.filter(function (m) {
+      try {
+        var meta = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + m.id + '?fields=thumbnailLink', { headers: auth, muteHttpExceptions: true });
+        if (meta.getResponseCode() !== 200) return true;
+        var link = (JSON.parse(meta.getContentText()) || {}).thumbnailLink;
+        if (!link) return true;
+        link = /=s\d+$/.test(link) ? link.replace(/=s\d+$/, '=s640') : link + '=s640';
+        var r = UrlFetchApp.fetch(link, { headers: auth, muteHttpExceptions: true });
+        if (r.getResponseCode() !== 200 || !/^image\//.test(String(r.getHeaders()['Content-Type'] || r.getHeaders()['content-type'] || ''))) return true;
+        dayF.createFile(r.getBlob().setName(hm + '_ch' + m.ch + '_s.jpg').setContentType('image/jpeg'));
+        done++; return false;
+      } catch (e) { return true; }
+    });
+  }
+  return done;
 }
 /* تشغيل السحب التلقائي كل 10 دقايق (بيشيل أي تريجر قديم للكاميرات الأول) */
 function camAutoOn() {

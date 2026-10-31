@@ -5154,7 +5154,7 @@ function loadCam(){
     var opt = function(v, t){ return '<option value="' + v + '"' + (d.type === v ? ' selected' : '') + '>' + t + '</option>'; };
     b.innerHTML = row('المفتاح', d.hasKey ? '✅ متحط' + (d.savedAt ? ' — ' + esc(d.savedAt) : '') : '❌ لسه') +
       (d.hasSecret ? row('الـ Secret', '✅ متحط') : '') +
-      row('السحب التلقائي', d.lastSnap ? esc(d.lastSnap) : 'لسه ما اشتغلش') +
+      row('آخر سحب (الأصلية + الصغيرة)', d.lastSnap ? esc(d.lastSnap) : 'لسه ما اشتغلش') +
       (d.typeName ? row('النوع', esc(d.typeName)) : '') + (d.host ? row('الموقع', '<span dir="ltr">' + esc(d.host) + '</span>') : '') +
       '<div class="group-title">' + (d.hasKey ? 'تغيير البيانات' : 'حط المفتاح') + '</div>' +
       '<select id="camType" class="chat-search"><option value="">نوع الـ API…</option>' + opt('hik', 'Hik-Connect / Hik-Partner OpenAPI') + opt('grok', 'API بتاع Grok') + opt('dvr', 'جهاز التسجيل مباشرة (IP)') + opt('other', 'تاني') + '</select>' +
@@ -5395,7 +5395,7 @@ function camSnapNow(){
     if (d && d.pinError) { try { localStorage.removeItem('adminPin'); } catch (e) {} }
     if (d && d.ok){
       var fl = d.failed || [], chips = [1, 2, 3, 4, 6].map(function(c){ var bad = fl.indexOf(c) >= 0 || fl.indexOf(String(c)) >= 0; return '<div class="cam-chip ' + (bad ? 'bad' : 'ok') + '">' + c + (bad ? ' ✕' : ' ✓') + '</div>'; }).join('');
-      b.innerHTML = '<div class="cam-chips">' + chips + '</div><div class="cam-note">اتحفظ ' + d.saved + '/5 الساعة ' + esc(d.time) + ' · اكتبلي «جهّز التقرير» في الشات</div>';
+      b.innerHTML = '<div class="cam-chips">' + chips + '</div><div class="cam-note">اتحفظ ' + d.saved + '/5 الساعة ' + esc(d.time) + (d.small != null ? ' · الصغيرة ' + d.small + '/' + d.saved : '') + ' · اكتبلي «جهّز التقرير» في الشات</div>';
     } else b.innerHTML = '<div class="state err" style="font-size:13px">❌ ' + esc((d && d.error) || 'فشل') + '</div>';
   }).catch(function(){ done(); b.innerHTML = '<div class="cam-note">السيرفر محتاج تحديث الأول</div><button class="btn btn-primary" style="margin-top:8px" onclick="camHomeUpdate()">🔄 حدّث السيرفر وجرّب تاني</button>'; });
 }

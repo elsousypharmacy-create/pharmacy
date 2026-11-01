@@ -230,7 +230,7 @@ function doPost(e) {
 
     if (LOCKED_POST[data.action] && dashLocked_(data.pin)) return lockedResp_();
     if (data.action === 'setBotSettings') return jsonResponseStaff(setBotSettings(data));
-    if (data.action === 'camVideoTest') return jsonResponseStaff(adminPinOk_(data.pin) ? camVideoTest() : { ok: false, pinError: true, error: 'الرقم السري غلط' });
+    if (data.action === 'camVideoTest') return jsonResponseStaff(adminPinOk_(data.pin) ? camVideoTest(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'camSnapNow') return jsonResponseStaff(adminPinOk_(data.pin) ? camSnapNow() : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'camSendTg') return jsonResponseStaff(adminPinOk_(data.pin) ? camSendTelegram(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'camTest') return jsonResponseStaff(adminPinOk_(data.pin) ? camTest(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
@@ -8475,7 +8475,7 @@ function camAutoOn() {
 }
 
 
-// Manual, PIN-protected capability probe for entrance camera 4 only.
+// Manual, PIN-protected capability probe for entrance 4 or counter 3 only.
 // API keys and SDK stream tokens never leave Script Properties / server memory.
 // References: Hikvision TPP HC-Integration; SYSCOM-Labs/API-DOCS
 // HIKVISION/HikConnect-Team/llms-full.txt sections 2.12 and 3.2.
@@ -8484,14 +8484,14 @@ function camVideoCode_(r) {
   var code = String(r && r.json && r.json.errorCode || '');
   return /^[a-zA-Z0-9_-]{1,40}$/.test(code) ? code : '';
 }
-function camVideoFail_(stage, message, r) {
+function camVideoFail_(stage, message, r, channel) {
   // Never return upstream messages, request bodies, URLs or caught exceptions.
-  var out = { ok: false, stage: stage, error: message, channel: 4 };
+  var out = { ok: false, stage: stage, error: message, channel: channel || 4 };
   if (r && Number(r.code)) out.http = Number(r.code);
   var code = camVideoCode_(r); if (code) out.providerCode = code;
   return out;
 }
-function camVideoCamera_(token, serial) {
+function camVideoCamera_(token, serial, targetChannel) {
   // Use the exact recorder + channel mapping; never guess a resource ID or use
   // the first camera returned (a different device may belong to the account).
   for (var page = 1; page <= 10; page++) {
@@ -8505,7 +8505,7 @@ function camVideoCamera_(token, serial) {
       var c = list[i], dev = c.device || {}, info = dev.devInfo || {}, channel = dev.channelInfo || {};
       var sn = String(info.serialNo || c.deviceSerial || c.deviceSerialNo || '');
       var no = Number(channel.no || c.cameraNo || c.channelNo || c.channelID);
-      if (sn === serial && no === 4 && c.id) return { id: String(c.id) };
+      if (sn === serial && no === targetChannel && c.id) return { id: String(c.id) };
     }
     var total = Number(data.totalCount || data.total || 0);
     if (!list.length || (total > 0 ? page * 100 >= total : list.length < 100)) break;
@@ -8523,33 +8523,39 @@ function camVideoUrl_(r) {
   var d = r.json.data;
   return String(d.playUrl || d.url || '');
 }
-function camVideoTest() {
+function camVideoTest(request) {
+  var rawChannel = request && request.channel;
+  var channel = rawChannel === undefined ? 4 : Number(rawChannel);
+  if ((typeof rawChannel !== 'undefined' && typeof rawChannel !== 'string' && typeof rawChannel !== 'number') ||
+      (channel !== 3 && channel !== 4))
+    return camVideoFail_('channel', 'الاختبار متاح للمدخل 4 والكاشير 3 بس');
+  var name = channel === 3 ? 'الكاشير 3' : 'المدخل 4';
   var stage = 'auth';
   try {
     var tk = camToken_();
-    if (tk.error || !tk.token) return camVideoFail_(stage, 'تعذر الدخول لخدمة الكاميرات؛ راجع حالة الربط');
+    if (tk.error || !tk.token) return camVideoFail_(stage, 'تعذر الدخول لخدمة الكاميرات؛ راجع حالة الربط', null, channel);
     var serial = PropertiesService.getScriptProperties().getProperty('CAM_DEVICE_SERIAL') || 'E10261949';
     stage = 'camera';
-    var camera = camVideoCamera_(tk.token, serial);
-    if (!camera.id) return camVideoFail_(stage, 'كاميرا المدخل 4 مش ظاهرة في قائمة الفيديو؛ راجع صلاحية الكاميرا على حساب Hikvision', camera.response);
+    var camera = camVideoCamera_(tk.token, serial, channel);
+    if (!camera.id) return camVideoFail_(stage, 'كاميرا ' + name + ' مش ظاهرة في قائمة الفيديو؛ راجع صلاحية الكاميرا على حساب Hikvision', camera.response, channel);
     stage = 'hls';
     var hls = camVideoAddress_(tk.token, serial, camera.id, 2), url = camVideoUrl_(hls);
     if (/^https:\/\/[^\s<>"']+$/i.test(url)) {
       // The short-lived signed playback URL is returned ONLY to the owner via
       // authenticated POST, never persisted, logged, cached or shared.
-      return { ok: true, stage: 'address', channel: 4, mode: 'hls', url: url,
+      return { ok: true, stage: 'address', channel: channel, mode: 'hls', url: url,
         seconds: 60, quality: 'fluent', message: 'عنوان البث الخفيف متاح؛ التشغيل الفعلي لسه محتاج اختبار' };
     }
     stage = 'ezopen';
     var ez = camVideoAddress_(tk.token, serial, camera.id, 1), ezUrl = camVideoUrl_(ez);
     if (/^ezopen:\/\//i.test(ezUrl)) {
-      return { ok: true, stage: 'sdk_required', channel: 4, mode: 'ezopen',
+      return { ok: true, stage: 'sdk_required', channel: channel, mode: 'ezopen',
         message: 'عنوان الفيديو الخاص بـ Hikvision متاح، لكن العرض والتحليل محتاجين مشغل Hikvision؛ مفيش فيديو اتشغّل في الاختبار ده',
         hlsCode: camVideoCode_(hls) };
     }
-    return camVideoFail_(stage, 'مقدرناش نحصل على عنوان فيديو قابل للاختبار؛ ده مش دليل إن الجهاز مابيدعمش الفيديو', ez);
+    return camVideoFail_(stage, 'مقدرناش نحصل على عنوان فيديو قابل للاختبار؛ ده مش دليل إن الجهاز مابيدعمش الفيديو', ez, channel);
   } catch (e) {
-    return camVideoFail_(stage, 'تعذر إكمال اختبار الفيديو؛ جرّب تاني أو راجع ربط Hikvision');
+    return camVideoFail_(stage, 'تعذر إكمال اختبار الفيديو؛ جرّب تاني أو راجع ربط Hikvision', null, channel);
   }
 }
 

@@ -5525,15 +5525,18 @@ function camVideoStop(message){
   if (message && CAM_VIDEO.status && CAM_VIDEO.status.isConnected) CAM_VIDEO.status.textContent = message;
   CAM_VIDEO.status = null;
 }
-function camVideoProbe(){
+function camVideoProbe(channel){
+  channel = channel === 3 ? 3 : 4;
+  var name = channel === 3 ? 'الكاشير 3' : 'المدخل 4';
   var b = document.getElementById('camvideo'); if (!b) return;
   camVideoStop(); var seq = CAM_VIDEO.seq;
   var pin = adminPin(); if (!pin) { b.textContent = 'الاختبار محتاج الرقم السري'; return; }
-  b.innerHTML = '<div class="state"><div class="spin"></div>بفحص فيديو كاميرا المدخل 4…</div>';
-  post({ action: 'camVideoTest', pin: pin }).then(function(d){
+  b.innerHTML = '<div class="state"><div class="spin"></div>بفحص فيديو كاميرا ' + name + '…</div>';
+  post({ action: 'camVideoTest', pin: pin, channel: channel }).then(function(d){
     if (seq !== CAM_VIDEO.seq || !b.isConnected || document.hidden) return;
     if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {}
     if (!d || !d.stage){ b.innerHTML = '<div class="state err">حدّث السيرفر الأول من زر «حدّث السيرفر»، وبعدها جرّب الاختبار تاني</div>'; return; }
+    if (d.ok && Number(d.channel) !== channel){ b.textContent = 'حدّث السيرفر الأول عشان اختبار كاميرا الكاشير؛ السيرفر رجّع كاميرا مختلفة'; return; }
     if (!d.ok){
       b.innerHTML = '<div class="state err">' + esc(d.error || 'تعذر الاختبار') +
         (d.providerCode ? ' · كود الخدمة: ' + esc(d.providerCode) : '') + '</div>'; return;
@@ -5548,7 +5551,7 @@ function camVideoProbe(){
     if (!v.canPlayType('application/vnd.apple.mpegurl')){
       b.innerHTML = '<div class="state">عنوان البث متاح، لكن المتصفح ده محتاج مشغل إضافي. جرّب من Safari على الآيفون؛ التشغيل لسه ماتأكدش.</div>'; return;
     }
-    b.innerHTML = '<div class="state" style="font-size:13px">كاميرا المدخل 4 · بث خفيف · يقف تلقائيًا بعد دقيقة. الجودة دي مش ضمان لدقة العدّ.</div>';
+    b.innerHTML = '<div class="state" style="font-size:13px">كاميرا ' + name + ' · بث خفيف · يقف تلقائيًا بعد دقيقة. الجودة دي مش ضمان لدقة العدّ.</div>';
     v.controls = true; v.muted = true; v.playsInline = true; v.preload = 'none';
     v.style.cssText = 'display:block;width:100%;max-height:320px;background:#111;border-radius:12px';
     var status = document.createElement('div'); status.className = 'state';
@@ -5585,7 +5588,8 @@ function loadCam(){
       '<input id="camSec" type="password" autocomplete="off" placeholder="Secret / الباسورد (لو موجود)" class="chat-search" dir="ltr">' +
       '<input id="camNote" placeholder="ملاحظة (اختياري): اسم الموقع اللي جبت منه المفتاح" class="chat-search" autocomplete="off">' +
       '<button class="btn btn-primary" onclick="saveCam()">💾 احفظ</button>' +
-      '<button class="btn btn-quiet" onclick="camVideoProbe()">🎥 اختبار فيديو المدخل — دقيقة</button><div id="camvideo" aria-live="polite"></div>' +
+      '<button class="btn btn-quiet" onclick="camVideoProbe(4)">🎥 اختبار فيديو المدخل — دقيقة</button>' +
+      '<button class="btn btn-quiet" onclick="camVideoProbe(3)">🎥 اختبار فيديو الكاشير — دقيقة</button><div id="camvideo" aria-live="polite"></div>' +
       '<button class="btn btn-quiet" onclick="camAuto()">⏱️ شغّل السحب التلقائي كل 10 دقايق</button><div id="camauto"></div>' +
       '<button class="btn btn-primary" onclick="camSendTg()">📲 ابعت لقطات الكاميرات على تليجرام</button><div id="camtg"></div>' +
       '<button class="btn btn-quiet" onclick="camSrvUp()">🔄 حدّث السيرفر</button><div id="camsrv"></div>' +

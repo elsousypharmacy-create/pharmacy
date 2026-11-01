@@ -30,6 +30,12 @@ test('relative paths normalize and preserve explicit query only', () => {
   const {c} = setup();
   assert.equal(c.camRecUrl_('https://video.example.test/a/b.m3u8?auth=x','../c.ts?token=y'), 'https://video.example.test/c.ts?token=y');
 });
+test('provider HTTPS port and public IPv4 are supported without allowing LAN addresses', () => {
+  const {c}=setup();
+  assert.equal(c.camRecUrl_('https://8.8.8.8:8443/live/a.m3u8?x=y','b.ts'),'https://8.8.8.8:8443/live/b.ts');
+  assert.equal(c.camRecUrl_('https://video.example.test:8443/live/a.m3u8','/b.ts'),'https://video.example.test:8443/b.ts');
+  for (const ip of ['10.0.0.1','192.168.1.1','172.16.0.1','169.254.1.1','100.64.0.1']) assert.throws(()=>c.camRecUrl_('https://'+ip+':8443/a','b'));
+});
 test('foreign origins, private/IP hosts and unsafe URLs refused', () => {
   const {c} = setup();
   for (const uri of ['http://video.example.test/x','//evil.example/x','https://video.example.test.evil/x','data:x','x\\y']) assert.throws(() => c.camRecUrl_('https://video.example.test/a/live.m3u8',uri));

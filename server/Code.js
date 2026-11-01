@@ -8565,8 +8565,18 @@ function camVideoTest(request) {
 // HLS format: RFC 8216. Encrypted/ranged/discontinuous streams fail closed.
 function camRecError_(code) { var e = new Error('camera sample'); e.camCode = code; throw e; }
 function camRecUrl_(base, relative) {
-  var m = /^(https:\/\/([a-z0-9.-]+))(?::443)?(\/[^?#]*)?(\?[^#]*)?$/i.exec(base);
-  if (!m || !m[2].includes('.') || /(^|\.)(localhost|local|internal)$|^[\d.]+$/i.test(m[2])) camRecError_('url');
+  var m = /^(https:\/\/([a-z0-9.-]+)(?::([0-9]{1,5}))?)(\/[^?#]*)?(\?[^#]*)?$/i.exec(base);
+  if (!m || (m[3] && (Number(m[3]) < 1 || Number(m[3]) > 65535))) camRecError_('url_base');
+  var host = m[2].toLowerCase();
+  if (!host.includes('.') || /(^|\.)(localhost|local|internal)$/.test(host)) camRecError_('url_host');
+  if (/^[\d.]+$/.test(host)) {
+    var ip = host.split('.').map(Number);
+    if (ip.length !== 4 || ip.some(function(n) { return n < 0 || n > 255; }) ||
+        ip[0] === 0 || ip[0] === 10 || ip[0] === 127 || ip[0] >= 224 ||
+        (ip[0] === 169 && ip[1] === 254) || (ip[0] === 172 && ip[1] >= 16 && ip[1] <= 31) ||
+        (ip[0] === 192 && ip[1] === 168) || (ip[0] === 100 && ip[1] >= 64 && ip[1] <= 127) ||
+        (ip[0] === 198 && (ip[1] === 18 || ip[1] === 19))) camRecError_('url_host');
+  }
   var origin = m[1], value = String(relative || '').trim();
   if (!value || /[\s\\<>"'#]/.test(value)) camRecError_('url');
   if (/^https:\/\//i.test(value)) {
@@ -8574,8 +8584,8 @@ function camRecUrl_(base, relative) {
     return value;
   }
   if (/^[a-z][a-z0-9+.-]*:|^\/\//i.test(value)) camRecError_('origin');
-  if (value[0] === '?') return origin + (m[3] || '/') + value;
-  var path = value[0] === '/' ? value : (m[3] || '/').replace(/[^/]*$/, '') + value;
+  if (value[0] === '?') return origin + (m[4] || '/') + value;
+  var path = value[0] === '/' ? value : (m[4] || '/').replace(/[^/]*$/, '') + value;
   var parts = path.split('?'), normalized = [];
   parts[0].split('/').forEach(function(p) { if (p === '..') normalized.pop(); else if (p && p !== '.') normalized.push(p); });
   return origin + '/' + normalized.join('/') + (parts.length > 1 ? '?' + parts.slice(1).join('?') : '');

@@ -6443,6 +6443,9 @@ function driveRetry_(fn) {
   }
 }
 
+/* بيزيد لما حساب الديون يتغيّر، عشان اللقطة المحفوظة (كل ساعة) والكاش القديمين مايفضلوش بيعرضوا الحساب القديم */
+var DEBTS_FORMAT_V = 3;
+
 function getDebtsData() {
   try {
     var folder = DriveApp.getFolderById(SALES_FOLDER);
@@ -6620,6 +6623,7 @@ function getDebtsData() {
 
     return {
       ok: true,
+      v: DEBTS_FORMAT_V,   // نسخة شكل الحساب — أي لقطة/كاش بنسخة أقدم بيتجاهلوها
       debtors: list,
       count: list.length,
       by_seller: Object.keys(byEmp).map(function (e) {
@@ -11923,7 +11927,7 @@ function getHomeBundle() {
 // الديون بتقرا سنة من ملفات Drive — أتقل حاجة في السيستم
 function fxDebtsCached_() {
   var cached = fxCacheGet_('fx_debts');
-  if (cached) return cached;
+  if (cached && cached.v === DEBTS_FORMAT_V) return cached;
   var d = getDebtsData();
   if (d && d.ok) fxCachePut_('fx_debts', d, 600); // ١٠ دقايق
   return d;
@@ -12500,7 +12504,7 @@ function snapshotStatus() {
 // ── نسخ تقرا اللقطة الأول، ولو مش موجودة بتحسب عادي ──
 function getDebtsSnap() {
   var s = snapLoad_('debts');
-  if (s) return s;
+  if (s && s.v === DEBTS_FORMAT_V) return s;   // لقطة بحساب قديم → نحسب من جديد
   return fxDebtsCached_();
 }
 

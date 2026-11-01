@@ -210,7 +210,7 @@ function getHomeBundle() {
 // الديون بتقرا سنة من ملفات Drive — أتقل حاجة في السيستم
 function fxDebtsCached_() {
   var cached = fxCacheGet_('fx_debts');
-  if (cached) return cached;
+  if (cached && cached.v === DEBTS_FORMAT_V) return cached;
   var d = getDebtsData();
   if (d && d.ok) fxCachePut_('fx_debts', d, 600); // ١٠ دقايق
   return d;

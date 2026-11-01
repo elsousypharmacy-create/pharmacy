@@ -216,7 +216,7 @@ function snapshotStatus() {
 // ── نسخ تقرا اللقطة الأول، ولو مش موجودة بتحسب عادي ──
 function getDebtsSnap() {
   var s = snapLoad_('debts');
-  if (s) return s;
+  if (s && s.v === DEBTS_FORMAT_V) return s;   // لقطة بحساب قديم → نحسب من جديد
   return fxDebtsCached_();
 }
 

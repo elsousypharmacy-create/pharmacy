@@ -9,6 +9,9 @@ function driveRetry_(fn) {
   }
 }
 
+/* بيزيد لما حساب الديون يتغيّر، عشان اللقطة المحفوظة (كل ساعة) والكاش القديمين مايفضلوش بيعرضوا الحساب القديم */
+var DEBTS_FORMAT_V = 3;
+
 function getDebtsData() {
   try {
     var folder = DriveApp.getFolderById(SALES_FOLDER);
@@ -186,6 +189,7 @@ function getDebtsData() {
 
     return {
       ok: true,
+      v: DEBTS_FORMAT_V,   // نسخة شكل الحساب — أي لقطة/كاش بنسخة أقدم بيتجاهلوها
       debtors: list,
       count: list.length,
       by_seller: Object.keys(byEmp).map(function (e) {

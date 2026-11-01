@@ -39,6 +39,10 @@ If there are no frames in the window: save a report with `"summary":[]`, `"pages
 - Floor: bags, cartons, trash. Broken/torn furniture (stools, chairs).
 - Lights off. Outside: rubble, trash, people blocking the entrance, steps dirty.
 People: describe neutrally, no names.
+- Clutter on any counter top or around the computer (boxes, cables, products not in place). Items stored on top of shelves.
+- Equipment left on after closing (screens, lights). Dirty camera lens (streaks/haze in the image).
+Strict rule: zoom EVERY area of EVERY frame you use before writing. Anything out of place gets an arrow, even small.
+If an area cannot be judged (dark/IR night image, blur), say so in `note` (e.g. «رص كاميرا 2 ماتقيّمش») — never treat it as OK.
 
 ## 5. Group and build pages
 - Group the same problem across times (same thing, same place). Count it and list its times (HH:MM, 12-hour, Latin digits).

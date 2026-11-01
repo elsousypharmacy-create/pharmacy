@@ -38,18 +38,45 @@ function getDebtsData() {
        فآخر حدث بيوصل هو الصح دايمًا — من غير مقارنة بالوقت.
        🔧 كانت فيه مقارنة بالوقت بترفض أي دين جديد بعد سداد في نفس اليوم (السداد
           ملوش وقت في الملف فبنحط له 23:59:59) فالدين الجديد كان بيضيع من الرصيد. */
+    /* 🔗 العميل ممكن رقمه يتغيّر في نظام البيع (مثلًا معرّف داخلي "483" يبقى موبايل
+       حقيقي). لو سبناه، يبان كارتين: القديم بآخر رصيد ليه واقف للأبد (وهمي) والجديد.
+       الربط بيتم بطريقتين:
+         ١) سطر الدين فيه customerid ثابت — لو نفس الـid ظهر برقم جديد، نشيل القديم.
+         ٢) سطر السداد مفيهوش id — فلو الرقم جديد، نربطه بعميل قديم له نفس الاسم
+            ورصيده = "إجمالى الديون قبل" بالظبط (ومفيش غير عميل واحد بالمواصفات دي). */
+    var cidKey = {};   // customerid -> الرقم اللي متسجّل عليه دلوقتي
+    function normName_(s) { return String(s || '').replace(/\s+/g, ' ').trim(); }
+
     function remember(phoneRaw, name, balance, when, extra) {
+      extra = extra || {};
       var canon = canonicalEgyptPhone_(phoneRaw);
       if (!canon) canon = String(phoneRaw || '').trim();   // معرّف داخلي زي "200"
       if (!canon) return;
       var cur = latest[canon];
+      if (extra.cid) {
+        var oldKey = cidKey[extra.cid];
+        if (oldKey && oldKey !== canon && latest[oldKey] && latest[oldKey].cid === extra.cid) {
+          if (!cur) cur = latest[oldKey];
+          delete latest[oldKey];
+        }
+      } else if (!cur && extra.before !== undefined && extra.before !== null) {
+        var nm = normName_(name), hit = null, hits = 0;
+        Object.keys(latest).forEach(function (k) {
+          var r = latest[k];
+          if (k !== canon && nm && normName_(r.name) === nm && Math.abs(r.balance - extra.before) < 0.011) { hit = k; hits++; }
+        });
+        if (hits === 1) { cur = latest[hit]; delete latest[hit]; }
+      }
+      var cid = extra.cid || (cur ? cur.cid : '');
+      if (cid) cidKey[cid] = canon;
       latest[canon] = {
         phone: canon,
+        cid: cid,
         name: (name && String(name).trim()) ? String(name).trim() : (cur ? cur.name : 'عميل'),
         balance: balance,
         when: (cur && cur.when > when) ? cur.when : when,   // آخر حركة للعرض بس
-        lastPaid: (extra && extra.paid) ? extra.paid : (cur ? cur.lastPaid : ''),
-        seller: (extra && extra.seller) ? extra.seller : (cur ? cur.seller : '')
+        lastPaid: extra.paid ? extra.paid : (cur ? cur.lastPaid : ''),
+        seller: extra.seller ? extra.seller : (cur ? cur.seller : '')
       };
     }
 
@@ -95,13 +122,14 @@ function getDebtsData() {
             var when  = (v[5] && String(v[5]).trim()) ? String(v[5]).trim() : (dateStr + ' 00:00:00');
             var debit = parseFloat(v[8]) || 0;
             var prev  = parseFloat(v[15]) || 0;
+            var cid   = v[2] ? String(v[2]).trim() : '';
             var uid   = v[7] ? String(v[7]).trim() : '';
             var seller = uid ? String(resolveEmpName(normalizeEmpId(uid))) : '';
             totalNewDebt += debit;
             var be = byEmp[seller || 'غير محدد'] || (byEmp[seller || 'غير محدد'] = { total: 0, count: 0 });
             be.total += debit; be.count++;
             events.push({ pos: m.index + t, phone: phone, name: name,
-                          balance: prev + debit, when: when, seller: seller });
+                          balance: prev + debit, when: when, seller: seller, cid: cid });
           } catch (e) { continue; }
         }
       }
@@ -118,12 +146,12 @@ function getDebtsData() {
         if (before > after) totalCollected += (before - after);
         events.push({ pos: cp.index, phone: cp[2].trim(), name: cp[1].trim(),
                       balance: after, when: dateStr + ' 23:59:59',
-                      paid: before > after ? dateStr : '' });
+                      paid: before > after ? dateStr : '', before: before });
       }
 
       /* بنطبّقهم بترتيب ظهورهم في الملف — الأخير هو الصح */
       events.sort(function (a, b) { return a.pos - b.pos; });
-      events.forEach(function (ev) { remember(ev.phone, ev.name, ev.balance, ev.when, { paid: ev.paid, seller: ev.seller }); });
+      events.forEach(function (ev) { remember(ev.phone, ev.name, ev.balance, ev.when, { paid: ev.paid, seller: ev.seller, cid: ev.cid, before: ev.before }); });
     }
 
     /* ---- بناء القايمة ---- */

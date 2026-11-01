@@ -202,6 +202,7 @@ body.light .m-custom input{color-scheme:light}
 .q-act i svg,.camr-bar svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .q-act.q-main i{background:var(--brand);color:#fff}
 .camr-bar .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.ctl-more svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .btn.ic{display:inline-flex;align-items:center;justify-content:center;gap:7px;text-decoration:none}
 .btn.ic svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .btn.ic[disabled]{opacity:.45}
@@ -1436,7 +1437,7 @@ document.addEventListener('visibilitychange', function(){
 /* ═══ منتقي الفترة — نفس الشكل في كل الصفحات ═══ */
 /* الافتتاح على "اليوم" — ده اللي بتدوّر عليه أول ما تفتح.
    الفترات الأطول باختيارك. */
-var RANGE = { sales:'today', exp:'month', att:'today', perf:'today', debt:'month', short:'7', close:'week' };
+var RANGE = { sales:'today', exp:'month', att:'today', perf:'today', debt:'month', short:'7', close:'month' };
 /* قبل 10 الصبح (بتوقيت مصر) النهاردة لسه فاضي: الأداء والفريق يفتحوا على أمس */
 try {
   var _hs = JSON.parse(localStorage.getItem('c:home:{}') || 'null'), _d = _hs && _hs.d && _hs.d.b && _hs.d.b.daily;
@@ -2649,7 +2650,8 @@ var IC = {
   checkAll: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M8.5 12.5 11 15l4.5-5"/></svg>',
   uncheck: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/></svg>',
   doc: '<svg viewBox="0 0 24 24"><path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1-1.5z"/><path d="M14 3.5V8h4"/><path d="M9 13h6M9 16.5h4"/></svg>',
-  flag: '<svg viewBox="0 0 24 24"><path d="M6 21V4"/><path d="M6 5h11l-2.5 3.5L17 12H6"/></svg>'
+  flag: '<svg viewBox="0 0 24 24"><path d="M6 21V4"/><path d="M6 5h11l-2.5 3.5L17 12H6"/></svg>',
+  cal: '<svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="15" rx="3"/><path d="M8 3.5v4M16 3.5v4M4 10.5h16"/></svg>'
 };
 var CLS = { data: null, open: {}, sel: {}, req: 0 };
 function clsAdd(ds, n){ var d = new Date(ds + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
@@ -2688,6 +2690,16 @@ function pgClosing(){
     });
   };
   next().catch(function(e){ logErr(e); if (my === CLS.req && !CLS.data) oops(box, "pgClosing()"); });
+}
+/* اسم الفترة المختارة (بيظهر على الزرار) */
+function clsRangeLabel(){
+  var v = RANGE.close, R = clsRange(), mn = function(ds){ return new Date(ds + 'T12:00:00').toLocaleDateString('ar-EG-u-nu-latn', { month: 'long', year: 'numeric' }); };
+  if (v === 'month') return mn(R.from);
+  if (v === 'lastMonth') return mn(R.from);
+  if (v === 'today') return 'اليوم';
+  if (v === 'yesterday') return 'أمس';
+  if (v === 'week') return 'آخر 7 أيام';
+  return R.from + ' ← ' + R.to;
 }
 function setClsRange(v){ setRange('close', v, pgClosing); }
 function clsMenu(){
@@ -2859,14 +2871,15 @@ function clsShare(){
 function drawClosing(){
   var box = document.getElementById('p-money'), d = CLS.data; if (!d) return;
   var t = d.totals, sum = t.cash + t.credit + t.card;
-  var html = ctlBar(ctlBtn('الأسبوع', RANGE.close === 'week', "setClsRange('week')") + ctlBtn('الشهر', RANGE.close === 'month', "setClsRange('month')"),
-    'clsMenu()', RANGE.close !== 'week' && RANGE.close !== 'month');
+  var html = '<div class="ctl"><div class="ctl-main"><button class="on" onclick="clsMenu()">' + esc(clsRangeLabel()) + '</button></div>' +
+    '<button class="ctl-more" onclick="clsMenu()" aria-label="تحديد المدة">' + IC.cal + '</button></div>';
   html += vitals('وسائل الدفع', d.from + ' ← ' + d.to, [
     { value: num(t.cash), label: 'كاش', tone: 'ok', note: pct(t.cash, sum) + '%', sub: 'من المبيعات' },
     { value: num(t.credit), label: 'آجل', tone: 'warn', note: pct(t.credit, sum) + '%', sub: 'من المبيعات' },
     { value: num(t.card), label: 'كارت بنكي', tone: 'brand', note: pct(t.card, sum) + '%', sub: 'من المبيعات' }
   ]);
-  if (!d.days.length){ box.innerHTML = html + (d.loading ? '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>' : '<div class="state">مفيش مبيعات في الفترة دي</div>'); return; }
+  if (!d.days.length){ box.innerHTML = html + (d.loading ? '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>' :
+      '<div class="state">مفيش مبيعات في الفترة دي</div>' + (RANGE.close === 'month' ? '<button class="btn btn-quiet" onclick="setClsRange(\'lastMonth\')">اعرض الشهر اللي فات</button>' : '')); return; }
   var bad = d.days.filter(clsProblem);
   if (bad.length) html += alertBox('warn', bad.length + ' يوم فيه فرق في التقفيل', 'اضغط على اليوم وشوف الفرق بالظبط', '');
   html += '<div id="clsBar">' + clsBarHtml() + '</div><div id="clsList">' + clsListHtml() + '</div>';

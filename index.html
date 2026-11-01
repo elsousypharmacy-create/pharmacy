@@ -5188,7 +5188,17 @@ function camrSheet(title){
   document.getElementById('sheet-title').textContent = title;
   return document.getElementById('sheet-body');
 }
-function camrNotes(r){ return (r.cams || []).reduce(function(s, c){ return s + (c.items || []).length; }, 0); }
+function camrNotes(r){ if (r.summary) return r.summary.length; return (r.cams || []).reduce(function(s, c){ return s + (c.items || []).length; }, 0); }
+/* صفحات التقرير: النسخة 2 (تقرير اليوم) = r.pages بالترتيب، القديمة = كاميرا واحدة لكل رقم */
+function camrPages(r){
+  if (r.pages) return r.pages;
+  return CAMR_ORDER.map(function(ch){ return (r.cams || []).filter(function(c){ return c.ch === ch; })[0]; }).filter(Boolean);
+}
+function camrFiles(r){
+  var ids = [];
+  camrPages(r).forEach(function(c){ ids.push(c.file); (c.repeats || []).forEach(function(x){ ids.push(x.file); }); });
+  return ids.filter(function(id, i){ return id && ids.indexOf(id) === i; });
+}
 function camReportsOpen(){
   var b = camrSheet('تقارير الكاميرات'); busy(b);
   api('camReports').then(function(d){
@@ -5198,8 +5208,8 @@ function camReportsOpen(){
     b.innerHTML = '<div class="camr-list">' + CAMR.list.map(function(r, i){
       var n = camrNotes(r);
       var chips = CAMR_ORDER.map(function(ch){
-        var c = (r.cams || []).filter(function(x){ return x.ch === ch; })[0]; if (!c) return '';
-        var k = (c.items || []).length;
+        var cs = camrPages(r).filter(function(x){ return x.ch === ch; }); if (!cs.length) return '';
+        var k = cs.reduce(function(s, x){ return s + (x.items || []).length; }, 0);
         return '<span class="cam-chip ' + (k ? 'bad' : 'ok') + '">ك' + ch + (k ? ' · ' + k : ' ✓') + '</span>';
       }).join('');
       return '<button class="camr-row" onclick="camReportView(' + i + ')"><div class="camr-rt"><b>' + esc(r.label || r.time) + '</b><small>' + esc(r.dayLabel || r.date) + '</small></div>' +
@@ -5212,6 +5222,7 @@ function camrLoadAll(ids){
   var need = ids.filter(function(id){ return id && !CAMR.frames[id] && !(CAMR.pend || {})[id]; });
   if (!need.length) return Promise.resolve();
   CAMR.pend = CAMR.pend || {};
+  if (need.length > 8) return Promise.all([camrLoadAll(need.slice(0, 8)), camrLoadAll(need.slice(8))]);
   var p = api('camFrames', { ids: need.join(',') }).then(function(d){
     if (!d || !d.ok || !d.frames) throw new Error('old');
     return Promise.all(need.map(function(id){
@@ -5299,6 +5310,74 @@ function camrDrawCam(im, logo, c, r){
   camrFoot(x, W, H);
   return cv;
 }
+/* ═══ تقرير اليوم (النسخة 2): كارت أبيض بعلامة حمرا ورقم + المشكلة بس، وتحت الصورة المرات اللي اتكررت ═══ */
+function camrPill(x, txt, n, cx, cy, W, top, PH){
+  x.font = '800 25px Cairo'; var w = x.measureText(txt).width + 78, h = 52;
+  var bx = Math.min(Math.max(cx - w / 2, 8), W - w - 8), by = top + Math.min(Math.max(cy - h / 2, 8), PH - h - 8);
+  x.save(); x.shadowColor = 'rgba(0,0,0,.32)'; x.shadowBlur = 12; x.shadowOffsetY = 3; camrRR(x, '#fff', bx, by, w, h, 14); x.restore();
+  camrRR(x, CAMR_C.red, bx + w - 7, by, 7, h, 3);
+  x.beginPath(); x.arc(bx + w - 32, by + h / 2, 15, 0, 7); x.fillStyle = CAMR_C.red; x.fill();
+  camrTxt(x, String(n), bx + w - 32, by + h / 2 + 1, '800 18px Cairo', '#fff', 'center');
+  camrTxt(x, txt, bx + w - 56, by + h / 2 + 1, '800 25px Cairo', '#1a1a1a');
+  return [bx, by, w, h];
+}
+function camrDrawPage(im, logo, c, r){
+  var W = 1200, PH = Math.round(im.height * W / im.width), k = W / ((r.space && r.space[0]) || im.width), HH = 150, FH = 84;
+  var reps = (c.repeats || []).filter(function(x){ return CAMR.frames[x.file]; }), per = Math.min(Math.max(reps.length, 2), 4), gap = 16;
+  var tw = (W - 48 - gap * (per - 1)) / per, th = Math.round(tw * .75), rows = Math.ceil(reps.length / per);
+  var RH = reps.length ? 60 + rows * (th + 46) : 0, H = HH + PH + RH + FH;
+  var cv = document.createElement('canvas'); cv.width = W; cv.height = H; var x = cv.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+  var rr = { label: c.label || r.label, date: (r.dayLabel || r.date || '') };
+  camrHead(x, W, logo, (c.title ? c.title + '  |  ' : '') + 'كاميرا ' + c.ch + ' — ' + (c.name || ''), rr);
+  x.drawImage(im, 0, HH, W, PH);
+  var items = c.items || [];
+  items.forEach(function(it){
+    var tx = it.to[0] * k, ty = HH + it.to[1] * k, sx = it.lab[0] * k, sy = HH + it.lab[1] * k;
+    x.lineCap = 'round';
+    x.strokeStyle = '#fff'; x.lineWidth = 9; x.beginPath(); x.moveTo(sx, sy); x.lineTo(tx, ty); x.stroke();
+    x.strokeStyle = CAMR_C.red; x.lineWidth = 4.5; x.beginPath(); x.moveTo(sx, sy); x.lineTo(tx, ty); x.stroke();
+    x.beginPath(); x.arc(tx, ty, 9, 0, 7); x.fillStyle = CAMR_C.red; x.fill(); x.lineWidth = 3; x.strokeStyle = '#fff'; x.stroke();
+  });
+  items.forEach(function(it, i){ camrPill(x, it.now, it.n || (i + 1), it.lab[0] * k, it.lab[1] * k, W, HH, PH); });
+  if (!items.length){ camrRR(x, 'rgba(255,255,255,.95)', W - 260, HH + 20, 230, 60, 30); camrTxt(x, '✓ كله تمام', W - 145, HH + 51, '700 26px Cairo', CAMR_C.grn, 'center'); }
+  if (reps.length){
+    var y0 = HH + PH;
+    camrTxt(x, 'نفس المشكلة في أوقات تانية (' + reps.length + ')', W - 24, y0 + 32, '800 24px Cairo', CAMR_C.ink);
+    reps.forEach(function(rp, i){
+      var col = i % per, row = Math.floor(i / per), fx = W - 24 - tw - col * (tw + gap), fy = y0 + 60 + row * (th + 46), f = CAMR.frames[rp.file];
+      var cr = rp.crop || [0, 0, (r.space || [f.width])[0], (r.space || [0, f.height])[1]], s2 = f.width / ((r.space && r.space[0]) || f.width);
+      x.save(); camrRR(x, null, fx, fy, tw, th, 12); x.clip(); x.drawImage(f, cr[0] * s2, cr[1] * s2, cr[2] * s2, cr[3] * s2, fx, fy, tw, th); x.restore();
+      x.lineWidth = 4; x.strokeStyle = CAMR_C.red; camrRR(x, null, fx, fy, tw, th, 12); x.stroke();
+      x.direction = 'ltr'; camrTxt(x, rp.label || rp.time || '', fx + tw / 2, fy + th + 24, '700 22px Cairo', CAMR_C.muted, 'center');
+    });
+  }
+  camrFoot(x, W, H);
+  return cv;
+}
+function camrDrawSummary(logo, r){
+  var sm = r.summary || [], W = 1200, rowH = 112, H = Math.max(900, 300 + sm.length * (rowH + 18) + 120);
+  var cv = document.createElement('canvas'); cv.width = W; cv.height = H; var x = cv.getContext('2d');
+  x.fillStyle = CAMR_C.bg; x.fillRect(0, 0, W, H);
+  camrHead(x, W, logo, 'تقرير اليوم' + (r.range ? '  |  ' + r.range : ''), { label: r.label, date: r.dayLabel || r.date });
+  camrTxt(x, sm.length ? 'المشاكل (' + sm.length + ')' : 'مفيش مشاكل ✓', W - 50, 222, '800 38px Cairo', sm.length ? CAMR_C.ink : CAMR_C.grn);
+  if (r.note) camrTxt(x, r.note, W - 50, 268, '600 22px Cairo', CAMR_C.muted);
+  var y = 300;
+  sm.forEach(function(s, i){
+    var col = s.sev === 'y' ? '#e8930c' : CAMR_C.red;
+    x.save(); x.shadowColor = 'rgba(14,34,64,.13)'; x.shadowBlur = 16; x.shadowOffsetY = 4; camrRR(x, '#fff', 40, y, W - 80, rowH, 20); x.restore();
+    x.fillStyle = col; x.fillRect(W - 48, y + 18, 8, rowH - 36);
+    x.beginPath(); x.arc(W - 92, y + 40, 20, 0, 7); x.fillStyle = col; x.fill();
+    camrTxt(x, String(i + 1), W - 92, y + 41, '800 20px Cairo', '#fff', 'center');
+    camrTxt(x, s.text, W - 126, y + 40, '800 28px Cairo', CAMR_C.ink);
+    camrTxt(x, (s.where ? s.where + '  ·  ' : '') + (s.times || []).join('  ·  '), W - 126, y + 80, '600 21px Cairo', CAMR_C.muted);
+    var cnt = s.count || '';
+    if (cnt){ x.font = '800 24px Cairo'; var cw = x.measureText(cnt).width + 40; camrRR(x, s.sev === 'y' ? '#fff4e0' : '#fdecee', 64, y + rowH / 2 - 25, cw, 50, 25); camrTxt(x, cnt, 64 + cw / 2, y + rowH / 2 + 1, '800 24px Cairo', col, 'center'); }
+    y += rowH + 18;
+  });
+  camrFoot(x, W, H);
+  return cv;
+}
 function camrDrawCover(logo, r){
   var W = 1200, H = 1600, cv = document.createElement('canvas'); cv.width = W; cv.height = H; var x = cv.getContext('2d');
   x.fillStyle = CAMR_C.bg; x.fillRect(0, 0, W, H);
@@ -5322,21 +5401,22 @@ function camReportView(i){
   var r = CAMR.list[i]; CAMR.cur = { r: r, canvases: [] };
   var b = camrSheet((r.label || '') + ' · ' + (r.dayLabel || r.date || ''));
   var n = camrNotes(r);
+  if (r.pages) setTimeout(function(){ var sm = b.querySelector('.camr-sum'); if (sm) sm.textContent = n ? n + ' مشكلة · ' + r.pages.length + ' صورة' : '✓ كله تمام'; }, 0);
   b.innerHTML = '<div class="camr-bar"><button class="btn btn-quiet" onclick="camReportsOpen()">‹ كل التقارير</button>' +
     '<button class="btn btn-primary" id="camrPdf" onclick="camReportPdf()" disabled><svg viewBox="0 0 24 24"><path d="M12 15V3.5"/><path d="M7.5 8 12 3.5 16.5 8"/><path d="M5 12v6.5A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V12"/></svg> شير</button></div>' +
     '<div class="camr-sum ' + (n ? 'bad' : 'ok') + '">' + (n ? n + ' ملاحظة في ' + (r.cams || []).filter(function(c){ return (c.items || []).length; }).length + ' كاميرات' : '✓ كله تمام') + '</div>' +
     '<div id="camrPages"><div class="state"><div class="spin"></div> بجيب اللقطات…</div></div>';
   camrJsPdf();
-  var cams = CAMR_ORDER.map(function(ch){ return (r.cams || []).filter(function(c){ return c.ch === ch; })[0]; }).filter(Boolean);
-  Promise.all([camrFonts(), camrLogo(), camrLoadAll(cams.map(function(c){ return c.file; }))]).then(function(a){
+  var cams = camrPages(r);
+  Promise.all([camrFonts(), camrLogo(), camrLoadAll(camrFiles(r))]).then(function(a){
     var logo = a[1], box = document.getElementById('camrPages'); box.innerHTML = '';
-    var cover = camrDrawCover(logo, r); CAMR.cur.cover = cover;
+    var cover = r.pages ? camrDrawSummary(logo, r) : camrDrawCover(logo, r); CAMR.cur.cover = cover;
     var chain = Promise.resolve();
     cams.forEach(function(c){
       var slot = document.createElement('div'); slot.className = 'camr-page'; slot.innerHTML = '<div class="state"><div class="spin"></div> كاميرا ' + c.ch + '…</div>'; box.appendChild(slot);
       chain = chain.then(function(){
         return camrFrame(c.file).then(function(im){
-          var cv = camrDrawCam(im, logo, c, r); CAMR.cur.canvases.push(cv);
+          var cv = r.pages ? camrDrawPage(im, logo, c, r) : camrDrawCam(im, logo, c, r); CAMR.cur.canvases.push(cv);
           slot.innerHTML = ''; var img = new Image(); img.src = cv.toDataURL('image/jpeg', .9); img.alt = 'كاميرا ' + c.ch; img.onclick = function(){ camrZoom(img.src); }; slot.appendChild(img);
         }).catch(function(e){ slot.innerHTML = '<div class="state err">كاميرا ' + c.ch + ': ' + esc(e.message || tr('failed')) + '</div>'; });
       });
@@ -5383,7 +5463,7 @@ function homeCamLatest(){
     CAMR.list = d.reports; var r = d.reports[0], n = camrNotes(r);
     el.textContent = (r.label || '') + (n ? ' · ' + n + ' ملاحظة' : ' · تمام');
     el.className = n ? 'bad' : '';
-    setTimeout(function(){ camrFonts(); camrLogo(); camrLoadAll((r.cams || []).map(function(c){ return c.file; })); }, 1500);   /* تحميل مسبق: التقرير يفتح فورًا */
+    setTimeout(function(){ camrFonts(); camrLogo(); camrLoadAll(camrFiles(r)); }, 1500);   /* تحميل مسبق: التقرير يفتح فورًا */
   }).catch(function(){});
 }
 function camSnapNow(){

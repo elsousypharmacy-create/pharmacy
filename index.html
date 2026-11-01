@@ -5601,7 +5601,7 @@ function camrFrame1_(id){
 }
 function camrLogo(){
   if (CAMR.logo) return Promise.resolve(CAMR.logo);
-  return new Promise(function(res){ var im = new Image(); im.onload = function(){ CAMR.logo = im; res(im); }; im.onerror = function(){ res(null); }; im.src = 'icon-512.png'; });
+  return new Promise(function(res){ var im = new Image(); im.onload = function(){ CAMR.logo = im; res(im); }; im.onerror = function(){ res(null); }; im.src = 'logo-mark.png'; });
 }
 function camrFonts(){
   if (!document.fonts || !document.fonts.load) return Promise.resolve();

@@ -7,6 +7,18 @@
 var DEBT_REMINDER_LOG_SHEET = 'رسائل تذكير الديون';
 var DEBT_OVERDUE_DAYS = 30;
 var DEBT_REMINDER_MIN_INTERVAL_DAYS = 7; // متبعتش لنفس العميل أكتر من مرة كل 7 أيام
+/* ⛔ رسايل تذكير الديون واقفة بأمر صاحب الصيدلية — لا يدوي ولا أسبوعي.
+   علشان ترجع: غيّر القيمة دي لـ true وفعّل التريجر من جديد. */
+var DEBT_SMS_ENABLED = false;
+
+/* بيشيل تريجر التذكير الأسبوعي (لو موجود) */
+function removeDebtReminderTrigger_() {
+  var n = 0;
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'sendWeeklyDebtReminders') { ScriptApp.deleteTrigger(t); n++; }
+  });
+  return n;
+}
 
 function getDebtReminderLogSheet_() {
   var ss = SpreadsheetApp.openById(STAFF_SHEET_ID);
@@ -25,6 +37,7 @@ function debtReminderMessage_(name, amount) {
 
 // إرسال يدوي لعميل واحد (بيتنادى من زرار "بعت تذكير" في الداشبورد)
 function sendDebtReminderSMS_(phone, name, amount) {
+  if (!DEBT_SMS_ENABLED) return { ok: false, error: 'رسايل تذكير الديون واقفة' };
   try {
     var canon = canonicalEgyptPhone_(String(phone || ''));
     if (!isValidEgyptianPhone(canon)) return { ok: false, error: 'رقم غير صحيح' };
@@ -46,6 +59,7 @@ function setupDebtReminderTrigger() {
 
 // بتشتغل أوتوماتيك أسبوعيًا — بتبعت لكل عميل متأخر أكتر من 30 يوم ومبعتلوش خلال آخر 7 أيام
 function sendWeeklyDebtReminders() {
+  if (!DEBT_SMS_ENABLED) { try { removeDebtReminderTrigger_(); } catch (e0) {} return; }
   try {
     var data = getDebtsData();
     if (!data.ok || !data.debtors || !data.debtors.length) return;

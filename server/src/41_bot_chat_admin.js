@@ -148,7 +148,7 @@ function remindPendingHandoffs() {
   });
 }
 /* تريجرز كانت بتتظبط من المحرر. التنبيه بتاع التحويل بيتظبط لوحده.
-   التانيين (ديون / كوبونات) من زرار في الصيانة بس، عشان واحد بيبعت SMS والتاني بيعدّل حالات. */
+   الكوبونات من زرار في الصيانة بس، عشان بتعدّل حالات. (تذكير الديون واقف.) */
 var EDITOR_TRIGGERS_ = {
   remindPendingHandoffs: {
     label: 'تنبيه التحويل للصيدلي كل ١٠ دقايق',
@@ -169,11 +169,6 @@ var EDITOR_TRIGGERS_ = {
     label: 'سحب لقطات الكاميرات كل 10 دقايق (8 صباحًا → 1 بالليل) على الدرايف',
     auto: false,
     install: function () { ScriptApp.newTrigger('camAutoSnap').timeBased().everyMinutes(10).create(); }
-  },
-  sendWeeklyDebtReminders: {
-    label: 'تذكير الديون كل سبت الساعة ١١',
-    auto: false,
-    install: function () { ScriptApp.newTrigger('sendWeeklyDebtReminders').timeBased().onWeekDay(ScriptApp.WeekDay.SATURDAY).atHour(11).create(); }
   },
   checkExpiredCoupons: {
     label: 'فحص الكوبونات كل يوم الساعة ٩',
@@ -242,6 +237,10 @@ function restoreAgreedSettings_() {
 function maybeEnsureTriggers_() {
   restoreAgreedSettings_();
   var P = PropertiesService.getScriptProperties();
+  /* تذكير الديون واقف: بيشيل التريجر القديم مرة واحدة */
+  if (!DEBT_SMS_ENABLED && P.getProperty('DEBT_TRIGGER_REMOVED') !== '1') {
+    try { removeDebtReminderTrigger_(); P.setProperty('DEBT_TRIGGER_REMOVED', '1'); } catch (eD) {}
+  }
   if (P.getProperty('TRIGGERS_ENSURED') === TRIGGERS_ENSURED_MARK_) return;
   var failAt = parseInt(P.getProperty('TRIGGERS_ENSURED_FAIL') || '0', 10);
   if (failAt && (Date.now() - failAt) < 6 * 3600000) return;

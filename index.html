@@ -2644,11 +2644,7 @@ function drawDebts(isOld){
       return '<div class="row"><div class="row-main"><b>' + esc(c.name) + '</b>' +
         '<small>' + sub + '</small></div>' +
         '<div style="display:flex;align-items:center;gap:8px">' +
-        '<span class="row-val" style="color:var(--' + b.tone + ')">' + ltr(num(c.net)) + '</span>' +
-        '<button class="badge" style="--tone:var(--brand);border:0;cursor:pointer" ' +
-        'onclick="event.stopPropagation();remind(this,\'' + c.phone + '\',\'' +
-          esc(c.name).replace(/'/g,"") + '\',' + Math.round(c.net) + ')">' +
-        tr('sendReminder') + '</button></div></div>';
+        '<span class="row-val" style="color:var(--' + b.tone + ')">' + ltr(num(c.net)) + '</span></div></div>';
     }).join('') : '';
 
     return '<div class="card" style="padding:0;overflow:hidden;border-inline-start:3px solid var(--' + b.tone + ')">' +
@@ -4608,7 +4604,6 @@ function openSheet(kind){
         '<button class="btn btn-primary" id="snapEnable" onclick="snap(\'snapshotEnable\')">' + tr('enableAuto') + '</button></div>') +
       grp('🧰', 'أدوات متقدمة', 'فحص · نسخ احتياطي · تنظيف · مفاتيح · الأخطاء',
         '<div class="group-title">تذكيرات إضافية</div>' +
-        '<button class="btn btn-quiet" onclick="runEnsureTriggers(\'sendWeeklyDebtReminders\')">تذكير الديون (SMS كل سبت)</button>' +
         '<button class="btn btn-quiet" onclick="runEnsureTriggers(\'checkExpiredCoupons\')">فحص الكوبونات (كل يوم 9)</button>' +
         '<div class="group-title">فحص السيستم</div>' +
         '<div class="btn-row"><button class="btn btn-quiet" onclick="runDiag()">' + tr('startCheck') + '</button>' +

@@ -1,13 +1,15 @@
-# تقرير الكاميرات اليومي — تعليمات Claude
+# تقرير الكاميرات اليومي — تعليمات المراجعة
 
-This file is the full recipe for the scheduled camera report (runs twice a day). It does not change any code.
+This file is the full recipe for the scheduled camera report (runs three times a day). It does not change any code.
 Write all report text in short Egyptian Arabic. Be strict: report every problem you can clearly see.
 
 ## Window
 - Drive root «كاميرات الصيدلية» id `1nxoCmGnDiwdFktz4QmoU56Uj4tfBRtEk`, day folders `yyyy-MM-dd` (Cairo time).
 - Frames: `HHmm_chN.jpg`, 960×576, cameras 1, 2, 3, 4, 6 (no 5). Ignore `_s.jpg` copies.
-- **Noon run (12:04 Cairo):** today's folder, frames with HHmm < 1200 (covers last night 00:00–00:50 and 08:00–11:59). `label` = «تقرير الضهر», file time `1200`.
-- **Midnight run (00:04 Cairo):** YESTERDAY's folder, frames with HHmm ≥ 1200. `label` = «تقرير الليل», file time `2359`.
+- **من 8 ص إلى 12 ظ:** today's folder, 0800 <= HHmm < 1200; report date today, file time 1200. Target around 12:10 Cairo.
+- **من 12 ظ إلى 6 م:** today's folder, 1200 <= HHmm < 1800; report date today, file time 1800. Target around 18:10 Cairo.
+- **من 6 م إلى 1 ص:** yesterday's folder HHmm >= 1800 PLUS today's folder HHmm < 0100; report/business date yesterday, file time 2359 for existing dashboard ordering. Target around 01:10 Cairo. Clearly display both dates in range/note and actual windowEnd; no midnight frames in the noon report.
+- The report label and visible title MUST be the covered period itself, not «الضهر/الليل». Record generatedAt, windowStart, windowEnd as actual ISO timestamps with Africa/Cairo offsets. Put preparation date/time visibly in note too.
 - Camera names: 1 = الرصيف (برة), 2 = الرفوف, 3 = المكتب والكاونتر, 4 = الواجهة الزجاج, 6 = الرصيف (برة).
 
 ## 1. List frames (no download yet)
@@ -31,7 +33,7 @@ If there are no frames in the window: save a report with `"summary":[]`, `"pages
 ## 4. Checklist (strict)
 - Money visible anywhere (desk, counter). Keys, phones, drinks, papers on the desk.
 - Someone sitting at the doctor's desk / on a phone while a customer waits. Customer waiting unserved.
-- Staff without a white coat/uniform.
+- Clothing/uniform is low priority and excluded from the appearance score; do not raise it as a standalone top alert.
 - Bags / orders left on the display counter. Boxes or items left on counter tops, not on their shelf.
 - Drawers pulled out, cabinet doors open.
 - Shelf facing (الرص): gaps, items lying down, items not facing front, uneven rows.
@@ -44,6 +46,9 @@ People: describe neutrally, no names.
 Strict rule: zoom EVERY area of EVERY frame you use before writing. Anything out of place gets an arrow, even small.
 If an area cannot be judged (dark/IR night image, blur), say so in `note` (e.g. «رص كاميرا 2 ماتقيّمش») — never treat it as OK.
 
+## Appearance score and previous-report comparison
+Read and follow `tools/camera-appearance-kpi.md`. Before judging, read the previous period's report and evidence; preserve stable problem IDs. Add the ten evidence-backed checks and issue states there to JSON v2. Do not fabricate ratings for legacy reports. Never close a previous issue from an absent or obscured camera view. Keep actual image sampling bounded; this does not enable -next or change capture.
+
 ## 5. Group and build pages
 - Group the same problem across times (same thing, same place). Count it and list its times (HH:MM, 12-hour, Latin digits).
 - One page = one frame. Put on it every problem visible in that frame (max 8 numbered labels).
@@ -55,7 +60,7 @@ If an area cannot be judged (dark/IR night image, blur), say so in `note` (e.g. 
 
 ## 6. JSON (one line)
 ```json
-{"v":2,"date":"2026-11-01","time":"1200","label":"تقرير الضهر","dayLabel":"الأحد 1 نوفمبر","range":"12 م ← 12 ظ","by":"Claude","space":[960,576],
+{"v":2,"date":"2026-11-01","time":"1200","label":"من 8 ص إلى 12 ظ","dayLabel":"الأحد 1 نوفمبر","range":"من 8 ص إلى 12 ظ","by":"Claude","space":[960,576],
  "note":"اتراجعت 28 لقطة",
  "summary":[{"text":"فلوس ظاهرة على المكتب","where":"ك3","times":["9:10","10:00","11:20"],"count":"3 مرات","sev":"r"}],
  "pages":[{"ch":3,"name":"المكتب والكاونتر","title":"فلوس على المكتب","file":"<Drive id of the frame>","label":"11:20 ص",
@@ -68,3 +73,4 @@ Drive `create_file`: parentId `1vZymfwoNtW4JhIKCkpLXL20JWodmpDu4` («تقاري�
 (`<date>` = the day folder's date), contentMimeType `application/json`, disableConversionToGoogleType true, textContent = the JSON.
 If the title exists, add `_2`. Do not send Telegram/WhatsApp, do not change code, do not commit.
 End with 3 short lines: window, number of problems, top 3.
+

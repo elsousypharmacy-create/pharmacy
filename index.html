@@ -2641,7 +2641,7 @@ function balBase(){
 }
 
 /* ═══════════ 🧮 التقفيل يوم بيومه ووسائل الدفع (من ملفات نظام البيع) ═══════════ */
-var CLS = { days: 7, data: null };
+var CLS = { days: 7, data: null, open: {}, sel: {} };
 function pgClosing(){
   var box = document.getElementById('p-money');
   if (!CLS.data) busy(box); else drawClosing();
@@ -2662,6 +2662,97 @@ function clsProblem(x){
   return !!((R.bank_card && Math.abs(R.bank_card.diff) > 1) || (R.drawer && Math.abs(R.drawer.diff) > 5));
 }
 function setClsDays(n){ CLS.days = n; CLS.data = null; pgClosing(); }
+function clsLabel(x){
+  return new Date(x.date + 'T12:00:00').toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+/* جسم اليوم: وسائل الدفع + المطابقة + العدّ الفعلي + الورديات */
+function clsDayBody(x){
+  var rows = row('كاش', '', ltr(num(x.cash))) + row('آجل', '', ltr(num(x.credit))) + row('كارت بنكي', '', ltr(num(x.card)));
+  Object.keys(x.other || {}).forEach(function(k){ rows += row('وسيلة دفع ' + esc(k), '', ltr(num(x.other[k]))); });
+  rows += row('مرتجعات', 'بتتخصم من الكاش', x.ret ? '−' + ltr(num(x.ret)) : ltr('0')) +
+          row('تحصيل ديون', 'سداد عملاء', ltr(num(x.collected))) +
+          row('المفروض في الدرج', 'كاش − مرتجعات + تحصيل (من غير العهدة)', '<b>' + ltr(num(x.expected_cash)) + '</b>');
+  if (x.checks){
+    rows += '<div class="group-title">مطابقة الفواتير بتقفيل النظام</div>' + x.checks.map(function(c){
+      var ok = Math.abs(c.diff) <= 0.5;
+      return row(c.label, 'PDF ' + ltr(n2(c.pdf)) + ' · فواتير ' + ltr(n2(c.mine)),
+        ok ? badge('✓ مطابق', 'ok') : badge('فرق ' + ltr((c.diff > 0 ? '+' : '−') + n2(Math.abs(c.diff))), 'bad'));
+    }).join('');
+  }
+  if (x.close){
+    var R = x.close.rows;
+    rows += '<div class="group-title">العدّ الفعلي (من تقفيل النظام)</div>';
+    [['drawer', 'كاش الدرج'], ['bank_card', 'كارت بنكي'], ['companies', 'شركات']].forEach(function(q){
+      var r = R[q[0]]; if (!r || (q[0] === 'companies' && !r.sys && !r.user)) return;
+      rows += row(q[1], 'النظام ' + ltr(n2(r.sys)) + ' · اتكتب ' + ltr(n2(r.user)), diffBadge(r.diff, q[0] === 'drawer' ? 5 : 1));
+    });
+    (x.close.shifts || []).forEach(function(sh){
+      var d1 = sh.rows.drawer, b1 = sh.rows.bank_card;
+      rows += row('وردية ' + sh.no, 'كاش ' + (d1 ? ltr(n2(d1.diff)) : '—') + ' · كارت ' + (b1 ? ltr(n2(b1.diff)) : '—'),
+        (b1 && Math.abs(b1.diff) > 1) || (d1 && Math.abs(d1.diff) > 5) ? badge('فرق', 'bad') : badge('✓', 'ok'));
+    });
+  } else if (x.date < cairoNow().date) {
+    rows += '<div class="state" style="text-align:start;font-size:12px">مفيش PDF تقفيل لليوم ده على الدرايف.</div>';
+  }
+  var pdf = x.pdf ? '<a class="btn btn-quiet" style="margin-top:10px" target="_blank" rel="noopener" href="' + esc(x.pdf) + '">📄 تقفيل النظام (PDF)</a>' : '';
+  return rows + pdf;
+}
+/* الأيام: مقفولة، وبتفتح بالضغط. خانة الاختيار للمشاركة */
+function clsListHtml(){
+  var d = CLS.data; if (!d || !d.days.length) return '';
+  return d.days.map(function(x){
+    var open = !!CLS.open[x.date], on = !!CLS.sel[x.date];
+    return '<div class="card" style="padding:0;overflow:hidden' + (clsProblem(x) ? ';border-inline-start:3px solid var(--bad)' : '') + '">' +
+      '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer" onclick="clsToggle(\'' + x.date + '\')">' +
+        '<input type="checkbox" ' + (on ? 'checked ' : '') + 'aria-label="اختار اليوم للمشاركة" onclick="clsPick(\'' + x.date + '\',event)" style="width:22px;height:22px;accent-color:var(--brand);flex:none">' +
+        '<div style="flex:1;min-width:0"><b style="font-size:var(--t-title);font-weight:650">' + esc(clsLabel(x)) + '</b>' +
+          '<small style="display:block;font-size:var(--t-small);color:var(--ink-2);margin-top:2px">' + ltr(x.invoices) + ' فاتورة · صافي ' + ltr(num(x.net)) + '</small></div>' +
+        (clsProblem(x) ? badge('⚠ فرق', 'bad') : '') +
+        '<span style="color:var(--ink-3);font-size:15px">' + (open ? '⌄' : '›') + '</span></div>' +
+      (open ? '<div style="padding:0 16px 14px">' + clsDayBody(x) + '</div>' : '') + '</div>';
+  }).join('');
+}
+function clsBarHtml(){
+  var d = CLS.data; if (!d || !d.days.length) return '';
+  var n = d.days.filter(function(x){ return CLS.sel[x.date]; }).length, all = n === d.days.length;
+  return '<div class="btn-row" style="margin:0 0 10px">' +
+    '<button class="btn btn-quiet" onclick="clsAll()">' + (all ? '☐ إلغاء التحديد' : '☑ تحديد الكل') + '</button>' +
+    '<button class="btn btn-primary" onclick="clsShare()"' + (n ? '' : ' disabled') + '>📤 مشاركة' + (n ? ' (' + n + ')' : '') + '</button></div>';
+}
+function clsRefresh(){
+  var a = document.getElementById('clsList'), b = document.getElementById('clsBar');
+  if (a) a.innerHTML = clsListHtml(); if (b) b.innerHTML = clsBarHtml();
+}
+function clsToggle(dt){ CLS.open[dt] = !CLS.open[dt]; clsRefresh(); }
+function clsPick(dt, ev){ ev.stopPropagation(); CLS.sel[dt] = !CLS.sel[dt]; clsRefresh(); }
+function clsAll(){
+  var all = CLS.data.days.every(function(x){ return CLS.sel[x.date]; });
+  CLS.data.days.forEach(function(x){ CLS.sel[x.date] = !all; }); clsRefresh();
+}
+/* نص المشاركة: ملخص كل يوم محدد + الفروق */
+function clsText(x){
+  var t = '📅 ' + clsLabel(x) + '\n' + x.invoices + ' فاتورة · صافي ' + n2(x.net) + '\n' +
+    'كاش ' + n2(x.cash) + ' · آجل ' + n2(x.credit) + ' · كارت ' + n2(x.card) + '\n' +
+    'مرتجعات ' + n2(x.ret) + ' · تحصيل ' + n2(x.collected) + '\n' +
+    'المفروض في الدرج: ' + n2(x.expected_cash) + '\n';
+  var bad = [];
+  (x.checks || []).forEach(function(c){ if (Math.abs(c.diff) > 0.5) bad.push(c.label + ': الفواتير ' + n2(c.mine) + ' والنظام ' + n2(c.pdf)); });
+  var R = x.close && x.close.rows;
+  if (R && R.bank_card && Math.abs(R.bank_card.diff) > 1) bad.push('كارت: النظام ' + n2(R.bank_card.sys) + ' واتكتب ' + n2(R.bank_card.user) + ' (فرق ' + n2(R.bank_card.diff) + ')');
+  if (R && R.drawer && Math.abs(R.drawer.diff) > 5) bad.push('كاش الدرج: النظام ' + n2(R.drawer.sys) + ' واتعدّ ' + n2(R.drawer.user) + ' (فرق ' + n2(R.drawer.diff) + ')');
+  if (x.close) (x.close.shifts || []).forEach(function(sh){
+    var b1 = sh.rows.bank_card; if (b1 && Math.abs(b1.diff) > 1) bad.push('وردية ' + sh.no + ' كارت: فرق ' + n2(b1.diff));
+  });
+  t += bad.length ? '⚠ فروق:\n- ' + bad.join('\n- ') + '\n' : (x.checks ? '✅ مطابق لتقفيل النظام\n' : '');
+  return t;
+}
+function clsShare(){
+  var d = CLS.data; if (!d) return;
+  var days = d.days.filter(function(x){ return CLS.sel[x.date]; }); if (!days.length) return;
+  var text = '🧾 تقفيل صيدلية د. أحمد السوسي\n\n' + days.map(clsText).join('\n');
+  if (navigator.share){ navigator.share({ title: 'تقفيل الصيدلية', text: text }).catch(function(e){ if (e && e.name !== 'AbortError') window.open('https://wa.me/?text=' + encodeURIComponent(text)); }); }
+  else window.open('https://wa.me/?text=' + encodeURIComponent(text));
+}
 function drawClosing(){
   var box = document.getElementById('p-money'), d = CLS.data; if (!d) return;
   var t = d.totals, sum = t.cash + t.credit + t.card;
@@ -2675,39 +2766,8 @@ function drawClosing(){
   ]);
   if (!d.days.length){ box.innerHTML = html + '<div class="state">مفيش مبيعات في الفترة دي</div>'; return; }
   var bad = d.days.filter(clsProblem);
-  if (bad.length) html += alertBox('warn', bad.length + ' يوم فيه فرق في التقفيل', 'افتح اليوم وشوف الفرق بالظبط (كارت أو كاش أو مطابقة الفواتير)', '');
-  html += d.days.map(function(x){
-    var lab = new Date(x.date + 'T12:00:00').toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' });
-    var rows = row('كاش', '', ltr(num(x.cash))) + row('آجل', '', ltr(num(x.credit))) + row('كارت بنكي', '', ltr(num(x.card)));
-    Object.keys(x.other || {}).forEach(function(k){ rows += row('وسيلة دفع ' + esc(k), '', ltr(num(x.other[k]))); });
-    rows += row('مرتجعات', 'بتتخصم من الكاش', x.ret ? '−' + ltr(num(x.ret)) : ltr('0')) +
-            row('تحصيل ديون', 'سداد عملاء', ltr(num(x.collected))) +
-            row('المفروض في الدرج', 'كاش − مرتجعات + تحصيل (من غير العهدة)', '<b>' + ltr(num(x.expected_cash)) + '</b>');
-    if (x.checks){
-      rows += '<div class="group-title">مطابقة الفواتير بتقفيل النظام</div>' + x.checks.map(function(c){
-        var ok = Math.abs(c.diff) <= 0.5;
-        return row(c.label, 'PDF ' + ltr(n2(c.pdf)) + ' · فواتير ' + ltr(n2(c.mine)),
-          ok ? badge('✓ مطابق', 'ok') : badge('فرق ' + ltr((c.diff > 0 ? '+' : '−') + n2(Math.abs(c.diff))), 'bad'));
-      }).join('');
-    }
-    if (x.close){
-      var R = x.close.rows;
-      rows += '<div class="group-title">العدّ الفعلي (من تقفيل النظام)</div>';
-      [['drawer', 'كاش الدرج'], ['bank_card', 'كارت بنكي'], ['companies', 'شركات']].forEach(function(q){
-        var r = R[q[0]]; if (!r || (q[0] === 'companies' && !r.sys && !r.user)) return;
-        rows += row(q[1], 'النظام ' + ltr(n2(r.sys)) + ' · اتكتب ' + ltr(n2(r.user)), diffBadge(r.diff, q[0] === 'drawer' ? 5 : 1));
-      });
-      (x.close.shifts || []).forEach(function(sh){
-        var d1 = sh.rows.drawer, b1 = sh.rows.bank_card;
-        rows += row('وردية ' + sh.no, 'كاش ' + (d1 ? ltr(n2(d1.diff)) : '—') + ' · كارت ' + (b1 ? ltr(n2(b1.diff)) : '—'),
-          (b1 && Math.abs(b1.diff) > 1) || (d1 && Math.abs(d1.diff) > 5) ? badge('فرق', 'bad') : badge('✓', 'ok'));
-      });
-    } else if (x.date < cairoNow().date) {
-      rows += '<div class="state" style="text-align:start;font-size:12px">مفيش PDF تقفيل لليوم ده على الدرايف.</div>';
-    }
-    var pdf = x.pdf ? '<a class="btn btn-quiet" style="margin-top:10px" target="_blank" rel="noopener" href="' + esc(x.pdf) + '">📄 تقفيل النظام (PDF)</a>' : '';
-    return card(lab, ltr(x.invoices) + ' فاتورة · صافي ' + ltr(num(x.net)), rows + pdf, clsProblem(x) ? badge('⚠ فرق', 'bad') : '');
-  }).join('');
+  if (bad.length) html += alertBox('warn', bad.length + ' يوم فيه فرق في التقفيل', 'اضغط على اليوم وشوف الفرق بالظبط', '');
+  html += '<div id="clsBar">' + clsBarHtml() + '</div><div id="clsList">' + clsListHtml() + '</div>';
   html += '<div class="state" style="padding:4px 0 12px;font-size:11px">الأرقام من ملفات نظام البيع وبتطابق تقفيل النظام. قارن «المفروض في الدرج» بالكاش اللي عديته فعلًا.</div>';
   box.innerHTML = html;
 }

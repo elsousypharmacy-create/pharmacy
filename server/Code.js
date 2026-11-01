@@ -12717,6 +12717,14 @@ function warnVersionsIfNeeded_() {
   P.setProperty('SERVER_VER_WARNED', String(Date.now()));
   sendTelegramStaff('⚠️ نسخ السيرفر ' + n + ' من ' + SERVER_VERSION_MAX + ' — قربت تخلص. امسح القديم من script.google.com ← المشروع ← Project history (سيب آخر 20)، وإلا التحديث هيفشل.', PERSONAL_CHAT);
 }
+/* بعد أي تحديث بيغيّر حساب الديون، بنبني اللقطة من جديد في أول مرور للتحديث التلقائي (مرة واحدة)،
+   عشان الداشبورد ماينتظرش لقطة الساعة وهو شايف حساب قديم. */
+function rebuildDebtsSnapshotIfFormatChanged_() {
+  var P = PropertiesService.getScriptProperties();
+  if (P.getProperty('DEBTS_V_BUILT') === String(DEBTS_FORMAT_V)) return;
+  P.setProperty('DEBTS_V_BUILT', String(DEBTS_FORMAT_V));   // قبل البناء، عشان لو وقع مانكرّرش كل ١٥ دقيقة
+  buildSnapshot();
+}
 function serverSrc_() {
   var r = UrlFetchApp.fetch(SERVER_SRC_URL + '?t=' + Date.now(), { muteHttpExceptions: true });
   if (r.getResponseCode() !== 200) return null;
@@ -12747,6 +12755,7 @@ function setAutoUpdate(on) {
 function autoServerUpdate() {
   try { maybeEnsureTriggers_(); } catch (eT) {}
   try { warnVersionsIfNeeded_(); } catch (eW) {}
+  try { rebuildDebtsSnapshotIfFormatChanged_(); } catch (eB) {}
   var s = serverSrc_(), P = PropertiesService.getScriptProperties();
   if (!s || P.getProperty('SERVER_SRC_SIG') === s.sig) { if (s) P.deleteProperty('SERVER_PEND_SIG'); return; }
   if (P.getProperty('SERVER_FAILED_SIG') === s.sig) return;          /* النسخة دي فشلت قبل كده — منحاولش كل ربع ساعة */

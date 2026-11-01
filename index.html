@@ -1703,7 +1703,7 @@ var SECTIONS = {
   /* المخزون: الملخص الأول (قرارات)، وبعدين كل قرار في تبويبه */
   stock: [['aging', function(){ return 'الملخص'; }], ['short', function(){ return tr('shortages'); }], ['expTab', function(){ return 'الصلاحية'; }], ['deadTab', function(){ return 'الراكد'; }],
           ['count', function(){ return tr('counts'); }]],
-  money: [['month', function(){ return 'الأداء'; }], ['exp', function(){ return tr('expenses'); }],
+  money: [['month', function(){ return 'الأداء'; }], ['close', function(){ return 'التقفيل'; }], ['exp', function(){ return tr('expenses'); }],
           ['debt',  function(){ return tr('debts'); }], ['bal', function(){ return 'الميزانية'; }]],
   /* الإدارة: مش في الشريط — بتتفتح من ⚙️ */
   admin: [['agents',function(){ return tr('agents'); }], ['docs', function(){ return tr('doctors'); }]]
@@ -1740,7 +1740,7 @@ function render(sec, tab){
   if (BOXES[sec]) BOXES[sec].forEach(function(id, i){
     var el = document.getElementById(id); if (el) el.style.display = (i === tab) ? '' : 'none';
   });
-  ({ count:pgCounts, home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts, bal:pgBalance,
+  ({ count:pgCounts, home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts, bal:pgBalance, close:pgClosing,
      perf:pgStaffHub, pages:pgTeamPages, aging:pgAging, expTab:pgAging, deadTab:pgAging, short:pgShort,
      msgs:pgMessages, list:pgCustomers, agents:pgAgents, docs:pgDoctors, chats:pgChats })[key](key);
 }
@@ -2160,7 +2160,7 @@ function drawHome(b, kpi, isOld){
     var overdue = (dt.debtors || []).filter(function(c){
       return (new Date() - new Date(c.lastActivity)) / 86400000 > 30 && c.net > 0;
     });
-    if (overdue.length) acts.push(task('bad', 'ديون متأخرة', ltr(num(overdue.reduce(function(a,c){return a+c.net;},0))) + ' ' + tr('egp'), overdue.length, "go('money',2)"));
+    if (overdue.length) acts.push(task('bad', 'ديون متأخرة', ltr(num(overdue.reduce(function(a,c){return a+c.net;},0))) + ' ' + tr('egp'), overdue.length, "go('money',3)"));
     if (ex.expired && ex.expired.count) acts.push(task('bad', 'أصناف منتهية', 'شيلها من الرف', ex.expired.count, "go('stock',2)"));
     var months = ex.months || [], soon = months.length ? months[0] : null;
     if (soon && soon.count) acts.push(task('warn', 'هتنتهي قريب', ltr(num(soon.totalCost)) + ' ' + tr('egp'), soon.count, "go('stock',2)"));
@@ -2253,7 +2253,7 @@ function loadHomeMore(){
   }).catch(logErr);
   api('getExpensesData', rangeParams('exp')).then(function(e){
     var bad = e && (e.stale || (e.itemizedStaleDays != null && e.itemizedStaleDays > 2));
-    setHomeSlot('exp', bad ? task('bad', 'المصروفات واقفة', 'سجّلها عشان الصافي يبقى صح', (e.stale ? e.staleDays : e.itemizedStaleDays) + ' يوم', "go('money',1)") : '');
+    setHomeSlot('exp', bad ? task('bad', 'المصروفات واقفة', 'سجّلها عشان الصافي يبقى صح', (e.stale ? e.staleDays : e.itemizedStaleDays) + ' يوم', "go('money',2)") : '');
   }).catch(logErr);
 }
 
@@ -2638,6 +2638,43 @@ function balBase(){
   api('setBalanceBase', { label: lab }).then(function(d){
     if (d && d.ok){ BAL.data = d; drawBalance(); toast('✓ اتحفظت نقطة البداية'); } else if (!(d && d.pinError)) toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });
+}
+
+/* ═══════════ 🧮 التقفيل يوم بيومه ووسائل الدفع (من ملفات نظام البيع) ═══════════ */
+var CLS = { days: 7, data: null };
+function pgClosing(){
+  var box = document.getElementById('p-money');
+  if (!CLS.data) busy(box); else drawClosing();
+  api('getClosingDays', { days: CLS.days }).then(function(d){
+    if (!d || !d.ok) throw new Error('close');
+    CLS.data = d; markSync(); drawClosing();
+  }).catch(function(e){ logErr(e); if (!CLS.data) oops(box, "pgClosing()"); });
+}
+function setClsDays(n){ CLS.days = n; CLS.data = null; pgClosing(); }
+function drawClosing(){
+  var box = document.getElementById('p-money'), d = CLS.data; if (!d) return;
+  var t = d.totals, sum = t.cash + t.credit + t.card;
+  var html = '<div class="ctl"><div class="ctl-main">' +
+    ctlBtn('7 أيام', CLS.days === 7, "setClsDays(7)") + ctlBtn('14 يوم', CLS.days === 14, "setClsDays(14)") +
+    ctlBtn('21 يوم', CLS.days === 21, "setClsDays(21)") + '</div></div>';
+  html += vitals('وسائل الدفع', d.from + ' ← ' + d.to, [
+    { value: num(t.cash), label: 'كاش', tone: 'ok', note: pct(t.cash, sum) + '%', sub: 'من المبيعات' },
+    { value: num(t.credit), label: 'آجل', tone: 'warn', note: pct(t.credit, sum) + '%', sub: 'من المبيعات' },
+    { value: num(t.card), label: 'كارت بنكي', tone: 'brand', note: pct(t.card, sum) + '%', sub: 'من المبيعات' }
+  ]);
+  if (!d.days.length){ box.innerHTML = html + '<div class="state">مفيش مبيعات في الفترة دي</div>'; return; }
+  html += d.days.map(function(x){
+    var lab = new Date(x.date + 'T12:00:00').toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' });
+    var rows = row('كاش', '', ltr(num(x.cash))) + row('آجل', '', ltr(num(x.credit))) + row('كارت بنكي', '', ltr(num(x.card)));
+    Object.keys(x.other || {}).forEach(function(k){ rows += row('وسيلة دفع ' + esc(k), '', ltr(num(x.other[k]))); });
+    rows += row('مرتجعات', 'بتتخصم من الكاش', x.ret ? '−' + ltr(num(x.ret)) : ltr('0')) +
+            row('تحصيل ديون', 'سداد عملاء', ltr(num(x.collected))) +
+            row('المفروض في الدرج', 'كاش − مرتجعات + تحصيل (من غير العهدة)', '<b>' + ltr(num(x.expected_cash)) + '</b>');
+    var pdf = x.pdf ? '<a class="btn btn-quiet" style="margin-top:10px" target="_blank" rel="noopener" href="' + esc(x.pdf) + '">📄 تقفيل النظام (PDF)</a>' : '';
+    return card(lab, ltr(x.invoices) + ' فاتورة · صافي ' + ltr(num(x.net)), rows + pdf);
+  }).join('');
+  html += '<div class="state" style="padding:4px 0 12px;font-size:11px">الأرقام من ملفات نظام البيع وبتطابق تقفيل النظام. قارن «المفروض في الدرج» بالكاش اللي عديته فعلًا.</div>';
+  box.innerHTML = html;
 }
 
 /* بحث الديون: بالاسم (من غير تشكيل وهمزات، وأي ترتيب كلمات) أو بجزء من التليفون */

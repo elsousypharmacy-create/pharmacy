@@ -26,6 +26,7 @@
   "src/66_cameras.js",
   "src/67_cam_reports.js",
   "src/68_balance.js",
+  "src/69_closing.js",
   "src/70_inventory_aging.js",
   "src/71_agents.js",
   "src/72_scan.js",

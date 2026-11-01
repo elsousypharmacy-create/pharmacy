@@ -6,7 +6,7 @@
    علامة "اتطلب" من بوت الجرد بتعدّي بمفتاح ORDERS_BOT_KEY من جوه markOrdered، مش من هنا. */
 var LOCKED_GET = { getHomeBundle: 1, getSMSLogFast: 1, getSMSLog: 1, getCustomers: 1, getHistory: 1, getCustomerProfile: 1,
   getCustomerVisits: 1, getAiConfig: 1, getAiUsage: 1, botStatus: 1, getBlocked: 1, getDashboard: 1, getStaffKPI: 1,
-  getNewCustomersDetail: 1, getSystemDailyTotals: 1, getDebtsData: 1, getBalanceSheet: 1, getDebtsByEmployee: 1, getMonthTotalsRaw: 1,
+  getNewCustomersDetail: 1, getSystemDailyTotals: 1, getDebtsData: 1, getBalanceSheet: 1, getClosingDays: 1, getDebtsByEmployee: 1, getMonthTotalsRaw: 1,
   sendDebtReminder: 1, getExpensesData: 1, getProfitLoss: 1, getNetWorth: 1, getConnecteamHours: 1, getDayInvoices: 1,
   getDayDebits: 1, getDayCollections: 1, getMonthDebtsSummary: 1, getCustomerPoints: 1, getInventoryAging: 1, getAgents: 1,
   sendCoupon: 1, getStaffHub: 1, getExpiryByMonth: 1, getAttendanceLive: 1, getAttendanceHistory: 1, getAttendanceLiveV2: 1,
@@ -134,6 +134,7 @@ function doGet(e) {
   if (action === 'getSystemDailyTotals') return jsonResponseStaff(getSystemDailyTotals());
   if (action === 'getDebtsData') return jsonResponseStaff(getDebtsSnap());
   if (action === 'getBalanceSheet') return jsonResponseStaff(getBalanceSheet());
+  if (action === 'getClosingDays') return jsonResponseStaff(getClosingDays(e.parameter));
   if (action === 'setBalanceInputs') return jsonResponseStaff(setBalanceInputs(e.parameter));
   if (action === 'setBalanceBase') return jsonResponseStaff(setBalanceBase(e.parameter));
   if (action === 'getDebtsByEmployee') return jsonResponseStaff(getDebtsByEmployee(e.parameter));

@@ -4,16 +4,16 @@ const source = fs.readFileSync(root + '/server/src/66_cam_record.js', 'utf8');
 let tests = 0;
 function test(name, fn) { fn(); tests++; console.log('OK', name); }
 function setup(options = {}) {
-  let now = 0, saved = null, released = 0, requests = 0;
+  let now = 0, saved = null, released = 0, requests = 0; const properties = {};
   class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } static now() { return now; } }
   const blob = (value, type, name) => ({ value, name, getBytes: () => typeof value === 'string' ? Array(value.length).fill(65) : value, setName(n) { this.name = n; return this; } });
   const file = { getSharingAccess: () => 'PRIVATE', getEditors: () => [], getViewers: () => [], getId: () => 'test-private-file', getSize: () => 1000 };
   const folder = { ...file, createFile(b) { saved = b; return file; } };
   const c = vm.createContext({ Date: Clock, console,
-    LockService: { getScriptLock: () => ({ tryLock: () => !options.busy, releaseLock: () => released++ }) },
+    LockService: { getUserLock: () => ({ tryLock: () => !options.busy, releaseLock: () => released++ }) },
     DriveApp: { Access: { PRIVATE: 'PRIVATE' }, createFolder: () => folder, getFolderById: () => folder },
-    PropertiesService: { getScriptProperties: () => ({ getProperty: () => '', setProperty() {} }) },
-    Utilities: { sleep: n => now += n, formatDate: () => '2026-11-01_120000', newBlob: blob, zip: (blobs, name) => ({ blobs, name }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: k => properties[k] || '', setProperty(k,v) { properties[k] = v; }, deleteProperty(k) { delete properties[k]; } }) },
+    Utilities: { getUuid: () => 'test-lease', sleep: n => now += n, formatDate: () => '2026-11-01_120000', newBlob: blob, zip: (blobs, name) => ({ blobs, name }) },
     camVideoTest: () => ({ ok: true, mode: 'hls', url: 'https://video.example.test/a/live.m3u8?secret=AUTH-ONLY' }),
     UrlFetchApp: { fetch(url, opts) {
       requests++; assert.equal(opts.followRedirects, false);
@@ -47,7 +47,7 @@ test('private archive contains local names and no signed URLs', () => {
     return { getBytes: () => [0x47,...Array(187).fill(0)], setName(name) { this.name = name; return this; } };
   };
   const r = s.c.camRecordSample({channel:4}), state = s.result();
-  assert.equal(r.ok,true); assert.equal(r.seconds,20); assert.equal(state.released,1);
+  assert.equal(r.ok,true); assert.equal(r.seconds,20); assert.equal(state.released,2);
   const archive = JSON.stringify(state.saved);
   assert(!archive.includes('AUTH-ONLY')); assert(!archive.includes('https://')); assert(archive.includes('sample.m3u8'));
 });
@@ -62,7 +62,7 @@ test('busy/invalid channel cause no capture', () => {
 test('encrypted media and redirects save nothing; lock always released', () => {
   for (const options of [{encrypted:true},{redirect:true},{invalidMedia:true}]) {
     const s=setup(options), r=s.c.camRecordSample({channel:3});
-    assert.equal(r.ok,false); assert.equal(s.result().saved,null); assert.equal(s.result().released,1);
+    assert.equal(r.ok,false); assert.equal(s.result().saved,null); assert.equal(s.result().released,2);
     assert(!JSON.stringify(r).includes('AUTH-ONLY'));
   }
 });

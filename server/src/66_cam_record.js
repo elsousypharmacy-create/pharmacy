@@ -53,13 +53,37 @@ function camRecFolder_() {
   if (!id) P.setProperty('CAM_SAMPLE_FOLDER', folder.getId());
   return folder;
 }
+function camRecLease_() {
+  // Only hold the owner lock while updating the recording lease, not during video IO.
+  // Web app executes as owner; owner-editor pilot uses the same owner lock.
+  var lock = LockService.getUserLock();
+  if (!lock.tryLock(8000)) return '';
+  try {
+    var P = PropertiesService.getScriptProperties(), until = Number(P.getProperty('CAM_RECORD_LEASE_UNTIL') || 0);
+    if (until > Date.now()) return '';
+    var id = Utilities.getUuid();
+    P.setProperty('CAM_RECORD_LEASE_ID', id);
+    P.setProperty('CAM_RECORD_LEASE_UNTIL', String(Date.now() + 360000));
+    return id;
+  } finally { lock.releaseLock(); }
+}
+function camRecRelease_(id) {
+  var lock = LockService.getUserLock();
+  if (!lock.tryLock(8000)) return; // Lease expires even after an execution timeout.
+  try {
+    var P = PropertiesService.getScriptProperties();
+    if (P.getProperty('CAM_RECORD_LEASE_ID') === id) {
+      P.deleteProperty('CAM_RECORD_LEASE_UNTIL'); P.deleteProperty('CAM_RECORD_LEASE_ID');
+    }
+  } finally { lock.releaseLock(); }
+}
 function camRecordSample(request) {
   var channel = request && request.channel;
   if (channel !== 3 && channel !== 4) return { ok: false, stage: 'channel', error: 'اختار المدخل 4 أو الكاشير 3' };
-  var lock = LockService.getScriptLock(), locked = false, stage = 'lock';
+  var lease = '', stage = 'lock';
   try {
-    locked = lock.tryLock(1000);
-    if (!locked) return { ok: false, stage: 'busy', error: 'في تسجيل أو عملية تانية شغالة؛ استنى وجرّب تاني' };
+    lease = camRecLease_();
+    if (!lease) return { ok: false, stage: 'busy', error: 'في تسجيل أو عملية تانية شغالة؛ استنى وجرّب تاني' };
     stage = 'privacy'; var folder = camRecFolder_();
     stage = 'address'; var live = camVideoTest({ channel: channel });
     if (!live.ok || live.mode !== 'hls') return { ok: false, stage: 'address', error: 'عنوان HLS مش متاح للتسجيل دلوقتي' };
@@ -111,7 +135,7 @@ function camRecordSample(request) {
   } catch (e) {
     return { ok: false, stage: stage, code: /^[a-z_]+$/.test(e.camCode || '') ? e.camCode : 'failed', channel: channel,
       error: 'التسجيل ماكملش؛ مفيش عينة اتأكدت. إعدادات الكاميرا والتشفير ماتغيرتش' };
-  } finally { if (locked) lock.releaseLock(); }
+  } finally { if (lease) camRecRelease_(lease); }
 }
 // Owner editor-only manual pilot. No trigger is installed, no PIN is logged.
 function camRecordPilot() {

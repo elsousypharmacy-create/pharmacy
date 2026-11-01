@@ -66,7 +66,10 @@ function getClosingDays(p) {
     } catch (eP) {}
     dates.forEach(function (d) {
       var x = closingDay_(d); if (!x.has) return;
-      x.pdf = pdf[d] || '';
+      var cp = closingPdfRead_(d);
+      x.pdf = (cp.daily && cp.daily.url) || pdf[d] || '';
+      x.close = cp.daily ? { rows: cp.daily.rows, closed_at: cp.daily.closed_at, shifts: cp.shifts } : null;
+      x.checks = closingChecks_(x, cp);
       list.push(x);
     });
     var tot = { cash: 0, credit: 0, card: 0, ret: 0, collected: 0, gross: 0 };

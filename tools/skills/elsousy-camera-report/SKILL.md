@@ -10,7 +10,7 @@ Talk to Ahmed in short Egyptian Arabic. Never ask for passwords/tokens. Never pu
 The report is a small JSON file saved to Google Drive. The dashboard (index.html → التقارير) draws the numbered labels and arrows on the real frames and makes the PDF. You do NOT draw images: you look at frames and write the JSON.
 
 ## Source of truth
-The full, current recipe is in the repo `elsousypharmacy-create/pharmacy`, file `tools/camera-day-report.md` (read it from the checkout, or with the GitHub tool `get_file_contents`). Follow it exactly. It covers: time windows, which frames to review, grids, zoom rules, the checklist, the JSON format (v2) and where to save. If this skill and the recipe differ, the recipe wins.
+The full, current recipe is in the repo `elsousypharmacy-create/pharmacy`, file `tools/camera-day-report.md` (read it from the checkout, or with the GitHub tool `get_file_contents`). Follow it exactly. It covers: time windows, which frames to review, grids, zoom rules, the checklist, the JSON format (v2) and where to save. If this skill, the recipe, or a task prompt differ, the recipe wins.
 
 ## The rules that matter most
 1. **Window:** noon report = today's frames before 12:00. Midnight run = yesterday's frames from 12:00, split in TWO reports (12:00–17:59 «تقرير العصر» time 1800, 18:00–23:59 «تقرير الليل» time 2359). Work one hour at a time.

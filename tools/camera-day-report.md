@@ -4,6 +4,7 @@ This file is the full recipe for the scheduled camera report (the noon run makes
 Write all report text in short Egyptian Arabic. Be strict: report every problem you can clearly see.
 
 ## Window and reports
+**This section overrides the task prompt:** if the prompt names a single label/file time for the midnight run, still make the two reports below.
 - Drive root «كاميرات الصيدلية» id `1nxoCmGnDiwdFktz4QmoU56Uj4tfBRtEk`, day folders `yyyy-MM-dd` (Cairo time).
 - Frames: `HHmm_chN.jpg` (original 960×576) and `HHmm_chN_s.jpg` (640 wide copy made from the Drive thumbnail). Cameras 1, 2, 3, 4, 6 (no 5).
 - **Noon run (12:04 Cairo):** today's folder, frames with HHmm < 1200. ONE report: `label` «تقرير الضهر», file time `1200`.

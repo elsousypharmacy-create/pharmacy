@@ -2511,7 +2511,7 @@ function drawExpenses(d, box){
 }
 
 /* ─────── مالية: الديون ─────── */
-var DEBT = { data: null, sort: 'amount', open: {} };
+var DEBT = { data: null, sort: 'amount', open: {}, q: '' };
 
 function setDebtSort(v){ DEBT.sort = v; drawDebts(); }
 function toggleBucket(k){ DEBT.open[k] = !DEBT.open[k]; drawDebts(); }
@@ -2568,16 +2568,32 @@ var DEBT_BUCKETS = [
   { key:'none',  max:null, label:'bucketNone',  tone:'slate' }
 ];
 
-function drawDebts(isOld){
-  var box = document.getElementById('p-money'), d = DEBT.data;
-  if (!d) return;
-  var now = new Date();
-  var list = (d.debtors || []).map(function(c){
+/* بحث الديون: بالاسم (من غير تشكيل وهمزات، وأي ترتيب كلمات) أو بجزء من التليفون */
+function debtNorm(t){
+  return String(t == null ? '' : t).toLowerCase()
+    .replace(/[٠-٩]/g, function(c){ return '٠١٢٣٤٥٦٧٨٩'.indexOf(c); })
+    .replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه')
+    .replace(/\s+/g, ' ').trim();
+}
+function debtMatch(c, q){
+  if (!q) return true;
+  var nm = debtNorm(c.name);
+  if (q.split(' ').every(function(w){ return nm.indexOf(w) >= 0; })) return true;
+  var dg = q.replace(/\D/g, '');
+  return dg.length >= 3 && String(c.phone || '').replace(/\D/g, '').indexOf(dg) >= 0;
+}
+/* كروت النطاقات — بتتبني لوحدها عشان البحث ماقفلش الكيبورد */
+function debtListHtml(){
+  var d = DEBT.data; if (!d) return '';
+  var q = debtNorm(DEBT.q);
+  var all = (d.debtors || []).map(function(c){
     c._days = (c.daysSincePaid === null || c.daysSincePaid === undefined) ? null : c.daysSincePaid;
     return c;
   });
-
-  /* التوزيع حسب آخر سداد — اللي مفيش ليه تاريخ يروح لنطاق رمادي منفصل */
+  var list = all.filter(function(c){ return debtMatch(c, q); });
+  if (q && !list.length) return '<div class="state">مفيش مدين بالاسم أو الرقم ده</div>';
+  var head = q ? '<div class="state" style="padding:0 0 8px;text-align:start">' + ltr(list.length) + ' من ' + ltr(all.length) +
+    ' · ' + ltr(num(list.reduce(function(a,c){ return a + c.net; }, 0))) + ' ج</div>' : '';
   var groups = {};
   DEBT_BUCKETS.forEach(function(b){ groups[b.key] = []; });
   list.forEach(function(c){
@@ -2586,6 +2602,55 @@ function drawDebts(isOld){
       var b = DEBT_BUCKETS[i];
       if (b.max !== null && c._days <= b.max){ groups[b.key].push(c); break; }
     }
+  });
+  return head + DEBT_BUCKETS.map(function(b){
+    var g = groups[b.key];
+    if (!g.length) return '';
+    var total = g.reduce(function(a,c){ return a + c.net; }, 0);
+    var open = !!DEBT.open[b.key] || !!q, lim = q ? 200 : 80;
+
+    g.sort(DEBT.sort === 'age'
+      ? function(x,y){ return y._days - x._days; }
+      : function(x,y){ return y.net - x.net; });
+
+    var body = open ? g.slice(0, lim).map(function(c){
+      var paid = c.lastPaid ? tr('lastPaid') + ' ' + ltr(c.lastPaid) : tr('noPayRec');
+      var sub = (c._days === null)
+        ? paid
+        : tr('lastMove') + ' ' + ltr(c._days) + ' ' + tr('daysAgo') + ' · ' + paid;
+      if (c.seller && c.seller !== 'غير محدد') sub += ' · ' + tr('soldBy') + ' ' + esc(c.seller);
+      return '<div class="row"><div class="row-main"><b>' + esc(c.name) + '</b>' +
+        '<small>' + sub + '</small></div>' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="row-val" style="color:var(--' + b.tone + ')">' + ltr(num(c.net)) + '</span></div></div>';
+    }).join('') + (g.length > lim ? '<div class="state" style="padding:8px 0;font-size:12px">+' + ltr(g.length - lim) + ' كمان — دوّر بالاسم فوق</div>' : '') : '';
+
+    return '<div class="card" style="padding:0;overflow:hidden;border-inline-start:3px solid var(--' + b.tone + ')">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;' +
+        'padding:14px 16px;cursor:pointer" onclick="toggleBucket(\'' + b.key + '\')">' +
+        '<div><b style="font-size:var(--t-title);font-weight:650">' + tr(b.label) + '</b>' +
+        '<small style="display:block;font-size:var(--t-small);color:var(--ink-2);margin-top:2px">' +
+          ltr(g.length) + ' ' + tr('debtors') + '</small></div>' +
+        '<div style="display:flex;align-items:center;gap:10px">' +
+          '<span style="font-size:16px;font-weight:700;color:var(--' + b.tone + ');' +
+            'direction:ltr;unicode-bidi:isolate">' + LRI + num(total) + PDI + '</span>' +
+          '<span style="color:var(--ink-3);font-size:15px">' + (open ? '⌄' : '›') + '</span>' +
+        '</div></div>' +
+      (open ? '<div style="padding:0 16px 14px">' + body + '</div>' : '') + '</div>';
+  }).join('');
+}
+function debtFilter(){
+  var el = document.getElementById('debtQ'); DEBT.q = el ? el.value : '';
+  var box = document.getElementById('debtList'); if (box) box.innerHTML = debtListHtml();
+}
+
+function drawDebts(isOld){
+  var box = document.getElementById('p-money'), d = DEBT.data;
+  if (!d) return;
+  var now = new Date();
+  var list = (d.debtors || []).map(function(c){
+    c._days = (c.daysSincePaid === null || c.daysSincePaid === undefined) ? null : c.daysSincePaid;
+    return c;
   });
 
   var stale = list.filter(function(c){ return c._days === null || c._days > 30; });
@@ -2623,47 +2688,16 @@ function drawDebts(isOld){
             '</div>';
   }
 
+  html += '<input id="debtQ" oninput="debtFilter()" placeholder="' + tr('searchCust') + '" autocomplete="off" value="' + esc(DEBT.q || '') + '" ' +
+    'style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);' +
+    'background:var(--surface-2);color:var(--ink);font-family:inherit;font-size:14px;margin-bottom:10px">';
   /* سطر تحكّم واحد */
   html += ctlBar(
     ctlBtn(tr('byAmount'), DEBT.sort === 'amount', "setDebtSort('amount')") +
     ctlBtn(tr('byAge'), DEBT.sort === 'age', "setDebtSort('age')"),
     'debtMenu()', false);
 
-  html += DEBT_BUCKETS.map(function(b){
-    var g = groups[b.key];
-    if (!g.length) return '';
-    var total = g.reduce(function(a,c){ return a + c.net; }, 0);
-    var open = !!DEBT.open[b.key];
-
-    g.sort(DEBT.sort === 'age'
-      ? function(x,y){ return y._days - x._days; }
-      : function(x,y){ return y.net - x.net; });
-
-    var body = open ? g.slice(0, 80).map(function(c){
-      var paid = c.lastPaid ? tr('lastPaid') + ' ' + ltr(c.lastPaid) : tr('noPayRec');
-      var sub = (c._days === null)
-        ? paid
-        : tr('lastMove') + ' ' + ltr(c._days) + ' ' + tr('daysAgo') + ' · ' + paid;
-      if (c.seller && c.seller !== 'غير محدد') sub += ' · ' + tr('soldBy') + ' ' + esc(c.seller);
-      return '<div class="row"><div class="row-main"><b>' + esc(c.name) + '</b>' +
-        '<small>' + sub + '</small></div>' +
-        '<div style="display:flex;align-items:center;gap:8px">' +
-        '<span class="row-val" style="color:var(--' + b.tone + ')">' + ltr(num(c.net)) + '</span></div></div>';
-    }).join('') : '';
-
-    return '<div class="card" style="padding:0;overflow:hidden;border-inline-start:3px solid var(--' + b.tone + ')">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;' +
-        'padding:14px 16px;cursor:pointer" onclick="toggleBucket(\'' + b.key + '\')">' +
-        '<div><b style="font-size:var(--t-title);font-weight:650">' + tr(b.label) + '</b>' +
-        '<small style="display:block;font-size:var(--t-small);color:var(--ink-2);margin-top:2px">' +
-          ltr(g.length) + ' ' + tr('debtors') + '</small></div>' +
-        '<div style="display:flex;align-items:center;gap:10px">' +
-          '<span style="font-size:16px;font-weight:700;color:var(--' + b.tone + ');' +
-            'direction:ltr;unicode-bidi:isolate">' + LRI + num(total) + PDI + '</span>' +
-          '<span style="color:var(--ink-3);font-size:15px">' + (open ? '⌄' : '›') + '</span>' +
-        '</div></div>' +
-      (open ? '<div style="padding:0 16px 14px">' + body + '</div>' : '') + '</div>';
-  }).join('');
+  html += '<div id="debtList">' + debtListHtml() + '</div>';
 
   html += '<div class="state" style="padding:4px 0 12px;font-size:11px">' + tr('noteLastMove') + '</div>';
   /* البايع الحقيقي — جاي مع نفس النداء، مفيش طلب زيادة */

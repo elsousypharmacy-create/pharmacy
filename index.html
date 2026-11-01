@@ -2605,6 +2605,7 @@ function drawBalance(){
   if ((d.claims || []).length)
     html += card('مطالبات الشركات', ltr(num(d.claims.reduce(function(a,c){ return a + c.amount; }, 0))),
       d.claims.map(function(c){ return row(c.name, '', ltr(num(c.amount))); }).join(''));
+  if (d.debt_gap > 0) html += '<div class="state" style="text-align:start;font-size:12px">«كل الدين» في النظام ' + ltr(num(d.debt_gross)) + ' و«صافي الدين» ' + ltr(num(d.debt_net)) + ' — الفرق ' + ltr(num(d.debt_gap)) + ' النظام بيطرحه. شوف صفحة الديون تعرف مين.</div>';
   if (d.incoming_cost) html += '<div class="state" style="text-align:start;font-size:12px">بضاعة جاية (طلبيات تحت الاستلام) بتكلفة ' + ltr(num(d.incoming_cost)) + ' — مش محسوبة فوق عشان ماتتعدّش مرتين.</div>';
   var f = function(id, lab, val){
     return '<label style="display:block;margin:8px 0 4px;font-size:13px;color:var(--ink-2)">' + lab + '</label>' +
@@ -2750,14 +2751,25 @@ function drawDebts(isOld){
 
   /* تنبيه المطابقة: لو التفاصيل بعيدة عن الرقم الرسمي، يبقى فيه
      مدينين آخر حركة ليهم أقدم من سنة (بره نطاق القراءة). */
+  /* تفصيل الأرقام: نظام البيع قصاد ملفات الديون (عشان مفيش حاجة تتفترض) */
+  if (d.total_official_gross){
+    html += '<div class="state" style="text-align:start;padding:4px 0 8px;font-size:12.5px">' +
+      'نظام البيع: كل الدين ' + ltr(num(d.total_official_gross)) + ' · صافي ' + ltr(num(d.total_official)) +
+      ' (فرق ' + ltr(num(d.total_official_gross - d.total_official)) + ')<br>' +
+      'الملفات: مدينين ' + ltr(num(d.total_detail)) + ' · ليهم عندك ' + ltr(num(d.credits_total || 0)) +
+      ' (' + ltr(d.credits_count || 0) + ' عميل)</div>';
+  }
   if (d.reconcile_ok === false) {
     html += '<div class="state warn" style="margin:8px 0">' +
-            'الرقم الكبير من نظام البيع (' + num(d.total_official) + ')، ' +
-            'ومجموع التفاصيل تحت ' + num(d.total_detail) + '. ' +
+            'صافي الدين في نظام البيع (' + num(d.total_official) + ')، ' +
+            'ومجموع الملفات بعد طرح اللي ليهم عندك ' + num(d.total_detail - (d.credits_total || 0)) + '. ' +
             'الفرق ' + num(Math.abs(d.reconcile_gap)) + ' — غالبًا مدينين قدام ' +
-            'آخر حركة ليهم أقدم من سنة.' +
+            'آخر حركة ليهم أقدم من سنة، أو حركات معدّلة مش مسجلة في الملفات.' +
             '</div>';
   }
+  if ((d.credits || []).length)
+    html += card('ليهم عندك', ltr(num(d.credits_total)),
+      d.credits.map(function(c){ return row(c.name, ltr(c.phone) + ' · ' + ltr(String(c.lastActivity || '').slice(0, 10)), ltr(num(c.amount))); }).join(''));
 
   html += '<input id="debtQ" oninput="debtFilter()" placeholder="' + tr('searchCust') + '" autocomplete="off" value="' + esc(DEBT.q || '') + '" ' +
     'style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);' +

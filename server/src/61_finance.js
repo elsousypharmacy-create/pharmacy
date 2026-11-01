@@ -141,7 +141,7 @@ function getDebtsData() {
          🔧 شلنا شرط الـ5 خانات: فيه عملاء رقمهم معرّف داخلي قصير
             زي "الحاجة رزقة محمد (200)" و"ام علي صاحب المكان (178)".
             الشرط القديم كان بيتجاهل سدادهم فدينهم ميتصفرش أبدًا. */
-      var cpRx = /([^\n(]{2,40})\s*\(([0-9+]{2,})\)\s*[\r\n]+\s*إجمالى الديون قبل\s*([\d.]+)\s*[\r\n]+\s*إجمالى الديون بعد\s*([\d.]+)/g;
+      var cpRx = /([^\n(]{2,40})\s*\(([0-9+]{2,})\)\s*[\r\n]+\s*إجمالى الديون قبل\s*(-?[\d.]+)\s*[\r\n]+\s*إجمالى الديون بعد\s*(-?[\d.]+)/g;
       var cp;
       while ((cp = cpRx.exec(content)) !== null) {
         var before = parseFloat(cp[3]) || 0;
@@ -158,9 +158,13 @@ function getDebtsData() {
     }
 
     /* ---- بناء القايمة ---- */
-    var list = [], totalNet = 0;
+    var list = [], totalNet = 0, credits = [], creditsTotal = 0;
     Object.keys(latest).forEach(function (k) {
       var c = latest[k];
+      if (c.balance < -0.5) {                    // رصيد دائن: العميل ليه فلوس عندنا (من الملفات مش افتراض)
+        credits.push({ name: c.name, phone: c.phone, amount: Math.round(-c.balance * 100) / 100, lastActivity: c.when });
+        creditsTotal += -c.balance;
+      }
       if (c.balance <= 0.5) return;              // مسدّد (بنتسامح مع كسور القرش)
       var daysSince = Math.floor((today - new Date(c.when.replace(' ', 'T'))) / 86400000);
       list.push({
@@ -177,12 +181,14 @@ function getDebtsData() {
     list.sort(function (a, b) { return b.net - a.net; });
 
     /* ---- 🎯 الرقم الرسمي من نظام البيع ---- */
-    var official = null, gap = null, gapPct = null;
+    var official = null, officialGross = null, gap = null, gapPct = null;
     try {
       var sys = getSystemDailyTotals();
       if (sys && sys.ok && sys.total_debt) {
         official = Math.round(sys.total_debt);
-        gap = Math.round(totalNet) - official;
+        officialGross = Math.round(sys.total_debt_gross || 0);
+        /* صافي الدين في النظام بيطرح الأرصدة الدائنة — فنقارنه بمجموع الملفات بعد طرحها هي كمان */
+        gap = Math.round(totalNet - creditsTotal) - official;
         gapPct = official ? Math.abs(gap / official * 100) : null;
       }
     } catch (e) {}
@@ -198,6 +204,12 @@ function getDebtsData() {
 
       /* الرقم اللي المفروض يتعرض في الكارت الكبير — رسمي ولحظي */
       total_official: official,
+      /* «كل الدين» من نظام البيع (من غير طرح أي حاجة) */
+      total_official_gross: officialGross,
+      /* عملاء ليهم فلوس عندنا حسب ملفات الديون (رصيد أقل من صفر) */
+      credits_total: Math.round(creditsTotal),
+      credits_count: credits.length,
+      credits: credits.sort(function (a, b) { return b.amount - a.amount; }).slice(0, 30),
       /* مجموع التفاصيل اللي قدرنا نوصلها من الملفات */
       total_detail: Math.round(totalNet),
       /* الفرق بينهم — لو كبير يبقى فيه عملاء آخر حركة ليهم أقدم من سنة */

@@ -271,6 +271,7 @@ function getSystemDailyTotals() {
       profit_yesterday: parseFloat(map['الربحية امس']) || 0,
       discount_yesterday: parseFloat(map['الخصم امس']) || 0,
       total_debt: parseFloat(map['صافي الدين']) || 0,
+      total_debt_gross: parseFloat(map['كل الدين']) || 0,
       debt_today: parseFloat(map['الدين اليوم']) || 0,
       debt_paid_today: parseFloat(map['الدين المسدد اليوم']) || 0,
       debt_yesterday: parseFloat(map['الدين امس']) || 0,

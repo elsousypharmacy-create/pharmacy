@@ -124,7 +124,7 @@ function getMonthDebtsSummary(monthKey) {
           } catch(e) { continue; }
         }
       }
-      const checkpointRegex = /[^\n(]{2,40}\s*\([0-9+]{2,}\)\s*[\r\n]+\s*إجمالى الديون قبل\s*([\d.]+)\s*[\r\n]+\s*إجمالى الديون بعد\s*([\d.]+)/g;
+      const checkpointRegex = /[^\n(]{2,40}\s*\([0-9+]{2,}\)\s*[\r\n]+\s*إجمالى الديون قبل\s*(-?[\d.]+)\s*[\r\n]+\s*إجمالى الديون بعد\s*(-?[\d.]+)/g;
       let cpMatch;
       while ((cpMatch = checkpointRegex.exec(content)) !== null) {
         const before = parseFloat(cpMatch[1]) || 0;
@@ -159,7 +159,7 @@ function getDayCollections(dateStr) {
     if (files.hasNext()) content = files.next().getBlob().getDataAsString('UTF-8');
     if (!content) return { ok: true, date: dateStr, collections: [], total: 0 };
 
-    const checkpointRegex = /([^\n(]{2,40})\s*\(([0-9+]{5,})\)\s*[\r\n]+\s*إجمالى الديون قبل\s*([\d.]+)\s*[\r\n]+\s*إجمالى الديون بعد\s*([\d.]+)/g;
+    const checkpointRegex = /([^\n(]{2,40})\s*\(([0-9+]{5,})\)\s*[\r\n]+\s*إجمالى الديون قبل\s*(-?[\d.]+)\s*[\r\n]+\s*إجمالى الديون بعد\s*(-?[\d.]+)/g;
     let cpMatch;
     const collections = [];
     let total = 0;

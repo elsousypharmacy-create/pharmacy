@@ -296,6 +296,7 @@ function getSystemDailyTotals() {
       profit_yesterday: parseFloat(map['الربحية امس']) || 0,
       discount_yesterday: parseFloat(map['الخصم امس']) || 0,
       total_debt: parseFloat(map['صافي الدين']) || 0,
+      total_debt_gross: parseFloat(map['كل الدين']) || 0,
       debt_today: parseFloat(map['الدين اليوم']) || 0,
       debt_paid_today: parseFloat(map['الدين المسدد اليوم']) || 0,
       debt_yesterday: parseFloat(map['الدين امس']) || 0,
@@ -441,7 +442,7 @@ function getMonthDebtsSummary(monthKey) {
           } catch(e) { continue; }
         }
       }
-      const checkpointRegex = /[^\n(]{2,40}\s*\([0-9+]{2,}\)\s*[\r\n]+\s*إجمالى الديون قبل\s*([\d.]+)\s*[\r\n]+\s*إجمالى الديون بعد\s*([\d.]+)/g;
+      const checkpointRegex = /[^\n(]{2,40}\s*\([0-9+]{2,}\)\s*[\r\n]+\s*إجمالى الديون قبل\s*(-?[\d.]+)\s*[\r\n]+\s*إجمالى الديون بعد\s*(-?[\d.]+)/g;
       let cpMatch;
       while ((cpMatch = checkpointRegex.exec(content)) !== null) {
         const before = parseFloat(cpMatch[1]) || 0;
@@ -476,7 +477,7 @@ function getDayCollections(dateStr) {
     if (files.hasNext()) content = files.next().getBlob().getDataAsString('UTF-8');
     if (!content) return { ok: true, date: dateStr, collections: [], total: 0 };
 
-    const checkpointRegex = /([^\n(]{2,40})\s*\(([0-9+]{5,})\)\s*[\r\n]+\s*إجمالى الديون قبل\s*([\d.]+)\s*[\r\n]+\s*إجمالى الديون بعد\s*([\d.]+)/g;
+    const checkpointRegex = /([^\n(]{2,40})\s*\(([0-9+]{5,})\)\s*[\r\n]+\s*إجمالى الديون قبل\s*(-?[\d.]+)\s*[\r\n]+\s*إجمالى الديون بعد\s*(-?[\d.]+)/g;
     let cpMatch;
     const collections = [];
     let total = 0;
@@ -6579,7 +6580,7 @@ function getDebtsData() {
          🔧 شلنا شرط الـ5 خانات: فيه عملاء رقمهم معرّف داخلي قصير
             زي "الحاجة رزقة محمد (200)" و"ام علي صاحب المكان (178)".
             الشرط القديم كان بيتجاهل سدادهم فدينهم ميتصفرش أبدًا. */
-      var cpRx = /([^\n(]{2,40})\s*\(([0-9+]{2,})\)\s*[\r\n]+\s*إجمالى الديون قبل\s*([\d.]+)\s*[\r\n]+\s*إجمالى الديون بعد\s*([\d.]+)/g;
+      var cpRx = /([^\n(]{2,40})\s*\(([0-9+]{2,})\)\s*[\r\n]+\s*إجمالى الديون قبل\s*(-?[\d.]+)\s*[\r\n]+\s*إجمالى الديون بعد\s*(-?[\d.]+)/g;
       var cp;
       while ((cp = cpRx.exec(content)) !== null) {
         var before = parseFloat(cp[3]) || 0;
@@ -6596,9 +6597,13 @@ function getDebtsData() {
     }
 
     /* ---- بناء القايمة ---- */
-    var list = [], totalNet = 0;
+    var list = [], totalNet = 0, credits = [], creditsTotal = 0;
     Object.keys(latest).forEach(function (k) {
       var c = latest[k];
+      if (c.balance < -0.5) {                    // رصيد دائن: العميل ليه فلوس عندنا (من الملفات مش افتراض)
+        credits.push({ name: c.name, phone: c.phone, amount: Math.round(-c.balance * 100) / 100, lastActivity: c.when });
+        creditsTotal += -c.balance;
+      }
       if (c.balance <= 0.5) return;              // مسدّد (بنتسامح مع كسور القرش)
       var daysSince = Math.floor((today - new Date(c.when.replace(' ', 'T'))) / 86400000);
       list.push({
@@ -6615,12 +6620,14 @@ function getDebtsData() {
     list.sort(function (a, b) { return b.net - a.net; });
 
     /* ---- 🎯 الرقم الرسمي من نظام البيع ---- */
-    var official = null, gap = null, gapPct = null;
+    var official = null, officialGross = null, gap = null, gapPct = null;
     try {
       var sys = getSystemDailyTotals();
       if (sys && sys.ok && sys.total_debt) {
         official = Math.round(sys.total_debt);
-        gap = Math.round(totalNet) - official;
+        officialGross = Math.round(sys.total_debt_gross || 0);
+        /* صافي الدين في النظام بيطرح الأرصدة الدائنة — فنقارنه بمجموع الملفات بعد طرحها هي كمان */
+        gap = Math.round(totalNet - creditsTotal) - official;
         gapPct = official ? Math.abs(gap / official * 100) : null;
       }
     } catch (e) {}
@@ -6636,6 +6643,12 @@ function getDebtsData() {
 
       /* الرقم اللي المفروض يتعرض في الكارت الكبير — رسمي ولحظي */
       total_official: official,
+      /* «كل الدين» من نظام البيع (من غير طرح أي حاجة) */
+      total_official_gross: officialGross,
+      /* عملاء ليهم فلوس عندنا حسب ملفات الديون (رصيد أقل من صفر) */
+      credits_total: Math.round(creditsTotal),
+      credits_count: credits.length,
+      credits: credits.sort(function (a, b) { return b.amount - a.amount; }).slice(0, 30),
       /* مجموع التفاصيل اللي قدرنا نوصلها من الملفات */
       total_detail: Math.round(totalNet),
       /* الفرق بينهم — لو كبير يبقى فيه عملاء آخر حركة ليهم أقدم من سنة */
@@ -8481,8 +8494,8 @@ function camFrames(ids) {
 
 // ==== MODULE 68_balance — الميزانية: اللي ليك واللي عليك (أرقام نظام البيع + أرقام بتدخلها إنت) ====
 /* الأرقام التلقائية بتيجي من تقرير النظام اليومي (Daily_Mini_Statics) — نفس الملف اللي بتقراه باقي اللوحة:
-     ليك:  كل الدين (ديون العملاء) + المخزون بالتكلفة
-     عليك: «مطالبة اليوم» لكل شركة + أرصدة العملاء الدائنة (كل الدين − صافي الدين) + عمولات المندوبين
+     ليك:  صافي الدين (ديون العملاء بعد طرح أي رصيد دائن) + المخزون بالتكلفة
+     عليك: «مطالبة اليوم» لكل شركة + عمولات المندوبين
    والأرقام اللي النظام مايعرفهاش (كاش، بنك، مرتبات، أي حاجة تانية) بتدخلها إنت ومتخزنة في Script Properties. */
 var BS_KEYS_ = ['cash', 'bank', 'salaries', 'other_assets', 'other_liabs'];
 function bsNum_(v) {
@@ -8506,7 +8519,7 @@ function getBalanceSheet() {
     claims.sort(function (a, b) { return b.amount - a.amount; });
     var n = function (k) { return parseFloat(map[k]) || 0; };
     var receivable = Math.round(n('كل الدين')), netDebt = Math.round(n('صافي الدين'));
-    var custCredit = Math.max(0, receivable - netDebt);
+    var gap = receivable - netDebt;   // فرق «كل الدين» و«صافي الدين» — النظام هو اللي بيحدد سببه
     var invCost = Math.round(n('اجمالى المخزون تكلفة')), invRetail = Math.round(n('اجمالى المخزون جمهور'));
     var incoming = Math.round(n('تكلفة الطلبيات تحت الاستلام'));
     var claimsTotal = claims.reduce(function (s, c) { return s + c.amount; }, 0);
@@ -8522,7 +8535,7 @@ function getBalanceSheet() {
     if (v('salaries') === null) missing.push('المرتبات');
 
     var assets = [
-      { k: 'receivable', label: 'ديون العملاء', amount: receivable, sub: 'كل الدين على العملاء (صافي الدين ' + netDebt + ')' },
+      { k: 'receivable', label: 'ديون العملاء (صافي)', amount: netDebt, sub: 'كل الدين ' + receivable + (gap ? ' — النظام طارح منه ' + gap : '') },
       { k: 'inventory', label: 'المخزون بالتكلفة', amount: invCost, sub: 'بسعر الجمهور ' + invRetail },
       { k: 'cash', label: 'الكاش (خزنة + درج)', amount: v('cash'), manual: true },
       { k: 'bank', label: 'البنك / الكروت', amount: v('bank'), manual: true },
@@ -8530,7 +8543,6 @@ function getBalanceSheet() {
     ];
     var liabs = [
       { k: 'claims', label: 'مطالبات الشركات', amount: claimsTotal, sub: claims.slice(0, 3).map(function (c) { return c.name + ' ' + c.amount; }).join(' · ') },
-      { k: 'cust_credit', label: 'أرصدة دائنة للعملاء', amount: custCredit, sub: 'كل الدين − صافي الدين' },
       { k: 'agents', label: 'عمولات المندوبين', amount: agentsDue },
       { k: 'salaries', label: 'مرتبات مستحقة', amount: v('salaries'), manual: true },
       { k: 'other_liabs', label: 'التزامات تانية', amount: v('other_liabs'), manual: true, optional: true }
@@ -8541,7 +8553,7 @@ function getBalanceSheet() {
     return {
       ok: true, as_of: String(map['الوقت'] || ''), assets: assets, liabs: liabs,
       assets_total: aT, liabs_total: lT, net: net, missing: missing,
-      claims: claims, incoming_cost: incoming,
+      claims: claims, incoming_cost: incoming, debt_gross: receivable, debt_net: netDebt, debt_gap: gap,
       inputs: { cash: v('cash'), bank: v('bank'), salaries: v('salaries'), other_assets: v('other_assets'), other_liabs: v('other_liabs'), at: inp.at || '' },
       base: base || null, delta: base ? net - base.net : null
     };

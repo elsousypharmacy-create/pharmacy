@@ -1,7 +1,7 @@
 // ==== MODULE 68_balance — الميزانية: اللي ليك واللي عليك (أرقام نظام البيع + أرقام بتدخلها إنت) ====
 /* الأرقام التلقائية بتيجي من تقرير النظام اليومي (Daily_Mini_Statics) — نفس الملف اللي بتقراه باقي اللوحة:
-     ليك:  كل الدين (ديون العملاء) + المخزون بالتكلفة
-     عليك: «مطالبة اليوم» لكل شركة + أرصدة العملاء الدائنة (كل الدين − صافي الدين) + عمولات المندوبين
+     ليك:  صافي الدين (ديون العملاء بعد طرح أي رصيد دائن) + المخزون بالتكلفة
+     عليك: «مطالبة اليوم» لكل شركة + عمولات المندوبين
    والأرقام اللي النظام مايعرفهاش (كاش، بنك، مرتبات، أي حاجة تانية) بتدخلها إنت ومتخزنة في Script Properties. */
 var BS_KEYS_ = ['cash', 'bank', 'salaries', 'other_assets', 'other_liabs'];
 function bsNum_(v) {
@@ -25,7 +25,7 @@ function getBalanceSheet() {
     claims.sort(function (a, b) { return b.amount - a.amount; });
     var n = function (k) { return parseFloat(map[k]) || 0; };
     var receivable = Math.round(n('كل الدين')), netDebt = Math.round(n('صافي الدين'));
-    var custCredit = Math.max(0, receivable - netDebt);
+    var gap = receivable - netDebt;   // فرق «كل الدين» و«صافي الدين» — النظام هو اللي بيحدد سببه
     var invCost = Math.round(n('اجمالى المخزون تكلفة')), invRetail = Math.round(n('اجمالى المخزون جمهور'));
     var incoming = Math.round(n('تكلفة الطلبيات تحت الاستلام'));
     var claimsTotal = claims.reduce(function (s, c) { return s + c.amount; }, 0);
@@ -41,7 +41,7 @@ function getBalanceSheet() {
     if (v('salaries') === null) missing.push('المرتبات');
 
     var assets = [
-      { k: 'receivable', label: 'ديون العملاء', amount: receivable, sub: 'كل الدين على العملاء (صافي الدين ' + netDebt + ')' },
+      { k: 'receivable', label: 'ديون العملاء (صافي)', amount: netDebt, sub: 'كل الدين ' + receivable + (gap ? ' — النظام طارح منه ' + gap : '') },
       { k: 'inventory', label: 'المخزون بالتكلفة', amount: invCost, sub: 'بسعر الجمهور ' + invRetail },
       { k: 'cash', label: 'الكاش (خزنة + درج)', amount: v('cash'), manual: true },
       { k: 'bank', label: 'البنك / الكروت', amount: v('bank'), manual: true },
@@ -49,7 +49,6 @@ function getBalanceSheet() {
     ];
     var liabs = [
       { k: 'claims', label: 'مطالبات الشركات', amount: claimsTotal, sub: claims.slice(0, 3).map(function (c) { return c.name + ' ' + c.amount; }).join(' · ') },
-      { k: 'cust_credit', label: 'أرصدة دائنة للعملاء', amount: custCredit, sub: 'كل الدين − صافي الدين' },
       { k: 'agents', label: 'عمولات المندوبين', amount: agentsDue },
       { k: 'salaries', label: 'مرتبات مستحقة', amount: v('salaries'), manual: true },
       { k: 'other_liabs', label: 'التزامات تانية', amount: v('other_liabs'), manual: true, optional: true }
@@ -60,7 +59,7 @@ function getBalanceSheet() {
     return {
       ok: true, as_of: String(map['الوقت'] || ''), assets: assets, liabs: liabs,
       assets_total: aT, liabs_total: lT, net: net, missing: missing,
-      claims: claims, incoming_cost: incoming,
+      claims: claims, incoming_cost: incoming, debt_gross: receivable, debt_net: netDebt, debt_gap: gap,
       inputs: { cash: v('cash'), bank: v('bank'), salaries: v('salaries'), other_assets: v('other_assets'), other_liabs: v('other_liabs'), at: inp.at || '' },
       base: base || null, delta: base ? net - base.net : null
     };

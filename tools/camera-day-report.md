@@ -23,6 +23,8 @@ If there are no frames in the window: save a report with `"summary":[]`, `"pages
 ## 3. Download and look
 - `download_file_content(fileId)`. The result is saved to a file: decode with `jq -r .content <file> | base64 -d > x.jpg`
   and check the byte size equals `fileSize`. Never judge a partial image.
+- Small files (under ~45 KB, e.g. dark night frames) come back inline instead of saved to a file. Do not paste them; pick a neighbouring
+  frame of the same camera instead, or list the camera in `note` as «ماتشافتش».
 - Use Python PIL to build grids (3×3 of half-size frames, time + camera written on each) and view the grids first.
 - Then crop and zoom (2×) every area that matters: desk, counter tops, shelves, drawers/doors, floor, diapers and milk shelves, outside steps.
 

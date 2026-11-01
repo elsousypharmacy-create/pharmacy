@@ -19,7 +19,7 @@ function setup(options = {}) {
       requests++; assert.equal(opts.followRedirects, false);
       const text = url.includes('m3u8') ? (options.encrypted ? '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="key"' :
         '#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:10\n' + Array.from({length: 5}, (_, i) => '#EXTINF:5,\nseg' + i + '.ts').join('\n')) : '';
-      return { getResponseCode: () => options.redirect ? 302 : 200, getContentText: () => text,
+      return { getResponseCode: () => options.redirect ? 302 : (options.forbidden ? 403 : 200), getHeaders: () => ({ Location: 'https://video.example.test/a/redirect.m3u8' }), getContentText: () => text,
         getBlob: () => blob(options.invalidMedia ? [1,2,3] : [0x47, ...Array(187).fill(0)], '', '') };
     } }
   });
@@ -71,6 +71,10 @@ test('encrypted media and redirects save nothing; lock always released', () => {
     assert.equal(r.ok,false); assert.equal(s.result().saved,null); assert.equal(s.result().released,2);
     assert(!JSON.stringify(r).includes('AUTH-ONLY'));
   }
+});
+test('HTTP denial exposes status only, never provider body or signed URL', () => {
+  const s=setup({forbidden:true}), r=s.c.camRecordSample({channel:4});
+  assert.equal(r.code,'http_403'); assert(!JSON.stringify(r).includes('AUTH-ONLY')); assert.equal(s.result().saved,null);
 });
 test('unchanging playlist times out instead of duplicating media', () => {
   const s=setup(), r=s.c.camRecordSample({channel:3});

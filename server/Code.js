@@ -8591,10 +8591,20 @@ function camRecUrl_(base, relative) {
   return origin + '/' + normalized.join('/') + (parts.length > 1 ? '?' + parts.slice(1).join('?') : '');
 }
 function camRecFetch_(url, text) {
-  var r = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: false });
-  if (r.getResponseCode() !== 200) camRecError_('fetch');
-  if (text) { var s = r.getContentText(); if (s.length > 150000) camRecError_('playlist_size'); return s; }
-  return r.getBlob();
+  for (var redirects = 0; redirects < 3; redirects++) {
+    var r = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: false });
+    var code = r.getResponseCode();
+    if ([301,302,303,307,308].indexOf(code) !== -1) {
+      var headers = r.getHeaders(), next = headers.Location || headers.location;
+      if (!next) camRecError_('redirect');
+      url = camRecUrl_(url, String(next)); // Same-origin HTTPS only; never forward auth headers.
+      continue;
+    }
+    if (code !== 200) camRecError_('http_' + code);
+    if (text) { var s = r.getContentText(); if (s.length > 150000) camRecError_('playlist_size'); return s; }
+    return r.getBlob();
+  }
+  camRecError_('redirect_limit');
 }
 function camRecParse_(text) {
   if (!/^\s*#EXTM3U/.test(text)) camRecError_('playlist');
@@ -8705,7 +8715,7 @@ function camRecordSample(request) {
     return { ok: true, stage: 'saved', channel: channel, id: file.getId(), seconds: total, bytes: file.getSize(),
       message: 'اتحفظت عينة فيديو خاصة؛ لسه محتاجة فك وتجربة تشغيل ومراجعة' };
   } catch (e) {
-    return { ok: false, stage: stage, code: /^[a-z_]+$/.test(e.camCode || '') ? e.camCode : 'failed', channel: channel,
+    return { ok: false, stage: stage, code: /^[a-z0-9_]+$/.test(e.camCode || '') ? e.camCode : 'failed', channel: channel,
       error: 'التسجيل ماكملش؛ مفيش عينة اتأكدت. إعدادات الكاميرا والتشفير ماتغيرتش' };
   } finally { if (lease) camRecRelease_(lease); }
 }

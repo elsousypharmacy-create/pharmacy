@@ -6,6 +6,9 @@
    والزرار ده بيقراه ويحطه مكان الكود الحالي ويعمل New version على نفس الرابط.
    محتاج مرة واحدة: تشغيل Google Apps Script API من script.google.com/home/usersettings */
 var SERVER_SRC_URL = 'https://raw.githubusercontent.com/elsousypharmacy-create/pharmacy/main/server/Code.js';
+/* جوجل بتسمح بـ 200 نسخة بس للمشروع، وكل تحديث بيعمل نسخة. لما توصل للحد التحديث بيفشل. */
+var SERVER_VERSION_LIMIT_MSG = 'مشروع السيرفر وصل للحد الأقصى (200 نسخة) فجوجل مش هتعمل نسخة جديدة، والتحديث مش هيركب. ' +
+  'الحل: افتح script.google.com ← مشروع الصيدلية ← «Project history» (سجل المشروع) ← امسح النسخ القديمة (سيب آخر 20 نسخة) ← وبعدها دوس «حدّث السيرفر» تاني.';
 function serverSrc_() {
   var r = UrlFetchApp.fetch(SERVER_SRC_URL + '?t=' + Date.now(), { muteHttpExceptions: true });
   if (r.getResponseCode() !== 200) return null;
@@ -41,6 +44,13 @@ function autoServerUpdate() {
   if (r && r.ok) {
     P.deleteProperty('SERVER_FAILED_SIG');
     sendTelegramStaff('🔄 السيرفر اتحدّث تلقائي — نسخة ' + r.version + ' (' + r.at + ')', PERSONAL_CHAT);
+  } else if (r && r.limit) {
+    /* مش بنعلّم النسخة كفاشلة — هنحاول تاني كل ربع ساعة لحد ما تمسح نسخ قديمة. التنبيه مرة كل ١٢ ساعة بس. */
+    var lastN = parseInt(P.getProperty('SERVER_LIMIT_NOTIFIED') || '0', 10);
+    if (Date.now() - lastN > 12 * 3600000) {
+      P.setProperty('SERVER_LIMIT_NOTIFIED', String(Date.now()));
+      sendTelegramStaff('⚠️ ' + r.error, PERSONAL_CHAT);
+    }
   } else {
     P.setProperty('SERVER_FAILED_SIG', s.sig);
     sendTelegramStaff('⚠️ التحديث التلقائي للسيرفر فشل:\n' + ((r && r.error) || 'سبب مش معروف') + '\nالنسخة الحالية شغالة عادي.', PERSONAL_CHAT);
@@ -76,7 +86,12 @@ function serverUpdate() {
   var stamp = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd HH:mm');
   r = UrlFetchApp.fetch(api + '/versions', { method: 'post', contentType: 'application/json', headers: H, muteHttpExceptions: true,
     payload: JSON.stringify({ description: 'تحديث من اللوحة ' + stamp }) });
-  if (r.getResponseCode() !== 200) return { ok: false, error: 'New version: ' + r.getContentText().slice(0, 200) };
+  if (r.getResponseCode() !== 200) {
+    var vtxt = r.getContentText();
+    if (r.getResponseCode() === 429 || /limit of \d+ versions/i.test(vtxt))
+      return { ok: false, limit: true, error: SERVER_VERSION_LIMIT_MSG };
+    return { ok: false, error: 'New version: ' + vtxt.slice(0, 200) };
+  }
   var ver = JSON.parse(r.getContentText()).versionNumber;
   var depId = (WEB_APP_URL.match(/\/s\/([^/]+)\/exec/) || [])[1];
   r = UrlFetchApp.fetch(api + '/deployments/' + depId, { method: 'put', contentType: 'application/json', headers: H, muteHttpExceptions: true,

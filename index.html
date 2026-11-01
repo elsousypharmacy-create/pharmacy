@@ -1436,7 +1436,7 @@ document.addEventListener('visibilitychange', function(){
 /* ═══ منتقي الفترة — نفس الشكل في كل الصفحات ═══ */
 /* الافتتاح على "اليوم" — ده اللي بتدوّر عليه أول ما تفتح.
    الفترات الأطول باختيارك. */
-var RANGE = { sales:'today', exp:'month', att:'today', perf:'today', debt:'month', short:'7' };
+var RANGE = { sales:'today', exp:'month', att:'today', perf:'today', debt:'month', short:'7', close:'week' };
 /* قبل 10 الصبح (بتوقيت مصر) النهاردة لسه فاضي: الأداء والفريق يفتحوا على أمس */
 try {
   var _hs = JSON.parse(localStorage.getItem('c:home:{}') || 'null'), _d = _hs && _hs.d && _hs.d.b && _hs.d.b.daily;
@@ -2651,14 +2651,47 @@ var IC = {
   doc: '<svg viewBox="0 0 24 24"><path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1-1.5z"/><path d="M14 3.5V8h4"/><path d="M9 13h6M9 16.5h4"/></svg>',
   flag: '<svg viewBox="0 0 24 24"><path d="M6 21V4"/><path d="M6 5h11l-2.5 3.5L17 12H6"/></svg>'
 };
-var CLS = { days: 7, data: null, open: {}, sel: {} };
+var CLS = { data: null, open: {}, sel: {}, req: 0 };
+function clsAdd(ds, n){ var d = new Date(ds + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+/* الفترة المختارة (نفس اختيارات باقي اللوحة من ⋯) */
+function clsRange(){
+  var v = RANGE.close, t = cairoNow().date, r;
+  if (v === 'custom' && CUSTOM.close) r = { from: CUSTOM.close.from, to: CUSTOM.close.to };
+  else if (v === 'today') r = { from: t, to: t };
+  else if (v === 'yesterday'){ var y = clsAdd(t, -1); r = { from: y, to: y }; }
+  else if (v === 'lastMonth'){
+    var f = t.slice(0, 8) + '01'; r = { from: clsAdd(f, -1).slice(0, 8) + '01', to: clsAdd(f, -1) };
+  } else if (v === 'month') r = { from: t.slice(0, 8) + '01', to: t };
+  else r = { from: clsAdd(t, -6), to: t };           // week
+  if (!r.from || !r.to || r.from > r.to) r = { from: clsAdd(t, -6), to: t };
+  if (clsAdd(r.from, 61) < r.to) r.from = clsAdd(r.to, -61);   // أقصى ٦٢ يوم
+  return r;
+}
+function clsTotals(days){
+  var tot = { cash: 0, credit: 0, card: 0, ret: 0, collected: 0, gross: 0 };
+  days.forEach(function(x){ Object.keys(tot).forEach(function(k){ tot[k] += x[k] || 0; }); });
+  return tot;
+}
+/* بيحمّل الفترة كل ٧ أيام ورا بعض (الأحدث الأول) وبيرسم أول ما تيجي أول قطعة */
 function pgClosing(){
-  var box = document.getElementById('p-money');
-  if (!CLS.data) busy(box); else drawClosing();
-  api('getClosingDays', { days: CLS.days }).then(function(d){
-    if (!d || !d.ok) throw new Error('close');
-    CLS.data = d; markSync(); drawClosing();
-  }).catch(function(e){ logErr(e); if (!CLS.data) oops(box, "pgClosing()"); });
+  var box = document.getElementById('p-money'), R = clsRange(), my = ++CLS.req, days = [], cur = R.to, guard = 0;
+  CLS.data = null; busy(box);
+  var next = function(){
+    var lo = clsAdd(cur, -6); if (lo < R.from) lo = R.from;
+    return api('getClosingDays', { from: lo, to: cur }).then(function(d){
+      if (my !== CLS.req) return;
+      if (!d || !d.ok) throw new Error((d && d.error) || 'close');
+      days = days.concat(d.days || []);
+      CLS.data = { days: days, from: R.from, to: R.to, totals: clsTotals(days), loading: lo > R.from };
+      markSync(); drawClosing();
+      if (lo > R.from && ++guard < 12){ cur = clsAdd(lo, -1); return next(); }
+    });
+  };
+  next().catch(function(e){ logErr(e); if (my === CLS.req && !CLS.data) oops(box, "pgClosing()"); });
+}
+function setClsRange(v){ setRange('close', v, pgClosing); }
+function clsMenu(){
+  openMenu(tr('more'), '<div class="group-title">' + tr('rCustom') + '</div>' + rangeMenuRows('close', 'setClsRange'));
 }
 function n2(v){ var n = Number(v); return isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—'; }
 function diffBadge(df, lim){
@@ -2671,7 +2704,6 @@ function clsProblem(x){
   var R = x.close && x.close.rows; if (!R) return false;
   return !!((R.bank_card && Math.abs(R.bank_card.diff) > 1) || (R.drawer && Math.abs(R.drawer.diff) > 5));
 }
-function setClsDays(n){ CLS.days = n; CLS.data = null; pgClosing(); }
 function clsLabel(x){
   return new Date(x.date + 'T12:00:00').toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' });
 }
@@ -2827,18 +2859,18 @@ function clsShare(){
 function drawClosing(){
   var box = document.getElementById('p-money'), d = CLS.data; if (!d) return;
   var t = d.totals, sum = t.cash + t.credit + t.card;
-  var html = '<div class="ctl"><div class="ctl-main">' +
-    ctlBtn('7 أيام', CLS.days === 7, "setClsDays(7)") + ctlBtn('14 يوم', CLS.days === 14, "setClsDays(14)") +
-    ctlBtn('21 يوم', CLS.days === 21, "setClsDays(21)") + '</div></div>';
+  var html = ctlBar(ctlBtn('الأسبوع', RANGE.close === 'week', "setClsRange('week')") + ctlBtn('الشهر', RANGE.close === 'month', "setClsRange('month')"),
+    'clsMenu()', RANGE.close !== 'week' && RANGE.close !== 'month');
   html += vitals('وسائل الدفع', d.from + ' ← ' + d.to, [
     { value: num(t.cash), label: 'كاش', tone: 'ok', note: pct(t.cash, sum) + '%', sub: 'من المبيعات' },
     { value: num(t.credit), label: 'آجل', tone: 'warn', note: pct(t.credit, sum) + '%', sub: 'من المبيعات' },
     { value: num(t.card), label: 'كارت بنكي', tone: 'brand', note: pct(t.card, sum) + '%', sub: 'من المبيعات' }
   ]);
-  if (!d.days.length){ box.innerHTML = html + '<div class="state">مفيش مبيعات في الفترة دي</div>'; return; }
+  if (!d.days.length){ box.innerHTML = html + (d.loading ? '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>' : '<div class="state">مفيش مبيعات في الفترة دي</div>'); return; }
   var bad = d.days.filter(clsProblem);
   if (bad.length) html += alertBox('warn', bad.length + ' يوم فيه فرق في التقفيل', 'اضغط على اليوم وشوف الفرق بالظبط', '');
   html += '<div id="clsBar">' + clsBarHtml() + '</div><div id="clsList">' + clsListHtml() + '</div>';
+  if (d.loading) html += '<div class="state"><div class="spin"></div>بحمّل باقي الأيام…</div>';
   html += '<div class="state" style="padding:4px 0 12px;font-size:11px">الأرقام من ملفات نظام البيع وبتطابق تقفيل النظام. قارن «المفروض في الدرج» بالكاش اللي عديته فعلًا.</div>';
   box.innerHTML = html;
 }

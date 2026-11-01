@@ -8645,13 +8645,25 @@ function closingDay_(dateStr) {
 
 function getClosingDays(p) {
   try {
-    var days = Math.max(1, Math.min(parseInt((p && p.days) || 7, 10) || 7, 21));
     var tz = 'Africa/Cairo', now = new Date(), list = [], dates = [];
-    for (var i = 0; i < days; i++) dates.push(Utilities.formatDate(new Date(now.getTime() - i * 86400000), tz, 'yyyy-MM-dd'));
+    var MAXD = 14;                                   // أقصى عدد أيام في النداء الواحد (اللوحة بتقسّم الفترات الطويلة)
+    if (p && (p.range || (p.from && p.to))) {
+      var R = resolveRange_(p), re = /^\d{4}-\d{2}-\d{2}$/;
+      if (!re.test(R.from) || !re.test(R.to) || R.from > R.to) return { ok: false, error: 'التاريخ غلط' };
+      for (var d = new Date(R.to + 'T12:00:00Z'); dates.length < MAXD; d.setUTCDate(d.getUTCDate() - 1)) {
+        var ds = d.toISOString().slice(0, 10);
+        if (ds < R.from) break;
+        dates.push(ds);
+      }
+    } else {
+      var days = Math.max(1, Math.min(parseInt((p && p.days) || 7, 10) || 7, 21));
+      for (var i = 0; i < days; i++) dates.push(Utilities.formatDate(new Date(now.getTime() - i * 86400000), tz, 'yyyy-MM-dd'));
+    }
+    if (!dates.length) return { ok: true, days: [], totals: {}, from: '', to: '' };
     var oldest = dates[dates.length - 1], pdf = {};
     try {
       var fit = DriveApp.getFolderById(CLOSE_PDF_FOLDER_).searchFiles("title contains 'dailyclose_' and modifiedDate > '" +
-        Utilities.formatDate(new Date(now.getTime() - (days + 3) * 86400000), tz, 'yyyy-MM-dd') + "'");
+        Utilities.formatDate(new Date(new Date(oldest + 'T12:00:00Z').getTime() - 3 * 86400000), tz, 'yyyy-MM-dd') + "'");
       while (fit.hasNext()) {
         var f = fit.next(), mm = /dailyclose_(\d{4}-\d{2}-\d{2})_/.exec(f.getName());
         if (mm) pdf[mm[1]] = f.getUrl();

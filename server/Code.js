@@ -437,7 +437,7 @@ function getMonthDebtsSummary(monthKey) {
           } catch(e) { continue; }
         }
       }
-      const checkpointRegex = /[^\n(]{2,40}\s*\([0-9+]{5,}\)\s*[\r\n]+\s*إجمالى الديون قبل\s*([\d.]+)\s*[\r\n]+\s*إجمالى الديون بعد\s*([\d.]+)/g;
+      const checkpointRegex = /[^\n(]{2,40}\s*\([0-9+]{2,}\)\s*[\r\n]+\s*إجمالى الديون قبل\s*([\d.]+)\s*[\r\n]+\s*إجمالى الديون بعد\s*([\d.]+)/g;
       let cpMatch;
       while ((cpMatch = checkpointRegex.exec(content)) !== null) {
         const before = parseFloat(cpMatch[1]) || 0;
@@ -6382,6 +6382,7 @@ function sendWeeklyDebtReminders() {
     var logData = logSheet.getLastRow() > 1 ? logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 6).getValues() : [];
     var lastSentByPhone = {};
     logData.forEach(function(r) {
+      if (String(r[4]).indexOf('فشل') === 0) return;   // الإرسال الفاشل مايتحسبش "اتبعت"
       var ph = canonicalEgyptPhone_(String(r[1]));
       var when = new Date(r[5]);
       if (!lastSentByPhone[ph] || when > lastSentByPhone[ph]) lastSentByPhone[ph] = when;
@@ -6403,9 +6404,12 @@ function sendWeeklyDebtReminders() {
         if (daysSinceSent < DEBT_REMINDER_MIN_INTERVAL_DAYS) return;
       }
 
-      sendDebtReminderSMS_(c.phone, c.name, c.net);
-      sentCount++;
-      Utilities.sleep(3000); // فاصل بسيط بين كل رسالة عشان الشبكة متحظرش الرقم
+      if (!isValidEgyptianPhone(canon)) return;   // معرّف داخلي مش رقم موبايل — مفيش حد نبعتله
+      var sent = sendDebtReminderSMS_(c.phone, c.name, c.net);
+      if (sent && sent.ok) {
+        sentCount++;
+        Utilities.sleep(3000); // فاصل بسيط بين كل رسالة عشان الشبكة متحظرش الرقم
+      }
     });
 
     if (sentCount > 0) {
@@ -6451,21 +6455,27 @@ function getDebtsData() {
 
     var latest = {};   // رقم كانوني -> آخر حالة معروفة للعميل
 
-    function remember(phoneRaw, name, balance, when) {
+    /* الأحداث بتوصل بترتيب زمني (الأيام من الأقدم للأحدث، وجوه اليوم بترتيب الملف)،
+       فآخر حدث بيوصل هو الصح دايمًا — من غير مقارنة بالوقت.
+       🔧 كانت فيه مقارنة بالوقت بترفض أي دين جديد بعد سداد في نفس اليوم (السداد
+          ملوش وقت في الملف فبنحط له 23:59:59) فالدين الجديد كان بيضيع من الرصيد. */
+    function remember(phoneRaw, name, balance, when, extra) {
       var canon = canonicalEgyptPhone_(phoneRaw);
       if (!canon) canon = String(phoneRaw || '').trim();   // معرّف داخلي زي "200"
       if (!canon) return;
       var cur = latest[canon];
-      if (cur && cur.when > when) return;                  // عندنا أحدث منه
       latest[canon] = {
         phone: canon,
         name: (name && String(name).trim()) ? String(name).trim() : (cur ? cur.name : 'عميل'),
         balance: balance,
-        when: when
+        when: (cur && cur.when > when) ? cur.when : when,   // آخر حركة للعرض بس
+        lastPaid: (extra && extra.paid) ? extra.paid : (cur ? cur.lastPaid : ''),
+        seller: (extra && extra.seller) ? extra.seller : (cur ? cur.seller : '')
       };
     }
 
     var totalNewDebt = 0, totalCollected = 0;
+    var byEmp = {};    // موظف -> الدين اللي طلّعه في السنة (للكارت اللي في الداشبورد)
 
     /* ⚡ قايمة ملفات الديون كلها في طلب واحد بدل 365 طلب (Drive كان بيرفض من كترهم) */
     var idx = {};
@@ -6506,9 +6516,13 @@ function getDebtsData() {
             var when  = (v[5] && String(v[5]).trim()) ? String(v[5]).trim() : (dateStr + ' 00:00:00');
             var debit = parseFloat(v[8]) || 0;
             var prev  = parseFloat(v[15]) || 0;
+            var uid   = v[7] ? String(v[7]).trim() : '';
+            var seller = uid ? String(resolveEmpName(normalizeEmpId(uid))) : '';
             totalNewDebt += debit;
+            var be = byEmp[seller || 'غير محدد'] || (byEmp[seller || 'غير محدد'] = { total: 0, count: 0 });
+            be.total += debit; be.count++;
             events.push({ pos: m.index + t, phone: phone, name: name,
-                          balance: prev + debit, when: when });
+                          balance: prev + debit, when: when, seller: seller });
           } catch (e) { continue; }
         }
       }
@@ -6524,12 +6538,13 @@ function getDebtsData() {
         var after  = parseFloat(cp[4]) || 0;
         if (before > after) totalCollected += (before - after);
         events.push({ pos: cp.index, phone: cp[2].trim(), name: cp[1].trim(),
-                      balance: after, when: dateStr + ' 23:59:59' });
+                      balance: after, when: dateStr + ' 23:59:59',
+                      paid: before > after ? dateStr : '' });
       }
 
       /* بنطبّقهم بترتيب ظهورهم في الملف — الأخير هو الصح */
       events.sort(function (a, b) { return a.pos - b.pos; });
-      events.forEach(function (ev) { remember(ev.phone, ev.name, ev.balance, ev.when); });
+      events.forEach(function (ev) { remember(ev.phone, ev.name, ev.balance, ev.when, { paid: ev.paid, seller: ev.seller }); });
     }
 
     /* ---- بناء القايمة ---- */
@@ -6542,7 +6557,9 @@ function getDebtsData() {
         name: c.name, phone: c.phone,
         net: Math.round(c.balance * 100) / 100,
         lastActivity: c.when,
-        daysSincePaid: isNaN(daysSince) ? null : daysSince,
+        lastPaid: c.lastPaid || '',          // تاريخ آخر سداد فعلي (فاضي لو مفيش سداد في آخر سنة)
+        seller: c.seller || '',              // آخر موظف باع له آجل
+        daysSincePaid: isNaN(daysSince) ? null : daysSince,   // من آخر حركة (شراء أو سداد)
         status: 'دين غير مسدد'
       });
       totalNet += c.balance;
@@ -6564,6 +6581,9 @@ function getDebtsData() {
       ok: true,
       debtors: list,
       count: list.length,
+      by_seller: Object.keys(byEmp).map(function (e) {
+        return { employee: e, total: Math.round(byEmp[e].total), count: byEmp[e].count };
+      }).sort(function (a, b) { return b.total - a.total; }),
 
       /* الرقم اللي المفروض يتعرض في الكارت الكبير — رسمي ولحظي */
       total_official: official,

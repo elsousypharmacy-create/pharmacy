@@ -2636,9 +2636,10 @@ function drawDebts(isOld){
       : function(x,y){ return y.net - x.net; });
 
     var body = open ? g.slice(0, 80).map(function(c){
+      var paid = c.lastPaid ? tr('lastPaid') + ' ' + ltr(c.lastPaid) : tr('noPayRec');
       var sub = (c._days === null)
-        ? tr('noPayRec')
-        : tr('lastPaid') + ' ' + ltr(c.lastPaid) + ' · ' + ltr(c._days) + ' ' + tr('daysAgo');
+        ? paid
+        : tr('lastMove') + ' ' + ltr(c._days) + ' ' + tr('daysAgo') + ' · ' + paid;
       if (c.seller && c.seller !== 'غير محدد') sub += ' · ' + tr('soldBy') + ' ' + esc(c.seller);
       return '<div class="row"><div class="row-main"><b>' + esc(c.name) + '</b>' +
         '<small>' + sub + '</small></div>' +
@@ -4349,7 +4350,7 @@ function custAdvice(c, p){
   var top = last ? last.items.slice(0, 2).map(function(i){ return i.name; }).join(' و') : '';
   if (c.is_blocked) return { tone: 'slate', text: 'العميل محظور — مفيش إجراء.' };
   if (debt > 0 && (dp === null || dp > 30))
-    return { tone: 'bad', text: 'عليه دين ' + num(debt) + ' ج' + (dp !== null ? ' وآخر سداد من ' + dp + ' يوم' : '') +
+    return { tone: 'bad', text: 'عليه دين ' + num(debt) + ' ج' + (dp !== null ? ' وآخر حركة من ' + dp + ' يوم' : '') +
       ' — كلّمه للسداد الأول قبل أي عرض.',
       msg: 'أهلاً ' + (c.name || '') + '، صيدلية السوسي. حابين نفكّرك بالمبلغ المتبقي عليك ' + num(debt) + ' جنيه. تقدر تسدده في أي وقت، شكراً لتعاملك معانا.' };
   if (ds !== null && ds > lim)

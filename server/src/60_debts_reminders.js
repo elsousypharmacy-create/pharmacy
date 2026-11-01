@@ -54,6 +54,7 @@ function sendWeeklyDebtReminders() {
     var logData = logSheet.getLastRow() > 1 ? logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 6).getValues() : [];
     var lastSentByPhone = {};
     logData.forEach(function(r) {
+      if (String(r[4]).indexOf('فشل') === 0) return;   // الإرسال الفاشل مايتحسبش "اتبعت"
       var ph = canonicalEgyptPhone_(String(r[1]));
       var when = new Date(r[5]);
       if (!lastSentByPhone[ph] || when > lastSentByPhone[ph]) lastSentByPhone[ph] = when;
@@ -75,9 +76,12 @@ function sendWeeklyDebtReminders() {
         if (daysSinceSent < DEBT_REMINDER_MIN_INTERVAL_DAYS) return;
       }
 
-      sendDebtReminderSMS_(c.phone, c.name, c.net);
-      sentCount++;
-      Utilities.sleep(3000); // فاصل بسيط بين كل رسالة عشان الشبكة متحظرش الرقم
+      if (!isValidEgyptianPhone(canon)) return;   // معرّف داخلي مش رقم موبايل — مفيش حد نبعتله
+      var sent = sendDebtReminderSMS_(c.phone, c.name, c.net);
+      if (sent && sent.ok) {
+        sentCount++;
+        Utilities.sleep(3000); // فاصل بسيط بين كل رسالة عشان الشبكة متحظرش الرقم
+      }
     });
 
     if (sentCount > 0) {

@@ -97,7 +97,7 @@ function doGet(e) {
   /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
   var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
                         purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camReports: 1, camFrame: 1, camFrames: 1,
+                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camVideoTest: 1, camReports: 1, camFrame: 1, camFrames: 1,
                         setBalanceInputs: 1, setBalanceBase: 1 };
   if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
     return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
@@ -204,6 +204,7 @@ function doPost(e) {
 
     if (LOCKED_POST[data.action] && dashLocked_(data.pin)) return lockedResp_();
     if (data.action === 'setBotSettings') return jsonResponseStaff(setBotSettings(data));
+    if (data.action === 'camVideoTest') return jsonResponseStaff(adminPinOk_(data.pin) ? camVideoTest() : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'camSnapNow') return jsonResponseStaff(adminPinOk_(data.pin) ? camSnapNow() : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'camSendTg') return jsonResponseStaff(adminPinOk_(data.pin) ? camSendTelegram(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });
     if (data.action === 'camTest') return jsonResponseStaff(adminPinOk_(data.pin) ? camTest(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });

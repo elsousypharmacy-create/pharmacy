@@ -25,6 +25,15 @@ Read this first when you start a new session on this repo. It has **no secrets**
 **Status:** current recipe = `tools/camera-day-report.md` (what the tasks run). The redesign (all inside frames, outside every 30 min, 4×3 grids, midnight run split in two) is staged in `tools/camera-day-report-next.md`, **not active**: Ahmed wants the current tasks/settings kept until his usage renews. Activate by copying `-next` over the active file.
 Two scheduled tasks (Claude routines, Cairo time): «تقرير الكاميرات — الضهر» 12:04 and «— الليل» 00:04. Each reads the recipe in this repo, reviews the frames, writes the JSON to Drive. They need the **Google Drive connector** and run on the **usage of the account that created them**. The older task «تقرير الكاميرات التلقائي» (10:36 / 22:36) looks at one frame and should be paused.
 
+## Manual entrance-video probe (2026-11-01)
+- Security prerequisite: removed the fixed WhatsApp verification-token fallback from module 21; missing `WA_VERIFY` is now generated randomly in Script Properties. Existing saved values are preserved. Worker code is unchanged.
+- Settings → Cameras: «اختبار فيديو المدخل — دقيقة». Authenticated POST `camVideoTest` only; uses existing server-side credentials, targets recorder channel **4** after exact serial/channel resource discovery.
+- New source: `server/src/66_cam_video.js`. Requests live **fluent/sub-stream** HLS, then checks EZOPEN availability if no HTTPS HLS address is available. Fluent does **not** imply a fixed 256 kbps bitrate.
+- HLS signed playback URL goes only to the authenticated owner's browser in memory; API key, secret, SDK tokens and raw provider errors never return. No links/tokens in logs, reports, GitHub, local storage or messages. No encryption settings are changed.
+- Native HLS browsers (e.g. Safari on iPhone) can attempt playback. Client stops after 60 seconds, on explicit stop, page hide or removal of the player. Other browsers get an honest unsupported-player message. An address alone is **not** verified playback, connection stability, bandwidth measurement or AI accuracy. EZOPEN requires the official SDK; this probe does not integrate it.
+- No live account test has been performed from the coding environment (no admin PIN/session). After server update, Ahmed runs the button and shares **only the visible status/error code**, never a playback URL or token. Existing snapshot schedule and report recipe remain active as before.
+- Validation: `node tools/test-camera-video.js`, server build/check + JS syntax. Browser playback was not tested here: Chromium is absent and its download failed. The actual Safari/live-stream check remains pending with Ahmed.
+
 ## Open items
 1. **Hourly zip bundles for camera frames** (so a report session downloads ~1 file per hour instead of ~20): need to learn the Drive connector's max download size first (a 6.7 MB file crashed the connection). Plan: a small server function that makes 3 test zips (~1, 2, 4 MB), then an hourly trigger that builds the real bundles and deletes them after 3 days. Not built yet — agree with Ahmed before building; he presses «حدّث السيرفر» after any server change.
 2. Pause the old camera task (he has to do it in claude.ai).
@@ -40,3 +49,4 @@ Two scheduled tasks (Claude routines, Cairo time): «تقرير الكاميرا
 - POS Arabic PDFs use presentation forms in visual (reversed) order: normalize NFKC after reversing the string.
 - The Drive connector saves downloads bigger than ~45 KB to a file (base64 inside JSON); smaller ones come back inline.
 - Never put full-resolution images through a chat tool unverified; check the byte size equals Drive's `fileSize`.
+

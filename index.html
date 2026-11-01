@@ -1075,7 +1075,7 @@ function logErr(e){
    كل نداء بيعدّي من هنا — لو الرابط اتغيّر، يتغيّر في مكان واحد. */
 /* 🔒 الأوامر الحساسة بتاخد الرقم السري (بيتطلب مرة ويتحفظ على الجهاز ده) */
 var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camReports: 1, camFrame: 1, camFrames: 1,
+                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camVideoTest: 1, camReports: 1, camFrame: 1, camFrames: 1,
                       setBalanceInputs: 1, setBalanceBase: 1 };
 function adminPin(){
   var p = ''; try { p = localStorage.getItem('adminPin') || ''; } catch (e) {}
@@ -5515,6 +5515,60 @@ function loadWa(){
       '<button class="btn btn-quiet" onclick="waSub()">🔗 اربط حساب الواتساب بالبوت</button><div id="wasub"></div>';
   }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
+var CAM_VIDEO = { seq: 0, video: null, timer: null, observer: null, status: null };
+function camVideoStop(message){
+  CAM_VIDEO.seq++;
+  clearTimeout(CAM_VIDEO.timer); CAM_VIDEO.timer = null;
+  if (CAM_VIDEO.observer) CAM_VIDEO.observer.disconnect(); CAM_VIDEO.observer = null;
+  var v = CAM_VIDEO.video; CAM_VIDEO.video = null;
+  if (v){ v.onplaying = null; v.onerror = null; v.pause(); v.removeAttribute('src'); v.load(); }
+  if (message && CAM_VIDEO.status && CAM_VIDEO.status.isConnected) CAM_VIDEO.status.textContent = message;
+  CAM_VIDEO.status = null;
+}
+function camVideoProbe(){
+  var b = document.getElementById('camvideo'); if (!b) return;
+  camVideoStop(); var seq = CAM_VIDEO.seq;
+  var pin = adminPin(); if (!pin) { b.textContent = 'الاختبار محتاج الرقم السري'; return; }
+  b.innerHTML = '<div class="state"><div class="spin"></div>بفحص فيديو كاميرا المدخل 4…</div>';
+  post({ action: 'camVideoTest', pin: pin }).then(function(d){
+    if (seq !== CAM_VIDEO.seq || !b.isConnected || document.hidden) return;
+    if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {}
+    if (!d || !d.stage){ b.innerHTML = '<div class="state err">حدّث السيرفر الأول من زر «حدّث السيرفر»، وبعدها جرّب الاختبار تاني</div>'; return; }
+    if (!d.ok){
+      b.innerHTML = '<div class="state err">' + esc(d.error || 'تعذر الاختبار') +
+        (d.providerCode ? ' · كود الخدمة: ' + esc(d.providerCode) : '') + '</div>'; return;
+    }
+    if (d.mode === 'ezopen'){
+      b.innerHTML = '<div class="state">' + esc(d.message) + '</div>'; return;
+    }
+    if (d.mode !== 'hls' || !/^https:\/\//i.test(d.url || '')){
+      b.textContent = 'رد الفيديو غير مكتمل؛ مفيش تشغيل اتأكد'; return;
+    }
+    var v = document.createElement('video');
+    if (!v.canPlayType('application/vnd.apple.mpegurl')){
+      b.innerHTML = '<div class="state">عنوان البث متاح، لكن المتصفح ده محتاج مشغل إضافي. جرّب من Safari على الآيفون؛ التشغيل لسه ماتأكدش.</div>'; return;
+    }
+    b.innerHTML = '<div class="state" style="font-size:13px">كاميرا المدخل 4 · بث خفيف · يقف تلقائيًا بعد دقيقة. الجودة دي مش ضمان لدقة العدّ.</div>';
+    v.controls = true; v.muted = true; v.playsInline = true; v.preload = 'none';
+    v.style.cssText = 'display:block;width:100%;max-height:320px;background:#111;border-radius:12px';
+    var status = document.createElement('div'); status.className = 'state';
+    status.textContent = 'عنوان البث متاح؛ جاري محاولة تشغيل الفيديو…';
+    var stop = document.createElement('button'); stop.className = 'btn btn-quiet'; stop.textContent = 'إيقاف الاختبار';
+    stop.onclick = function(){ camVideoStop('الاختبار اتوقف'); };
+    b.appendChild(v); b.appendChild(status); b.appendChild(stop);
+    CAM_VIDEO.video = v; CAM_VIDEO.status = status;
+    v.onplaying = function(){ if (seq === CAM_VIDEO.seq) status.textContent = 'الفيديو اتفتح في المتصفح؛ ثبات الاتصال ودقة التحليل لسه محتاجين قياس'; };
+    v.onerror = function(){ if (seq === CAM_VIDEO.seq) camVideoStop('عنوان البث اتولد لكن الفيديو ماشتغلش؛ ممكن صلاحية أو تشفير أو مشكلة اتصال. مفيش بث اتأكد.'); };
+    CAM_VIDEO.timer = setTimeout(function(){ camVideoStop('انتهت دقيقة الاختبار واتقفل البث'); }, 60000);
+    CAM_VIDEO.observer = new MutationObserver(function(){ if (!v.isConnected) camVideoStop(); });
+    CAM_VIDEO.observer.observe(document.body, { childList: true, subtree: true });
+    v.src = d.url;
+    var play = v.play();
+    if (play && play.catch) play.catch(function(){ if (seq === CAM_VIDEO.seq) status.textContent = 'اضغط تشغيل داخل الفيديو؛ الاختبار هيقف تلقائيًا خلال دقيقة'; });
+  }).catch(function(){ if (seq === CAM_VIDEO.seq && b.isConnected) b.textContent = 'الاتصال بالسيرفر ماكملش؛ جرّب تاني'; });
+}
+window.addEventListener('pagehide', function(){ camVideoStop(); });
+document.addEventListener('visibilitychange', function(){ if (document.hidden) camVideoStop('الاختبار اتوقف لما خرجت من الصفحة'); });
 function loadCam(){
   var b = document.getElementById('cambox'); b.innerHTML = '<div class="state"><div class="spin"></div></div>';
   api('camInfo').then(function(d){
@@ -5531,6 +5585,7 @@ function loadCam(){
       '<input id="camSec" type="password" autocomplete="off" placeholder="Secret / الباسورد (لو موجود)" class="chat-search" dir="ltr">' +
       '<input id="camNote" placeholder="ملاحظة (اختياري): اسم الموقع اللي جبت منه المفتاح" class="chat-search" autocomplete="off">' +
       '<button class="btn btn-primary" onclick="saveCam()">💾 احفظ</button>' +
+      '<button class="btn btn-quiet" onclick="camVideoProbe()">🎥 اختبار فيديو المدخل — دقيقة</button><div id="camvideo" aria-live="polite"></div>' +
       '<button class="btn btn-quiet" onclick="camAuto()">⏱️ شغّل السحب التلقائي كل 10 دقايق</button><div id="camauto"></div>' +
       '<button class="btn btn-primary" onclick="camSendTg()">📲 ابعت لقطات الكاميرات على تليجرام</button><div id="camtg"></div>' +
       '<button class="btn btn-quiet" onclick="camSrvUp()">🔄 حدّث السيرفر</button><div id="camsrv"></div>' +
@@ -6221,3 +6276,4 @@ try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 </script>
 </body>
 </html>
+

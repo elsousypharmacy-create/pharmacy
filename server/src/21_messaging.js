@@ -65,7 +65,7 @@ function waChatLabel_(chatId) {
 }
 function waVerifyToken_() {
   var P = PropertiesService.getScriptProperties(), v = P.getProperty('WA_VERIFY');
-  if (!v) { v = 'elsousy2026wa'; P.setProperty('WA_VERIFY', v); }
+  if (!v) { v = Utilities.getUuid().replace(/-/g, ''); P.setProperty('WA_VERIFY', v); }
   return v;
 }
 function waInfo() {   /* للوحة: الحالة + اللي تحطه في Meta */

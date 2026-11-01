@@ -24,6 +24,7 @@
   "src/64_call_results.js",
   "src/65_raw_days.js",
   "src/66_cameras.js",
+  "src/66_cam_video.js",
   "src/67_cam_reports.js",
   "src/68_balance.js",
   "src/69_closing.js",

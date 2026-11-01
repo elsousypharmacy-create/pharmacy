@@ -49,7 +49,7 @@ test('private archive contains local names and no signed URLs', () => {
   const s = setup();
   // Simulate advancing sliding window rather than repeatedly recording old segments.
   let seq = 0; s.c.camRecFetch_ = (url, text) => {
-    if (text) return '#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:' + seq++ + '\n#EXTINF:5,\nseg.ts';
+    if (text) return {url, text: '#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:' + seq++ + '\n#EXTINF:5,\nseg.ts'};
     return { getBytes: () => [0x47,...Array(187).fill(0)], setName(name) { this.name = name; return this; } };
   };
   const r = s.c.camRecordSample({channel:4}), state = s.result();
@@ -70,6 +70,25 @@ test('encrypted media and redirects save nothing; lock always released', () => {
     const s=setup(options), r=s.c.camRecordSample({channel:3});
     assert.equal(r.ok,false); assert.equal(s.result().saved,null); assert.equal(s.result().released,2);
     assert(!JSON.stringify(r).includes('AUTH-ONLY'));
+  }
+});
+test('HTTPS CDN redirects keep final playlist base and never send auth headers', () => {
+  const {c}=setup(); let calls=0;
+  c.UrlFetchApp.fetch=(url,opts)=>{
+    assert(!opts.headers); calls++;
+    if(calls===1)return {getResponseCode:()=>302,getHeaders:()=>({Location:'https://cdn.example.test:8443/stream/media.m3u8?short=x'})};
+    assert.equal(url,'https://cdn.example.test:8443/stream/media.m3u8?short=x');
+    return {getResponseCode:()=>200,getContentText:()=>'#EXTM3U'};
+  };
+  const loaded=c.camRecFetch_('https://video.example.test/live.m3u8?secret=x',true);
+  assert.equal(loaded.url,'https://cdn.example.test:8443/stream/media.m3u8?short=x');
+  assert.equal(c.camRecUrl_(loaded.url,'1.ts'),'https://cdn.example.test:8443/stream/1.ts');
+});
+test('redirect to local network or HTTP is rejected', () => {
+  for(const target of ['https://127.0.0.1/x','https://192.168.1.1/x','http://cdn.example.test/x']){
+    const {c}=setup();let calls=0;
+    c.UrlFetchApp.fetch=()=>{calls++;return {getResponseCode:()=>302,getHeaders:()=>({Location:target})};};
+    assert.throws(()=>c.camRecFetch_('https://video.example.test/a',true));assert.equal(calls,1);
   }
 });
 test('HTTP denial exposes status only, never provider body or signed URL', () => {

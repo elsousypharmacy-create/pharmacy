@@ -8590,6 +8590,12 @@ function camRecUrl_(base, relative) {
   parts[0].split('/').forEach(function(p) { if (p === '..') normalized.pop(); else if (p && p !== '.') normalized.push(p); });
   return origin + '/' + normalized.join('/') + (parts.length > 1 ? '?' + parts.slice(1).join('?') : '');
 }
+function camRecResolve_(base, value) {
+  value = String(value || '').trim();
+  if (value.slice(0,2) === '//') value = 'https:' + value;
+  // Only provider playlists/redirects supply these addresses; never caller input.
+  return /^https:\/\//i.test(value) ? camRecUrl_(value, value) : camRecUrl_(base, value);
+}
 function camRecFetch_(url, text) {
   for (var redirects = 0; redirects < 3; redirects++) {
     var r = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: false });
@@ -8597,11 +8603,13 @@ function camRecFetch_(url, text) {
     if ([301,302,303,307,308].indexOf(code) !== -1) {
       var headers = r.getHeaders(), next = headers.Location || headers.location;
       if (!next) camRecError_('redirect');
-      url = camRecUrl_(url, String(next)); // Same-origin HTTPS only; never forward auth headers.
+      // Provider-directed CDN redirect: revalidate public HTTPS destination.
+      // No API auth header or original query is forwarded to a new origin.
+      url = camRecResolve_(url, next);
       continue;
     }
     if (code !== 200) camRecError_('http_' + code);
-    if (text) { var s = r.getContentText(); if (s.length > 150000) camRecError_('playlist_size'); return s; }
+    if (text) { var s = r.getContentText(); if (s.length > 150000) camRecError_('playlist_size'); return { text: s, url: url }; }
     return r.getBlob();
   }
   camRecError_('redirect_limit');
@@ -8670,11 +8678,11 @@ function camRecordSample(request) {
     stage = 'address'; var live = camVideoTest({ channel: channel });
     if (!live.ok || live.mode !== 'hls') return { ok: false, stage: 'address', error: 'عنوان HLS مش متاح للتسجيل دلوقتي' };
     var url = camRecUrl_(live.url, live.url), start = Date.now(), deadline = start + 45000;
-    stage = 'playlist'; var list = camRecParse_(camRecFetch_(url, true));
+    stage = 'playlist'; var loaded = camRecFetch_(url, true); url = loaded.url; var list = camRecParse_(loaded.text);
     if (list.variants.length) {
       list.variants.sort(function(a,b) { return a.bandwidth - b.bandwidth; });
-      url = camRecUrl_(url, list.variants[0].uri);
-      list = camRecParse_(camRecFetch_(url, true));
+      url = camRecResolve_(url, list.variants[0].uri);
+      loaded = camRecFetch_(url, true); url = loaded.url; list = camRecParse_(loaded.text);
     }
     if (!list.segments.length || list.variants.length) camRecError_('playlist');
     var blobs = [], local = [], total = 0, bytes = 0, next = list.segments[list.segments.length - 1].sequence, init = '';
@@ -8684,21 +8692,21 @@ function camRecordSample(request) {
       bytes += size; blobs.push(blob.setName(name));
     }
     stage = 'media';
-    if (list.map) { init = camRecUrl_(url, list.map); add(camRecFetch_(init, false), 'init.mp4'); }
+    if (list.map) { init = camRecResolve_(url, list.map); add(camRecFetch_(init, false), 'init.mp4'); }
     for (var poll = 0; poll < 24 && Date.now() < deadline && total < 20; poll++) {
-      if (init !== (list.map ? camRecUrl_(url, list.map) : '')) camRecError_('format');
+      if (init !== (list.map ? camRecResolve_(url, list.map) : '')) camRecError_('format');
       for (var i = 0; i < list.segments.length && total < 20; i++) {
         var seg = list.segments[i]; if (seg.sequence < next) continue;
         if (seg.sequence !== next) camRecError_('gap');
         if (Date.now() >= deadline) break;
         var name = 'segment_' + ('000' + local.length).slice(-3) + (init ? '.m4s' : '.ts');
-        var blob = camRecFetch_(camRecUrl_(url, seg.uri), false), b = blob.getBytes();
+        var blob = camRecFetch_(camRecResolve_(url, seg.uri), false), b = blob.getBytes();
         if (!init && ((b[0] & 255) !== 0x47 || b.length < 188)) camRecError_('container');
         add(blob, name); local.push({ name: name, seconds: seg.seconds }); total += seg.seconds; next++;
       }
       if (total >= 20) break;
       Utilities.sleep(2000);
-      list = camRecParse_(camRecFetch_(url, true));
+      loaded = camRecFetch_(url, true); url = loaded.url; list = camRecParse_(loaded.text);
     }
     if (total < 20) camRecError_('short');
     stage = 'save';

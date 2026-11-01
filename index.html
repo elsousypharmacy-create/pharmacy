@@ -1071,7 +1071,8 @@ function logErr(e){
    كل نداء بيعدّي من هنا — لو الرابط اتغيّر، يتغيّر في مكان واحد. */
 /* 🔒 الأوامر الحساسة بتاخد الرقم السري (بيتطلب مرة ويتحفظ على الجهاز ده) */
 var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camReports: 1, camFrame: 1, camFrames: 1 };
+                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camReports: 1, camFrame: 1, camFrames: 1,
+                      setBalanceInputs: 1, setBalanceBase: 1 };
 function adminPin(){
   var p = ''; try { p = localStorage.getItem('adminPin') || ''; } catch (e) {}
   if (!p){ p = (prompt('الرقم السري') || '').trim(); if (p) try { localStorage.setItem('adminPin', p); } catch (e) {} }
@@ -1703,7 +1704,7 @@ var SECTIONS = {
   stock: [['aging', function(){ return 'الملخص'; }], ['short', function(){ return tr('shortages'); }], ['expTab', function(){ return 'الصلاحية'; }], ['deadTab', function(){ return 'الراكد'; }],
           ['count', function(){ return tr('counts'); }]],
   money: [['month', function(){ return 'الأداء'; }], ['exp', function(){ return tr('expenses'); }],
-          ['debt',  function(){ return tr('debts'); }]],
+          ['debt',  function(){ return tr('debts'); }], ['bal', function(){ return 'الميزانية'; }]],
   /* الإدارة: مش في الشريط — بتتفتح من ⚙️ */
   admin: [['agents',function(){ return tr('agents'); }], ['docs', function(){ return tr('doctors'); }]]
 };
@@ -1739,7 +1740,7 @@ function render(sec, tab){
   if (BOXES[sec]) BOXES[sec].forEach(function(id, i){
     var el = document.getElementById(id); if (el) el.style.display = (i === tab) ? '' : 'none';
   });
-  ({ count:pgCounts, home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts,
+  ({ count:pgCounts, home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts, bal:pgBalance,
      perf:pgStaffHub, pages:pgTeamPages, aging:pgAging, expTab:pgAging, deadTab:pgAging, short:pgShort,
      msgs:pgMessages, list:pgCustomers, agents:pgAgents, docs:pgDoctors, chats:pgChats })[key](key);
 }
@@ -2567,6 +2568,76 @@ var DEBT_BUCKETS = [
   /* مفيش تاريخ سداد أصلاً — رمادي، لأن دي معلومة ناقصة مش حكم على العميل */
   { key:'none',  max:null, label:'bucketNone',  tone:'slate' }
 ];
+
+/* ═══════════ 🧾 الميزانية: اللي ليك واللي عليك ═══════════
+   الأرقام التلقائية من تقرير نظام البيع اليومي، والكاش والبنك والمرتبات بتدخلهم إنت. */
+var BAL = { data: null };
+function pgBalance(){
+  var box = document.getElementById('p-money');
+  if (!BAL.data) busy(box); else drawBalance();
+  api('getBalanceSheet').then(function(d){
+    if (!d || !d.ok) throw new Error('bal');
+    BAL.data = d; markSync(); drawBalance();
+  }).catch(function(e){ logErr(e); if (!BAL.data) oops(box, "pgBalance()"); });
+}
+function balVal(x){
+  if (x.amount === null || x.amount === undefined) return badge(x.optional ? '—' : 'أدخله', x.optional ? 'slate' : 'warn');
+  return ltr(num(x.amount));
+}
+function drawBalance(){
+  var box = document.getElementById('p-money'), d = BAL.data; if (!d) return;
+  var html = vitals('الميزانية', d.as_of ? 'نظام البيع · ' + d.as_of : '', [
+    { value: num(d.net), label: 'الصافي', tone: d.net >= 0 ? 'ok' : 'bad',
+      note: d.missing.length ? 'ناقص أرقام' : '', sub: '' },
+    { value: num(d.assets_total), label: 'ليك', tone: 'ok' },
+    { value: num(d.liabs_total), label: 'عليك', tone: 'warn' }
+  ]);
+  if (d.missing.length)
+    html += alertBox('warn', 'ناقص أرقام: ' + d.missing.join('، '), 'الصافي مش كامل لحد ما تدخلها (تحت)', "document.getElementById('balForm').scrollIntoView({behavior:'smooth'})");
+  if (d.base){
+    var dl = d.delta, up = dl >= 0;
+    html += '<div class="state" style="text-align:start;padding:6px 0 10px">منذ «' + esc(d.base.label) + '» (' + ltr(d.base.date) + '): ' +
+      '<b style="color:var(--' + (up ? 'ok' : 'bad') + ')">' + (up ? '+' : '−') + ltr(num(Math.abs(dl))) + '</b>' +
+      (d.base.missing && d.base.missing.length ? ' <small>(النقطة دي كانت ناقصة: ' + esc(d.base.missing.join('، ')) + ')</small>' : '') + '</div>';
+  }
+  html += card('ليك', ltr(num(d.assets_total)), d.assets.map(function(x){ return row(x.label, x.sub ? esc(x.sub) : '', balVal(x)); }).join(''));
+  html += card('عليك', ltr(num(d.liabs_total)), d.liabs.map(function(x){ return row(x.label, x.sub ? esc(x.sub) : '', balVal(x)); }).join(''));
+  if ((d.claims || []).length)
+    html += card('مطالبات الشركات', ltr(num(d.claims.reduce(function(a,c){ return a + c.amount; }, 0))),
+      d.claims.map(function(c){ return row(c.name, '', ltr(num(c.amount))); }).join(''));
+  if (d.incoming_cost) html += '<div class="state" style="text-align:start;font-size:12px">بضاعة جاية (طلبيات تحت الاستلام) بتكلفة ' + ltr(num(d.incoming_cost)) + ' — مش محسوبة فوق عشان ماتتعدّش مرتين.</div>';
+  var f = function(id, lab, val){
+    return '<label style="display:block;margin:8px 0 4px;font-size:13px;color:var(--ink-2)">' + lab + '</label>' +
+      '<input id="bal_' + id + '" inputmode="decimal" autocomplete="off" value="' + (val === null || val === undefined ? '' : esc(val)) + '" ' +
+      'style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-family:inherit;font-size:14px">';
+  };
+  html += '<div class="card" id="balForm"><div class="card-head"><div><h3>أرقامك</h3><p>' +
+    (d.inputs.at ? 'آخر تعديل ' + ltr(d.inputs.at) : 'لسه ماتدخلتش') + '</p></div></div>' +
+    f('cash', 'الكاش (خزنة + درج)', d.inputs.cash) + f('bank', 'البنك / الكروت', d.inputs.bank) +
+    f('salaries', 'مرتبات مستحقة', d.inputs.salaries) + f('other_assets', 'أصول تانية (اختياري)', d.inputs.other_assets) +
+    f('other_liabs', 'التزامات تانية (اختياري)', d.inputs.other_liabs) +
+    '<button class="btn btn-primary" style="margin-top:12px" onclick="balSave()">حفظ</button>' +
+    '<div class="group-title" style="margin-top:14px">نقطة بداية</div>' +
+    '<input id="bal_label" value="' + esc('بداية ' + new Date().toLocaleDateString('ar-EG', { month: 'long' })) + '" ' +
+    'style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-family:inherit;font-size:14px">' +
+    '<button class="btn btn-quiet" style="margin-top:8px" onclick="balBase()">📌 اعتبر ميزانية النهارده نقطة بداية</button></div>';
+  html += '<div class="state" style="padding:4px 0 12px;font-size:11px">الصافي = ليك − عليك. «مطالبات الشركات» من تقرير النظام اليومي.</div>';
+  box.innerHTML = html;
+}
+function balSave(){
+  var p = {};
+  ['cash', 'bank', 'salaries', 'other_assets', 'other_liabs'].forEach(function(k){ p[k] = document.getElementById('bal_' + k).value; });
+  api('setBalanceInputs', p).then(function(d){
+    if (d && d.ok){ BAL.data = d; drawBalance(); toast('✓ اتحفظ'); } else if (!(d && d.pinError)) toast((d && d.error) || tr('failed'));
+  }).catch(function(){ toast(tr('failed')); });
+}
+function balBase(){
+  var lab = document.getElementById('bal_label').value;
+  if (BAL.data && BAL.data.missing.length && !confirm('لسه ناقص: ' + BAL.data.missing.join('، ') + '\nتحفظها كنقطة بداية كده؟')) return;
+  api('setBalanceBase', { label: lab }).then(function(d){
+    if (d && d.ok){ BAL.data = d; drawBalance(); toast('✓ اتحفظت نقطة البداية'); } else if (!(d && d.pinError)) toast((d && d.error) || tr('failed'));
+  }).catch(function(){ toast(tr('failed')); });
+}
 
 /* بحث الديون: بالاسم (من غير تشكيل وهمزات، وأي ترتيب كلمات) أو بجزء من التليفون */
 function debtNorm(t){

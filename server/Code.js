@@ -12695,9 +12695,14 @@ function serverSrc_() {
   return { src: src, sig: sig };
 }
 function serverUpdateInfo() {
+  /* الكود كبير (≈٦٠٠ ك) فمش بنجيبه من GitHub في كل فتحة للرئيسية — كاش دقيقتين */
+  var C = CacheService.getScriptCache();
+  try { var hit = C.get('srv_upd_info'); if (hit) return JSON.parse(hit); } catch (eC) {}
   var s = serverSrc_(), P = PropertiesService.getScriptProperties();
-  return { ok: true, available: !!s, newer: !!s && P.getProperty('SERVER_SRC_SIG') !== s.sig,
-           lastUpdate: P.getProperty('SERVER_UPDATED_AT') || '', autoOn: autoUpdateOn_() };
+  var out = { ok: true, available: !!s, newer: !!s && P.getProperty('SERVER_SRC_SIG') !== s.sig,
+              lastUpdate: P.getProperty('SERVER_UPDATED_AT') || '', autoOn: autoUpdateOn_() };
+  try { C.put('srv_upd_info', JSON.stringify(out), 120); } catch (eP) {}
+  return out;
 }
 /* 🔁 التحديث التلقائي: كل 15 دقيقة يشوف GitHub — لو فيه نسخة جديدة يركّبها ويبعتلك على تيليجرام */
 function autoUpdateOn_() {
@@ -12761,6 +12766,7 @@ function serverUpdate() {
   var P = PropertiesService.getScriptProperties();
   P.setProperty('SERVER_SRC_SIG', s.sig);
   P.setProperty('SERVER_UPDATED_AT', stamp);
+  try { CacheService.getScriptCache().remove('srv_upd_info'); } catch (eR) {}
   try { maybeEnsureTriggers_(); } catch (eT) {}
   return { ok: true, version: ver, at: stamp };
 }

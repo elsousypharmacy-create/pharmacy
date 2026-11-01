@@ -515,6 +515,9 @@ body.light .card, body.light .sec{box-shadow:0 1px 2px rgba(13,26,40,.06)}
 .ibtn{width:40px;height:40px;border-radius:99px;border:0;background:var(--surface);color:var(--ink-2)}
 .ibtn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .ibtn:active{transform:scale(.94)}
+/* علامة «فيه تحديث للسيرفر» — نقطة حمرا على زرار التحديث */
+.ibtn{position:relative}
+.ibtn.upd::after{content:'';position:absolute;top:4px;inset-inline-end:4px;width:11px;height:11px;border-radius:50%;background:var(--bad);border:2px solid var(--surface)}
 .ibtn:focus-visible,.secnav button:focus-visible,.subtabs button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 
 /* تبويبات القسم: شريط واحد زي مفتاح iPhone */
@@ -2165,12 +2168,13 @@ function drawHome(b, kpi, isOld){
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
     if (dueAgents.length) acts.push(task('warn', 'مستحقات مندوبين', ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0))) + ' ' + tr('egp'), dueAgents.length, "go('admin',0)"));
     var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
-    html += '<div class="card cam-card"><div class="card-head"><div><h3>الكاميرات</h3><p id="homeCamSub">5 كاميرات · لقطة كل 10 دقايق</p></div><button class="ibtn" onclick="homeSrvUp()" title="حدّث السيرفر" aria-label="حدّث السيرفر"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button></div>' +
+    html += '<div class="card cam-card"><div class="card-head"><div><h3>الكاميرات</h3><p id="homeCamSub">5 كاميرات · لقطة كل 10 دقايق</p></div><button class="ibtn" id="homeSrvBtn" onclick="homeSrvUp()" title="حدّث السيرفر" aria-label="حدّث السيرفر"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button></div>' +
       '<div class="q-acts">' +
         '<button class="q-act" id="camSnapBtn" onclick="camSnapNow()"><i><svg viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.5-2h6.4l1.5 2h1.8A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="12.5" r="3.6"/></svg></i><b>صوّر دلوقتي</b><small>5 كاميرات</small></button>' +
         '<button class="q-act q-main" onclick="camReportsOpen()"><i><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9 4V3h6v1"/><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4"/></svg></i><b>التقارير</b><small id="homeCamRep">افتح آخر تقرير</small></button>' +
       '</div><div id="homeCamSnap"></div></div>';
     setTimeout(homeCamLatest, 600);
+    setTimeout(srvBadgeCheck, 1200);
     html += '<div class="card"><div class="card-head"><div><h3>مطلوب النهاردة</h3></div></div>' +
       '<div id="homeMore">' + (HOME_MORE || '') + '</div>' + acts.join('') +
       (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>') + '</div>';
@@ -5452,6 +5456,23 @@ function camrJsPdf(cb){
   var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload = function(){ if (cb) cb(); }; s.onerror = function(){ if (cb) toast(tr('failed')); }; document.head.appendChild(s);
 }
 
+/* علامة التحديث: بتتشيّك أول ما الرئيسية تفتح (مرة كل ١٠ دقايق بالكتير) */
+var SRV_CHK = 0;
+function srvBadge(on){
+  var b = document.getElementById('homeSrvBtn'); if (!b) return;
+  b.classList.toggle('upd', !!on);
+  b.title = on ? 'فيه تحديث جديد للسيرفر — دوس عشان تحدّثه' : 'حدّث السيرفر';
+  b.setAttribute('aria-label', b.title);
+}
+function srvBadgeCheck(){
+  if (!storedPin()) return;
+  if (Date.now() - SRV_CHK < 600000){ srvBadge(SRV_NEWER); return; }
+  api('serverUpdateInfo').then(function(d){
+    if (!d || !d.ok) return;
+    SRV_CHK = Date.now(); SRV_NEWER = !!d.newer; srvBadge(SRV_NEWER);
+  }).catch(function(){});
+}
+var SRV_NEWER = false;
 function homeCamLatest(){
   var el = document.getElementById('homeCamRep'); if (!el || !storedPin()) return;
   api('camReports').then(function(d){
@@ -5481,13 +5502,14 @@ function homeSrvUp(){
   b.innerHTML = '<div class="cam-note"><div class="spin" style="display:inline-block;vertical-align:middle;margin-inline-end:6px"></div>بيحدّث السيرفر… حوالي نص دقيقة</div>';
   api('serverUpdate').then(function(d){
     if (d && d.pinError){ b.innerHTML = ''; return; }
+    if (d && d.ok){ SRV_NEWER = false; srvBadge(false); }
     b.innerHTML = d && d.ok ? '<div class="cam-note" style="color:var(--ok)">✅ السيرفر اتحدّث — نسخة ' + esc(d.version) + '</div>' : '<div class="state err" style="font-size:13px">❌ ' + esc((d && d.error) || tr('failed')) + '</div>';
   }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
 function camHomeUpdate(){
   var b = document.getElementById('homeCamSnap'); b.innerHTML = '<div class="cam-note"><div class="spin" style="display:inline-block;vertical-align:middle;margin-inline-end:6px"></div>بيحدّث السيرفر… حوالي نص دقيقة</div>';
   api('serverUpdate').then(function(d){
-    if (d && d.ok){ b.innerHTML = '<div class="cam-note">✅ السيرفر اتحدّث</div>'; setTimeout(camSnapNow, 1500); }
+    if (d && d.ok){ SRV_NEWER = false; srvBadge(false); b.innerHTML = '<div class="cam-note">✅ السيرفر اتحدّث</div>'; setTimeout(camSnapNow, 1500); }
     else b.innerHTML = '<div class="state err" style="font-size:13px">❌ ' + esc((d && d.error) || tr('failed')) + '</div>';
   }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
@@ -5509,6 +5531,7 @@ function camSrvUp(){
   var b = document.getElementById('camsrv'); b.innerHTML = '<div class="state"><div class="spin"></div> بيحدّث… (حوالي نص دقيقة)</div>';
   api('serverUpdate').then(function(d){
     if (d && d.pinError) { b.innerHTML = ''; return; }
+    if (d && d.ok){ SRV_NEWER = false; srvBadge(false); }
     b.innerHTML = d && d.ok ? '<div class="state" style="color:var(--ok)">✅ السيرفر اتحدّث — نسخة ' + esc(d.version) + '</div>' : '<div class="state err" style="font-size:13px">' + esc((d && d.error) || tr('failed')) + '</div>';
   }).catch(function(e){ b.innerHTML = '<div class="state err">' + esc(String(e)) + '</div>'; });
 }
@@ -5562,7 +5585,7 @@ function runSrvUp(){
   var b = document.getElementById('srvup');
   b.innerHTML = '<div class="state"><div class="spin"></div>بيحدّث… (حوالي نص دقيقة)</div>';
   api('serverUpdate').then(function(d){
-    if (d && d.ok){ toast('✓ السيرفر اتحدث — نسخة ' + d.version); loadSrvUp(); }
+    if (d && d.ok){ SRV_NEWER = false; srvBadge(false); toast('✓ السيرفر اتحدث — نسخة ' + d.version); loadSrvUp(); }
     else b.innerHTML = '<div class="state err" style="font-size:13px">' + esc((d && d.error) || tr('failed')) + '</div><button class="btn btn-quiet" onclick="runSrvUp()">جرّب تاني</button>';
   }).catch(function(e){ b.innerHTML = '<div class="state err">' + esc(String(e)) + '</div>'; });
 }

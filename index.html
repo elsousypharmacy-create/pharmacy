@@ -2727,7 +2727,7 @@ function clsBarHtml(){
   var n = d.days.filter(function(x){ return CLS.sel[x.date]; }).length, all = n === d.days.length;
   return '<div class="btn-row" style="margin:0 0 10px">' +
     '<button class="btn btn-quiet ic" onclick="clsAll()">' + (all ? IC.uncheck + ' إلغاء التحديد' : IC.checkAll + ' تحديد الكل') + '</button>' +
-    '<button class="btn btn-primary ic" onclick="clsShare()"' + (n ? '' : ' disabled') + '>' + IC.share + ' مشاركة' + (n ? ' (' + n + ')' : '') + '</button></div>';
+    '<button class="btn btn-primary ic" onclick="clsShare()"' + (n ? '' : ' disabled') + '>' + IC.share + ' مشاركة PDF' + (n ? ' (' + n + ')' : '') + '</button></div>';
 }
 function clsRefresh(){
   var a = document.getElementById('clsList'), b = document.getElementById('clsBar');
@@ -2739,29 +2739,90 @@ function clsAll(){
   var all = CLS.data.days.every(function(x){ return CLS.sel[x.date]; });
   CLS.data.days.forEach(function(x){ CLS.sel[x.date] = !all; }); clsRefresh();
 }
-/* نص المشاركة: ملخص كل يوم محدد + الفروق */
-function clsText(x){
-  var t = '📅 ' + clsLabel(x) + '\n' + x.invoices + ' فاتورة · صافي ' + n2(x.net) + '\n' +
-    'كاش ' + n2(x.cash) + ' · آجل ' + n2(x.credit) + ' · كارت ' + n2(x.card) + '\n' +
-    'مرتجعات ' + n2(x.ret) + ' · تحصيل ' + n2(x.collected) + '\n' +
-    'المفروض في الدرج: ' + n2(x.expected_cash) + '\n';
-  var bad = [];
-  (x.checks || []).forEach(function(c){ if (Math.abs(c.diff) > 0.5) bad.push(c.label + ': الفواتير ' + n2(c.mine) + ' والنظام ' + n2(c.pdf)); });
-  var R = x.close && x.close.rows;
-  if (R && R.bank_card && Math.abs(R.bank_card.diff) > 1) bad.push('كارت: النظام ' + n2(R.bank_card.sys) + ' واتكتب ' + n2(R.bank_card.user) + ' (فرق ' + n2(R.bank_card.diff) + ')');
-  if (R && R.drawer && Math.abs(R.drawer.diff) > 5) bad.push('كاش الدرج: النظام ' + n2(R.drawer.sys) + ' واتعدّ ' + n2(R.drawer.user) + ' (فرق ' + n2(R.drawer.diff) + ')');
-  if (x.close) (x.close.shifts || []).forEach(function(sh){
-    var b1 = sh.rows.bank_card; if (b1 && Math.abs(b1.diff) > 1) bad.push('وردية ' + sh.no + ' كارت: فرق ' + n2(b1.diff));
+/* صفحة PDF ليوم: نفس هيدر وفوتر تقارير الكاميرات، وبترسم على canvas عشان العربي يطلع صح */
+function clsT(c, txt, X, Y, font, color, align, dir){
+  c.font = font; c.fillStyle = color; c.textAlign = align || 'right'; c.direction = dir || 'rtl'; c.textBaseline = 'middle'; c.fillText(txt, X, Y);
+}
+function clsDrawDay(x, logo){
+  var W = 1200, HH = 150, FH = 84, RH = 66, SH = 74, items = [];
+  var row2 = function(l, v, b){ items.push({ t: 'row', l: l, v: v, b: b }); };
+  var sec = function(s2){ items.push({ t: 'sec', s: s2 }); };
+  var pill = function(l, sub, txt, tone){ items.push({ t: 'pill', l: l, sub: sub, txt: txt, tone: tone }); };
+  var f0 = function(v){ return n2(Math.round(v * 100) / 100); };
+  var bn = function(v){ return '\u2066' + f0(v) + '\u2069'; };   // رقم معزول عشان السالب مايتعكسش
+  sec('وسائل الدفع');
+  row2('كاش', f0(x.cash)); row2('آجل', f0(x.credit)); row2('كارت بنكي', f0(x.card));
+  Object.keys(x.other || {}).forEach(function(k){ row2('وسيلة دفع ' + k, f0(x.other[k])); });
+  sec('الحركة');
+  row2('مرتجعات (بتتخصم من الكاش)', x.ret ? '-' + f0(x.ret) : '0');
+  row2('تحصيل ديون', f0(x.collected));
+  row2('المفروض في الدرج', f0(x.expected_cash), true);
+  if (x.checks){
+    sec('مطابقة الفواتير بتقفيل النظام');
+    x.checks.forEach(function(c){
+      var ok = Math.abs(c.diff) <= 0.5;
+      pill(c.label, 'فواتير ' + bn(c.mine) + '  ·  PDF ' + bn(c.pdf), ok ? '✓ مطابق' : 'فرق ' + (c.diff > 0 ? '+' : '-') + f0(Math.abs(c.diff)), ok ? 'ok' : 'bad');
+    });
+  }
+  if (x.close){
+    var R = x.close.rows;
+    sec('العدّ الفعلي (من تقفيل النظام)');
+    [['drawer', 'كاش الدرج', 5], ['bank_card', 'كارت بنكي', 1], ['companies', 'شركات', 1]].forEach(function(q){
+      var r = R[q[0]]; if (!r || (q[0] === 'companies' && !r.sys && !r.user)) return;
+      var z = Math.abs(r.diff) < 0.005;
+      pill(q[1], 'النظام ' + bn(r.sys) + '  ·  اتكتب ' + bn(r.user), z ? '✓' : (r.diff > 0 ? '+' : '-') + f0(Math.abs(r.diff)), z ? 'ok' : (Math.abs(r.diff) > q[2] ? 'bad' : 'warn'));
+    });
+    (x.close.shifts || []).forEach(function(sh){
+      var d1 = sh.rows.drawer, b1 = sh.rows.bank_card, bad = (b1 && Math.abs(b1.diff) > 1) || (d1 && Math.abs(d1.diff) > 5);
+      pill('وردية ' + sh.no, 'كاش ' + (d1 ? bn(d1.diff) : '—') + '  ·  كارت ' + (b1 ? bn(b1.diff) : '—'), bad ? 'فرق' : '✓', bad ? 'bad' : 'ok');
+    });
+  }
+  var H = HH + 24 + items.reduce(function(a, it){ return a + (it.t === 'sec' ? SH : RH); }, 0) + 24 + FH;
+  var cv = document.createElement('canvas'); cv.width = W; cv.height = H; var c = cv.getContext('2d');
+  c.fillStyle = '#fff'; c.fillRect(0, 0, W, H);
+  camrHead(c, W, logo, 'تقفيل يومي  |  ' + x.invoices + ' فاتورة  ·  صافي ' + f0(x.net), { label: clsLabel(x), date: x.date });
+  var y = HH + 24, i = 0;
+  items.forEach(function(it){
+    if (it.t === 'sec'){
+      c.fillStyle = CAMR_C.navy; c.fillRect(W - 54, y + 22, 7, 32);
+      clsT(c, it.s, W - 72, y + 38, '800 32px Cairo', CAMR_C.ink); y += SH; i = 0; return;
+    }
+    if (i++ % 2 === 0){ c.fillStyle = '#f4f6fa'; c.fillRect(40, y, W - 80, RH); }
+    if (it.t === 'row'){
+      clsT(c, it.l, W - 66, y + RH / 2, (it.b ? '800 ' : '600 ') + '28px Cairo', CAMR_C.ink);
+      clsT(c, it.v, 66, y + RH / 2, '800 30px Cairo', it.b ? CAMR_C.grn : CAMR_C.ink, 'left', 'ltr');
+    } else {
+      clsT(c, it.l, W - 66, y + 20, '700 27px Cairo', CAMR_C.ink);
+      clsT(c, it.sub, W - 66, y + 49, '400 20px Cairo', CAMR_C.muted, 'right', 'rtl');
+      var col = it.tone === 'ok' ? [CAMR_C.grn, '#e8f6ec'] : it.tone === 'warn' ? ['#b9770e', '#fff4e0'] : [CAMR_C.red, '#fdecee'];
+      c.font = '800 24px Cairo'; var pw = Math.max(c.measureText(it.txt).width + 44, 110);
+      camrRR(c, col[1], 66, y + 11, pw, 44, 22);
+      clsT(c, it.txt, 66 + pw / 2, y + 34, '800 24px Cairo', col[0], 'center', 'ltr');
+    }
+    y += RH;
   });
-  t += bad.length ? '⚠ فروق:\n- ' + bad.join('\n- ') + '\n' : (x.checks ? '✅ مطابق لتقفيل النظام\n' : '');
-  return t;
+  camrFoot(c, W, H);
+  return cv;
 }
 function clsShare(){
   var d = CLS.data; if (!d) return;
-  var days = d.days.filter(function(x){ return CLS.sel[x.date]; }); if (!days.length) return;
-  var text = '🧾 تقفيل صيدلية د. أحمد السوسي\n\n' + days.map(clsText).join('\n');
-  if (navigator.share){ navigator.share({ title: 'تقفيل الصيدلية', text: text }).catch(function(e){ if (e && e.name !== 'AbortError') window.open('https://wa.me/?text=' + encodeURIComponent(text)); }); }
-  else window.open('https://wa.me/?text=' + encodeURIComponent(text));
+  var days = d.days.filter(function(x){ return CLS.sel[x.date]; }).reverse(); if (!days.length) return;   // الأقدم الأول
+  toast('بجهّز الـPDF…');
+  camrJsPdf(function(){
+    Promise.all([camrFonts(), camrLogo()]).then(function(a){
+      var J = window.jspdf.jsPDF, doc = null;
+      days.forEach(function(x){
+        var cv = clsDrawDay(x, a[1]), w = cv.width * .5, h = cv.height * .5;
+        if (!doc) doc = new J({ unit: 'pt', format: [w, h], orientation: w > h ? 'l' : 'p' }); else doc.addPage([w, h], w > h ? 'l' : 'p');
+        doc.addImage(cv.toDataURL('image/jpeg', .9), 'JPEG', 0, 0, w, h);
+      });
+      var name = 'تقفيل_' + days[0].date + (days.length > 1 ? '_' + days[days.length - 1].date : '') + '.pdf', blob = doc.output('blob');
+      var file = window.File ? new File([blob], name, { type: 'application/pdf' }) : null;
+      if (file && navigator.canShare && navigator.canShare({ files: [file] }))
+        navigator.share({ files: [file], title: 'تقفيل الصيدلية' }).catch(function(e){ if (e && e.name !== 'AbortError') doc.save(name); });
+      else doc.save(name);
+    }).catch(function(){ toast(tr('failed')); });
+  });
 }
 function drawClosing(){
   var box = document.getElementById('p-money'), d = CLS.data; if (!d) return;

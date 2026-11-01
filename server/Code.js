@@ -12690,6 +12690,33 @@ var SERVER_SRC_URL = 'https://raw.githubusercontent.com/elsousypharmacy-create/p
 /* جوجل بتسمح بـ 200 نسخة بس للمشروع، وكل تحديث بيعمل نسخة. لما توصل للحد التحديث بيفشل. */
 var SERVER_VERSION_LIMIT_MSG = 'مشروع السيرفر وصل للحد الأقصى (200 نسخة) فجوجل مش هتعمل نسخة جديدة، والتحديث مش هيركب. ' +
   'الحل: افتح script.google.com ← مشروع الصيدلية ← «Project history» (سجل المشروع) ← امسح النسخ القديمة (سيب آخر 20 نسخة) ← وبعدها دوس «حدّث السيرفر» تاني.';
+var SERVER_VERSION_MAX = 200, SERVER_VERSION_WARN = 170;
+/* عدد النسخ المحفوظة في المشروع (كاش ساعة). -1 = مقدرتش أعدّها. */
+function serverVersionCount_(force) {
+  var C = CacheService.getScriptCache();
+  if (!force) { try { var h = C.get('srv_ver_cnt'); if (h) return parseInt(h, 10); } catch (e0) {} }
+  try {
+    var H = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, id = ScriptApp.getScriptId(), n = 0, tok = '';
+    for (var i = 0; i < 6; i++) {
+      var r = UrlFetchApp.fetch('https://script.googleapis.com/v1/projects/' + id + '/versions?pageSize=50' + (tok ? '&pageToken=' + encodeURIComponent(tok) : ''), { headers: H, muteHttpExceptions: true });
+      if (r.getResponseCode() !== 200) return -1;
+      var j = JSON.parse(r.getContentText());
+      n += (j.versions || []).length; tok = j.nextPageToken || '';
+      if (!tok) break;
+    }
+    try { C.put('srv_ver_cnt', String(n), 3600); } catch (e2) {}
+    return n;
+  } catch (e) { return -1; }
+}
+/* تنبيه على تيليجرام مرة كل ٢٤ ساعة لما النسخ تقرب تخلص، قبل ما التحديث يفشل */
+function warnVersionsIfNeeded_() {
+  var n = serverVersionCount_(), P = PropertiesService.getScriptProperties();
+  if (n < SERVER_VERSION_WARN) return;
+  var last = parseInt(P.getProperty('SERVER_VER_WARNED') || '0', 10);
+  if (Date.now() - last < 24 * 3600000) return;
+  P.setProperty('SERVER_VER_WARNED', String(Date.now()));
+  sendTelegramStaff('⚠️ نسخ السيرفر ' + n + ' من ' + SERVER_VERSION_MAX + ' — قربت تخلص. امسح القديم من script.google.com ← المشروع ← Project history (سيب آخر 20)، وإلا التحديث هيفشل.', PERSONAL_CHAT);
+}
 function serverSrc_() {
   var r = UrlFetchApp.fetch(SERVER_SRC_URL + '?t=' + Date.now(), { muteHttpExceptions: true });
   if (r.getResponseCode() !== 200) return null;
@@ -12703,7 +12730,8 @@ function serverUpdateInfo() {
   try { var hit = C.get('srv_upd_info'); if (hit) return JSON.parse(hit); } catch (eC) {}
   var s = serverSrc_(), P = PropertiesService.getScriptProperties();
   var out = { ok: true, available: !!s, newer: !!s && P.getProperty('SERVER_SRC_SIG') !== s.sig,
-              lastUpdate: P.getProperty('SERVER_UPDATED_AT') || '', autoOn: autoUpdateOn_() };
+              lastUpdate: P.getProperty('SERVER_UPDATED_AT') || '', autoOn: autoUpdateOn_(),
+              versions: serverVersionCount_(), versionsMax: SERVER_VERSION_MAX };
   try { C.put('srv_upd_info', JSON.stringify(out), 120); } catch (eP) {}
   return out;
 }
@@ -12718,9 +12746,15 @@ function setAutoUpdate(on) {
 }
 function autoServerUpdate() {
   try { maybeEnsureTriggers_(); } catch (eT) {}
+  try { warnVersionsIfNeeded_(); } catch (eW) {}
   var s = serverSrc_(), P = PropertiesService.getScriptProperties();
-  if (!s || P.getProperty('SERVER_SRC_SIG') === s.sig) return;
+  if (!s || P.getProperty('SERVER_SRC_SIG') === s.sig) { if (s) P.deleteProperty('SERVER_PEND_SIG'); return; }
   if (P.getProperty('SERVER_FAILED_SIG') === s.sig) return;          /* النسخة دي فشلت قبل كده — منحاولش كل ربع ساعة */
+  /* 🔗 تجميع: كل تحديث بياكل نسخة من الـ 200، فلو الكود لسه بيتعدّل منركّبش غير لما يثبت ١٠ دقايق */
+  if (P.getProperty('SERVER_PEND_SIG') !== s.sig) {
+    P.setProperty('SERVER_PEND_SIG', s.sig); P.setProperty('SERVER_PEND_AT', String(Date.now())); return;
+  }
+  if (Date.now() - parseInt(P.getProperty('SERVER_PEND_AT') || '0', 10) < 10 * 60000) return;
   var r = serverUpdate();
   if (r && r.ok) {
     P.deleteProperty('SERVER_FAILED_SIG');
@@ -12781,7 +12815,7 @@ function serverUpdate() {
   var P = PropertiesService.getScriptProperties();
   P.setProperty('SERVER_SRC_SIG', s.sig);
   P.setProperty('SERVER_UPDATED_AT', stamp);
-  try { CacheService.getScriptCache().remove('srv_upd_info'); } catch (eR) {}
+  try { CacheService.getScriptCache().remove('srv_upd_info'); CacheService.getScriptCache().remove('srv_ver_cnt'); } catch (eR) {}
   try { maybeEnsureTriggers_(); } catch (eT) {}
   return { ok: true, version: ver, at: stamp };
 }

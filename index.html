@@ -5125,6 +5125,9 @@ function loadSrvUp(){
     var b = document.getElementById('srvup'); if (!b || !d || !d.ok) return;
     b.innerHTML = (d.newer ? '<div class="state" style="font-size:13px;color:var(--ok)">✨ فيه نسخة جديدة جاهزة (' + esc(d.fileDate) + ')</div>'
                            : '<div class="state" style="font-size:13px">السيرفر محدّث' + (d.lastUpdate ? ' — آخر تحديث ' + esc(d.lastUpdate) : '') + '</div>') +
+      (d.versions >= 0 ? '<div class="state" style="font-size:12.5px;' + (d.versions >= 170 ? 'color:var(--bad)' : (d.versions >= 140 ? 'color:var(--warn)' : '')) + '">' +
+        'النسخ المحفوظة: ' + ltr(d.versions) + ' من ' + ltr(d.versionsMax || 200) +
+        (d.versions >= 170 ? ' — قربت تخلص! امسح القديم من Project history (سيب آخر 20)' : '') + '</div>' : '') +
       '<button class="btn ' + (d.newer ? 'btn-primary' : 'btn-quiet') + '" onclick="runSrvUp()">🔄 حدّث السيرفر</button>' +
       (d.autoOn === undefined ? '' :
         '<div class="state" style="font-size:12.5px;margin-top:8px">' + (d.autoOn ? '🟢 التحديث التلقائي شغّال — بيشيّك كل ربع ساعة ويبعتلك على تيليجرام لما يحدّث' : '⚪ التحديث التلقائي واقف') + '</div>' +
@@ -5458,21 +5461,22 @@ function camrJsPdf(cb){
 
 /* علامة التحديث: بتتشيّك أول ما الرئيسية تفتح (مرة كل ١٠ دقايق بالكتير) */
 var SRV_CHK = 0;
-function srvBadge(on){
+function srvBadge(){
   var b = document.getElementById('homeSrvBtn'); if (!b) return;
-  b.classList.toggle('upd', !!on);
-  b.title = on ? 'فيه تحديث جديد للسيرفر — دوس عشان تحدّثه' : 'حدّث السيرفر';
+  b.classList.toggle('upd', SRV_NEWER || SRV_FULL);
+  b.title = SRV_FULL ? 'نسخ السيرفر ' + SRV_VER + ' من 200 — قربت تخلص، امسح القديم من Project history'
+          : (SRV_NEWER ? 'فيه تحديث جديد للسيرفر — دوس عشان تحدّثه' : 'حدّث السيرفر');
   b.setAttribute('aria-label', b.title);
 }
 function srvBadgeCheck(){
   if (!storedPin()) return;
-  if (Date.now() - SRV_CHK < 600000){ srvBadge(SRV_NEWER); return; }
+  if (Date.now() - SRV_CHK < 600000){ srvBadge(); return; }
   api('serverUpdateInfo').then(function(d){
     if (!d || !d.ok) return;
-    SRV_CHK = Date.now(); SRV_NEWER = !!d.newer; srvBadge(SRV_NEWER);
+    SRV_CHK = Date.now(); SRV_NEWER = !!d.newer; SRV_VER = d.versions; SRV_FULL = d.versions >= 170; srvBadge();
   }).catch(function(){});
 }
-var SRV_NEWER = false;
+var SRV_NEWER = false, SRV_FULL = false, SRV_VER = -1;
 function homeCamLatest(){
   var el = document.getElementById('homeCamRep'); if (!el || !storedPin()) return;
   api('camReports').then(function(d){

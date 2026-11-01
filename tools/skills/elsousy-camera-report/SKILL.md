@@ -12,6 +12,8 @@ The report is a small JSON file saved to Google Drive. The dashboard (index.html
 ## Source of truth
 The full, current recipe is in the repo `elsousypharmacy-create/pharmacy`, file `tools/camera-day-report.md` (read it from the checkout, or with the GitHub tool `get_file_contents`). Follow it exactly. It covers: time windows, which frames to review, grids, zoom rules, the checklist, the JSON format (v2) and where to save. If this skill, the recipe, or a task prompt differ, the recipe wins.
 
+> **Status:** until Ahmed's usage renews, follow the CURRENT `tools/camera-day-report.md` (sparser sampling, one report per run). The rules below are the TARGET design, staged in `tools/camera-day-report-next.md` and not active yet.
+
 ## The rules that matter most
 1. **Window:** noon report = today's frames before 12:00. Midnight run = yesterday's frames from 12:00, split in TWO reports (12:00–17:59 «تقرير العصر» time 1800, 18:00–23:59 «تقرير الليل» time 2359). Work one hour at a time.
 2. **Sampling:** inside cameras 2, 3, 4 → every frame (every 10 min). Outside cameras 1 and 6 → one frame every 30 min, alternating. Use hourly zip bundles when they exist in the day folder; otherwise download frames one by one (prefer `_s.jpg` copies, they arrive complete).

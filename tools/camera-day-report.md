@@ -1,39 +1,31 @@
 # تقرير الكاميرات اليومي — تعليمات Claude
 
-This file is the full recipe for the scheduled camera report (the noon run makes one report, the midnight run makes two). It does not change any code.
+This file is the full recipe for the scheduled camera report (runs twice a day). It does not change any code.
 Write all report text in short Egyptian Arabic. Be strict: report every problem you can clearly see.
 
-## Window and reports
-**This section overrides the task prompt:** if the prompt names a single label/file time for the midnight run, still make the two reports below.
+## Window
 - Drive root «كاميرات الصيدلية» id `1nxoCmGnDiwdFktz4QmoU56Uj4tfBRtEk`, day folders `yyyy-MM-dd` (Cairo time).
-- Frames: `HHmm_chN.jpg` (original 960×576) and `HHmm_chN_s.jpg` (640 wide copy made from the Drive thumbnail). Cameras 1, 2, 3, 4, 6 (no 5).
-- **Noon run (12:04 Cairo):** today's folder, frames with HHmm < 1200. ONE report: `label` «تقرير الضهر», file time `1200`.
-- **Midnight run (00:04 Cairo):** YESTERDAY's folder, frames with HHmm ≥ 1200. TWO reports, finish and save the first before starting the second:
-  A = 1200–1759, `label` «تقرير العصر», file time `1800` · B = 1800–2359, `label` «تقرير الليل», file time `2359`.
+- Frames: `HHmm_chN.jpg`, 960×576, cameras 1, 2, 3, 4, 6 (no 5). Ignore `_s.jpg` copies.
+- **Noon run (12:04 Cairo):** today's folder, frames with HHmm < 1200 (covers last night 00:00–00:50 and 08:00–11:59). `label` = «تقرير الضهر», file time `1200`.
+- **Midnight run (00:04 Cairo):** YESTERDAY's folder, frames with HHmm ≥ 1200. `label` = «تقرير الليل», file time `2359`.
 - Camera names: 1 = الرصيف (برة), 2 = الرفوف, 3 = المكتب والكاونتر, 4 = الواجهة الزجاج, 6 = الرصيف (برة).
-- Work one hour at a time and write findings as you go, so a stopped session loses nothing.
 
 ## 1. List frames (no download yet)
 Drive `search_files`: `parentId = '<day folder id>'` with `excludeContentSnippets: true`, page through all results. Keep `title`, `id`, `fileSize`.
 If there are no frames in the window: save a report with `"summary":[]`, `"pages":[]` and
 `"note":"مفيش لقطات في الفترة دي — اتأكد إن السحب التلقائي شغال"`, then stop.
 
-## 2. What to review (sampling)
-**Target (whole period):** inside cameras 2, 3, 4 → EVERY frame (every 10 min). Outside cameras 1, 6 → one frame every 30 min, alternating (ch1 at :00, ch6 at :30), so each outside camera is seen hourly.
-**Mode A — hourly bundles (preferred, when they exist):** the day folder (or its `bundles` subfolder) has `bundle_*.zip` files built by the server, each holding the selected frames of one hour (originals 960×576). Download ONE zip at a time (the result is saved to a file), unzip it, review the hour, then move to the next hour. If a zip is missing for an hour, use Mode B for that hour.
-**Mode B — no bundles yet (current default):** download frames one by one, in batches of parallel calls, and prefer the `_s.jpg` copy (it arrives complete).
-  Inside cameras: the frame at :00 and :30 of each hour. Outside cameras: one frame per hour (ch1 on even hours, ch6 on odd hours).
-  Plus up to 10 "activity" frames: frames whose fileSize is clearly above that camera's median (≈ +12%).
+## 2. Pick frames to look at
+- Cameras 2, 3, 4: the frame closest to each full hour.
+- Cameras 1, 6: one frame every 3 hours.
+- Plus "activity" frames: per camera, frames whose fileSize is clearly above that camera's median (≈ +12% or more): more people or clutter. Up to 8 extra.
 
 ## 3. Download and look
 - `download_file_content(fileId)`. The result is saved to a file: decode with `jq -r .content <file> | base64 -d > x.jpg`
-  and check the byte size equals `fileSize`. Never judge a partial image. A partial original → use the `_s.jpg` copy of the same frame.
-- Files under ~45 KB (dark night frames) come back inline instead of a file. Do not paste them; use a neighbouring frame of the same camera,
-  or list the camera in `note` as «ماتشافتش».
-- **Grids first, for screening only:** with Python PIL build 4×3 grids (tiles 400×240 → image 1600×720), each tile labelled with time and camera.
-  Group by camera and consecutive time (so changes are easy to see); the two outside cameras can share a grid. Use the grid to see who is where, a customer waiting, the desk occupied, lights.
-- **Never judge a small item from a grid** (phone, keys, money, a bag, shelf gaps). For every suspicious frame open the original (or `_s.jpg`), crop and zoom 2×, then decide.
-  If an area cannot be judged (night IR image, blur, too small), say so in `note` (e.g. «رص كاميرا 2 ماتقيّمش») — never write it as OK from the grid alone.
+  and check the byte size equals `fileSize`. Never judge a partial image.
+- Small files (under ~45 KB, e.g. dark night frames) come back inline instead of saved to a file. Do not paste them; pick a neighbouring
+  frame of the same camera instead, or list the camera in `note` as «ماتشافتش».
+- Use Python PIL to build grids (3×3 of half-size frames, time + camera written on each) and view the grids first.
 - Then crop and zoom (2×) every area that matters: desk, counter tops, shelves, drawers/doors, floor, diapers and milk shelves, outside steps.
 
 ## 4. Checklist (strict)

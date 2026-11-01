@@ -22,6 +22,7 @@ Read this first when you start a new session on this repo. It has **no secrets**
 - Dashboard shows a red dot on the server-refresh button when a server update or the version limit needs attention.
 
 ## Camera reports: how they run
+**Status:** current recipe = `tools/camera-day-report.md` (what the tasks run). The redesign (all inside frames, outside every 30 min, 4×3 grids, midnight run split in two) is staged in `tools/camera-day-report-next.md`, **not active**: Ahmed wants the current tasks/settings kept until his usage renews. Activate by copying `-next` over the active file.
 Two scheduled tasks (Claude routines, Cairo time): «تقرير الكاميرات — الضهر» 12:04 and «— الليل» 00:04. Each reads the recipe in this repo, reviews the frames, writes the JSON to Drive. They need the **Google Drive connector** and run on the **usage of the account that created them**. The older task «تقرير الكاميرات التلقائي» (10:36 / 22:36) looks at one frame and should be paused.
 
 ## Open items

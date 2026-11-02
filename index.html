@@ -5980,12 +5980,12 @@ function camrDrawCover(logo, r){
   var y = 290;
   CAMR_ORDER.forEach(function(ch){
     var c = (r.cams || []).filter(function(z){ return z.ch === ch; })[0]; if (!c) return;
-    var n = (c.items || []).length, col = n ? CAMR_C.red : CAMR_C.grn;
+    var n = (c.items || []).length, col = n ? CAMR_C.red : CAMR_C.muted;
     x.save(); x.shadowColor = 'rgba(14,34,64,.15)'; x.shadowBlur = 18; x.shadowOffsetY = 4; camrRR(x, '#fff', 40, y, W - 80, 110, 22); x.restore();
     x.fillStyle = col; x.fillRect(W - 48, y + 20, 8, 70);
     camrTxt(x, 'كاميرا ' + ch + ' — ' + (c.name || ''), W - 80, y + 55, '700 32px Cairo', CAMR_C.ink);
-    camrRR(x, n ? '#fdecee' : '#e8f6ec', 70, y + 30, 260, 50, 25);
-    camrTxt(x, n ? n + ' ملاحظة' : 'تمام', 200, y + 56, '700 26px Cairo', col, 'center');
+    camrRR(x, n ? '#fdecee' : '#eef0f3', 70, y + 30, 260, 50, 25);
+    camrTxt(x, n ? n + ' ملاحظة' : 'بلا ملاحظات مسجلة', 200, y + 56, '700 26px Cairo', col, 'center');
     y += 140;
   });
   camrFoot(x, W, H);
@@ -5995,7 +5995,7 @@ function camReportView(i){
   var r=CAMR.list[i], cur={r:r,canvases:[]}; CAMR.cur=cur;
   var b=camrSheet(CameraAssessment.title(r)+' · '+(r.dayLabel || r.date || '')), n=camrNotes(r), cams=camrDisplayPages(r);
   var reviewed=(r.reviewedFrames || []).length, channels=camrCoverage(r).filter(function(c){return c.frames.length;}).length;
-  b.innerHTML='<div class="camera-report-view">'+'<div class="camr-bar report-toolbar"><button class="btn btn-quiet" onclick="camReportsOpen()">‹ كل التقارير</button><button class="btn btn-primary" id="camrPdf" onclick="camReportPdf()" disabled>مشاركة PDF</button></div>'+
+  b.innerHTML='<div class="camera-report-view">'+'<div class="camr-bar report-toolbar"><button class="btn btn-quiet" onclick="camReportsOpen()">‹ كل التقارير</button><button class="btn btn-primary" id="camrPdf" onclick="camReportPdf()" disabled>بجهّز PDF…</button><button class="btn btn-quiet" id="camrDownload" onclick="camReportDownload()" disabled>تنزيل PDF</button></div><p id="camrExportStatus" class="report-prepared" role="status"></p>'+
     '<p class="report-prepared">إعداد '+esc(CameraAssessment.timestamp(r.generatedAt) || 'غير مسجل')+'</p>'+camrReportOverview(r)+camrReportFindings(r)+
     '<div id="camrAssessment">'+appearanceReportDetails(r)+'</div>'+camrCoverageHtml(r)+
     '<details class="report-fold"><summary>نطاق المراجعة وحدودها</summary><p>'+esc(r.note || 'حدود التغطية غير مسجلة')+'</p></details>'+
@@ -6014,7 +6014,7 @@ function camReportView(i){
         completed++;if(alive())document.getElementById('camrProgress').textContent='تحميل '+completed+' من '+cams.length+(failed?' · '+failed+' فشل':'');return worker();
       });
     }
-    return Promise.all([worker(),worker()]).then(function(){if(!alive())return;document.getElementById('camrPdf').disabled=!!failed || !cur.canvases.length;if(failed)document.getElementById('camrProgress').textContent+='؛ أعد المحاولة قبل مشاركة PDF';});
+    return Promise.all([worker(),worker()]).then(function(){if(!alive())return;cur.imagesReady=!failed;if(failed){document.getElementById('camrProgress').textContent+='؛ أعد المحاولة قبل مشاركة PDF';document.getElementById('camrPdf').textContent='الصور لم تكتمل';}else return camrPreparePdf(cur);});
   }).catch(function(){if(alive())document.getElementById('camrProgress').textContent='تحميل التقرير ماكملش؛ افتحه تاني';});
 }
 function camrZoom(src){
@@ -6025,28 +6025,70 @@ function camrZoom(src){
   document.body.appendChild(z);
   setTimeout(function(){ z.scrollLeft = document.documentElement.dir === 'rtl' ? 0 : z.scrollWidth; }, 30);
 }
-function camReportPdf(){
-  var cur = CAMR.cur; if (!cur) return;
-  var go = function(){
-    var J = window.jspdf.jsPDF, pages = [cur.cover].concat(cur.canvases), doc = null;
-    pages.forEach(function(cv){
-      var w = cv.width * .5, h = cv.height * .5;
-      if (!doc) doc = new J({ unit: 'pt', format: [w, h], orientation: w > h ? 'l' : 'p' });
-      else doc.addPage([w, h], w > h ? 'l' : 'p');
-      doc.addImage(cv.toDataURL('image/jpeg', .88), 'JPEG', 0, 0, w, h);
-    });
-    var name = 'تقرير_الكاميرات_' + (cur.r.date || '') + '_' + (cur.r.time || '') + '.pdf', blob = doc.output('blob');
-    var file = window.File ? new File([blob], name, { type: 'application/pdf' }) : null;
-    if (file && navigator.canShare && navigator.canShare({ files: [file] })){
-      navigator.share({ files: [file], title: 'تقرير الكاميرات ' + CameraAssessment.title(cur.r) }).catch(function(e){ if (e && e.name !== 'AbortError') doc.save(name); });
-    } else doc.save(name);
-  };
-  if (window.jspdf) return go();
-  toast('بجهّز التقرير…'); camrJsPdf(go);
+/* Prepare the file BEFORE the tap so iOS share retains user activation. */
+function camrExportState(cur,message,ready,retry){
+  if(CAMR.cur!==cur)return;
+  var button=document.getElementById('camrPdf'),download=document.getElementById('camrDownload'),status=document.getElementById('camrExportStatus');
+  if(button){button.disabled=!(ready || retry);button.textContent=ready?'مشاركة PDF':retry?'إعادة تجهيز PDF':'بجهّز PDF…';}
+  if(download)download.disabled=!ready;
+  if(status)status.textContent=message || '';
 }
-function camrJsPdf(cb){
-  if (window.jspdf){ if (cb) cb(); return; }
-  var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload = function(){ if (cb) cb(); }; s.onerror = function(){ if (cb) toast(tr('failed')); }; document.head.appendChild(s);
+function camrPreparePdf(cur){
+  if(!cur || !cur.imagesReady || !cur.cover)return Promise.resolve();
+  if(cur.pdf)return Promise.resolve(cur.pdf);
+  if(cur.pdfPreparing)return cur.pdfPreparing;
+  camrExportState(cur,'الصور اكتملت؛ بجهّز ملف المشاركة…',false);
+  cur.pdfPreparing=new Promise(function(resolve,reject){camrJsPdf(resolve,reject);}).then(function(){
+    if(CAMR.cur!==cur)return;
+    var pages=[cur.cover].concat(cur.canvases),doc=null,J=window.jspdf.jsPDF;
+    pages.forEach(function(cv){
+      if(!cv || !cv.width || !cv.height)throw new Error('missing canvas');
+      /* Keep long summary pages inside jsPDF's page-size limit. */
+      var scale=Math.min(.5,14000/Math.max(cv.width,cv.height)),w=cv.width*scale,h=cv.height*scale;
+      if(!doc)doc=new J({unit:'pt',format:[w,h],orientation:w>h?'l':'p'});
+      else doc.addPage([w,h],w>h?'l':'p');
+      doc.addImage(cv.toDataURL('image/jpeg',.88),'JPEG',0,0,w,h);
+    });
+    var name='تقرير_الكاميرات_'+(cur.r.date || '')+'_'+(cur.r.time || '')+'.pdf',blob=doc.output('blob');
+    if(!blob || !blob.size)throw new Error('empty PDF');
+    cur.pdf={doc:doc,name:name,blob:blob,file:window.File?new File([blob],name,{type:'application/pdf'}):null};
+    camrExportState(cur,'الملف جاهز للمشاركة أو التنزيل',true);return cur.pdf;
+  }).catch(function(){if(CAMR.cur===cur)camrExportState(cur,'تعذر تجهيز PDF. جرّب إعادة التجهيز؛ لو النت قاطع وصّله الأول.',false,true);}).finally(function(){cur.pdfPreparing=null;});
+  return cur.pdfPreparing;
+}
+function camReportDownload(){
+  var cur=CAMR.cur;if(!cur || !cur.pdf)return;
+  try{cur.pdf.doc.save(cur.pdf.name);}catch(e){camrExportState(cur,'تعذر تنزيل الملف؛ جرّب مرة تانية.',true);}
+}
+function camReportPdf(){
+  var cur=CAMR.cur;if(!cur || cur.sharing)return;
+  if(!cur.pdf){camrPreparePdf(cur);return;}
+  var pdf=cur.pdf,supported=false;
+  try{supported=!!(pdf.file && navigator.share && navigator.canShare && navigator.canShare({files:[pdf.file]}));}catch(e){}
+  if(!supported){camReportDownload();camrExportState(cur,'المتصفح لا يدعم مشاركة الملفات مباشرة؛ استخدم ملف PDF المنزّل.',true);return;}
+  function failed(e){
+    cur.sharing=false;
+    if(CAMR.cur!==cur)return;
+    camrExportState(cur,e && e.name==='AbortError'?'تم إلغاء المشاركة؛ الملف لسه جاهز.':'تعذرت المشاركة. اضغط مشاركة تاني أو استخدم تنزيل PDF.',true);
+  }
+  try{
+    cur.sharing=true;
+    /* No await, loading, canvas work, or PDF conversion between tap and share. */
+    navigator.share({files:[pdf.file],title:'تقرير الكاميرات '+CameraAssessment.title(cur.r)}).then(function(){cur.sharing=false;camrExportState(cur,'تم تسليم الملف لنافذة المشاركة',true);},failed);
+  }catch(e){failed(e);}
+}
+var CAMR_JSPDF_LOADING=null;
+function camrJsPdf(cb,onerror){
+  if(window.jspdf && window.jspdf.jsPDF){if(cb)cb();return;}
+  if(!CAMR_JSPDF_LOADING){
+    CAMR_JSPDF_LOADING=new Promise(function(resolve,reject){
+      var s=document.createElement('script'),timer=setTimeout(function(){s.remove();reject(new Error('PDF load timeout'));},20000);
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload=function(){clearTimeout(timer);if(window.jspdf && window.jspdf.jsPDF)resolve();else reject(new Error('PDF unavailable'));};
+      s.onerror=function(){clearTimeout(timer);s.remove();reject(new Error('PDF load failed'));};document.head.appendChild(s);
+    }).catch(function(e){CAMR_JSPDF_LOADING=null;throw e;});
+  }
+  CAMR_JSPDF_LOADING.then(function(){if(cb)cb();}).catch(function(e){if(onerror)onerror(e);else toast(tr('failed'));});
 }
 
 /* علامة التحديث: بتتشيّك أول ما الرئيسية تفتح (مرة كل ١٠ دقايق بالكتير) */
@@ -6492,5 +6534,6 @@ try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 </script>
 </body>
 </html>
+
 
 

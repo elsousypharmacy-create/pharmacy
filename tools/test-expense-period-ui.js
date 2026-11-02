@@ -5,9 +5,9 @@ let count=0;function test(name,fn){fn();console.log('OK',name);count++;}
 class Store{constructor(){this.map=new Map()}getItem(k){return this.map.get(k)||null}setItem(k,v){this.map.set(k,String(v))}removeItem(k){this.map.delete(k)}key(i){return [...this.map.keys()][i]}get length(){return this.map.size}}
 function setup(storage=new Store()){
  let auth=true,calls=0;
- const c={Date,Promise,Math,Number,Array,JSON,localStorage:storage,sessionStorage:new Store(),storedPin:()=>auth?'fixture-pin':'',cairoNow:()=>({date:'2026-11-02'}),isoAdd:(d,n)=>new Date(Date.parse(d+'T12:00:00Z')+n*86400000).toISOString().slice(0,10),esc:v=>String(v).replaceAll('<','&lt;'),num:v=>String(v),ltr:v=>String(v),cacheKey:(a,p)=>'c:'+a+':'+JSON.stringify(p),document:{getElementById:()=>null},goalOf:()=>10000,logErr:()=>{},HOME_MONTH:null,openMenu:()=>{}};
+ const c={setTimeout,clearTimeout,Date,Promise,Math,Number,Array,JSON,localStorage:storage,sessionStorage:new Store(),storedPin:()=>auth?'fixture-pin':'',cairoNow:()=>({date:'2026-11-02'}),isoAdd:(d,n)=>new Date(Date.parse(d+'T12:00:00Z')+n*86400000).toISOString().slice(0,10),esc:v=>String(v).replaceAll('<','&lt;'),num:v=>String(v),ltr:v=>String(v),cacheKey:(a,p)=>'c:'+a+':'+JSON.stringify(p),document:{getElementById:()=>null},goalOf:()=>10000,logErr:()=>{},HOME_MONTH:null,openMenu:()=>{}};
  c.cacheSet=(a,p,d)=>{if(c.storedPin())storage.setItem(c.cacheKey(a,p),JSON.stringify({t:Date.now(),d}))};
- c.api=(a,p)=>{calls++;return Promise.resolve(pl(p.month));};
+ c.api=(a,p)=>{calls++;if(a==='getExpensesData'){const month=p.from.slice(0,7),v=pl(month);return Promise.resolve({ok:true,lastEntry:'2026-11-02',staleDays:0,sourceError:'',items:v.days.flatMap(x=>[{date:x.date,amount:x.expenses-x.pending_expenses,category:'تشغيل'},{date:x.date,amount:x.pending_expenses,category:'متنوعة',fromLedger:true}])});}return Promise.resolve(pl(p.month));};
  vm.createContext(c);vm.runInContext(source,c);return {c,storage,calls:()=>calls,auth:v=>auth=v};
 }
 function pl(month='2026-11'){return {ok:true,month,financial_schema:'finance-review-v1',exp_last_entry:'2026-11-02',exp_stale_days:0,pending_expenses:16000,days:[{date:month+'-01',expenses:32500,pending_expenses:16000,net:null},{date:month+'-02',expenses:16,pending_expenses:0,net:100}]};}

@@ -1313,7 +1313,7 @@ function homeRangeMonths(r){
   while(d.toISOString().slice(0,7)<=end&&months.length<13){months.push(d.toISOString().slice(0,7));d.setUTCMonth(d.getUTCMonth()+1);}return months;
 }
 function homeRangePL(r){
-  return Promise.all(homeRangeMonths(r).map(homeProfitLoss)).then(function(parts){
+  return Promise.all(homeRangeMonths(r).map(function(month){return homeExpenseMonth(month);})).then(function(parts){
     if(parts.length===1)return parts[0];
     return {ok:true,month:r.from.slice(0,7),financial_schema:parts.every(function(p){return p.financial_schema==='finance-review-v1';})?'finance-review-v1':'legacy',days:[].concat.apply([],parts.map(function(p){return p.days;})),exp_last_entry:parts.map(function(p){return p.exp_last_entry||'';}).sort()[0],exp_stale_days:Math.max.apply(null,parts.map(function(p){return p.exp_stale_days==null?0:p.exp_stale_days;})),exp_stale:parts.some(function(p){return p.exp_stale;}),expense_source_error:parts.some(function(p){return p.expense_source_error;}),pending_expenses:parts.reduce(function(t,p){return t+(p.pending_expenses||0);},0),salary_conflict:parts.some(function(p){return p.salary_conflict;}),_uiAt:Math.min.apply(null,parts.map(function(p){return p._uiAt||0;}))};
   });
@@ -1323,6 +1323,50 @@ function homeGoalRing(value,target){
   return '<svg class="h-ring" viewBox="0 0 110 110" aria-hidden="true"><circle cx="55" cy="55" r="46" fill="none" stroke="var(--surface-2)" stroke-width="11"/><circle cx="55" cy="55" r="46" fill="none" stroke="var(--'+(target>0 && value>=target?'ok':'brand')+')" stroke-width="11" stroke-linecap="round" stroke-dasharray="'+(c*fill).toFixed(1)+' '+c.toFixed(1)+'" transform="rotate(-90 55 55)"/><text x="55" y="61" text-anchor="middle" font-size="22" font-weight="800" fill="var(--ink)" font-family="Cairo,system-ui">'+pct0+'%</text></svg>';
 }
 var HOME_PL_CACHE={},HOME_PL_REQUESTS={};
+var HOME_EXP_CACHE={},HOME_EXP_REQUESTS={},HOME_EXP_FAILURES={};
+function homeReadExpense(month){
+  if(!storedPin())return null;
+  var hit=HOME_EXP_CACHE[month];
+  if(hit && Date.now()-hit.at<86400000)return hit;
+  try{var saved=JSON.parse(localStorage.getItem(cacheKey('homeExpense.v1',{month:month}))||'null');
+    if(saved && Date.now()-saved.t<86400000 && saved.d && saved.d._expenseOnly && saved.d.month===month && Array.isArray(saved.d.days)){
+      saved.d._uiAt=saved.t;return HOME_EXP_CACHE[month]={at:saved.t,data:saved.d};
+    }
+  }catch(e){}
+  return homeReadPL(month);
+}
+/* المصروفات لا تحتاج تحميل مبيعات وأرباح الشهر. لا تحفظ أسماء أو تفاصيل البنود. */
+function homeNormalizeExpenses(d,month){
+  if(!d || d.ok!==true || !Array.isArray(d.items) || d.sourceError || (!d.lastEntry && d.staleDays==null))throw new Error('expenses unavailable');
+  var days={},pending=0;
+  d.items.forEach(function(e){
+    if(e.isIncome || /مشتروات|مشتريات/.test(String(e.category)) || String(e.date).slice(0,7)!==month)return;
+    var amount=Number(e.amount);if(e.amount==null || !Number.isFinite(amount) || amount<0)throw new Error('invalid expense');
+    var day=days[e.date] || (days[e.date]={date:e.date,expenses:0,pending_expenses:0});
+    day.expenses+=amount;if(e.fromLedger){day.pending_expenses+=amount;pending+=amount;}
+  });
+  return {ok:true,month:month,financial_schema:'finance-review-v1',_expenseOnly:true,days:Object.keys(days).sort().map(function(k){return days[k];}),
+    pending_expenses:pending,exp_last_entry:d.lastEntry,exp_stale_days:d.staleDays,exp_stale:!!d.stale,expense_source_error:false,_uiAt:Date.now()};
+}
+function homeExpenseMonth(month,force){
+  var hit=homeReadExpense(month);
+  if(!force && hit && Date.now()-hit.at<300000)return Promise.resolve(hit.data);
+  if(HOME_EXP_REQUESTS[month])return HOME_EXP_REQUESTS[month];
+  if(!force && HOME_EXP_FAILURES[month] && Date.now()-HOME_EXP_FAILURES[month]<60000)return Promise.reject(new Error('expenses retry later'));
+  var from=month+'-01',to=new Date(Date.UTC(+month.slice(0,4),+month.slice(5,7),0)).toISOString().slice(0,10),pin=storedPin();
+  if(to>cairoNow().date)to=cairoNow().date;
+  var timer,timedOut=false,request=new Promise(function(resolve,reject){
+    timer=setTimeout(function(){timedOut=true;reject(new Error('expenses timeout'));},25000);
+    Promise.resolve().then(function(){return api('getExpensesData',{from:from,to:to});}).then(function(d){
+      if(!pin || storedPin()!==pin)throw new Error('access changed');
+      var data=homeNormalizeExpenses(d,month);
+      HOME_EXP_CACHE[month]={at:data._uiAt,data:data};cacheSet('homeExpense.v1',{month:month},data);delete HOME_EXP_FAILURES[month];
+      if(timedOut){var box=document.getElementById('homeDayExpenses'),day=box && box.getAttribute('data-day');if(day && day.slice(0,7)===month)box.innerHTML=homeExpenseHtml(data,day,day,false);}
+      resolve(data);
+    }).catch(reject);
+  }).catch(function(e){HOME_EXP_FAILURES[month]=Date.now();throw e;}).finally(function(){clearTimeout(timer);if(HOME_EXP_REQUESTS[month]===request)delete HOME_EXP_REQUESTS[month];});
+  HOME_EXP_REQUESTS[month]=request;return request;
+}
 function homeReadPL(month){
   if(!storedPin())return null;
   if(HOME_PL_CACHE[month])return HOME_PL_CACHE[month];
@@ -1360,15 +1404,15 @@ function homeExpenseHtml(pl,from,to,loading){
     (pl && pl._refreshFailed?'<p>تعذر تحديث المصروفات؛ المعروض آخر نتيجة محفوظة.</p>':old?'<p>نعرض آخر نتيجة محفوظة أثناء تحديث البيانات.</p>':'');
   return '<div class="h-expense"><div><small>المصروفات المفصّلة</small><span>تشغيل ورواتب · دون شراء المخزون</span></div><b>'+(amount===null?(loading?'جارٍ التحميل…':'غير متاح'):ltr(num(amount))+' <small>جنيه</small>')+'</b></div>'+reportDataStatus(notes,pending>0||warning||!!(pl&&pl._refreshFailed),'expenses-'+from+'-'+to,old);
 }
-function loadHomeDayExpenses(day){
+function loadHomeDayExpenses(day,force){
   var box=document.getElementById('homeDayExpenses');if(!box)return;
   function active(){return document.getElementById('homeDayExpenses')===box && box.getAttribute('data-day')===day;}
-  var cached=homeReadPL(day.slice(0,7));
+  var cached=homeReadExpense(day.slice(0,7));
   if(cached)box.innerHTML=homeExpenseHtml(cached.data,day,day,false);
-  homeProfitLoss(day.slice(0,7)).then(function(pl){if(active())box.innerHTML=homeExpenseHtml(pl,day,day,false);}).catch(function(){
+  homeExpenseMonth(day.slice(0,7),force).then(function(pl){if(active())box.innerHTML=homeExpenseHtml(pl,day,day,false);}).catch(function(){
     if(!active())return;
     if(!cached)box.innerHTML=homeExpenseHtml(null,day,day,false);
-    box.insertAdjacentHTML('beforeend',reportDataStatus('<p>'+(cached?'تعذر التحديث؛ المعروض آخر نتيجة محفوظة.':'تعذر تحميل المصروفات.')+'</p><button onclick="loadHomeDayExpenses(this.closest(\'div[data-day]\').getAttribute(\'data-day\'))">إعادة المحاولة</button>',true,'expenses-retry-'+day,!!cached));
+    box.insertAdjacentHTML('beforeend',reportDataStatus('<p>'+(cached?'تعذر التحديث؛ المعروض آخر نتيجة محفوظة.':'تأخر تحميل المصروفات؛ أعد المحاولة.')+'</p><button onclick="loadHomeDayExpenses(this.closest(\'div[data-day]\').getAttribute(\'data-day\'),true)">إعادة المحاولة</button>',true,'expenses-retry-'+day,!!cached));
   });
 }
 function monthSlide(M){
@@ -2311,7 +2355,7 @@ function drawHome(b, kpi, isOld){
         mini('ربح البيع', ltr(num(profitT)), salesT > 0 ? 'هامش ' + ltr(pct(profitT, salesT) + '%') : '') +
         ((isStaleDay && !kpi._yesterday) ? mini('أول فاتورة', '—', 'هتصفّر العداد') : mini('متوسط الفاتورة', ltr(num(avgInv)), ltr(num(tot.inv)) + ' فاتورة')) +
         mini('المرتجع', ltr(num(retVal)) + ' ' + tr('egp'), ltr(num(retCnt)) + ' مرتجع' + (salesT > 0 && retVal > 0 ? ' · ' + ltr(pct(retVal, salesT + retVal) + '%') : '')) +
-      '</div><div id="homeDayExpenses" data-day="'+homeDay+'">'+homeExpenseHtml((homeReadPL(homeDay.slice(0,7)) || {}).data,homeDay,homeDay,true)+'</div><div class="home-camera" id="homeAppearance" aria-live="polite">'+(storedPin() && CAMR.list?appearanceHomeHtml(CAMR.list,CAMR.at===0):'<div class="camera-wait">'+(storedPin()?'بجيب آخر تقييم بالكاميرات…':'افتح التقارير بالرقم السري لعرض التقييم')+'</div>')+'</div></div>' +
+      '</div><div id="homeDayExpenses" data-day="'+homeDay+'">'+homeExpenseHtml((homeReadExpense(homeDay.slice(0,7)) || {}).data,homeDay,homeDay,true)+'</div><div class="home-camera" id="homeAppearance" aria-live="polite">'+(storedPin() && CAMR.list?appearanceHomeHtml(CAMR.list,CAMR.at===0):'<div class="camera-wait">'+(storedPin()?'بجيب آخر تقييم بالكاميرات…':'افتح التقارير بالرقم السري لعرض التقييم')+'</div>')+'</div></div>' +
       '<div class="card h-hero h-slide" id="heroMonth">' + (HOME_MONTH ? monthSlide(HOME_MONTH) : '<div class="state"><div class="spin"></div></div>') + '</div>' +
       '</div>';
 
@@ -2364,10 +2408,10 @@ function drawHome(b, kpi, isOld){
     html += '</div></div>';
 
     box.innerHTML = html;
+    loadHomeDayExpenses(homeDay);
     loadHomeMore();
     loadHomeDays(salesT, isStaleDay, gS, gV);
     loadHomeMonth();
-    loadHomeDayExpenses(homeDay);
     try { var hsI = +sessionStorage.getItem('heroSlide') || 0, hs = document.getElementById('heroSlides');
       if (hs && hsI){ hs.style.scrollBehavior = 'auto'; hs.scrollLeft = (document.documentElement.dir === 'rtl' ? -1 : 1) * hs.clientWidth * hsI; heroDots(); } } catch (e) {}
   }catch(e){ logErr(e); if (!isOld) oops(box, "pgHome()"); }
@@ -2727,8 +2771,8 @@ function refreshNow(){
     ['debts','sales','getShortages','getProfitLoss','getExpensesData'].forEach(function(k){
       try{ localStorage.removeItem(cacheKey(k, {})); }catch(e){}
     });
-    Object.keys(HOME_PL_CACHE).forEach(function(k){HOME_PL_CACHE[k].at=0;});Object.keys(HOME_PERIOD_CACHE).forEach(function(k){HOME_PERIOD_CACHE[k].at=0;});
-    try{for(var i=localStorage.length-1;i>=0;i--){var key=localStorage.key(i);if(/^c:(homePL\.v2|homePeriod\.v2|getExpensesData):/.test(key))localStorage.removeItem(key);}}catch(e){}
+    Object.keys(HOME_EXP_CACHE).forEach(function(k){HOME_EXP_CACHE[k].at=0;});HOME_EXP_FAILURES={};Object.keys(HOME_PL_CACHE).forEach(function(k){HOME_PL_CACHE[k].at=0;});Object.keys(HOME_PERIOD_CACHE).forEach(function(k){HOME_PERIOD_CACHE[k].at=0;});
+    try{for(var i=localStorage.length-1;i>=0;i--){var key=localStorage.key(i);if(/^c:(homeExpense\.v1|homePL\.v2|homePeriod\.v2|getExpensesData):/.test(key))localStorage.removeItem(key);}}catch(e){}
     refreshMark(true);
     render(CUR, TAB);
   }).catch(function(e){

@@ -645,7 +645,8 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 </style>
 <style>
 /* Period summary: yesterday, current month and previous month. */
-#heroMonth{padding:20px}.period-tabs{display:flex;gap:3px;padding:4px;background:var(--surface-2);border-radius:12px;margin-bottom:22px}.period-tabs button{flex:1;min-height:40px;font:inherit;font-size:11px;font-weight:700;color:var(--ink-2);border:0;border-radius:9px;background:transparent;cursor:pointer;white-space:nowrap}.period-tabs button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 5px #0002}.period-card .h-top{gap:10px}.period-card .h-top h2{font-size:18px}.period-card .h-top>span{font-size:10px;direction:ltr}.period-total{margin:22px 0}.period-total>small{font-size:12px;color:var(--ink-2)}.period-total>div{display:flex;align-items:baseline;gap:9px}.period-total b{font-size:40px;font-weight:800;letter-spacing:-1px;line-height:1.5}.period-total span{font-size:12px;color:var(--ink-2)}.period-goal{display:flex;justify-content:space-between;gap:8px;font-size:11px}.period-goal>b{color:var(--brand)}.period-goal>span{color:var(--ink-2)}.period-track{height:7px;border-radius:9px;background:var(--surface-2);overflow:hidden;margin:10px 0}.period-track i{display:block;height:100%;border-radius:inherit;background:var(--brand)}.period-remaining{font-size:11px;color:var(--ink-2);margin:0 0 24px}.period-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0;gap:10px}.period-stats>div+div{border-inline-start:1px solid var(--line);padding-inline-start:12px}.period-stats small{font-size:10px;line-height:1.7;display:block;color:var(--ink-2)}.period-stats b{font-size:18px;margin-top:5px;display:block;white-space:nowrap}.period-details{margin-top:10px}.period-details>summary{color:var(--brand);font-size:12px;font-weight:700;cursor:pointer;padding:12px 0;min-height:44px}.period-details>div{display:flex;justify-content:space-between;gap:15px;font-size:11px;border-top:1px solid var(--line);padding:12px 0}.period-details>div>span{color:var(--ink-2)}.period-details>div>b{white-space:nowrap}@media(max-width:360px){#heroMonth{padding:16px}.period-total b{font-size:35px}.period-stats b{font-size:16px}.period-tabs button{font-size:10px}}
+#heroMonth{padding:20px}.period-tabs{display:flex;gap:6px;padding:5px;background:var(--surface-2);border-radius:12px;margin-bottom:22px}.period-tabs button{flex:1;min-width:0;min-height:50px;font:inherit;font-size:17px;font-weight:700;color:var(--ink-2);border:0;border-radius:9px;background:transparent;cursor:pointer;white-space:nowrap}.period-tabs button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 5px #0002}.period-card .h-top{gap:10px}.period-card .h-top h2{font-size:25px}.period-card .h-top>span{font-size:13px;direction:ltr}.period-total{margin:22px 0}.period-total>small{font-size:16px;color:var(--ink-2)}.period-total>div{display:flex;align-items:baseline;gap:9px}.period-total b{font-size:48px;font-weight:800;letter-spacing:-1px;line-height:1.5}.period-total span{font-size:16px;color:var(--ink-2)}.period-goal{display:flex;justify-content:space-between;gap:8px;font-size:14px}.period-goal>b{color:var(--brand)}.period-goal>span{color:var(--ink-2)}.period-track{height:7px;border-radius:9px;background:var(--surface-2);overflow:hidden;margin:10px 0}.period-track i{display:block;height:100%;border-radius:inherit;background:var(--brand)}.period-remaining{font-size:14px;color:var(--ink-2);margin:0 0 24px}.period-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0;gap:10px}.period-stats>div+div{border-inline-start:1px solid var(--line);padding-inline-start:9px}.period-stats small{font-size:13px;min-height:44px;line-height:1.7;display:block;color:var(--ink-2)}.period-stats b{font-size:22px;margin-top:5px;display:block;white-space:nowrap}.period-details{margin-top:10px}.period-details>summary{color:var(--brand);font-size:16px;font-weight:700;cursor:pointer;padding:12px 0;min-height:44px}.period-details>div{display:flex;justify-content:space-between;gap:15px;font-size:14px;border-top:1px solid var(--line);padding:12px 0}.period-details>div>span{color:var(--ink-2)}.period-details>div>b{white-space:nowrap}@media(max-width:360px){#heroMonth{padding:16px}.period-total b{font-size:42px}.period-stats b{font-size:20px}.period-tabs button{font-size:16px}}
+#heroMonth .period-card .h-top{flex-wrap:wrap}.period-remaining{line-height:1.9}.period-details>div{flex-wrap:wrap}.period-details>div>b{margin-inline-start:auto}
 </style>
 </head>
 <body>
@@ -1256,14 +1257,18 @@ var HOME_MONTH = (function(){
 /* فترة السلايد: لحد امبارح دايمًا (النهاردة لسه مكملش فبيبوّظ المتوسط) */
 var HOME_MR = { key: 'month' };
 var HOME_PERIOD_CACHE = {}, HOME_PERIOD_REQUESTS = {};
+function homeMonthName(month){
+  return new Date(month+'-01T12:00:00Z').toLocaleDateString('ar-EG',{month:'long',timeZone:'UTC'});
+}
 function homeRange(){
   var today=cairoNow().date,y=isoAdd(today,-1),first=today.slice(0,8)+'01',key=HOME_MR.key;
   if(key==='yesterday')return {key:key,from:y,to:y,label:'أمس',month:y.slice(0,7)};
-  if(key==='last'){var end=isoAdd(first,-1);return {key:key,from:end.slice(0,8)+'01',to:end,label:'الشهر اللي فات',month:end.slice(0,7)};}
-  return {key:'month',from:first,to:y,label:'الشهر ده',month:today.slice(0,7),empty:y<first};
+  if(key==='last'){var end=isoAdd(first,-1);return {key:key,from:end.slice(0,8)+'01',to:end,label:homeMonthName(end.slice(0,7)),month:end.slice(0,7)};}
+  return {key:'month',from:first,to:y,label:homeMonthName(today.slice(0,7)),month:today.slice(0,7),empty:y<first};
 }
 function homePeriodTabs(){
-  return '<div class="period-tabs" aria-label="فترة الملخص">'+[['yesterday','أمس'],['month','الشهر ده'],['last','الشهر اللي فات']].map(function(q){return '<button class="'+(HOME_MR.key===q[0]?'on':'')+'" aria-pressed="'+(HOME_MR.key===q[0]?'true':'false')+'" onclick="setHomeRange(\''+q[0]+'\')">'+q[1]+'</button>';}).join('')+'</div>';
+  var today=cairoNow().date,previous=isoAdd(today.slice(0,8)+'01',-1);
+  return '<div class="period-tabs" aria-label="فترة الملخص">'+[['yesterday','أمس'],['month',homeMonthName(today.slice(0,7))],['last',homeMonthName(previous.slice(0,7))]].map(function(q){return '<button class="'+(HOME_MR.key===q[0]?'on':'')+'" aria-pressed="'+(HOME_MR.key===q[0]?'true':'false')+'" onclick="setHomeRange(\''+q[0]+'\')">'+q[1]+'</button>';}).join('')+'</div>';
 }
 function setHomeRange(key){
   if(['yesterday','month','last'].indexOf(key)<0)return;
@@ -1274,14 +1279,15 @@ function monthSlide(M){
   var monthDays=R.month?new Date(Date.UTC(+R.month.slice(0,4),+R.month.slice(5,7),0)).getUTCDate():1,target=g*(R.key==='yesterday'?1:monthDays),progress=target>0?Math.round(net/target*100):0;
   if(pl.days){np=pl.days.filter(function(x){return x.date>=R.from && x.date<=R.to;}).reduce(function(t,x){return t+(Number(x.net)||0);},0);}
   var dateLabel=R.from===R.to?R.to:R.from+' — '+R.to;
-  var title=R.key==='yesterday'?'صافي مبيعات أمس':'صافي مبيعات الشهر';
+  var label=R.key==='yesterday'?'أمس':homeMonthName(R.month);
+  var title=R.key==='yesterday'?'صافي مبيعات أمس':'صافي مبيعات '+label;
   var stats=[['ربح البيع','قبل المصاريف',num(gp)],['عدد','الفواتير',num(inv)],['متوسط','الفاتورة',inv?num(Math.round(Number(m.sales_total || 0)/inv)):'—']];
-  return '<div class="period-card">'+homePeriodTabs()+'<div class="h-top"><h2>'+esc(R.label)+'</h2><span>'+esc(dateLabel)+'</span></div>'+
+  return '<div class="period-card">'+homePeriodTabs()+'<div class="h-top"><h2>'+esc(label)+'</h2><span>'+esc(dateLabel)+'</span></div>'+
     '<div class="period-total"><small>'+title+'</small><div><b>'+ltr(num(net))+'</b><span>جنيه</span></div></div>'+
     '<div class="period-goal"><b>'+progress+'% من الهدف</b><span>الهدف '+ltr(num(target))+'</span></div><div class="period-track"><i style="width:'+Math.min(100,Math.max(0,progress))+'%"></i></div>'+
     '<p class="period-remaining">'+(net>=target?'الهدف اتحقق':'فاضل '+ltr(num(Math.max(0,target-net)))+' جنيه على هدف '+(R.key==='yesterday'?'اليوم':'الشهر'))+'</p>'+
     '<div class="period-stats">'+stats.map(function(q){return '<div><small>'+q[0]+'<br>'+q[1]+'</small><b>'+ltr(q[2])+'</b></div>';}).join('')+'</div>'+
-    '<details class="period-details"><summary>تفاصيل '+esc(R.label)+'</summary><div><span>المرتجعات</span><b>'+ltr(num(m.returns_value_total || 0))+' جنيه</b></div><div><span>الخصومات</span><b>'+ltr(num(m.discount_total || 0))+' جنيه</b></div><div><span>متوسط صافي اليوم</span><b>'+ltr(num(m.avg_daily_net || 0))+' جنيه</b></div><div><span>الربح بعد المصاريف لنفس الفترة</span><b>'+(np===null?'غير متاح':ltr(num(np))+' جنيه')+'</b></div></details></div>';
+    '<details class="period-details"><summary>تفاصيل '+esc(label)+'</summary><div><span>المرتجعات</span><b>'+ltr(num(m.returns_value_total || 0))+' جنيه</b></div><div><span>الخصومات</span><b>'+ltr(num(m.discount_total || 0))+' جنيه</b></div><div><span>متوسط صافي اليوم</span><b>'+ltr(num(m.avg_daily_net || 0))+' جنيه</b></div><div><span>الربح بعد المصاريف لنفس الفترة</span><b>'+(np===null?'غير متاح':ltr(num(np))+' جنيه')+'</b></div></details></div>';
 }
 function loadHomeMonth(){
   var R=homeRange(),key=R.key+':'+R.from+':'+R.to,el=document.getElementById('heroMonth'),old=HOME_PERIOD_CACHE[key];
@@ -6486,4 +6492,5 @@ try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 </script>
 </body>
 </html>
+
 

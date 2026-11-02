@@ -2,6 +2,7 @@ from pathlib import Path
 import re,html
 root=Path(__file__).resolve().parent.parent
 source=(root/'index.html').read_text()
+style_href=re.search(r'href="(dashboard-ui\.css[^"]*)"',source).group(1)
 legacy=''.join(re.findall(r'<style>([\s\S]*?)</style>',source))
 fit=source[source.index('function homeFlashViewportBounds('):source.index("if(typeof window!=='undefined' && window.addEventListener){window.addEventListener('resize',staffFlashFit)")]
 (root/'tools/fixtures/home-legacy.css').write_text(legacy)
@@ -19,7 +20,7 @@ presence='<section class="home-presence-strip"><div class="home-presence-heading
 today=today.replace('</article>',presence+'</article>')
 frames=[]
 for width,height,gap in [(375,667,10),(390,720,44),(430,844,44),(375,600,44)]:
- doc=f'''<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">{font}<link rel="stylesheet" href="home-legacy.css"><link rel="stylesheet" href="../../dashboard-ui.css"><style>header.top{{height:72px}}.secnav{{bottom:{gap}px}}</style></head><body class="home-flash-mode"><header class="top"><div class="brand"><div><h1>اختبار المقاسات</h1><p>بيانات تجريبية</p></div></div></header><section class="screen on" id="sc-sales"><div class="wrap" id="p-home"><div class="home-flash-deck staff-flash-deck">{today}{period}</div></div></section>{nav}<script>{fit}\naddEventListener('resize',staffFlashFit);staffFlashFit();</script></body></html>'''
+ doc=f'''<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">{font}<link rel="stylesheet" href="home-legacy.css"><link rel="stylesheet" href="../../{style_href}"><style>header.top{{height:72px}}.secnav{{bottom:{gap}px}}</style></head><body class="home-flash-mode"><header class="top"><div class="brand"><div><h1>اختبار المقاسات</h1><p>بيانات تجريبية</p></div></div></header><section class="screen on" id="sc-sales"><div class="wrap" id="p-home"><div class="home-flash-deck staff-flash-deck">{today}{period}</div></div></section>{nav}<script>{fit}\naddEventListener('resize',staffFlashFit);staffFlashFit();</script></body></html>'''
  frames.append(f'<section><h2>{width} × {height} · bottom gap {gap}</h2><iframe title="viewport-{width}-{height}" width="{width}" height="{height}" srcdoc="{html.escape(doc,quote=True)}"></iframe></section>')
 (root/'tools/fixtures/home-viewport.html').write_text('<!doctype html><html><meta charset="utf-8"><title>Home viewport regression fixture</title><style>body{background:#ddd;font:14px system-ui;display:grid;grid-template-columns:repeat(2,max-content);gap:24px}iframe{border:1px solid #888}h2{font-size:14px}</style><h1 style="grid-column:1/-1">Layout fixture — synthetic data only</h1>'+''.join(frames)+'</html>')
 print('Built 4 synthetic viewport fixtures')

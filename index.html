@@ -657,7 +657,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=20261102-staff-cards">
+<link rel="stylesheet" href="dashboard-ui.css?v=20261102-staff-carousel">
 </head>
 <body>
 
@@ -2397,10 +2397,10 @@ function drawHome(b, kpi, isOld){
     var hm = function(m){ m = Math.max(0, Math.round(m || 0)); return ltr(Math.floor(m / 60) + ':' + ('0' + (m % 60)).slice(-2)) + ' ساعة'; };
     var teamList = (isStaleDay && !kpi._yesterday) ? [] : emps.slice().sort(function(a,b){ return (b.net || b.sales) - (a.net || a.sales); });
     var teamTot = teamList.reduce(function(s, e){ return s + (e.net || e.sales || 0); }, 0) || 1;
-    var teamCards=staffCardsHtml(teamList,live,[],'home',at.ok===false);
+    if(!HOME_TEAM_PERIOD_SELECTED)RANGE.homeStaff=isStaleDay?'yesterday':'today';
+    var teamCards=HOME_TEAM_PERIOD_SELECTED?homeStaffSavedHtml():staffCardsHtml(teamList,live,[],'home',at.ok===false);
     var liveN = live.length;
-    html += '<div class="card"><div class="card-head"><div><h3>' + (isStaleDay ? 'الفريق أمس' : 'الفريق اليوم') + '</h3><p>' +
-      (liveN ? ltr(liveN) + ' حاضرين دلوقتي' : 'لا يوجد حضور مسجل الآن') + '</p></div></div>' +
+    html += '<div class="card home-team-section"><div class="card-head"><div><h3>الفريق</h3><p id="homeTeamPeriod">' + (HOME_TEAM_PERIOD_SELECTED?'الفترة المختارة':isStaleDay?'أمس':'اليوم')+' · بتوقيت مصر</p></div><button class="ctl-more" onclick="homeStaffMenu()" aria-label="تحديد مدة تقرير الفريق">⋯</button></div>' +
       '<div id="homeTeamCards" data-day="'+homeDay+'">'+teamCards+'</div>' + '<button class="btn btn-quiet" onclick="go(\'team\',0)">سجل الدخول والخروج · بتوقيت مصر ←</button></div>';
     /* ── آخر 14 يوم ── */
     html += '<div class="card"><div class="card-head"><div><h3>آخر 14 يوم</h3><p id="homeChartSub">صافي كل يوم · الأخضر عدّى الهدف</p></div></div>' +
@@ -2410,7 +2410,7 @@ function drawHome(b, kpi, isOld){
 
     box.innerHTML = html;
     loadHomeDayExpenses(homeDay);
-    loadHomeTeamCards(homeDay,teamList,live,at.ok===false);
+    if(HOME_TEAM_PERIOD_SELECTED)loadHomeStaffPeriod();else loadHomeTeamCards(homeDay,teamList,live,at.ok===false);
     loadHomeMore();
     loadHomeDays(salesT, isStaleDay, gS, gV);
     loadHomeMonth();
@@ -3382,10 +3382,37 @@ function staffAttendanceRows(rows){
 
 var STAFF_CARD_OPEN={};
 var HOME_TEAM_REQUESTS={};
+var HOME_TEAM_PERIOD_SELECTED=false,HOME_TEAM_PERIOD_REQUESTS={},HOME_TEAM_PERIOD_TOKEN=0;
+function homeStaffMenu(){openMenu('مدة تقرير الفريق',rangeMenuRows('homeStaff','setHomeStaffRange'));}
+function setHomeStaffRange(v){
+  var previous=RANGE.homeStaff,previousCustom=CUSTOM.homeStaff;
+  function apply(){if(RANGE.homeStaff==='custom' && (!CUSTOM.homeStaff || !validHomePeriod(CUSTOM.homeStaff.from,CUSTOM.homeStaff.to))){RANGE.homeStaff=previous;CUSTOM.homeStaff=previousCustom;toast('اختر مدة صحيحة حتى اليوم، بحد أقصى سنة');return;}HOME_TEAM_PERIOD_SELECTED=true;loadHomeStaffPeriod();}
+  setRange('homeStaff',v,apply);
+}
+function homeStaffSavedHtml(){
+  var saved=cacheGet('homeStaffPeriod',rangeParams('homeStaff'));
+  return saved?staffCardsHtml(saved.employees,saved.live,saved.rows,'home-period',!!saved.attendanceError):'<div class="state">جارٍ تحميل الفترة المختارة…</div>';
+}
+function loadHomeStaffPeriod(){
+  var box=document.getElementById('homeTeamCards'),label=document.getElementById('homeTeamPeriod');if(!box)return;
+  var params=rangeParams('homeStaff'),key=JSON.stringify(params),token=++HOME_TEAM_PERIOD_TOKEN,pin=storedPin(),cached=cacheGet('homeStaffPeriod',params);
+  function active(){return document.getElementById('homeTeamCards')===box && token===HOME_TEAM_PERIOD_TOKEN && HOME_TEAM_PERIOD_SELECTED;}
+  function paint(d){if(active()){box.innerHTML=staffCardsHtml(d.employees,d.live,d.rows,'home-period',!!d.attendanceError);if(label)label.textContent=(d.label || 'الفترة المختارة')+' · بتوقيت مصر';}}
+  if(cached)paint(cached);else{box.innerHTML='<div class="state">جارٍ تحميل الفترة المختارة…</div>';if(label)label.textContent='الفترة المختارة · بتوقيت مصر';}
+  if(cached && cached._uiAt && Date.now()-cached._uiAt<300000)return;
+  if(!HOME_TEAM_PERIOD_REQUESTS[key]){
+    var timer;
+    HOME_TEAM_PERIOD_REQUESTS[key]=new Promise(function(resolve,reject){
+      timer=setTimeout(function(){reject(new Error('staff period timeout'));},25000);
+      api('getStaffHub',params).then(function(d){if(!d || !d.ok || !Array.isArray(d.employees) || !pin || storedPin()!==pin)throw new Error('staff period unavailable');d._uiAt=Date.now();cacheSet('homeStaffPeriod',params,d);resolve(d);}).catch(reject);
+    }).finally(function(){clearTimeout(timer);delete HOME_TEAM_PERIOD_REQUESTS[key];});
+  }
+  HOME_TEAM_PERIOD_REQUESTS[key].then(paint).catch(function(){if(!active())return;if(!cached)box.innerHTML='<div class="state">تعذر تحميل الفترة المختارة</div>';box.insertAdjacentHTML('beforeend','<button class="btn btn-quiet" onclick="loadHomeStaffPeriod()">إعادة المحاولة</button>');});
+}
 function loadHomeTeamCards(day,employees,live,attendanceError){
   var box=document.getElementById('homeTeamCards');if(!box)return;
   var params={day:day},cached=cacheGet('homeTeamAttendance',params),pin=storedPin();
-  function paint(rows,error){if(document.getElementById('homeTeamCards')===box && box.getAttribute('data-day')===day)box.innerHTML=staffCardsHtml(employees,live,rows,'home',error || attendanceError);}
+  function paint(rows,error){if(!HOME_TEAM_PERIOD_SELECTED && document.getElementById('homeTeamCards')===box && box.getAttribute('data-day')===day)box.innerHTML=staffCardsHtml(employees,live,rows,'home',error || attendanceError);}
   if(cached && Array.isArray(cached.rows))paint(cached.rows,false);
   if(cached && cached._uiAt && Date.now()-cached._uiAt<300000)return;
   if(!HOME_TEAM_REQUESTS[day])HOME_TEAM_REQUESTS[day]=api('getAttendanceHistory',{from:day,to:day}).then(function(d){
@@ -3412,7 +3439,7 @@ function staffCardsHtml(employees,live,history,context,attendanceError){
   var entries=staffCardEntries(employees,live,history);
   if(!entries.length)return '<div class="state">لا توجد بيانات فريق للفترة المختارة</div>';
   function value(n){return n===null || n===undefined || !Number.isFinite(Number(n))?'—':ltr(num(n));}
-  return '<div class="staff-hero-grid">'+entries.map(function(item){
+  return '<div class="staff-hero-grid" role="region" aria-label="كروت الفريق؛ اسحب يمينًا أو يسارًا">'+entries.map(function(item){
     var clockMinutes=function(r){var m=String(r.checkIn || '').match(/(\d{1,2}):(\d{2})\s*(AM|PM|ص|م)?/i);return m?(Number(m[1])%12+(/PM|م/i.test(m[3]||'')?12:0))*60+Number(m[2]):0;};
     var e=item.employee,p=item.live,shifts=item.shifts.slice().sort(function(a,b){return b.date.localeCompare(a.date)||clockMinutes(b)-clockMinutes(a);}),last=shifts[0],key=context+':'+staffKey(item.name),status=attendanceError?'الحضور غير متاح':p?'موجود الآن':last?(last.checkOut==='مفتوح'?'بصمة مفتوحة':'سجّل خروج'):'لا توجد بصمة حالية';
     var checkIn=p?staffCairoClock(p.checkInTimestamp):last?staffClockLabel(last.checkIn):'—',checkOut=p?'لم يسجل الخروج':last?(last.checkOut==='مفتوح'?'لم يسجل الخروج':staffClockLabel(last.checkOut)):'—';
@@ -3435,12 +3462,7 @@ function drawStaffHub(isOld){
   var totNew  = list.reduce(function(a,x){ return a + x.new_c; }, 0);
 
   var html = (isOld ? '<div class="state" style="padding:0 0 8px">' + tr('cached') + '</div>' : '');
-  html += ctlBar(
-    RANGE_OPTS.slice(0, 4).map(function(o){
-      return ctlBtn(tr(o[1]), RANGE.perf === o[0], "setHrRange('" + o[0] + "')");
-    }).join(''),
-    'hrMenu()',
-    RANGE.perf === 'custom' || RANGE.perf === 'lastMonth');
+  html += '<div class="ctl"><b>'+esc(HR.kpi.label || 'الفريق')+'</b><button class="ctl-more" onclick="hrMenu()" aria-label="تحديد مدة تقرير الفريق">⋯</button></div>';
 
   var teamSales = list.reduce(function(s, e){ return s + (e.net || e.sales || 0); }, 0);
 

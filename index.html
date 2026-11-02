@@ -619,6 +619,26 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 .exp-c{min-width:48px;text-align:end;font-weight:700;white-space:nowrap}
 </style>
 
+<style>
+/* Refined owner dashboard: compact hierarchy and restrained surfaces. */
+:root{--ui-edge:color-mix(in srgb,var(--ink) 7%,transparent)}
+#p-home .card{border:1px solid var(--ui-edge);border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,.035)}
+#p-home .home-grid,#p-home .home-col{gap:16px}.section-eyebrow{display:block;font-size:10px;font-weight:750;letter-spacing:.5px;color:var(--ink-3);margin-bottom:5px}.home-actions h3,.home-monitor h3{font-size:17px;line-height:1.4;margin:0}
+#p-home .h-hero{padding:20px;background:linear-gradient(145deg,color-mix(in srgb,var(--brand) 5%,var(--surface)),var(--surface) 65%)}
+#p-home .h-main{gap:20px;margin:16px 0}.h-num b{letter-spacing:-1.5px!important}.h-top h2{font-size:16px!important}.h-top>span{font-size:11px!important;color:var(--ink-2)}
+#p-home .h-minis{gap:0;border-top:1px solid var(--line);padding-top:10px}#p-home .h-mini{background:transparent;padding:10px 6px!important}#p-home .h-mini b{font-size:23px}#p-home .h-mini small{font-size:12px;color:var(--ink-2)}#p-home .h-mini u{font-size:11px;color:var(--ink-3)}
+#p-home .h-pace{border-inline-start:2px solid var(--brand);border-radius:0 10px 10px 0;background:color-mix(in srgb,var(--brand) 5%,transparent);font-size:12px;padding:9px 12px}
+.home-actions{padding:18px!important}.home-actions .task{background:transparent;border-radius:0;border-bottom:1px solid var(--line);padding:12px 0!important;min-height:64px}.home-actions .task:last-child{border-bottom:0}.home-actions .task>span,.home-actions .task b{font-size:14px}
+.home-more{margin-top:7px}.home-more summary{color:var(--brand);font-size:12px;font-weight:700;min-height:36px;display:flex;align-items:center;cursor:pointer}.home-more summary::after{content:'+';margin-inline-start:auto;font-size:18px}.home-more[open] summary::after{content:'−'}
+.home-monitor{padding:18px!important}.home-monitor .ibtn{width:34px;height:34px;border:1px solid var(--line);background:transparent}.home-monitor .ibtn svg{width:17px;height:17px}.monitor-overview{display:flex;align-items:center;gap:16px;margin:18px 0 15px}.home-monitor .appearance-ring{width:76px;height:76px;flex-shrink:0;background:conic-gradient(var(--brand) var(--appearance-score),var(--surface-2) 0)}.home-monitor .appearance-ring>div{width:66px;height:66px}.home-monitor .appearance-ring b{font-size:26px}.home-monitor .appearance-ring small{font-size:10px}.monitor-period{min-width:0}.monitor-period>b{display:block;font-size:15px}.monitor-period>small{display:block;font-size:11px;color:var(--ink-2);margin:4px 0 7px}.monitor-coverage{font-size:11px;color:var(--ink-2);display:inline-block;padding:4px 8px;border:1px solid var(--line);border-radius:7px}
+.monitor-highlight{display:flex;align-items:flex-start;gap:10px;padding:12px;background:color-mix(in srgb,var(--warn) 6%,var(--surface));border:1px solid color-mix(in srgb,var(--warn) 14%,transparent);border-radius:12px}.monitor-highlight b{font-size:13px;line-height:1.7}.monitor-highlight small{display:block;font-size:11px;color:var(--ink-2);margin-top:3px}.monitor-dot{width:6px;height:6px;border-radius:50%;background:var(--warn);margin-top:8px;flex-shrink:0}.monitor-status{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--ink-2);margin:11px 0 6px}.monitor-status span+span{border-inline-start:1px solid var(--line);padding-inline-start:12px}.home-monitor .appearance-muted{font-size:11px;line-height:1.7}.monitor-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}.monitor-bottom small{font-size:10px;color:var(--ink-3);max-width:70%}.monitor-bottom button{background:none;border:0;color:var(--brand);font:inherit;font-size:12px;font-weight:750;padding:8px 0;min-height:40px;white-space:nowrap}.monitor-actions{display:flex;border-top:1px solid var(--line);padding-top:10px;margin-top:10px;gap:8px}.monitor-actions button{flex:1;min-height:44px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--ink-2);font:inherit;font-size:11px;font-weight:650;padding:7px}.monitor-actions button:active{background:var(--surface-2)}
+#settingsRoot{padding:0 2px 6px}.settings-intro{margin:2px 0 18px}.settings-intro h2{font-size:23px;letter-spacing:-.5px;font-weight:800;margin:0 0 4px}.settings-intro p{font-size:12px;color:var(--ink-2);margin:0;line-height:1.8}.settings-search{display:flex;align-items:center;gap:10px;background:var(--surface-2);border:1px solid var(--ui-edge);border-radius:12px;padding:0 12px;margin-bottom:22px}.settings-search svg{width:18px;height:18px;stroke:var(--ink-3);fill:none;stroke-width:1.7;flex-shrink:0}.settings-search input{width:100%;min-width:0;min-height:44px;background:transparent;border:0;outline:none;color:var(--ink);font:inherit;font-size:13px}.settings-search:focus-within{border-color:var(--brand)}.settings-search input::placeholder{color:var(--ink-3)}
+.settings-category{margin:0 0 20px}.settings-category h4{font-size:10px;color:var(--ink-3);font-weight:750;margin:0 10px 8px}.settings-group{border:1px solid var(--ui-edge);border-radius:16px;overflow:hidden;background:var(--surface-2)}.settings-link{margin:0;border:0;border-radius:0;min-height:72px;padding:13px 14px;background:transparent;gap:12px}.settings-link+.settings-link{border-top:1px solid var(--ui-edge)}.settings-link i{width:36px;height:36px;background:var(--surface);border:1px solid var(--ui-edge);border-radius:10px;color:var(--ink-2)}.settings-link svg,.settings-panel-title svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.settings-link b{font-size:14px;font-weight:700}.settings-link small{font-size:11px;color:var(--ink-3);margin-top:2px;line-height:1.6}.settings-link em{font-size:20px;opacity:.6}.settings-link:active{background:color-mix(in srgb,var(--brand) 5%,transparent)}.settings-panel-title{display:flex;align-items:center;gap:10px;font-size:18px!important}.settings-panel-title i{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;border:1px solid var(--line);color:var(--brand);font-style:normal}.settings-panel>.settings-sub{margin:0 0 20px;font-size:12px;color:var(--ink-3)}
+#settingsBar{gap:12px;padding:4px 0 12px}.settings-panel .group-title{font-size:12px;color:var(--ink-2)}#settingsBar .btn{border:1px solid var(--line);border-radius:10px;font-size:12px;background:transparent}.settings-panel input,.settings-panel textarea,.settings-panel select{border-radius:10px!important;min-height:44px}.settings-panel .btn{min-height:44px;border-radius:11px}
+.hero-switch{display:flex;justify-content:center;gap:3px;width:max-content;margin:0 auto;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}.hero-switch button{font:inherit;font-size:11px;font-weight:700;color:var(--ink-2);padding:7px 18px;min-height:38px;border:0;border-radius:7px;background:transparent;cursor:pointer}.hero-switch button.on{background:var(--surface-2);color:var(--ink)}
+@media(min-width:900px){#p-home .home-grid{grid-template-columns:1.12fr 1fr;gap:20px}}
+@media(prefers-reduced-motion:reduce){.settings-link,.monitor-actions button{transition:none}}
+</style>
 </head>
 <body>
 
@@ -1291,10 +1311,11 @@ function loadHomeMonth(){
     var el = document.getElementById('heroMonth'); if (el) el.innerHTML = monthSlide(HOME_MONTH);
   });
 }
+function heroSelect(i){var s=document.getElementById('heroSlides');if(s && s.children[i])s.children[i].scrollIntoView({behavior:window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest',inline:'center'});}
 function heroDots(){
   var s = document.getElementById('heroSlides'), d = document.getElementById('heroDots'); if (!s || !d) return;
   var i = Math.round(Math.abs(s.scrollLeft) / s.clientWidth);
-  [].forEach.call(d.children, function(x, j){ x.className = j === i ? 'on' : ''; });
+  [].forEach.call(d.children,function(x,j){x.className=j===i?'on':'';x.setAttribute('aria-pressed',j===i?'true':'false');});
   try { sessionStorage.setItem('heroSlide', String(i)); } catch (e) {}
 }
 var HOME_DAYS = null, HOME_YK = null, HOME_LIST = [], HOME_SEL = 13;
@@ -2184,13 +2205,13 @@ function drawHome(b, kpi, isOld){
         '<u>' + (hit ? '🎯 عدّينا الهدف ' + ltr(num(gS)) : 'فاضل ' + ltr(num(left)) + ' على ' + ltr(num(gS))) + '</u>' +
         '<div id="homeCmp" class="h-cmp"></div></div></div>' + paceLine +
       '<div class="h-minis" style="grid-template-columns:repeat(2,1fr)">' +
-        mini('الزيارات', '<span id="homeVisits">' + (visits == null ? '—' : ltr(num(visits))) + '</span> <em>/ ' + ltr(num(gV)) + '</em>', '<span id="homeVisitsBar">' + (visits == null ? vBar(0) : vBar(visits)) + '</span>') +
+        mini('عملاء الفواتير', '<span id="homeVisits">' + (visits == null ? '—' : ltr(num(visits))) + '</span> <em>/ ' + ltr(num(gV)) + '</em>', '<span id="homeVisitsBar">' + (visits == null ? vBar(0) : vBar(visits)) + '</span>') +
         mini('الربح', ltr(num(profitT)), salesT > 0 ? 'هامش ' + ltr(pct(profitT, salesT) + '%') : '') +
         ((isStaleDay && !kpi._yesterday) ? mini('أول فاتورة', '—', 'هتصفّر العداد') : mini('متوسط الفاتورة', ltr(num(avgInv)), ltr(num(tot.inv)) + ' فاتورة')) +
         mini('المرتجع', ltr(num(retVal)) + ' ' + tr('egp'), ltr(num(retCnt)) + ' مرتجع' + (salesT > 0 && retVal > 0 ? ' · ' + ltr(pct(retVal, salesT + retVal) + '%') : '')) +
       '</div></div>' +
       '<div class="card h-hero h-slide" id="heroMonth">' + (HOME_MONTH ? monthSlide(HOME_MONTH) : '<div class="state"><div class="spin"></div></div>') + '</div>' +
-      '</div><div class="h-dots" id="heroDots"><i class="on"></i><i></i></div>';
+      '</div><div class="h-dots hero-switch" id="heroDots" aria-label="فترة الأداء"><button class="on" aria-pressed="true" onclick="heroSelect(0)">النهاردة</button><button aria-pressed="false" onclick="heroSelect(1)">الشهر</button></div>';
 
     /* ── مطلوب النهاردة ── */
     var acts = [];
@@ -2206,22 +2227,13 @@ function drawHome(b, kpi, isOld){
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
     if (dueAgents.length) acts.push(task('warn', 'مستحقات مندوبين', ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0))) + ' ' + tr('egp'), dueAgents.length, "go('admin',0)"));
     var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
-    html += '<div class="card" id="homeAppearance" aria-live="polite">' + (storedPin() && CAMR.list ? appearanceHomeHtml(CAMR.list,CAMR.at===0) : '<h3>شكل الصيدلية ونظامها</h3><div class="state">'+(storedPin() ? 'بجيب آخر تقييم…' : 'افتح التقارير بالرقم السري لعرض التقييم')+'</div>') + '</div>';
-    html += '<div class="card cam-card"><div class="card-head"><div><h3>الكاميرات</h3><p id="homeCamSub">5 كاميرات · لقطة كل 10 دقايق</p></div><button class="ibtn" id="homeSrvBtn" onclick="homeSrvUp()" title="حدّث السيرفر" aria-label="حدّث السيرفر"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button></div>' +
-      '<div class="q-acts">' +
-        '<button class="q-act" id="camSnapBtn" onclick="camSnapNow()"><i><svg viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.5-2h6.4l1.5 2h1.8A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="12.5" r="3.6"/></svg></i><b>صوّر دلوقتي</b><small>5 كاميرات</small></button>' +
-        '<button class="q-act q-main" onclick="camReportsOpen()"><i><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9 4V3h6v1"/><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4"/></svg></i><b>التقارير</b><small id="homeCamRep">افتح آخر تقرير</small></button>' +
-      '</div><div id="homeCamSnap"></div></div>';
-    setTimeout(homeCamLatest, 600);
-    setTimeout(srvBadgeCheck, 1200);
-    html += '<div class="card"><div class="card-head"><div><h3>مطلوب النهاردة</h3></div></div>' +
-      '<div id="homeMore">' + (HOME_MORE || '') + '</div>' + acts.join('') +
+    html += '<div class="card home-actions"><div class="card-head"><div><small class="section-eyebrow">الأولوية ليك</small><h3>محتاج تدخّلك</h3></div></div>' +
+      '<div id="homeMore">' + (HOME_MORE || '') + '</div>' + acts.slice(0,2).join('') + (acts.length>2?'<details class="home-more"><summary>باقي التنبيهات ('+(acts.length-2)+')</summary>'+acts.slice(2).join('')+'</details>':'') +
       (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>') + '</div>';
+    html += '<div class="card home-monitor"><div id="homeAppearance" aria-live="polite">' + (storedPin() && CAMR.list ? appearanceHomeHtml(CAMR.list,CAMR.at===0) : '<div class="appearance-head"><h3>حالة الصيدلية</h3></div><div class="state">'+(storedPin() ? 'بجيب آخر تقييم…' : 'افتح التقارير بالرقم السري لعرض التقييم')+'</div>') + '</div>' +
+      '<div class="monitor-actions"><button onclick="camReportsOpen()">التقارير</button><button onclick="appearanceAnalysisRequest()">طلب تحليل</button><button id="camSnapBtn" onclick="camSnapNow()">صوّر دلوقتي</button></div><div id="homeCamSnap"></div></div>';
+    setTimeout(homeCamLatest,600);
     html += '</div><div class="home-col">';
-
-    /* ── آخر 14 يوم ── */
-    html += '<div class="card"><div class="card-head"><div><h3>آخر 14 يوم</h3><p id="homeChartSub">صافي كل يوم · الأخضر عدّى الهدف</p></div></div>' +
-      '<div id="homeChart">' + (HOME_DAYS ? homeChart(HOME_DAYS, salesT, isStaleDay, gS) : '<div class="state">…</div>') + '</div></div>';
 
     /* ── الفريق النهاردة ── */
     var live = at.live || [], onNow = {};
@@ -2244,6 +2256,10 @@ function drawHome(b, kpi, isOld){
     html += '<div class="card"><div class="card-head"><div><h3>' + (isStaleDay ? 'الفريق أمس' : 'الفريق النهاردة') + '</h3><p>' +
       (liveN ? ltr(liveN) + ' حاضرين دلوقتي' : 'محدش مسجّل حضور دلوقتي') + '</p></div></div>' +
       (teamRows.length ? teamRows.join('') : '<div class="state">لسه محدش باع النهاردة</div>') + '</div>';
+    /* ── آخر 14 يوم ── */
+    html += '<div class="card"><div class="card-head"><div><h3>آخر 14 يوم</h3><p id="homeChartSub">صافي كل يوم · الأخضر عدّى الهدف</p></div></div>' +
+      '<div id="homeChart">' + (HOME_DAYS ? homeChart(HOME_DAYS, salesT, isStaleDay, gS) : '<div class="state">…</div>') + '</div></div>';
+
     html += '</div></div>';
 
     box.innerHTML = html;
@@ -2261,7 +2277,7 @@ var HOME_MORE = '', HOME_MORE_AT = 0;
    وآخر نتيجة محفوظة على الموبايل فبتظهر فورًا وانت فاتح */
 var HOME_SLOTS = (function(){ try { return JSON.parse(localStorage.getItem('homeSlots') || '{}'); } catch (e) { return {}; } })();
 var HOME_ORDER = ['bot', 'calls', 'short', 'docs', 'exp'];
-function homeMoreHtml(){ return HOME_ORDER.map(function(k){ return HOME_SLOTS[k] || ''; }).join(''); }
+function homeMoreHtml(){var rows=HOME_ORDER.map(function(k){return HOME_SLOTS[k] || '';}).filter(Boolean);return rows.slice(0,2).join('')+(rows.length>2?'<details class="home-more"><summary>مهام إضافية ('+(rows.length-2)+')</summary>'+rows.slice(2).join('')+'</details>':'');}
 HOME_MORE = homeMoreHtml();
 function setHomeSlot(k, html){
   HOME_SLOTS[k] = html || '';
@@ -4946,6 +4962,20 @@ function drawAgents(d, box){
 
 
 var SETTINGS={root:null,owner:null,key:'',scroll:{},loaded:{},dirty:{}};
+function settingsIcon(key){
+  var paths={bot:'<path d="M5 4h14v11H9l-4 4z"/><path d="M9 8h6M9 11h4"/>',camera:'<rect x="3" y="6" width="18" height="14" rx="3"/><path d="m8 6 2-3h4l2 3"/><circle cx="12" cy="13" r="3"/>',appearance:'<circle cx="12" cy="12" r="8"/><path d="M12 4v16M12 6a6 6 0 0 1 0 12"/>',ai:'<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>',delivery:'<path d="M3 6h11v12H3zM14 10h4l3 4v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>',security:'<path d="m12 3 8 3v6c0 5-8 9-8 9S4 17 4 12V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',server:'<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 17.5h.01M12 7.5h5M12 17.5h5"/>',advanced:'<path d="m14 5 5 5M3 21l3-7L17 3l4 4L10 18zM6 14l4 4"/>'};
+  return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(paths[key] || paths.advanced)+'</svg>';
+}
+function settingsMenuHtml(){
+  var groups=[['التشغيل اليومي',['bot','camera']],['التفضيلات والحماية',['appearance','security']],['الخدمات والربط',['ai','delivery']],['إدارة النظام',['server','advanced']]];
+  return '<div class="settings-intro"><small class="section-eyebrow">لوحة التحكم</small><h2>إعدادات الصيدلية</h2><p>التشغيل، الربط وحماية اللوحة</p></div><div class="settings-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" placeholder="دوّر على إعداد…" aria-label="البحث في الإعدادات" oninput="settingsFilter(this.value)"></div>'+groups.map(function(g){return '<div class="settings-category"><h4>'+g[0]+'</h4><div class="settings-group">'+g[1].map(function(key){var x=SETTINGS_ITEMS.filter(function(i){return i[0]===key;})[0];return '<button class="settings-link" data-settings-search="'+esc(x[1]+' '+x[2])+'" onclick="settingsSelect(\''+key+'\')"><i>'+settingsIcon(key)+'</i><span><b>'+x[1]+'</b><small>'+x[2]+'</small></span><em aria-hidden="true">‹</em></button>';}).join('')+'</div></div>';}).join('')+'<p id="settingsNoMatch" class="state" hidden>مفيش إعداد بالاسم ده</p>';
+}
+function settingsFilter(value){
+  var q=String(value || '').trim().toLowerCase(),n=0;
+  SETTINGS.root.querySelectorAll('.settings-link').forEach(function(el){el.hidden=el.dataset.settingsSearch.toLowerCase().indexOf(q)<0;if(!el.hidden)n++;});
+  SETTINGS.root.querySelectorAll('.settings-category').forEach(function(el){el.hidden=!Array.from(el.querySelectorAll('.settings-link')).some(function(row){return !row.hidden;});});
+  SETTINGS.root.querySelector('#settingsNoMatch').hidden=!!n;
+}
 var SETTINGS_ITEMS=[['bot','الواتساب والردود','التشغيل والربط والمحادثات','💬'],['camera','الكاميرات','حالة الربط وإعدادات التصوير','📷'],['appearance','المظهر واللغة','الوضع الفاتح والغامق واللغة','◐'],['ai','الذكاء الاصطناعي','الموديل والاستهلاك والميزانية','✦'],['delivery','التوصيل','الرسوم والمناطق والمواعيد','🛵'],['security','الأمان وقفل اللوحة','الرقم السري وصلاحية الدخول','🔒'],['server','السيرفر والتحديثات','حالة التحديث والتنبيهات','↻'],['advanced','أدوات الصيانة','الفحص والنسخ الاحتياطي والتنظيف','⚙']];
 function settingsScroller(){return document.querySelector('#sheet .sheet-in');}
 function settingsRemember(){
@@ -4968,7 +4998,7 @@ function settingsBuild(body){
   while(body.firstChild)root.appendChild(body.firstChild);
   SETTINGS.root=root;SETTINGS.owner=storedPin();
   try{var pos=JSON.parse(sessionStorage.getItem('settingsPosition') || '{}');SETTINGS.key=SETTINGS_ITEMS.some(function(x){return x[0]===pos.key;})?pos.key:'';SETTINGS.scroll=pos.scroll || {};}catch(e){}
-  var nav=document.createElement('div');nav.id='settingsNav';nav.innerHTML='<p class="settings-sub">اختار القسم اللي محتاجه</p>'+SETTINGS_ITEMS.map(function(x){return '<button class="settings-link" onclick="settingsSelect(\''+x[0]+'\')"><i>'+x[3]+'</i><span><b>'+x[1]+'</b><small>'+x[2]+'</small></span><em aria-hidden="true">‹</em></button>';}).join('');root.prepend(nav);
+  var nav=document.createElement('div');nav.id='settingsNav';nav.innerHTML=settingsMenuHtml();root.prepend(nav);
   var bar=document.createElement('div');bar.id='settingsBar';bar.hidden=true;bar.innerHTML='<button class="btn btn-quiet" onclick="settingsSelect(\'\')">رجوع للإعدادات</button><button class="btn btn-quiet" id="settingsRefresh" onclick="settingsRefresh()">تحديث الحالة</button><small id="settingsDraft" role="status"></small>';root.prepend(bar);
   root.addEventListener('input',function(e){var panel=e.target.closest('[data-setting]');if(!panel)return;SETTINGS.dirty[panel.dataset.setting]=true;settingsDraftHint();});
   settingsMount(body);
@@ -5038,7 +5068,7 @@ function openSheet(kind){
     if(SETTINGS.root){settingsMount(b);return;}
     var groupIndex=0, groupKeys=['bot','ai','camera','delivery','security','server','advanced'];
     var grp = function(icon, title, sub, body, open){
-      var key=groupKeys[groupIndex++];return '<section class="settings-panel" data-setting="'+key+'" hidden><h3>'+icon+' '+title+'</h3><p class="settings-sub">'+sub+'</p>'+body+'</section>';
+      var key=groupKeys[groupIndex++];return '<section class="settings-panel" data-setting="'+key+'" hidden><h3 class="settings-panel-title"><i>'+settingsIcon(key)+'</i>'+title+'</h3><p class="settings-sub">'+sub+'</p>'+body+'</section>';
     };
     b.innerHTML =
       '<section class="settings-panel" data-setting="appearance" hidden><h3>المظهر واللغة</h3><div class="set-prefs"><button class="btn btn-quiet" onclick="toggleTheme()">◐ فاتح / غامق</button>' +
@@ -6050,26 +6080,19 @@ function homeCamLatest(force){
   }).finally(function(){clearTimeout(waiting);});
 }
 function appearanceHomeHtml(reports,isCached){
-  var entries=CameraAssessment.assessReports(reports), latest=entries[0];
-  var h='<div class="appearance-head"><h3>شكل الصيدلية ونظامها</h3><button class="ibtn" onclick="homeCamLatest(true)" aria-label="تحديث التقييم">↻</button></div>';
-  if(!latest)return h+'<div class="state">لسه مفيش تقرير بتقييم؛ أول تقرير جديد هيظهر هنا</div>'+appearanceRequestButton();
-  if(isCached)h+='<div class="appearance-muted" role="status">آخر تقييم محفوظ على الجهاز · بنتحقق من الجديد</div>';
+  var entries=CameraAssessment.assessReports(reports),latest=entries[0];
+  var h='<div class="appearance-head"><div><small class="section-eyebrow">المراقبة والمتابعة</small><h3>حالة الصيدلية</h3></div><button class="ibtn" onclick="homeCamLatest(true)" aria-label="تحديث التقييم"><svg viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M6.1 7a7 7 0 0 1 11.8-1L20 9M4 15l2.1 3A7 7 0 0 0 17.9 17"/></svg></button></div>';
+  if(!latest)return h+'<div class="state">لسه مفيش تقرير بتقييم؛ أول تقرير جديد هيظهر هنا</div>';
   var r=latest.report,a=latest.result,stamp=CameraAssessment.timestamp(r.generatedAt);
-  h+='<div class="appearance-period">'+esc(CameraAssessment.title(r))+'</div><div class="appearance-muted">'+esc(r.dayLabel || r.date || '')+' · بتوقيت مصر</div>';
-  if(!a.ready)h+='<div class="state">التقرير ده مفيهوش تقييم مدعوم بصور حديثة كفاية؛ مفيش درجة افتراضية</div>';
-  else{
-    var delta=a.delta===null?'المقارنة الرقمية غير متاحة؛ لازم نفس المناطق وتقرير سابق مرتبط':(a.delta>0?'↑ تحسّن '+a.delta+' نقاط':a.delta<0?'↓ قلّ '+Math.abs(a.delta)+' نقاط':'نفس تقييم التقرير السابق');
-    h+='<div class="appearance-main"><div class="appearance-ring" style="--appearance-score:'+a.score+'%"><div><b>'+a.score+'</b><small>من 100</small></div></div><div><b>تقييم آخر المشاهدات</b><div class="appearance-delta '+(a.delta>0?'up':a.delta<0?'down':'')+'">'+esc(delta)+'</div><div class="appearance-muted">'+(a.coverage<100?'تقييم جزئي للمناطق الواضحة':'كل مناطق التقييم اتراجعت')+'</div></div></div>';
-    h+='<div class="appearance-cover">التغطية: '+a.assessedZones+' من '+a.totalZones+' مناطق · '+a.coverage+'% من وزن التقييم</div>';
-    h+='<details class="appearance-detail"><summary>تفاصيل البنود</summary>'+a.categories.map(function(c){return '<div class="appearance-kpi"><div><span>'+esc(c.label)+'</span><b>'+(c.max?c.points+' / '+c.max:'تعذّر التقييم')+'</b></div>'+(c.max?'<div class="appearance-track"><i style="width:'+(100*c.points/c.max)+'%"></i></div>':'')+(c.max && c.max<c.total?'<div class="appearance-muted">اتقيّم '+c.max+' من وزن البند '+c.total+'</div>':'')+'</div>';}).join('')+'<div class="appearance-muted">الزي خارج الحساب · الخصم 1 / 3 / 5 حسب شدة المشكلة المؤكدة، مرة واحدة للمشكلة في نهاية الفترة</div></details>';
+  h+='<div class="monitor-overview">'+(a.ready?'<div class="appearance-ring" style="--appearance-score:'+a.score+'%"><div><b>'+a.score+'</b><small>من 100</small></div></div>':'')+'<div class="monitor-period"><b>'+esc(CameraAssessment.title(r))+'</b><small>'+esc(r.dayLabel || r.date || '')+'</small>'+(a.ready?'<span class="monitor-coverage">تغطية '+a.coverage+'% · '+a.assessedZones+' من 10 مناطق</span>':'<span class="appearance-muted">الدليل غير كافي؛ مفيش درجة افتراضية</span>')+'</div></div>';
+  if(a.ready){
+    var active=a.issues.filter(function(i){return i.status==='new' || i.status==='ongoing';}).sort(function(a,b){return ({major:3,moderate:2,minor:1}[b.severity] || 0)-({major:3,moderate:2,minor:1}[a.severity] || 0);});
+    if(active.length)h+='<div class="monitor-highlight"><span class="monitor-dot" aria-hidden="true"></span><div><b>'+esc(active[0].title)+'</b><small>'+active.length+' ملاحظات نشطة في المناطق المرصودة</small></div></div>';
+    else h+='<div class="appearance-muted">'+(a.counts.unverified?'فيه ملاحظات تعذّر التحقق منها':'مفيش ملاحظات نشطة مؤكدة في المناطق المرصودة')+'</div>';
+    h+='<div class="monitor-status"><span>'+a.counts.new+' جديدة</span><span>'+a.counts.ongoing+' مستمرة</span><span>'+a.counts.unverified+' غير محسومة</span></div>';
+    h+='<div class="appearance-muted">'+(a.coverage<100?'تقييم جزئي للمناطق الواضحة · ':'')+(a.delta===null?'المقارنة الرقمية غير متاحة':a.delta>0?'↑ تحسّن '+a.delta+' نقاط':a.delta<0?'↓ قلّ '+Math.abs(a.delta)+' نقاط':'نفس تقييم الفترة السابقة')+'</div>';
   }
-  h+='<div class="appearance-time">'+(stamp?'اتجهّز '+esc(stamp):'وقت إعداد التقرير غير مسجل في الملف')+'</div>';
-  if(a.issues.length){
-    h+='<div class="appearance-statuses">'+[['new','جديدة'],['ongoing','مستمرة'],['resolved','اتحلت'],['unverified','تعذّر التحقق']].map(function(x){return '<div><b>'+a.counts[x[0]]+'</b><small>'+x[1]+'</small></div>';}).join('')+'</div>';
-    h+=a.issues.slice(0,3).map(function(i){return appearanceIssueHtml(i);}).join('');
-  }
-  h+='<div class="appearance-actions"><button class="btn btn-primary" onclick="appearanceOpenReport(0)">افتح التقرير والدليل</button></div>'+appearanceRequestButton();
-  if(entries.length>1)h+='<details class="appearance-detail"><summary>آخر التقارير</summary><div class="appearance-reports">'+entries.slice(0,3).map(function(x,i){return '<button class="appearance-report" onclick="appearanceOpenReport('+i+')"><span>'+esc(CameraAssessment.title(x.report))+'<small>'+esc(x.report.dayLabel || x.report.date || '')+'</small></span><b>'+(x.result.ready?x.result.score+' / 100':'بدون تقييم')+'</b></button>';}).join('')+'</div></details>';
+  h+='<div class="monitor-bottom"><small>'+(isCached?'محفوظ · بنتحقق من الجديد':stamp?'إعداد '+esc(stamp):'وقت الإعداد غير مسجل')+'</small><button onclick="appearanceOpenReport(0)">فتح التقرير <span aria-hidden="true">←</span></button></div>';
   return h;
 }
 function appearanceReportDetails(r){

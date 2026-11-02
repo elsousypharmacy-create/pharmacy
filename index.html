@@ -657,7 +657,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=20261102-insight-cards">
+<link rel="stylesheet" href="dashboard-ui.css?v=20261102-staff-cards">
 </head>
 <body>
 
@@ -2397,21 +2397,11 @@ function drawHome(b, kpi, isOld){
     var hm = function(m){ m = Math.max(0, Math.round(m || 0)); return ltr(Math.floor(m / 60) + ':' + ('0' + (m % 60)).slice(-2)) + ' ساعة'; };
     var teamList = (isStaleDay && !kpi._yesterday) ? [] : emps.slice().sort(function(a,b){ return (b.net || b.sales) - (a.net || a.sales); });
     var teamTot = teamList.reduce(function(s, e){ return s + (e.net || e.sales || 0); }, 0) || 1;
-    var teamRows = teamList.map(function(e){
-      var on = null, v = e.net || e.sales || 0;
-      Object.keys(onNow).some(function(k){ if (sameStaff(e.name, onNow[k].name)){ on = onNow[k]; delete onNow[k]; return true; } });
-      return '<div class="h-team"><span class="h-dot' + (on ? ' on' : '') + '"></span><div class="h-tn"><b>' + esc(e.name) + '</b><small>' +
-        ltr(e.invoices) + ' فاتورة · تسجيل ' + ltr(e.reg_pct + '%') + (on ? ' · دخول ' + staffCairoClock(on.checkInTimestamp) + ' بتوقيت مصر · حاضر ' + hm(on.elapsedMinutes) : '') + '</small>' +
-        '<span class="h-share"><i style="width:' + Math.round(v / teamTot * 100) + '%"></i></span></div>' +
-        '<b class="h-tv">' + ltr(num(v)) + '</b></div>';
-    });
-    Object.keys(onNow).forEach(function(k){ var p = onNow[k];
-      teamRows.push('<div class="h-team"><span class="h-dot on"></span><div class="h-tn"><b>' + esc(p.name) + '</b><small>دخول ' + staffCairoClock(p.checkInTimestamp) + ' بتوقيت مصر · حاضر ' + hm(p.elapsedMinutes) + ' · لسه مباعش</small></div><b class="h-tv">—</b></div>');
-    });
+    var teamCards=staffCardsHtml(teamList,live,[],'home',at.ok===false);
     var liveN = live.length;
     html += '<div class="card"><div class="card-head"><div><h3>' + (isStaleDay ? 'الفريق أمس' : 'الفريق اليوم') + '</h3><p>' +
       (liveN ? ltr(liveN) + ' حاضرين دلوقتي' : 'لا يوجد حضور مسجل الآن') + '</p></div></div>' +
-      (teamRows.length ? teamRows.join('') : '<div class="state">لسه محدش باع اليوم</div>') + '<button class="btn btn-quiet" onclick="go(\'team\',0)">سجل الدخول والخروج · بتوقيت مصر ←</button></div>';
+      '<div id="homeTeamCards" data-day="'+homeDay+'">'+teamCards+'</div>' + '<button class="btn btn-quiet" onclick="go(\'team\',0)">سجل الدخول والخروج · بتوقيت مصر ←</button></div>';
     /* ── آخر 14 يوم ── */
     html += '<div class="card"><div class="card-head"><div><h3>آخر 14 يوم</h3><p id="homeChartSub">صافي كل يوم · الأخضر عدّى الهدف</p></div></div>' +
       '<div id="homeChart">' + (HOME_DAYS ? homeChart(HOME_DAYS, salesT, isStaleDay, gS) : '<div class="state">…</div>') + '</div></div>';
@@ -2420,6 +2410,7 @@ function drawHome(b, kpi, isOld){
 
     box.innerHTML = html;
     loadHomeDayExpenses(homeDay);
+    loadHomeTeamCards(homeDay,teamList,live,at.ok===false);
     loadHomeMore();
     loadHomeDays(salesT, isStaleDay, gS, gV);
     loadHomeMonth();
@@ -3389,6 +3380,51 @@ function staffAttendanceRows(rows){
   }).join('');
 }
 
+var STAFF_CARD_OPEN={};
+var HOME_TEAM_REQUESTS={};
+function loadHomeTeamCards(day,employees,live,attendanceError){
+  var box=document.getElementById('homeTeamCards');if(!box)return;
+  var params={day:day},cached=cacheGet('homeTeamAttendance',params),pin=storedPin();
+  function paint(rows,error){if(document.getElementById('homeTeamCards')===box && box.getAttribute('data-day')===day)box.innerHTML=staffCardsHtml(employees,live,rows,'home',error || attendanceError);}
+  if(cached && Array.isArray(cached.rows))paint(cached.rows,false);
+  if(cached && cached._uiAt && Date.now()-cached._uiAt<300000)return;
+  if(!HOME_TEAM_REQUESTS[day])HOME_TEAM_REQUESTS[day]=api('getAttendanceHistory',{from:day,to:day}).then(function(d){
+    if(!d || !d.ok || !Array.isArray(d.rows) || !pin || storedPin()!==pin)throw new Error('attendance unavailable');
+    var data={ok:true,rows:d.rows.filter(function(x){return x.date===day;}),_uiAt:Date.now()};cacheSet('homeTeamAttendance',params,data);return data;
+  }).finally(function(){delete HOME_TEAM_REQUESTS[day];});
+  HOME_TEAM_REQUESTS[day].then(function(d){paint(d.rows,false);}).catch(function(){if(!cached)paint([],true);});
+}
+function staffCardToggle(el){STAFF_CARD_OPEN[el.getAttribute('data-staff-card')]=el.open;}
+function staffCardEntries(employees,live,history){
+  var entries=(employees||[]).map(function(e){return {name:e.name,employee:e,live:null,shifts:[]};});
+  function find(name){
+    var exact=entries.filter(function(e){return staffKey(e.name)===staffKey(name);});
+    if(exact.length===1)return exact[0];
+    var matches=entries.filter(function(e){return sameStaff(e.name,name);});
+    if(matches.length===1)return matches[0];
+    var item={name:name,employee:null,live:null,shifts:[]};entries.push(item);return item;
+  }
+  (live||[]).forEach(function(p){find(p.name).live=p;});
+  (history||[]).forEach(function(r){find(r.name).shifts.push(r);});
+  return entries.sort(function(a,b){return Number(!!b.live)-Number(!!a.live)||(b.employee && b.employee.net || 0)-(a.employee && a.employee.net || 0);});
+}
+function staffCardsHtml(employees,live,history,context,attendanceError){
+  var entries=staffCardEntries(employees,live,history);
+  if(!entries.length)return '<div class="state">لا توجد بيانات فريق للفترة المختارة</div>';
+  function value(n){return n===null || n===undefined || !Number.isFinite(Number(n))?'—':ltr(num(n));}
+  return '<div class="staff-hero-grid">'+entries.map(function(item){
+    var clockMinutes=function(r){var m=String(r.checkIn || '').match(/(\d{1,2}):(\d{2})\s*(AM|PM|ص|م)?/i);return m?(Number(m[1])%12+(/PM|م/i.test(m[3]||'')?12:0))*60+Number(m[2]):0;};
+    var e=item.employee,p=item.live,shifts=item.shifts.slice().sort(function(a,b){return b.date.localeCompare(a.date)||clockMinutes(b)-clockMinutes(a);}),last=shifts[0],key=context+':'+staffKey(item.name),status=attendanceError?'الحضور غير متاح':p?'موجود الآن':last?(last.checkOut==='مفتوح'?'بصمة مفتوحة':'سجّل خروج'):'لا توجد بصمة حالية';
+    var checkIn=p?staffCairoClock(p.checkInTimestamp):last?staffClockLabel(last.checkIn):'—',checkOut=p?'لم يسجل الخروج':last?(last.checkOut==='مفتوح'?'لم يسجل الخروج':staffClockLabel(last.checkOut)):'—';
+    if(attendanceError){checkIn='—';checkOut='—';}
+    return '<details class="staff-hero-card" data-staff-card="'+esc(key)+'"'+(STAFF_CARD_OPEN[key]?' open':'')+' ontoggle="staffCardToggle(this)"><summary><span class="staff-hero-heading"><b>'+esc(item.name)+'</b><span class="badge" style="--tone:var(--'+(p&&!attendanceError?'ok':'ink-2')+')">'+status+'</span></span><span class="staff-hero-total"><small>صافي المبيعات</small><b>'+value(e && e.net)+' <small>جنيه</small></b></span><span class="staff-hero-minis"><span><small>الدخول · مصر</small><b>'+checkIn+'</b></span><span><small>الخروج · مصر</small><b>'+checkOut+'</b></span><span><small>الفواتير</small><b>'+value(e && e.invoices)+'</b></span><span><small>متوسط الفاتورة</small><b>'+value(e && e.avg_inv)+'</b></span></span><span class="staff-card-more">تفاصيل الأداء والحضور <span aria-hidden="true">⌄</span></span></summary><div class="staff-card-details">'+
+      (attendanceError?'<p class="camera-meta">تعذر تحديث الحضور؛ الحالة غير مؤكدة.</p>':'')+
+      (e?row('ربح البيع','قبل المصروفات',value(e.profit))+row('تسجيل العملاء','',value(e.reg_pct)+'%')+row('تقييم إرشادي',e.invoices<20?'عينة محدودة؛ الدرجة غير معروضة':'لا يكفي وحده للحكم على الموظف',e.invoices<20?'—':value(e.care_score)):'<p class="camera-meta">لا توجد مبيعات متاحة لهذا الموظف في الفترة.</p>')+
+      (last?'<p class="camera-meta">آخر بصمة بالفترة: '+esc(last.date)+' · بتوقيت مصر</p>':'')+staffAttendanceRows(shifts)+
+      (context==='home'?'<button class="btn btn-quiet" onclick="go(\'team\',0)">كل تفاصيل الفريق ←</button>':'')+'</div></details>';
+  }).join('')+'</div>';
+}
+
 function drawStaffHub(isOld){
   var box = document.getElementById('p-hr');
   var list = (HR.kpi.employees || []);
@@ -3407,7 +3443,7 @@ function drawStaffHub(isOld){
     RANGE.perf === 'custom' || RANGE.perf === 'lastMonth');
 
   var teamSales = list.reduce(function(s, e){ return s + (e.net || e.sales || 0); }, 0);
-  html+=card('دخول وخروج الفريق','بتوقيت مصر',HR.live.ok===false?'<div class="state err">'+esc(HR.live.error || 'تعذر تحميل الحضور')+'</div>':staffAttendanceRows(HR.hist.rows || []));
+
   html += vitals(tr('staffToday'), HR.kpi.label || '', [
     RANGE.perf === 'today'
       ? { value: num(live.length), label: tr('onShiftNow'), tone: live.length ? 'ok' : 'warn', note: num(list.length), sub: 'باعوا' }
@@ -3418,36 +3454,10 @@ function drawStaffHub(isOld){
     { value: num(totNew), label: tr('newCust'), tone: 'brand' }
   ]);
 
-  /* صف لكل موظف */
-  /* مرتّبين بالمبيعات — الأعلى فوق */
-  var sorted = list.slice().sort(function(a,b){ return b.sales - a.sales; });
-  html += sorted.length ? '<div class="staff-grid">' + sorted.map(function(e){
-    var i = list.indexOf(e);
-    var tone = e.care_score >= 70 ? 'ok' : e.care_score >= 50 ? 'warn' : 'bad';
-    var lv = liveFor(e.name);
-    return '<div class="staff" style="--tone:var(--' + tone + ')" onclick="staffSheet(' + i + ')">' +
-      '<div class="staff-body">' +
-        '<div class="staff-top">' + (lv ? '<span class="staff-dot"></span>' : '') +
-          '<b>' + esc(e.name) + '</b>' +
-          (lv ? '<span class="staff-shift">' + LRI + dur(lv.elapsedMinutes) + PDI + '</span>' : '') +
-        '</div>' +
-        '<div class="staff-meta">' +
-          '<span>' + ltr(e.invoices) + ' ' + tr('invoices') + '</span>' +
-          '<span>' + ltr(num(e.avg_inv)) + ' ' + tr('avgTicket') + '</span>' +
-          '<span>' + ltr(e.reg_pct + '%') + ' ' + tr('pReg') + '</span>' +
-          '<span>' + ltr(e.new_c) + ' ' + tr('pNew') + '</span>' +
-        '</div>' +
-      '</div>' +
-      '<div class="staff-right">' +
-        '<span class="staff-sales">' + LRI + num(e.net || e.sales) + PDI +
-          '<u>' + esc(tr('sales')) + '</u></span>' +
-        '<span class="staff-score" style="--tone:var(--' + tone + ')">' +
-          (e.invoices<20?'عينة محدودة':LRI + e.care_score + PDI) + '</span>' +
-      '</div></div>';
-  }).join('') + '</div>' : '<div class="card">' + emptyState() + '</div>';
+  html += staffCardsHtml(list,live,HR.hist.rows || [],'team',HR.live.ok===false);
 
   /* موجودين دلوقتي — بس لو فيه حد مش متطابق مع القائمة فوق */
-  html += '<div class="state" style="text-align:start;font-size:12px">تقييم إرشادي؛ لا يكفي وحده للحكم على الموظف. تُحجب الدرجة عند أقل من 20 فاتورة. الدرجة من 100 = عملاء جداد 35% + تسجيل 30% + تكرار 20% + مرتجعات قليلة 15%، مقارنة بباقي الفريق. أخضر 70+، برتقالي 50+، أحمر أقل.</div>';
+
   if (HR.live.ok === false) html += card(tr('onShiftNow'), null,
     '<div class="state err">' + esc(HR.live.error) + '</div>');
 

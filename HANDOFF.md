@@ -202,3 +202,11 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 
 ## Remove redundant hero tabs — 2026-11-02
 - Ahmed requested removing the top «اليوم / الفترات السابقة» button row because the cards already identify their periods. Removed only that redundant row; card headings, dates, swipe navigation, period tabs and custom-range menu remain. heroDots still remembers swipe position without the removed controls. Frontend only; JavaScript syntax checked.
+
+
+## Staff hero cards — 2026-11-02
+- Ahmed approved employee cards styled like today's hero. Home and Team now share native expandable cards: name, evidence-backed attendance status, exact net sales, Cairo check-in/out, invoice count and average. Present staff sort first, then net sales. Single column on mobile, two on the wide Team page. Open state survives async redraws. Expanded details include profit/registration, the existing indicative assessment with the under-20-invoice threshold, and actual attendance rows.
+- Union POS employees, live attendance and in-period history so staff with attendance but no sales remain visible. Unknown sales show a dash; legitimate net zero does not fall back to gross sales. Ambiguous first-name matches are not assigned to a colleague. No inferred departure/absence from missing live data. API errors show unknown attendance.
+- Home reads the existing getAttendanceHistory endpoint for its exact displayed date, shares concurrent requests and reuses owner-only cached results for five minutes. Late responses require unchanged owner access and the same active DOM/date. Cached rows and existing live snapshot remain separate inputs; no attendance/financial records or server endpoints change.
+- Removed duplicate attendance summary above Team cards; each employee's record is inside their card. Kept existing full-team access and assessment limitations. Existing Cairo timezone rules and neutral dark/blue styling remain.
+- Checks: tools/test-staff-cards.js covers net zero, unknowns, attendance-only people, aliases/ambiguous names, latest daily shift, open state and exact-day Home history; Cairo, camera and Home-expense checks plus full dashboard JavaScript syntax passed. Native iPhone/private live cards not visually verified. Frontend only; no server update required.

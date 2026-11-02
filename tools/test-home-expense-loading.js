@@ -44,6 +44,6 @@ function setup(){
  f.reply({...sample,sourceError:'unavailable'});await f.tick();assert.equal(c.homeReadExpense('2026-11').data.days.length,2);
  storage.clear();f=setup();c=f.c;const denied=c.homeExpenseMonth('2026-11');await f.tick();f.logout();f.reply(sample);
  await assert.rejects(denied);assert.equal(storage.size,0,'late response after sign-out is never cached');
- assert(html.indexOf('loadHomeDayExpenses(homeDay);\n    loadHomeMore();')>0,'expense fetch starts before optional home widgets');
+ assert(html.indexOf('loadHomeDayExpenses(homeDay);')<html.indexOf('loadHomeMore();'),'expense fetch starts before optional home widgets');
  console.log('Home expense loading: lean endpoint, sharing, exact amounts, persistence, timeout, retry, late response and sign-out checks passed');
 })().catch(e=>{console.error(e);process.exitCode=1});

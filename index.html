@@ -657,7 +657,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=20261102-charcoal">
+<link rel="stylesheet" href="dashboard-ui.css?v=20261102-blue-accent">
 </head>
 <body>
 
@@ -1346,12 +1346,19 @@ function homeExpenseTotals(pl,from,to){
   return valid?{itemized:total-pending,pending:pending,total:total}:null;
 }
 function homePeriodExpenses(pl,from,to){var totals=homeExpenseTotals(pl,from,to);return totals?totals.itemized:null;}
+var REPORT_STATUS_OPEN={};
+function reportStatusToggle(el){REPORT_STATUS_OPEN[el.getAttribute('data-status-key')]=el.open;}
+function reportDataStatus(content,attention,key,cached){
+  if(!content)return '';
+  key=key||'report';
+  return '<details class="report-data-status" data-status-key="'+esc(key)+'"'+(REPORT_STATUS_OPEN[key]?' open':'')+' ontoggle="reportStatusToggle(this)"><summary><span class="report-status-dot'+(attention?' attention':'')+'" aria-hidden="true"></span>حالة البيانات'+(cached?' <small>· محفوظة</small>':'')+'<span class="report-status-arrow" aria-hidden="true">⌄</span></summary><div class="report-status-content">'+content+'</div></details>';
+}
 function homeExpenseHtml(pl,from,to,loading){
   var totals=homeExpenseTotals(pl,from,to),amount=totals?totals.itemized:null,pending=totals?totals.pending:0,old=!!(pl && pl._uiAt && Date.now()-pl._uiAt>=300000),warning=!!(pl && (pl.exp_stale || pl.expense_source_error));
-  return '<div class="h-expense"><div><small>المصروفات المفصّلة</small><span>تشغيل ورواتب · دون شراء المخزون'+(old?' · آخر نتيجة محفوظة':'')+'</span></div><b'+(warning?' class="expense-stale"':'')+'>'+(amount===null?(loading?'جارٍ التحميل…':'غير متاح'):ltr(num(amount))+' <small>جنيه</small>')+'</b></div>'+
-    (pending>0?'<p class="h-expense-note expense-stale">فرق غير مفصّل من إجمالي النظام: '+ltr(num(pending))+' جنيه. منفصل عن المبلغ أعلاه حتى المطابقة، وليس مصروفًا إضافيًا مؤكدًا.</p>':'')+
-    (warning?'<p class="h-expense-note">مصدر المصروفات متأخر أو غير متاح؛ آخر تسجيل '+esc(pl.exp_last_entry||'غير معروف')+'.</p>':'')+
-    (pl && pl._refreshFailed?'<p class="h-expense-note">تعذر تحديث المصروفات؛ المعروض آخر نتيجة محفوظة.</p>':old?'<p class="h-expense-note">نعرض آخر نتيجة محفوظة أثناء تحديث البيانات.</p>':'');
+  var notes=(pending>0?'<p>فرق غير مفصّل من إجمالي النظام: '+ltr(num(pending))+' جنيه. منفصل عن المبلغ أعلاه حتى المطابقة، وليس مصروفًا إضافيًا مؤكدًا.</p>':'')+
+    (warning?'<p>مصدر المصروفات متأخر أو غير متاح؛ آخر تسجيل '+esc(pl.exp_last_entry||'غير معروف')+'.</p>':'')+
+    (pl && pl._refreshFailed?'<p>تعذر تحديث المصروفات؛ المعروض آخر نتيجة محفوظة.</p>':old?'<p>نعرض آخر نتيجة محفوظة أثناء تحديث البيانات.</p>':'');
+  return '<div class="h-expense"><div><small>المصروفات المفصّلة</small><span>تشغيل ورواتب · دون شراء المخزون</span></div><b>'+(amount===null?(loading?'جارٍ التحميل…':'غير متاح'):ltr(num(amount))+' <small>جنيه</small>')+'</b></div>'+reportDataStatus(notes,pending>0||warning||!!(pl&&pl._refreshFailed),'expenses-'+from+'-'+to,old);
 }
 function loadHomeDayExpenses(day){
   var box=document.getElementById('homeDayExpenses');if(!box)return;
@@ -1361,7 +1368,7 @@ function loadHomeDayExpenses(day){
   homeProfitLoss(day.slice(0,7)).then(function(pl){if(active())box.innerHTML=homeExpenseHtml(pl,day,day,false);}).catch(function(){
     if(!active())return;
     if(!cached)box.innerHTML=homeExpenseHtml(null,day,day,false);
-    box.insertAdjacentHTML('beforeend','<p class="h-expense-note">'+(cached?'التحديث ماكملش؛ آخر بيانات محمّلة. ':'')+'<button onclick="loadHomeDayExpenses(this.closest(\'div[data-day]\').getAttribute(\'data-day\'))">إعادة المحاولة</button></p>');
+    box.insertAdjacentHTML('beforeend',reportDataStatus('<p>'+(cached?'تعذر التحديث؛ المعروض آخر نتيجة محفوظة.':'تعذر تحميل المصروفات.')+'</p><button onclick="loadHomeDayExpenses(this.closest(\'div[data-day]\').getAttribute(\'data-day\'))">إعادة المحاولة</button>',true,'expenses-retry-'+day,!!cached));
   });
 }
 function monthSlide(M){
@@ -1393,7 +1400,7 @@ function loadHomeMonth(){
     HOME_PERIOD_CACHE[key]={at:Date.now(),data:data};cacheSet('homePeriod.v2',{key:key},data);
     if(R.key==='month'){HOME_MONTH=data;try{localStorage.setItem('homeMonth',JSON.stringify(data));}catch(e){}}
     if(active()){var box=document.getElementById('heroMonth');if(box)box.innerHTML=monthSlide(data);}
-  }).catch(function(e){logErr(e);if(active() && old){var kept=document.getElementById('heroMonth');if(kept)kept.insertAdjacentHTML('beforeend','<p class="h-expense-note">تعذر التحديث؛ المعروض آخر نتيجة محفوظة.</p>');}if(active() && !old){var box=document.getElementById('heroMonth');if(box)box.innerHTML='<div class="period-card">'+homePeriodTabs()+'<div class="state err">ملخص الفترة ماتحمّلش</div><button class="btn btn-quiet" onclick="loadHomeMonth()">إعادة المحاولة</button></div>';}}).finally(function(){delete HOME_PERIOD_REQUESTS[key];});
+  }).catch(function(e){logErr(e);if(active() && old){var kept=document.getElementById('heroMonth');if(kept)kept.insertAdjacentHTML('beforeend',reportDataStatus('<p>تعذر التحديث؛ المعروض آخر نتيجة محفوظة.</p>',true,'period-refresh-'+R.from+'-'+R.to,true));}if(active() && !old){var box=document.getElementById('heroMonth');if(box)box.innerHTML='<div class="period-card">'+homePeriodTabs()+'<div class="state err">ملخص الفترة ماتحمّلش</div><button class="btn btn-quiet" onclick="loadHomeMonth()">إعادة المحاولة</button></div>';}}).finally(function(){delete HOME_PERIOD_REQUESTS[key];});
 }
 function heroSelect(i){var s=document.getElementById('heroSlides');if(s && s.children[i])s.children[i].scrollIntoView({behavior:window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest',inline:'center'});}
 function heroDots(){
@@ -6690,6 +6697,7 @@ try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 </script>
 </body>
 </html>
+
 
 
 

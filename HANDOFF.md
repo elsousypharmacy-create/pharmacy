@@ -155,3 +155,10 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 ## Neutral dark appearance — 2026-11-02
 - Ahmed explicitly rejected the blue-tinted dark background and requested a luxurious, refined dark appearance. Dark theme uses neutral black/charcoal/graphite surfaces, warm off-white text, subdued borders and restrained champagne accents. Keep blue out of large dark surfaces; retain semantic status colors and the pharmacy logo.
 - Light-theme tokens are unchanged. No financial logic, staff mapping, periods, camera/report settings or records changed. Stylesheet version bumped to refresh the appearance immediately. Validate contrast and loaded colors; this is a presentation-only change.
+
+
+
+## Blue text accents and collapsible report notes — 2026-11-02
+- Ahmed prefers the neutral charcoal background with blue text/interaction accents rather than champagne/brown. Keep dark surfaces neutral; light-theme tokens and semantic red/amber/green statuses remain unchanged.
+- Home daily/month expense explanatory notes (saved data, refresh state, unitemized differences, delayed source) are collapsed by default under native `حالة البيانات` details. Saved-data label and a small status dot stay visible; substantive unknown/net-under-review values remain visible. The explanatory text is available on tap and uses neutral secondary text. Open state survives Home redraws, separately per covered date range. Retry remains inside its status disclosure.
+- No expense amount, date selection, cache policy, camera assessment or backend changes. Updated stylesheet URL busts the old accent cache.

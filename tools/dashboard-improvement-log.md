@@ -46,3 +46,12 @@ Authorized by Ahmed after the full dashboard review. Weekly review task enabled 
 - Clear sign-in card after an origin lock/cancel rather than a generic loading failure. Network failure retains its own retry state. Owner authentication is not bypassed.
 - Only presentation and UI state are changed. Original financial calculations, camera schedules, delivery system and operational records remain untouched.
 - Validation: dashboard JS syntax and existing 20 dashboard/15 camera checks passed. Authenticated private data views and physical iPhone behavior require separate live verification. Cloudflare deployment remains blocked until an authenticated service connection is available.
+
+
+## Cloudflare deployment verified — 2026-11-02
+- Cloudflare plugin connected to the pharmacy account; native API deployment is now available (read skill before API use). Worker `wispy-cloud-00a7` was deployed from the current repository's `worker/worker.js`, blob `26608f781e60ab9e048de39aa1ed898a8cc5d6e0`.
+- Active version `a1bef510-721f-4034-b884-73994a8b270f` serves 100% of traffic; deployment `6efcc92f-e90f-4543-b68e-80f2979c8285`. Retained compatibility date/flags and other existing settings; previous version `02625f78-80d4-495c-95d1-53492d11fccf` is available for rollback.
+- Fixed accidental leading whitespace in the existing D1 binding name to exactly `DB`, retaining the same database. Read-only schema verification confirmed existing `c(k,body,at,ref)` cache table; no rows were read or changed by the verification.
+- Enabled `observability.redact_query_string` to avoid persisting credential-bearing query strings in invocation URLs.
+- Live browser checks: `?action=ping` returned `ok:true, fast:true, db:true`; `?action=getProfitLoss` without a PIN returned `ok:false, lockError:true`, with no financial data. Executor HTTP checks were blocked; browser checks are the live evidence. Existing 20 dashboard/Worker checks passed.
+- Cloudflare deployment is no longer pending. Authenticated live numerical parity/cache performance remains unverified without an owner login. Frontend `FAST_READ` remains bypassed pending that verification; do not claim dashboard acceleration is re-enabled. Camera/video/delivery behavior was not changed.

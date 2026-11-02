@@ -11,7 +11,7 @@ Read this first when you start a new session on this repo. It has **no secrets**
 - **Server:** Google Apps Script web app. Source in `server/src/NN_*.js` (load order = `server/files.json`); `server/Code.js` is GENERATED. After editing run `node tools/build-server.js` then `node tools/build-server.js --check`. Never edit `Code.js` by hand.
 - **Dashboard:** `index.html` (vanilla JS, GitHub Pages: https://elsousypharmacy-create.github.io/pharmacy/index.html). Changes show ~2 min after push. Admin actions need the PIN (`ADMIN_ACTIONS` in both `index.html` and `server/src/05_routing.js`).
 - **Server updates:** the dashboard button «🔄 حدّث السيرفر» (or the auto-update trigger, every 15 min, which waits 10 min for the code to settle) pulls `server/Code.js` from GitHub and installs it. **Google caps a project at 200 versions** and every update uses one; the dashboard shows N/200 and warns at 170. There is no API to delete versions: delete old ones by hand at script.google.com → Project history (keep the newest ~20 and the deployed one).
-- **Cloudflare Worker** `worker/worker.js`: cache layer in front of Apps Script (read endpoints, stale up to 6 h). It is pasted by hand by Ahmed; the connector can't edit it.
+- **Cloudflare Worker** `worker/worker.js`: cache layer in front of Apps Script (read endpoints, stale up to 6 h). It can be deployed through the connected Cloudflare plugin; see the latest verified deployment checkpoint below.
 - **Data sources (Google Drive):** POS export files in the sales folder (`sales<date>.txt`, `Returnsales<date>.txt`, `debits<date>.txt`), the POS daily-stats sheet, the POS closing PDFs (daily and per shift), camera frames.
 
 ## What exists (built recently)
@@ -133,3 +133,12 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 - Desktop card layout uses a two-column grid instead of CSS newspaper columns; mobile keeps a single column. Controls target at least 44px and task controls support Enter/Space. Keep the new stylesheet loaded after legacy styles.
 - Cloudflare integration still was not exposed to this conversation; browser remained on the Cloudflare sign-in page at preparation time. Do not claim its Worker is updated without a verified deployment. Origin Apps Script protection was observed after Ahmed updated the server; protected numeric consistency still requires authenticated QA.
 - No server build/deployment is needed for this visual change. Existing dashboard/appearance checks remain relevant; live private Home and native iPhone touch/sharing have not been verified by these checks.
+
+
+## Cloudflare deployment verified — 2026-11-02
+- Cloudflare plugin connected to the pharmacy account; native API deployment is now available (read skill before API use). Worker `wispy-cloud-00a7` was deployed from the current repository's `worker/worker.js`, blob `26608f781e60ab9e048de39aa1ed898a8cc5d6e0`.
+- Active version `a1bef510-721f-4034-b884-73994a8b270f` serves 100% of traffic; deployment `6efcc92f-e90f-4543-b68e-80f2979c8285`. Retained compatibility date/flags and other existing settings; previous version `02625f78-80d4-495c-95d1-53492d11fccf` is available for rollback.
+- Fixed accidental leading whitespace in the existing D1 binding name to exactly `DB`, retaining the same database. Read-only schema verification confirmed existing `c(k,body,at,ref)` cache table; no rows were read or changed by the verification.
+- Enabled `observability.redact_query_string` to avoid persisting credential-bearing query strings in invocation URLs.
+- Live browser checks: `?action=ping` returned `ok:true, fast:true, db:true`; `?action=getProfitLoss` without a PIN returned `ok:false, lockError:true`, with no financial data. Executor HTTP checks were blocked; browser checks are the live evidence. Existing 20 dashboard/Worker checks passed.
+- Cloudflare deployment is no longer pending. Authenticated live numerical parity/cache performance remains unverified without an owner login. Frontend `FAST_READ` remains bypassed pending that verification; do not claim dashboard acceleration is re-enabled. Camera/video/delivery behavior was not changed.

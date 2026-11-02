@@ -31,6 +31,7 @@ const html=read('index.html'),inline=[...html.matchAll(/<script\b[^>]*>([\s\S]*?
 test('dashboard and staff pages have valid JS syntax',()=>{new vm.Script(inline);for(const file of ['calls.html','expenses.html'])for(const m of read(file).matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))new vm.Script(m[1]);});
 const slice=(start,end)=>inline.slice(inline.indexOf('function '+start+'('),inline.indexOf('function '+end+'('));
 const slot={innerHTML:''},front=vm.createContext({Date:FixedDate,cairoNow:()=>({date:'2026-11-02'}),isoAdd:(day,n)=>new RealDate(+new RealDate(day+'T12:00:00Z')+n*86400000).toISOString().slice(0,10),document:{getElementById:()=>slot},tr:x=>x,esc:x=>x,ltr:x=>x,num:x=>String(x),row:(a,b,c)=>a+':'+c+';',card:(a,b,c)=>a+' '+b+' '+c});
+front.homeProfitLoss=month=>front.api('getProfitLoss',{month});
 vm.runInContext(slice('pRangeForSales','pgPL'),front);
 test('period bounds support year rollover and yesterday',()=>{assert.equal(front.clientDateRange('lastMonth').from,'2026-10-01');assert.equal(front.clientDateRange('yesterday').to,'2026-11-01');});
 (async()=>{

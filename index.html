@@ -657,7 +657,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=20261102-1">
+<link rel="stylesheet" href="dashboard-ui.css?v=20261102-2">
 </head>
 <body>
 
@@ -1274,57 +1274,89 @@ var HOME_MONTH = (function(){
     return h && h.r && h.r.to === y && h.m && h.m.to === y ? h : null; } catch (e) { return null; }
 })();
 /* فترة السلايد: لحد امبارح دايمًا (اليوم لسه مكملش فبيبوّظ المتوسط) */
-var HOME_MR = { key: 'month' };
+var HOME_MR = (function(){try{var v=JSON.parse(sessionStorage.getItem('homePeriodChoice')||'null');return v&&['month','last','yesterday','custom'].indexOf(v.key)>=0?v:{key:'month'};}catch(e){return {key:'month'};}})();
 var HOME_PERIOD_CACHE = {}, HOME_PERIOD_REQUESTS = {};
 function homeMonthName(month){
   return new Date(month+'-01T12:00:00Z').toLocaleDateString('ar-EG',{month:'long',timeZone:'UTC'});
 }
 function homeRange(){
   var today=cairoNow().date,y=isoAdd(today,-1),first=today.slice(0,8)+'01',key=HOME_MR.key;
+  if(key==='custom' && validHomePeriod(HOME_MR.from,HOME_MR.to))return {key:'custom',from:HOME_MR.from,to:HOME_MR.to,label:'فترة مخصصة',month:HOME_MR.from.slice(0,7)};
   if(key==='yesterday')return {key:key,from:y,to:y,label:'أمس',month:y.slice(0,7)};
   if(key==='last'){var end=isoAdd(first,-1);return {key:key,from:end.slice(0,8)+'01',to:end,label:homeMonthName(end.slice(0,7)),month:end.slice(0,7)};}
   return {key:'month',from:first,to:y,label:homeMonthName(today.slice(0,7)),month:today.slice(0,7),empty:y<first};
 }
 function homePeriodTabs(){
   var today=cairoNow().date,previous=isoAdd(today.slice(0,8)+'01',-1);
-  return '<div class="period-tabs" aria-label="فترة الملخص">'+[['yesterday','أمس'],['month',homeMonthName(today.slice(0,7))],['last',homeMonthName(previous.slice(0,7))]].map(function(q){return '<button class="'+(HOME_MR.key===q[0]?'on':'')+'" aria-pressed="'+(HOME_MR.key===q[0]?'true':'false')+'" onclick="setHomeRange(\''+q[0]+'\')">'+q[1]+'</button>';}).join('')+'</div>';
+  return '<div class="home-period-controls"><div class="period-tabs" aria-label="فترة الملخص">'+[['yesterday','أمس'],['month',homeMonthName(today.slice(0,7))],['last',homeMonthName(previous.slice(0,7))]].map(function(q){return '<button class="'+(HOME_MR.key===q[0]?'on':'')+'" aria-pressed="'+(HOME_MR.key===q[0]?'true':'false')+'" onclick="setHomeRange(\''+q[0]+'\')">'+q[1]+'</button>';}).join('')+'</div><button class="ctl-more'+(HOME_MR.key==='custom'?' dot':'')+'" aria-label="تحديد مدة التقرير" title="تحديد مدة التقرير" onclick="homePeriodMenu()">⋯</button></div>';
 }
 function setHomeRange(key){
   if(['yesterday','month','last'].indexOf(key)<0)return;
-  HOME_MR={key:key};loadHomeMonth.at=0;loadHomeMonth();
+  HOME_MR={key:key};try{sessionStorage.setItem('homePeriodChoice',JSON.stringify(HOME_MR));}catch(e){}loadHomeMonth();
+}
+function validHomePeriod(from,to){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(from||'')||!/^\d{4}-\d{2}-\d{2}$/.test(to||''))return false;
+  var a=new Date(from+'T12:00:00Z'),b=new Date(to+'T12:00:00Z');
+  return Number.isFinite(+a)&&Number.isFinite(+b)&&a.toISOString().slice(0,10)===from&&b.toISOString().slice(0,10)===to&&from<=to&&to<=cairoNow().date&&(b-a)/86400000<366;
+}
+function homePeriodMenu(){
+  var r=homeRange(),today=cairoNow().date;
+  openMenu('تحديد مدة التقرير','<label for="homePeriodFrom">من</label><input id="homePeriodFrom" type="date" max="'+today+'" value="'+esc(r.from)+'"><label for="homePeriodTo">إلى</label><input id="homePeriodTo" type="date" max="'+today+'" value="'+esc(r.to)+'"><p class="camera-meta">اختر أي فترة حتى اليوم، بحد أقصى سنة. المصروفات والمبيعات تتبع نفس المدة.</p><p id="homePeriodError" role="alert"></p><button class="btn btn-primary" onclick="applyHomeCustomPeriod()">تطبيق الفترة</button>');
+}
+function applyHomeCustomPeriod(){
+  var from=document.getElementById('homePeriodFrom').value,to=document.getElementById('homePeriodTo').value;
+  if(!validHomePeriod(from,to)){document.getElementById('homePeriodError').textContent='اختر تاريخين صحيحين؛ البداية قبل النهاية، ولا تتجاوز الفترة سنة أو تاريخ اليوم.';return;}
+  HOME_MR={key:'custom',from:from,to:to};try{sessionStorage.setItem('homePeriodChoice',JSON.stringify(HOME_MR));}catch(e){}closeSheet();loadHomeMonth();
+}
+function homeRangeMonths(r){
+  var months=[],d=new Date(r.from.slice(0,7)+'-01T12:00:00Z'),end=r.to.slice(0,7);
+  while(d.toISOString().slice(0,7)<=end&&months.length<13){months.push(d.toISOString().slice(0,7));d.setUTCMonth(d.getUTCMonth()+1);}return months;
+}
+function homeRangePL(r){
+  return Promise.all(homeRangeMonths(r).map(homeProfitLoss)).then(function(parts){
+    if(parts.length===1)return parts[0];
+    return {ok:true,month:r.from.slice(0,7),financial_schema:parts.every(function(p){return p.financial_schema==='finance-review-v1';})?'finance-review-v1':'legacy',days:[].concat.apply([],parts.map(function(p){return p.days;})),exp_last_entry:parts.map(function(p){return p.exp_last_entry||'';}).sort()[0],exp_stale_days:Math.max.apply(null,parts.map(function(p){return p.exp_stale_days==null?0:p.exp_stale_days;})),exp_stale:parts.some(function(p){return p.exp_stale;}),expense_source_error:parts.some(function(p){return p.expense_source_error;}),pending_expenses:parts.reduce(function(t,p){return t+(p.pending_expenses||0);},0),salary_conflict:parts.some(function(p){return p.salary_conflict;}),_uiAt:Math.min.apply(null,parts.map(function(p){return p._uiAt||0;}))};
+  });
 }
 function homeGoalRing(value,target){
   var pct0=target>0?Math.round(value/target*100):0,c=2*Math.PI*46,fill=target>0?Math.max(0,Math.min(1,value/target)):0;
   return '<svg class="h-ring" viewBox="0 0 110 110" aria-hidden="true"><circle cx="55" cy="55" r="46" fill="none" stroke="var(--surface-2)" stroke-width="11"/><circle cx="55" cy="55" r="46" fill="none" stroke="var(--'+(target>0 && value>=target?'ok':'brand')+')" stroke-width="11" stroke-linecap="round" stroke-dasharray="'+(c*fill).toFixed(1)+' '+c.toFixed(1)+'" transform="rotate(-90 55 55)"/><text x="55" y="61" text-anchor="middle" font-size="22" font-weight="800" fill="var(--ink)" font-family="Cairo,system-ui">'+pct0+'%</text></svg>';
 }
 var HOME_PL_CACHE={},HOME_PL_REQUESTS={};
+function homeReadPL(month){
+  if(!storedPin())return null;
+  if(HOME_PL_CACHE[month])return HOME_PL_CACHE[month];
+  try{var saved=JSON.parse(localStorage.getItem(cacheKey('homePL.v2',{month:month}))||'null');if(saved && Date.now()-saved.t<86400000 && saved.d && saved.d.ok && saved.d.month===month && Array.isArray(saved.d.days)){saved.d._uiAt=saved.t;return HOME_PL_CACHE[month]={at:saved.t,data:saved.d};}}catch(e){}
+  return null;
+}
 function homeProfitLoss(month){
-  var hit=HOME_PL_CACHE[month];
+  var hit=homeReadPL(month);
   if(hit && Date.now()-hit.at<300000)return Promise.resolve(hit.data);
   if(HOME_PL_REQUESTS[month])return HOME_PL_REQUESTS[month];
   HOME_PL_REQUESTS[month]=api('getProfitLoss',{month:month}).then(function(d){
     if(!d || d.ok!==true || d.month!==month || !Array.isArray(d.days))throw new Error('profit-loss unavailable');
-    HOME_PL_CACHE[month]={at:Date.now(),data:d};return d;
+    d._uiAt=Date.now();HOME_PL_CACHE[month]={at:d._uiAt,data:d};cacheSet('homePL.v2',{month:month},d);return d;
   }).finally(function(){delete HOME_PL_REQUESTS[month];});
   return HOME_PL_REQUESTS[month];
 }
-function homePeriodExpenses(pl,from,to){
-  if(!pl || pl.ok!==true || pl.month!==from.slice(0,7) || !Array.isArray(pl.days))return null;
-  /* A successful response with no known expense source is not proof of zero. */
-  if(!pl.exp_last_entry && pl.exp_stale_days==null)return null;
-  var total=0,valid=true;
-  pl.days.forEach(function(d){if(d.date>=from && d.date<=to){if(d.expenses==null || !Number.isFinite(Number(d.expenses)))valid=false;else total+=Number(d.expenses);}});
-  return valid?total:null;
+function homeExpenseTotals(pl,from,to){
+  if(!pl || pl.ok!==true || pl.financial_schema!=='finance-review-v1' || pl.month!==from.slice(0,7) || !Array.isArray(pl.days) || pl.expense_source_error || (!pl.exp_last_entry && pl.exp_stale_days==null))return null;
+  var total=0,pending=0,valid=true;
+  pl.days.forEach(function(d){if(d.date>=from && d.date<=to){var amount=Number(d.expenses),p=d.pending_expenses==null?(pl.pending_expenses>0?NaN:0):Number(d.pending_expenses);if(d.expenses==null || !Number.isFinite(amount)||!Number.isFinite(p)||p<0||p>amount){valid=false;return;}total+=amount;pending+=p;}});
+  return valid?{itemized:total-pending,pending:pending,total:total}:null;
 }
+function homePeriodExpenses(pl,from,to){var totals=homeExpenseTotals(pl,from,to);return totals?totals.itemized:null;}
 function homeExpenseHtml(pl,from,to,loading){
-  var amount=homePeriodExpenses(pl,from,to),warning=!!(pl && (pl.financial_schema!=='finance-review-v1' || pl.exp_stale || pl.expense_source_error || pl.pending_expenses>0 || pl.salary_conflict));
-  return '<div class="h-expense"><div><small>المصروفات المسجلة</small><span>لنفس الفترة'+(warning?' · تحتاج إلى مراجعة':'')+'</span></div><b'+(warning?' class="expense-stale"':'')+'>'+(amount===null?(loading?'جارٍ التحميل…':'غير متاح'):ltr(num(amount))+' <small>جنيه</small>')+'</b></div>'+
-    (warning?'<p class="h-expense-note">آخر تسجيل '+esc(pl.exp_last_entry || 'غير معروف')+'؛ الإجمالي قد يتضمن بنودًا غير مطابقة؛ لا يمثل مصروفًا مؤكدًا.</p>':'');
+  var totals=homeExpenseTotals(pl,from,to),amount=totals?totals.itemized:null,pending=totals?totals.pending:0,old=!!(pl && pl._uiAt && Date.now()-pl._uiAt>=300000),warning=!!(pl && (pl.exp_stale || pl.expense_source_error));
+  return '<div class="h-expense"><div><small>المصروفات المفصّلة</small><span>تشغيل ورواتب · دون شراء المخزون'+(old?' · آخر نتيجة محفوظة':'')+'</span></div><b'+(warning?' class="expense-stale"':'')+'>'+(amount===null?(loading?'جارٍ التحميل…':'غير متاح'):ltr(num(amount))+' <small>جنيه</small>')+'</b></div>'+
+    (pending>0?'<p class="h-expense-note expense-stale">فرق غير مفصّل من إجمالي النظام: '+ltr(num(pending))+' جنيه. منفصل عن المبلغ أعلاه حتى المطابقة، وليس مصروفًا إضافيًا مؤكدًا.</p>':'')+
+    (warning?'<p class="h-expense-note">مصدر المصروفات متأخر أو غير متاح؛ آخر تسجيل '+esc(pl.exp_last_entry||'غير معروف')+'.</p>':'')+
+    (old?'<p class="h-expense-note">نعرض آخر نتيجة محفوظة أثناء تحديث البيانات.</p>':'');
 }
 function loadHomeDayExpenses(day){
   var box=document.getElementById('homeDayExpenses');if(!box)return;
   function active(){return document.getElementById('homeDayExpenses')===box && box.getAttribute('data-day')===day;}
-  var cached=HOME_PL_CACHE[day.slice(0,7)];
+  var cached=homeReadPL(day.slice(0,7));
   if(cached)box.innerHTML=homeExpenseHtml(cached.data,day,day,false);
   homeProfitLoss(day.slice(0,7)).then(function(pl){if(active())box.innerHTML=homeExpenseHtml(pl,day,day,false);}).catch(function(){
     if(!active())return;
@@ -1334,10 +1366,10 @@ function loadHomeDayExpenses(day){
 }
 function monthSlide(M){
   var m=M.m || {},R=M.r || homeRange(),pl=M.pl || {},g=goalOf('daily_sales',10000),net=Number(m.net_sales || 0),gp=Number(m.profit_total || 0),inv=Number(m.invoices_total || 0),np=null;
-  var days=R.month?new Date(Date.UTC(+R.month.slice(0,4),+R.month.slice(5,7),0)).getUTCDate():1,target=g*(R.key==='yesterday'?1:days),left=Math.max(0,target-net);
+  var days=R.month?new Date(Date.UTC(+R.month.slice(0,4),+R.month.slice(5,7),0)).getUTCDate():1,target=g*(R.key==='yesterday'?1:R.key==='custom'?Math.round((Date.parse(R.to+'T12:00:00Z')-Date.parse(R.from+'T12:00:00Z'))/86400000)+1:days),left=Math.max(0,target-net);
   if(pl.ok && pl.financial_schema==='finance-review-v1' && !pl.expense_source_error && !pl.salary_conflict && Array.isArray(pl.days)){var rangeDays=pl.days.filter(function(x){return x.date>=R.from && x.date<=R.to;});if(homePeriodExpenses(pl,R.from,R.to)!==null && rangeDays.every(function(x){return x.net!=null;}))np=rangeDays.reduce(function(t,x){return t+Number(x.net);},0);}
   var expected=g*Number(R.to.slice(8,10));
-  var label=R.key==='yesterday'?'أمس':homeMonthName(R.month),dateLabel=R.from===R.to?R.to:R.from+' — '+R.to;
+  var label=R.key==='custom'?'فترة مخصصة':R.key==='yesterday'?'أمس':homeMonthName(R.month),dateLabel=R.from===R.to?R.to:R.from+' — '+R.to;
   function mini(label,value,sub){return '<div class="h-mini"><small>'+label+'</small><b>'+value+'</b><u>'+sub+'</u></div>';}
   return '<div class="period-card">'+homePeriodTabs()+'<div class="h-top"><h2>'+esc(label)+(R.key==='month'?' · حتى نهاية أمس':'')+'</h2><span>'+esc(dateLabel)+'</span></div>'+
     '<div class="h-main">'+homeGoalRing(net,target)+'<div class="h-num"><small>صافي المبيعات</small><b>'+ltr(num(net))+'</b><u>'+(net>=target?'الهدف اتحقق · '+ltr(num(target)):'فاضل '+ltr(num(left))+' على '+ltr(num(target)))+'</u></div></div>'+
@@ -1350,17 +1382,18 @@ function loadHomeMonth(){
   function active(){var q=homeRange();return q.key+':'+q.from+':'+q.to===key;}
   if(R.empty){if(el)el.innerHTML='<div class="period-card">'+homePeriodTabs()+'<div class="state">لا يوجد يوم مكتمل في هذا الشهر</div></div>';return;}
   if(!old && HOME_MONTH && HOME_MONTH.r && HOME_MONTH.r.from===R.from && HOME_MONTH.r.to===R.to){old={at:0,data:Object.assign({},HOME_MONTH,{r:R})};HOME_PERIOD_CACHE[key]=old;}
+  if(!old){try{var savedPeriod=JSON.parse(localStorage.getItem(cacheKey('homePeriod.v2',{key:key}))||'null');if(storedPin() && savedPeriod && Date.now()-savedPeriod.t<86400000 && savedPeriod.d && savedPeriod.d.r && savedPeriod.d.r.from===R.from && savedPeriod.d.r.to===R.to)old=HOME_PERIOD_CACHE[key]={at:savedPeriod.t,data:savedPeriod.d};}catch(e){}}
   if(el)el.innerHTML=old?monthSlide(old.data):'<div class="period-card">'+homePeriodTabs()+'<div class="state"><div class="spin"></div>بجيب ملخص الفترة…</div></div>';
   if(old && Date.now()-old.at<300000)return;
   if(HOME_PERIOD_REQUESTS[key])return;
   function safe(p){return p.catch(function(e){logErr(e);return null;});}
-  HOME_PERIOD_REQUESTS[key]=Promise.all([safe(api('getMonthTotalsRaw',{from:R.from,to:R.to})),safe(homeProfitLoss(R.month))]).then(function(values){
+  HOME_PERIOD_REQUESTS[key]=Promise.all([safe(api('getMonthTotalsRaw',{from:R.from,to:R.to})),safe(homeRangePL(R))]).then(function(values){
     if(!values[0] || values[0].ok===false)throw new Error('period unavailable');
     var data={r:R,m:values[0],pl:values[1] && values[1].ok!==false?values[1]:{},k:{}};
-    HOME_PERIOD_CACHE[key]={at:Date.now(),data:data};
+    HOME_PERIOD_CACHE[key]={at:Date.now(),data:data};cacheSet('homePeriod.v2',{key:key},data);
     if(R.key==='month'){HOME_MONTH=data;try{localStorage.setItem('homeMonth',JSON.stringify(data));}catch(e){}}
     if(active()){var box=document.getElementById('heroMonth');if(box)box.innerHTML=monthSlide(data);}
-  }).catch(function(e){logErr(e);if(active() && !old){var box=document.getElementById('heroMonth');if(box)box.innerHTML='<div class="period-card">'+homePeriodTabs()+'<div class="state err">ملخص الفترة ماتحمّلش</div><button class="btn btn-quiet" onclick="loadHomeMonth()">إعادة المحاولة</button></div>';}}).finally(function(){delete HOME_PERIOD_REQUESTS[key];});
+  }).catch(function(e){logErr(e);if(active() && old){var kept=document.getElementById('heroMonth');if(kept)kept.insertAdjacentHTML('beforeend','<p class="h-expense-note">تعذر التحديث؛ المعروض آخر نتيجة محفوظة.</p>');}if(active() && !old){var box=document.getElementById('heroMonth');if(box)box.innerHTML='<div class="period-card">'+homePeriodTabs()+'<div class="state err">ملخص الفترة ماتحمّلش</div><button class="btn btn-quiet" onclick="loadHomeMonth()">إعادة المحاولة</button></div>';}}).finally(function(){delete HOME_PERIOD_REQUESTS[key];});
 }
 function heroSelect(i){var s=document.getElementById('heroSlides');if(s && s.children[i])s.children[i].scrollIntoView({behavior:window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest',inline:'center'});}
 function heroDots(){
@@ -1490,7 +1523,7 @@ function cacheGet(a, p){
   }catch(e){ return null; }
 }
 function cacheSet(a, p, d){
-  if(!storedPin() || !d || d.lockError || d.pinError)return;
+  if(!storedPin() || !d || d.ok===false || d.lockError || d.pinError)return;
   try{ localStorage.setItem(cacheKey(a, p), JSON.stringify({ t: Date.now(), d: d })); }
   catch(e){ /* المساحة اتملت — مش مشكلة */ }
 }
@@ -1513,11 +1546,15 @@ function paint2(key, a1, p1, a2, p2, box, draw){
   if (!old) return false;
   try{ draw(old.m, old.k, box); return true; }catch(e){ logErr(e); return false; }
 }
+var API_CACHED_REQUESTS={};
 function apiCached(action, params, box, draw){
   var section=CUR,tab=TAB;
   var seed = paint1(action, params, box, draw);
   if (!seed) busy(box);
-  return apiFresh(action, params).then(function(d){
+  var requestKey=cacheKey(action,params),cachedTime=0;try{var snap=JSON.parse(localStorage.getItem(requestKey)||'null');cachedTime=snap&&snap.t||0;}catch(e){}
+  if(action==='getExpensesData' && seed && Date.now()-cachedTime<300000)return Promise.resolve(cacheGet(action,params));
+  if(!API_CACHED_REQUESTS[requestKey])API_CACHED_REQUESTS[requestKey]=apiFresh(action,params).finally(function(){delete API_CACHED_REQUESTS[requestKey];});
+  return API_CACHED_REQUESTS[requestKey].then(function(d){
     if(CUR!==section || TAB!==tab)return d;
     if(d && (d.lockError || d.pinError)){dashboardSignIn(box);return d;}
     markSync(); draw(d, box); return d;
@@ -2267,7 +2304,7 @@ function drawHome(b, kpi, isOld){
         mini('ربح البيع', ltr(num(profitT)), salesT > 0 ? 'هامش ' + ltr(pct(profitT, salesT) + '%') : '') +
         ((isStaleDay && !kpi._yesterday) ? mini('أول فاتورة', '—', 'هتصفّر العداد') : mini('متوسط الفاتورة', ltr(num(avgInv)), ltr(num(tot.inv)) + ' فاتورة')) +
         mini('المرتجع', ltr(num(retVal)) + ' ' + tr('egp'), ltr(num(retCnt)) + ' مرتجع' + (salesT > 0 && retVal > 0 ? ' · ' + ltr(pct(retVal, salesT + retVal) + '%') : '')) +
-      '</div><div id="homeDayExpenses" data-day="'+homeDay+'">'+homeExpenseHtml((HOME_PL_CACHE[homeDay.slice(0,7)] || {}).data,homeDay,homeDay,true)+'</div><div class="home-camera" id="homeAppearance" aria-live="polite">'+(storedPin() && CAMR.list?appearanceHomeHtml(CAMR.list,CAMR.at===0):'<div class="camera-wait">'+(storedPin()?'بجيب آخر تقييم بالكاميرات…':'افتح التقارير بالرقم السري لعرض التقييم')+'</div>')+'</div></div>' +
+      '</div><div id="homeDayExpenses" data-day="'+homeDay+'">'+homeExpenseHtml((homeReadPL(homeDay.slice(0,7)) || {}).data,homeDay,homeDay,true)+'</div><div class="home-camera" id="homeAppearance" aria-live="polite">'+(storedPin() && CAMR.list?appearanceHomeHtml(CAMR.list,CAMR.at===0):'<div class="camera-wait">'+(storedPin()?'بجيب آخر تقييم بالكاميرات…':'افتح التقارير بالرقم السري لعرض التقييم')+'</div>')+'</div></div>' +
       '<div class="card h-hero h-slide" id="heroMonth">' + (HOME_MONTH ? monthSlide(HOME_MONTH) : '<div class="state"><div class="spin"></div></div>') + '</div>' +
       '</div>';
 
@@ -2529,7 +2566,7 @@ function loadPeriodPL(params,box){
   var months=[],cursor=bounds.from.slice(0,7);
   while(cursor<=bounds.to.slice(0,7)&&months.length<13){months.push(cursor);var date=new Date(cursor+'-01T12:00:00Z');date.setUTCMonth(date.getUTCMonth()+1);cursor=date.toISOString().slice(0,7);}
   slot.innerHTML='<div class="state">جارٍ تحميل الربح والخسارة لنفس الفترة…</div>';
-  Promise.all(months.map(function(month){return api('getProfitLoss',{month:month});})).then(function(parts){
+  Promise.all(months.map(function(month){return homeProfitLoss(month);})).then(function(parts){
     if(document.getElementById('plBox')!==slot)return;
     if(parts.some(function(x){return !x || !x.ok || !Array.isArray(x.days);}))throw Error('pl');
     var days=[].concat.apply([],parts.map(function(x){return x.days;})).filter(function(x){return x.date>=bounds.from&&x.date<=bounds.to;});
@@ -2537,7 +2574,7 @@ function loadPeriodPL(params,box){
     var sum=function(key){return days.reduce(function(t,x){return t+(Number(x[key])||0);},0);};
     slot.innerHTML=card(tr('pl'),esc(bounds.from+' — '+bounds.to),
       (incomplete?'<div class="state err">النتيجة قيد المراجعة: توجد مصروفات غير مطابقة أو بيانات غير مكتملة.</div>':'')+
-      row(tr('totalProfit'),'',ltr(num(sum('profit'))))+row('المصروفات المسجلة','قد تشمل بنودًا تحت المراجعة',ltr(num(sum('expenses'))))+
+      row(tr('totalProfit'),'',ltr(num(sum('profit'))))+row('المصروفات المفصلة','تشغيل ورواتب دون شراء المخزون',ltr(num(sum('expenses')-sum('pending_expenses'))))+row('فرق غير مفصّل','يحتاج مطابقة؛ ليس مصروفًا إضافيًا مؤكدًا',ltr(num(sum('pending_expenses'))))+
       row('مخصص الرواتب','يُراجع مع الرواتب المدفوعة',ltr(num(sum('salary_share'))))+
       row(tr('netProfit'),'',incomplete?'قيد المراجعة':ltr(num(sum('net')))));
   }).catch(function(){if(document.getElementById('plBox')===slot)slot.innerHTML='<div class="state err">تعذر تحميل الربح والخسارة لنفس الفترة</div>';});
@@ -2615,6 +2652,12 @@ function drawExpenses(d, box){
       warn += '<div class="state" style="padding:0 0 10px;text-align:start">' +
         'بنود غير مفصّلة تحتاج إلى مطابقة قبل اعتماد صافي الربح: ' + ' ' + ltr(num(d.ledger_total)) + ' ' + tr('egp') + '</div>';
     }
+    var raw=d;d=Object.assign({},d);var detailed=(raw.items||[]).filter(function(x){return !x.fromLedger;}),cats={};
+    detailed.forEach(function(x){if(x.isIncome)return;var q=cats[x.category]||(cats[x.category]={category:x.category,total:0,count:0});q.total+=Number(x.amount)||0;q.count++;});
+    d.byCategory=Object.keys(cats).map(function(k){return cats[k];}).sort(function(a,b){return b.total-a.total;});
+    d.total=detailed.reduce(function(t,x){return t+(x.isIncome?0:Number(x.amount)||0);},0);d.count=detailed.filter(function(x){return !x.isIncome;}).length;
+    d.operating_total=detailed.filter(function(x){return !x.isIncome&&!/مشتروات|مشتريات/.test(x.category);}).reduce(function(t,x){return t+(Number(x.amount)||0);},0);
+    d.purchases_total=detailed.filter(function(x){return !x.isIncome&&/مشتروات|مشتريات/.test(x.category);}).reduce(function(t,x){return t+(Number(x.amount)||0);},0);
     var top = (d.byCategory || [])[0];
     var html = ctlBar(
       RANGE_OPTS.slice(0, 4).map(function(o){
@@ -2623,7 +2666,7 @@ function drawExpenses(d, box){
       'expMenu()',
       RANGE.exp === 'custom' || RANGE.exp === 'lastMonth') +
       vitals(tr('expenses'), d.label, [
-      { value: num(d.total), label: 'إجمالي المدفوعات', tone: 'warn',
+      { value: num(d.total), label: 'المدفوعات المفصّلة', tone: 'warn',
         note: ltr(num(d.count)), sub: tr('entries') },
       { value: num(top ? top.total : 0), label: top ? top.category : '—', tone: 'bad',
         note: d.total ? (pct(top ? top.total : 0, d.total) + '%') : null },
@@ -2631,7 +2674,7 @@ function drawExpenses(d, box){
         note: ltr(num(d.income_count || 0)), sub: tr('entries') }
     ]);
 
-    if(d.operating_total!=null)html+=card('تفصيل المدفوعات','',row('مصروفات التشغيل المسجلة','تشمل الرواتب والبنود تحت المراجعة',ltr(num(d.operating_total)))+row('شراء مخزون','لا يُخصم مرة أخرى كمصروف تشغيل',ltr(num(d.purchases_total)))+row('تحت المراجعة','ضمن الإجمالي، وليست إضافة إليه',ltr(num(d.pending_review_total))));
+    if(d.operating_total!=null)html+=card('تفصيل المدفوعات','',row('مصروفات التشغيل المسجلة','تشمل الرواتب دون فروق النظام غير المفصلة',ltr(num(d.operating_total)))+row('شراء مخزون','لا يُخصم مرة أخرى كمصروف تشغيل',ltr(num(d.purchases_total)))+row('فرق إجمالي النظام','منفصل عن المفصّل؛ يحتاج مطابقة',ltr(num(d.pending_review_total))));
     /* الفئات بقت قابلة للفتح — كانت أرقام صمّاء */
     html += card(tr('byCategory'), null, (d.byCategory || []).length
       ? d.byCategory.map(function(c){
@@ -2646,8 +2689,10 @@ function drawExpenses(d, box){
         }).join('')
       : emptyState());
 
-    EXP_ITEMS = d.items || [];
-    var items = (d.items || []).filter(function(i){ return !i.isIncome; }).slice(0, 40);
+    EXP_ITEMS = detailed;
+    var pendingItems=(raw.items||[]).filter(function(i){return i.fromLedger&&!i.isIncome;});
+    if(pendingItems.length)html+=card('فروق تحتاج إلى مطابقة','لا تدخل في المدفوعات المفصلة أعلاه',pendingItems.map(function(i){return row(esc(i.date),'فرق بين إجمالي النظام والبنود المتاحة',ltr(num(i.amount)));}).join(''));
+    var items = detailed.filter(function(i){ return !i.isIncome; }).slice(0, 40);
     if (items.length) html += card(tr('history'), null, items.map(function(i){
       return '<div class="row" onclick="openExpItem(\'' + esc(i.id) + '\')" style="cursor:pointer">' +
         '<div class="row-main"><b>' + esc(i.name || i.category) + '</b>' +
@@ -2675,6 +2720,8 @@ function refreshNow(){
     ['debts','sales','getShortages','getProfitLoss','getExpensesData'].forEach(function(k){
       try{ localStorage.removeItem(cacheKey(k, {})); }catch(e){}
     });
+    Object.keys(HOME_PL_CACHE).forEach(function(k){HOME_PL_CACHE[k].at=0;});Object.keys(HOME_PERIOD_CACHE).forEach(function(k){HOME_PERIOD_CACHE[k].at=0;});
+    try{for(var i=localStorage.length-1;i>=0;i--){var key=localStorage.key(i);if(/^c:(homePL\.v2|homePeriod\.v2|getExpensesData):/.test(key))localStorage.removeItem(key);}}catch(e){}
     refreshMark(true);
     render(CUR, TAB);
   }).catch(function(e){
@@ -6643,6 +6690,7 @@ try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 </script>
 </body>
 </html>
+
 
 
 

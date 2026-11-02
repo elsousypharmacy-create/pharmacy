@@ -648,6 +648,14 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 #heroMonth{padding:20px}.period-tabs{display:flex;gap:6px;padding:5px;background:var(--surface-2);border-radius:12px;margin-bottom:22px}.period-tabs button{flex:1;min-width:0;min-height:50px;font:inherit;font-size:17px;font-weight:700;color:var(--ink-2);border:0;border-radius:9px;background:transparent;cursor:pointer;white-space:nowrap}.period-tabs button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 5px #0002}.period-card .h-top{gap:10px}.period-card .h-top h2{font-size:25px}.period-card .h-top>span{font-size:13px;direction:ltr}.period-total{margin:22px 0}.period-total>small{font-size:16px;color:var(--ink-2)}.period-total>div{display:flex;align-items:baseline;gap:9px}.period-total b{font-size:48px;font-weight:800;letter-spacing:-1px;line-height:1.5}.period-total span{font-size:16px;color:var(--ink-2)}.period-goal{display:flex;justify-content:space-between;gap:8px;font-size:14px}.period-goal>b{color:var(--brand)}.period-goal>span{color:var(--ink-2)}.period-track{height:7px;border-radius:9px;background:var(--surface-2);overflow:hidden;margin:10px 0}.period-track i{display:block;height:100%;border-radius:inherit;background:var(--brand)}.period-remaining{font-size:14px;color:var(--ink-2);margin:0 0 24px}.period-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0;gap:10px}.period-stats>div+div{border-inline-start:1px solid var(--line);padding-inline-start:9px}.period-stats small{font-size:13px;min-height:44px;line-height:1.7;display:block;color:var(--ink-2)}.period-stats b{font-size:22px;margin-top:5px;display:block;white-space:nowrap}.period-details{margin-top:10px}.period-details>summary{color:var(--brand);font-size:16px;font-weight:700;cursor:pointer;padding:12px 0;min-height:44px}.period-details>div{display:flex;justify-content:space-between;gap:15px;font-size:14px;border-top:1px solid var(--line);padding:12px 0}.period-details>div>span{color:var(--ink-2)}.period-details>div>b{white-space:nowrap}@media(max-width:360px){#heroMonth{padding:16px}.period-total b{font-size:42px}.period-stats b{font-size:20px}.period-tabs button{font-size:16px}}
 #heroMonth .period-card .h-top{flex-wrap:wrap}.period-remaining{line-height:1.9}.period-details>div{flex-wrap:wrap}.period-details>div>b{margin-inline-start:auto}
 </style>
+
+<style>
+/* Shared daily/month hero and compact camera disclosure. */
+#p-home .h-hero .h-top{flex-wrap:wrap;gap:8px}#p-home .h-hero .h-top h2{font-size:22px!important}#p-home .h-hero .h-top>span{font-size:13px!important}#p-home .h-hero .h-num small{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:40px}#p-home .h-hero .h-num u{font-size:13px;line-height:1.8}#p-home .h-hero .h-mini small{font-size:14px}#p-home .h-hero .h-mini u{font-size:12px}#p-home .h-hero .h-mini{min-width:0}#p-home .h-hero .h-mini b{font-size:22px}#p-home .h-hero .h-minis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.h-expense{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding:14px 0 0;margin-top:10px}.h-expense>div>small{display:block;font-size:14px;color:var(--ink-2)}.h-expense>div>span{display:block;font-size:12px;color:var(--ink-3)}.h-expense>b{font-size:21px;white-space:nowrap}.h-expense>b>small{font-size:12px;font-weight:500;color:var(--ink-2)}.h-expense-note{font-size:12px;color:var(--warn);line-height:1.8;margin:8px 0 0}.h-expense-note button{font:inherit;color:var(--brand);background:none;border:0;min-height:44px;cursor:pointer}.expense-stale{color:var(--warn)}
+.home-camera{border-top:1px solid var(--line);margin-top:16px;padding-top:16px}.camera-inline>summary{display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none;min-height:64px}.camera-inline>summary::-webkit-details-marker{display:none}.camera-score{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;background:conic-gradient(var(--brand) var(--score),var(--surface-2) 0)}.camera-score>b{display:grid;place-items:center;background:var(--surface);width:48px;height:48px;border-radius:50%;font-size:21px}.camera-score.unknown{background:var(--surface-2)}.camera-label{flex:1;min-width:0}.camera-label>b{display:block;font-size:15px}.camera-label>small{display:block;color:var(--ink-2);font-size:12px;line-height:1.9}.camera-chevron{font-size:24px;color:var(--brand);transition:transform .15s}.camera-inline[open] .camera-chevron{transform:rotate(180deg)}.camera-notes{padding-top:12px}.camera-meta,.camera-wait{color:var(--ink-2);font-size:13px;line-height:1.9;margin:6px 0}.camera-finding{display:flex;gap:9px;border-bottom:1px solid var(--line);padding:12px 0}.camera-finding>span{display:grid;place-items:center;flex-shrink:0;width:24px;height:26px;border-radius:7px;background:var(--surface-2);color:var(--warn);font-size:12px}.camera-finding b{font-size:14px;line-height:1.9}.camera-finding small{display:block;font-size:12px;color:var(--ink-2);margin-top:4px}.camera-details{margin-top:14px;width:100%;font-size:14px;min-height:46px}.camera-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.camera-tools button,.camera-link{font:inherit;font-size:12px;min-height:44px;background:none;border:0;color:var(--ink-2);cursor:pointer;padding:5px}.camera-inline>summary:focus-visible{outline:2px solid var(--brand);outline-offset:4px;border-radius:10px}
+@media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
+</style>
 </head>
 <body>
 
@@ -1274,20 +1282,56 @@ function setHomeRange(key){
   if(['yesterday','month','last'].indexOf(key)<0)return;
   HOME_MR={key:key};loadHomeMonth.at=0;loadHomeMonth();
 }
+function homeGoalRing(value,target){
+  var pct0=target>0?Math.round(value/target*100):0,c=2*Math.PI*46,fill=target>0?Math.max(0,Math.min(1,value/target)):0;
+  return '<svg class="h-ring" viewBox="0 0 110 110" aria-hidden="true"><circle cx="55" cy="55" r="46" fill="none" stroke="var(--surface-2)" stroke-width="11"/><circle cx="55" cy="55" r="46" fill="none" stroke="var(--'+(target>0 && value>=target?'ok':'brand')+')" stroke-width="11" stroke-linecap="round" stroke-dasharray="'+(c*fill).toFixed(1)+' '+c.toFixed(1)+'" transform="rotate(-90 55 55)"/><text x="55" y="61" text-anchor="middle" font-size="22" font-weight="800" fill="var(--ink)" font-family="Cairo,system-ui">'+pct0+'%</text></svg>';
+}
+var HOME_PL_CACHE={},HOME_PL_REQUESTS={};
+function homeProfitLoss(month){
+  var hit=HOME_PL_CACHE[month];
+  if(hit && Date.now()-hit.at<300000)return Promise.resolve(hit.data);
+  if(HOME_PL_REQUESTS[month])return HOME_PL_REQUESTS[month];
+  HOME_PL_REQUESTS[month]=api('getProfitLoss',{month:month}).then(function(d){
+    if(!d || d.ok!==true || d.month!==month || !Array.isArray(d.days))throw new Error('profit-loss unavailable');
+    HOME_PL_CACHE[month]={at:Date.now(),data:d};return d;
+  }).finally(function(){delete HOME_PL_REQUESTS[month];});
+  return HOME_PL_REQUESTS[month];
+}
+function homePeriodExpenses(pl,from,to){
+  if(!pl || pl.ok!==true || pl.month!==from.slice(0,7) || !Array.isArray(pl.days))return null;
+  /* A successful response with no known expense source is not proof of zero. */
+  if(!pl.exp_last_entry && pl.exp_stale_days==null)return null;
+  var total=0,valid=true;
+  pl.days.forEach(function(d){if(d.date>=from && d.date<=to){if(d.expenses==null || !Number.isFinite(Number(d.expenses)))valid=false;else total+=Number(d.expenses);}});
+  return valid?total:null;
+}
+function homeExpenseHtml(pl,from,to,loading){
+  var amount=homePeriodExpenses(pl,from,to),warning=!!(pl && pl.exp_stale);
+  return '<div class="h-expense"><div><small>المصروفات المسجلة</small><span>لنفس الفترة'+(warning?' · البيانات متأخرة':'')+'</span></div><b'+(warning?' class="expense-stale"':'')+'>'+(amount===null?(loading?'بجـيبها…':'غير متاح'):ltr(num(amount))+' <small>جنيه</small>')+'</b></div>'+
+    (warning?'<p class="h-expense-note">آخر تسجيل '+esc(pl.exp_last_entry || 'غير معروف')+'؛ الإجمالي قد يكون ناقص.</p>':'');
+}
+function loadHomeDayExpenses(day){
+  var box=document.getElementById('homeDayExpenses');if(!box)return;
+  function active(){return document.getElementById('homeDayExpenses')===box && box.getAttribute('data-day')===day;}
+  var cached=HOME_PL_CACHE[day.slice(0,7)];
+  if(cached)box.innerHTML=homeExpenseHtml(cached.data,day,day,false);
+  homeProfitLoss(day.slice(0,7)).then(function(pl){if(active())box.innerHTML=homeExpenseHtml(pl,day,day,false);}).catch(function(){
+    if(!active())return;
+    if(!cached)box.innerHTML=homeExpenseHtml(null,day,day,false);
+    box.insertAdjacentHTML('beforeend','<p class="h-expense-note">'+(cached?'التحديث ماكملش؛ آخر بيانات محمّلة. ':'')+'<button onclick="loadHomeDayExpenses(this.closest(\'div[data-day]\').getAttribute(\'data-day\'))">إعادة المحاولة</button></p>');
+  });
+}
 function monthSlide(M){
   var m=M.m || {},R=M.r || homeRange(),pl=M.pl || {},g=goalOf('daily_sales',10000),net=Number(m.net_sales || 0),gp=Number(m.profit_total || 0),inv=Number(m.invoices_total || 0),np=null;
-  var monthDays=R.month?new Date(Date.UTC(+R.month.slice(0,4),+R.month.slice(5,7),0)).getUTCDate():1,target=g*(R.key==='yesterday'?1:monthDays),progress=target>0?Math.round(net/target*100):0;
-  if(pl.days){np=pl.days.filter(function(x){return x.date>=R.from && x.date<=R.to;}).reduce(function(t,x){return t+(Number(x.net)||0);},0);}
-  var dateLabel=R.from===R.to?R.to:R.from+' — '+R.to;
-  var label=R.key==='yesterday'?'أمس':homeMonthName(R.month);
-  var title=R.key==='yesterday'?'صافي مبيعات أمس':'صافي مبيعات '+label;
-  var stats=[['ربح البيع','قبل المصاريف',num(gp)],['عدد','الفواتير',num(inv)],['متوسط','الفاتورة',inv?num(Math.round(Number(m.sales_total || 0)/inv)):'—']];
+  var days=R.month?new Date(Date.UTC(+R.month.slice(0,4),+R.month.slice(5,7),0)).getUTCDate():1,target=g*(R.key==='yesterday'?1:days),left=Math.max(0,target-net);
+  if(pl.ok && Array.isArray(pl.days)){var rangeDays=pl.days.filter(function(x){return x.date>=R.from && x.date<=R.to;});if(homePeriodExpenses(pl,R.from,R.to)!==null)np=rangeDays.reduce(function(t,x){return t+(Number(x.net)||0);},0);}
+  var label=R.key==='yesterday'?'أمس':homeMonthName(R.month),dateLabel=R.from===R.to?R.to:R.from+' — '+R.to;
+  function mini(label,value,sub){return '<div class="h-mini"><small>'+label+'</small><b>'+value+'</b><u>'+sub+'</u></div>';}
   return '<div class="period-card">'+homePeriodTabs()+'<div class="h-top"><h2>'+esc(label)+'</h2><span>'+esc(dateLabel)+'</span></div>'+
-    '<div class="period-total"><small>'+title+'</small><div><b>'+ltr(num(net))+'</b><span>جنيه</span></div></div>'+
-    '<div class="period-goal"><b>'+progress+'% من الهدف</b><span>الهدف '+ltr(num(target))+'</span></div><div class="period-track"><i style="width:'+Math.min(100,Math.max(0,progress))+'%"></i></div>'+
-    '<p class="period-remaining">'+(net>=target?'الهدف اتحقق':'فاضل '+ltr(num(Math.max(0,target-net)))+' جنيه على هدف '+(R.key==='yesterday'?'اليوم':'الشهر'))+'</p>'+
-    '<div class="period-stats">'+stats.map(function(q){return '<div><small>'+q[0]+'<br>'+q[1]+'</small><b>'+ltr(q[2])+'</b></div>';}).join('')+'</div>'+
-    '<details class="period-details"><summary>تفاصيل '+esc(label)+'</summary><div><span>المرتجعات</span><b>'+ltr(num(m.returns_value_total || 0))+' جنيه</b></div><div><span>الخصومات</span><b>'+ltr(num(m.discount_total || 0))+' جنيه</b></div><div><span>متوسط صافي اليوم</span><b>'+ltr(num(m.avg_daily_net || 0))+' جنيه</b></div><div><span>الربح بعد المصاريف لنفس الفترة</span><b>'+(np===null?'غير متاح':ltr(num(np))+' جنيه')+'</b></div></details></div>';
+    '<div class="h-main">'+homeGoalRing(net,target)+'<div class="h-num"><small>صافي المبيعات</small><b>'+ltr(num(net))+'</b><u>'+(net>=target?'الهدف اتحقق · '+ltr(num(target)):'فاضل '+ltr(num(left))+' على '+ltr(num(target)))+'</u></div></div>'+
+    '<div class="h-minis" style="grid-template-columns:repeat(2,minmax(0,1fr))">'+mini('عدد الفواتير',ltr(num(inv)),'في الفترة المختارة')+mini('ربح البيع',ltr(num(gp)),'قبل المصروفات')+mini('متوسط الفاتورة',inv?ltr(num(Math.round(Number(m.sales_total || 0)/inv))):'—','قبل المرتجعات')+mini('المرتجعات',ltr(num(m.returns_value_total || 0)),'جنيه')+'</div>'+
+    homeExpenseHtml(pl,R.from,R.to,false)+
+    '<details class="period-details"><summary>تفاصيل '+esc(label)+'</summary><div><span>الخصومات</span><b>'+ltr(num(m.discount_total || 0))+' جنيه</b></div><div><span>متوسط صافي اليوم</span><b>'+ltr(num(m.avg_daily_net || 0))+' جنيه</b></div><div><span>الربح بعد المصاريف ومخصص المرتبات</span><b>'+(np===null?'غير متاح':ltr(num(np))+' جنيه')+'</b></div></details></div>';
 }
 function loadHomeMonth(){
   var R=homeRange(),key=R.key+':'+R.from+':'+R.to,el=document.getElementById('heroMonth'),old=HOME_PERIOD_CACHE[key];
@@ -1298,7 +1342,7 @@ function loadHomeMonth(){
   if(old && Date.now()-old.at<300000)return;
   if(HOME_PERIOD_REQUESTS[key])return;
   function safe(p){return p.catch(function(e){logErr(e);return null;});}
-  HOME_PERIOD_REQUESTS[key]=Promise.all([safe(api('getMonthTotalsRaw',{from:R.from,to:R.to})),safe(api('getProfitLoss',{month:R.month}))]).then(function(values){
+  HOME_PERIOD_REQUESTS[key]=Promise.all([safe(api('getMonthTotalsRaw',{from:R.from,to:R.to})),safe(homeProfitLoss(R.month))]).then(function(values){
     if(!values[0] || values[0].ok===false)throw new Error('period unavailable');
     var data={r:R,m:values[0],pl:values[1] && values[1].ok!==false?values[1]:{},k:{}};
     HOME_PERIOD_CACHE[key]={at:Date.now(),data:data};
@@ -2164,14 +2208,10 @@ function drawHome(b, kpi, isOld){
     var gS = goalOf('daily_sales', 10000), gV = goalOf('daily_visits', 150);
     var pS = gS ? Math.round(salesT / gS * 100) : 0;
     var hit = salesT >= gS;
-    var R = 46, C = 2 * Math.PI * R, fill = Math.min(1, gS ? salesT / gS : 0);
-    var ring = '<svg class="h-ring" viewBox="0 0 110 110" aria-hidden="true">' +
-      '<circle cx="55" cy="55" r="' + R + '" fill="none" stroke="var(--surface-2)" stroke-width="11"/>' +
-      '<circle cx="55" cy="55" r="' + R + '" fill="none" stroke="var(--' + (hit ? 'ok' : 'brand') + ')" stroke-width="11" stroke-linecap="round"' +
-      ' stroke-dasharray="' + (C * fill).toFixed(1) + ' ' + C.toFixed(1) + '" transform="rotate(-90 55 55)"/>' +
-      '<text x="55" y="61" text-anchor="middle" font-size="22" font-weight="800" fill="var(--ink)" font-family="Cairo,system-ui">' + pS + '%</text></svg>';
+    var ring = homeGoalRing(salesT,gS);
     var left = Math.max(0, gS - salesT);
     var dayWord = isStaleDay ? 'أمس' : 'النهاردة';
+    var homeDay=isStaleDay?isoAdd(todayStr,-1):todayStr;
     var visits = (isStaleDay && !kpi._yesterday) ? null : totCust;
     var mini = function(label, val, sub, tone){
       return '<div class="h-mini"><small>' + label + '</small><b' + (tone ? ' style="color:var(--' + tone + ')"' : '') + '>' + val + '</b>' + (sub ? '<u>' + sub + '</u>' : '') + '</div>';
@@ -2201,10 +2241,10 @@ function drawHome(b, kpi, isOld){
         '<div id="homeCmp" class="h-cmp"></div></div></div>' + paceLine +
       '<div class="h-minis" style="grid-template-columns:repeat(2,1fr)">' +
         mini('عملاء الفواتير', '<span id="homeVisits">' + (visits == null ? '—' : ltr(num(visits))) + '</span> <em>/ ' + ltr(num(gV)) + '</em>', '<span id="homeVisitsBar">' + (visits == null ? vBar(0) : vBar(visits)) + '</span>') +
-        mini('الربح', ltr(num(profitT)), salesT > 0 ? 'هامش ' + ltr(pct(profitT, salesT) + '%') : '') +
+        mini('ربح البيع', ltr(num(profitT)), salesT > 0 ? 'هامش ' + ltr(pct(profitT, salesT) + '%') : '') +
         ((isStaleDay && !kpi._yesterday) ? mini('أول فاتورة', '—', 'هتصفّر العداد') : mini('متوسط الفاتورة', ltr(num(avgInv)), ltr(num(tot.inv)) + ' فاتورة')) +
         mini('المرتجع', ltr(num(retVal)) + ' ' + tr('egp'), ltr(num(retCnt)) + ' مرتجع' + (salesT > 0 && retVal > 0 ? ' · ' + ltr(pct(retVal, salesT + retVal) + '%') : '')) +
-      '</div></div>' +
+      '</div><div id="homeDayExpenses" data-day="'+homeDay+'">'+homeExpenseHtml((HOME_PL_CACHE[homeDay.slice(0,7)] || {}).data,homeDay,homeDay,true)+'</div><div class="home-camera" id="homeAppearance" aria-live="polite">'+(storedPin() && CAMR.list?appearanceHomeHtml(CAMR.list,CAMR.at===0):'<div class="camera-wait">'+(storedPin()?'بجيب آخر تقييم بالكاميرات…':'افتح التقارير بالرقم السري لعرض التقييم')+'</div>')+'</div></div>' +
       '<div class="card h-hero h-slide" id="heroMonth">' + (HOME_MONTH ? monthSlide(HOME_MONTH) : '<div class="state"><div class="spin"></div></div>') + '</div>' +
       '</div><div class="h-dots" id="heroDots" aria-label="فترة الأداء"><i class="on"></i><i></i></div>';
 
@@ -2225,8 +2265,6 @@ function drawHome(b, kpi, isOld){
     html += '<div class="card home-actions"><div class="card-head"><div><small class="section-eyebrow">الأولوية ليك</small><h3>محتاج تدخّلك</h3></div></div>' +
       '<div id="homeMore">' + (HOME_MORE || '') + '</div>' + acts.slice(0,2).join('') + (acts.length>2?'<details class="home-more"><summary>باقي التنبيهات ('+(acts.length-2)+')</summary>'+acts.slice(2).join('')+'</details>':'') +
       (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>') + '</div>';
-    html += '<div class="card home-monitor"><div id="homeAppearance" aria-live="polite">' + (storedPin() && CAMR.list ? appearanceHomeHtml(CAMR.list,CAMR.at===0) : '<div class="appearance-head"><h3>حالة الصيدلية</h3></div><div class="state">'+(storedPin() ? 'بجيب آخر تقييم…' : 'افتح التقارير بالرقم السري لعرض التقييم')+'</div>') + '</div>' +
-      '<div class="monitor-actions"><button onclick="camReportsOpen()">التقارير</button><button onclick="appearanceAnalysisRequest()">طلب تحليل</button><button id="camSnapBtn" onclick="camSnapNow()">صوّر دلوقتي</button></div><div id="homeCamSnap"></div></div>';
     setTimeout(homeCamLatest,600);
     html += '</div><div class="home-col">';
 
@@ -2261,6 +2299,7 @@ function drawHome(b, kpi, isOld){
     loadHomeMore();
     loadHomeDays(salesT, isStaleDay, gS, gV);
     loadHomeMonth();
+    loadHomeDayExpenses(homeDay);
     try { var hsI = +sessionStorage.getItem('heroSlide') || 0, hs = document.getElementById('heroSlides');
       if (hs && hsI){ hs.style.scrollBehavior = 'auto'; hs.scrollLeft = (document.documentElement.dir === 'rtl' ? -1 : 1) * hs.clientWidth * hsI; heroDots(); } } catch (e) {}
   }catch(e){ logErr(e); if (!isOld) oops(box, "pgHome()"); }
@@ -6117,27 +6156,32 @@ function homeCamLatest(force){
     if(el && CAMR.list && CAMR.list.length){var r=CAMR.list[0],n=camrNotes(r);el.textContent=CameraAssessment.title(r)+(n?' · '+n+' ملاحظات':' · راجع التغطية');el.className='';}
   }
   if(CAMR.list)paint();
-  var waiting=setTimeout(function(){var box=document.getElementById('homeAppearance');if(box && !CAMR.list)box.innerHTML='<h3>شكل الصيدلية ونظامها</h3><div class="state" role="status">السيرفر متأخر في أول تحميل؛ مفيش تقييم محفوظ على الجهاز لسه.</div>';},12000);
+  var waiting=setTimeout(function(){var box=document.getElementById('homeAppearance');if(box && !CAMR.list)box.innerHTML='<div class="camera-wait" role="status">السيرفر متأخر؛ مفيش تقييم محفوظ لسه.</div>';},12000);
   camrReportsFetch(force===true).then(paint).catch(function(){
     var box=document.getElementById('homeAppearance');if(!box)return;
     if(CAMR.list){paint();box.insertAdjacentHTML('beforeend','<div class="cam-note" role="status">التحديث ماكملش؛ ده آخر تقرير محمّل. <button class="btn btn-quiet" onclick="homeCamLatest(true)">حاول تاني</button></div>');}
-    else box.innerHTML='<h3>شكل الصيدلية ونظامها</h3><div class="state err">تعذر تحميل التقييم</div><button class="btn btn-quiet" onclick="homeCamLatest(true)">إعادة المحاولة</button>';
+    else box.innerHTML='<div class="camera-wait">تعذر تحميل تقييم الكاميرات</div><button class="btn btn-quiet" onclick="homeCamLatest(true)">إعادة المحاولة</button>';
   }).finally(function(){clearTimeout(waiting);});
 }
+var HOME_APPEARANCE_OPEN=false;
+function homeAppearanceToggle(el){HOME_APPEARANCE_OPEN=el.open;}
+function appearanceOpenLatestReport(){
+  var latest=CameraAssessment.sortReports(CAMR.list || [])[0];if(!latest)return;
+  var i=CAMR.list.indexOf(latest);if(i>=0)camReportView(i);
+}
 function appearanceHomeHtml(reports,isCached){
-  var entries=CameraAssessment.assessReports(reports),latest=entries[0];
-  var h='<div class="appearance-head"><div><small class="section-eyebrow">المراقبة والمتابعة</small><h3>حالة الصيدلية</h3></div><button class="ibtn" onclick="homeCamLatest(true)" aria-label="تحديث التقييم"><svg viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M6.1 7a7 7 0 0 1 11.8-1L20 9M4 15l2.1 3A7 7 0 0 0 17.9 17"/></svg></button></div>';
-  if(!latest)return h+'<div class="state">لسه مفيش تقرير بتقييم؛ أول تقرير جديد هيظهر هنا</div>';
-  var r=latest.report,a=latest.result,stamp=CameraAssessment.timestamp(r.generatedAt);
-  h+='<div class="monitor-overview">'+(a.ready?'<div class="appearance-ring" style="--appearance-score:'+a.score+'%"><div><b>'+a.score+'</b><small>من 100</small></div></div>':'')+'<div class="monitor-period"><b>'+esc(CameraAssessment.title(r))+'</b><small>'+esc(r.dayLabel || r.date || '')+'</small>'+(a.ready?'<span class="monitor-coverage">تغطية '+a.coverage+'% · '+a.assessedZones+' من 10 مناطق</span>':'<span class="appearance-muted">الدليل غير كافي؛ مفيش درجة افتراضية</span>')+'</div></div>';
-  if(a.ready){
-    var active=a.issues.filter(function(i){return i.status==='new' || i.status==='ongoing';}).sort(function(a,b){return ({major:3,moderate:2,minor:1}[b.severity] || 0)-({major:3,moderate:2,minor:1}[a.severity] || 0);});
-    if(active.length)h+='<div class="monitor-highlight"><span class="monitor-dot" aria-hidden="true"></span><div><b>'+esc(active[0].title)+'</b><small>'+active.length+' ملاحظات نشطة في المناطق المرصودة</small></div></div>';
-    else h+='<div class="appearance-muted">'+(a.counts.unverified?'فيه ملاحظات تعذّر التحقق منها':'مفيش ملاحظات نشطة مؤكدة في المناطق المرصودة')+'</div>';
-    h+='<div class="monitor-status"><span>'+a.counts.new+' جديدة</span><span>'+a.counts.ongoing+' مستمرة</span><span>'+a.counts.unverified+' غير محسومة</span></div>';
-    h+='<div class="appearance-muted">'+(a.coverage<100?'تقييم جزئي للمناطق الواضحة · ':'')+(a.delta===null?'المقارنة الرقمية غير متاحة':a.delta>0?'↑ تحسّن '+a.delta+' نقاط':a.delta<0?'↓ قلّ '+Math.abs(a.delta)+' نقاط':'نفس تقييم الفترة السابقة')+'</div>';
-  }
-  h+='<div class="monitor-bottom"><small>'+(isCached?'محفوظ · بنتحقق من الجديد':stamp?'إعداد '+esc(stamp):'وقت الإعداد غير مسجل')+'</small><button onclick="appearanceOpenReport(0)">فتح التقرير <span aria-hidden="true">←</span></button></div>';
+  var latest=CameraAssessment.assessReports(reports)[0];
+  if(!latest)return '<div class="camera-wait">لسه مفيش تقرير؛ أول تقرير جديد هيظهر هنا</div><button class="camera-link" onclick="camReportsOpen()">كل التقارير ←</button>';
+  var r=latest.report,a=latest.result,stamp=CameraAssessment.timestamp(r.generatedAt),notes=(r.summary || []).slice(),opened=typeof HOME_APPEARANCE_OPEN!=='undefined' && HOME_APPEARANCE_OPEN;
+  if(!notes.length && a.ready)notes=(a.issues || []).filter(function(q){return q.status==='new' || q.status==='ongoing';}).map(function(q){return {text:q.title,where:(q.frames || []).map(function(f){return 'ك'+f.ch;}).join('، '),times:(q.frames || []).map(function(f){return CameraAssessment.clock(f.at);})};});
+  var score=a.ready?'<span class="camera-score" style="--score:'+a.score+'%"><b>'+a.score+'</b></span>':'<span class="camera-score unknown"><b>—</b></span>';
+  var h='<details class="camera-inline"'+(opened?' open':'')+' ontoggle="homeAppearanceToggle(this)"><summary>'+score+'<span class="camera-label"><b>آخر تقييم بالكاميرات</b><small>'+esc(CameraAssessment.title(r))+' · '+notes.length+' ملاحظات</small><small>'+esc(r.dayLabel || r.date || '')+(a.ready?' · '+a.score+'/100 · تغطية '+a.coverage+'%':' · مفيش درجة افتراضية')+'</small></span><span class="camera-chevron" aria-hidden="true">⌄</span></summary><div class="camera-notes">';
+  h+='<p class="camera-meta">'+(isCached?'محفوظ · بنتحقق من الجديد. ':'')+(stamp?'إعداد '+esc(stamp):'وقت الإعداد غير مسجل')+'</p>';
+  if(a.ready)h+='<p class="camera-meta">'+a.assessedZones+' من 10 مناطق مقيمة'+(a.coverage<100?' · تقييم جزئي للمناطق الواضحة':'')+'</p>';
+  if(notes.length)h+=notes.map(function(q,i){return '<div class="camera-finding"><span>'+(i+1)+'</span><div><b>'+esc(q.text || '')+'</b><small>'+esc(q.where || '')+((q.times || []).length?' · '+esc(q.times.join('، ')):'')+'</small></div></div>';}).join('');
+  else h+='<p class="camera-meta">مفيش ملاحظات مؤكدة مسجلة في العينات؛ راجع التغطية.</p>';
+  if(a.ready && a.issues && a.issues.length)h+='<p class="camera-meta">'+a.counts.new+' جديدة · '+a.counts.ongoing+' مستمرة · '+a.counts.unverified+' غير محسومة</p>';
+  h+='<button class="btn btn-primary camera-details" onclick="appearanceOpenLatestReport()">تفاصيل التقرير والصور ←</button><div class="camera-tools"><button onclick="camReportsOpen()">كل التقارير</button><button onclick="appearanceAnalysisRequest()">طلب تحليل</button><button onclick="homeCamLatest(true)">تحديث التقييم</button><button id="camSnapBtn" onclick="camSnapNow()">صوّر دلوقتي</button></div><div id="homeCamSnap"></div></div></details>';
   return h;
 }
 function appearanceReportDetails(r){
@@ -6534,6 +6578,7 @@ try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 </script>
 </body>
 </html>
+
 
 
 

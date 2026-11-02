@@ -5681,17 +5681,11 @@ function camrCoverage(r){
     return {ch:ch,frames:frames,notes:n};
   });
 }
-function camrCoverageHtml(r,buttons){
+function camrCoverageHtml(r){
   return '<div class="camr-coverage">'+camrCoverage(r).map(function(c){
     var label=c.frames.length?'اتراجعت '+c.frames.length+' صور':c.notes?'دليل ملاحظات':'التغطية مش مسجلة';
-    return '<div class="camr-camera '+(c.notes?'has-notes':c.frames.length?'reviewed':'unknown')+'"><b>كاميرا '+c.ch+'</b><small>'+label+'</small><small>'+(c.notes?'عليها علامات بالملاحظات':c.frames.length?'بدون صفحة ملاحظات؛ مش شهادة سلامة':'راجع حدود التقرير')+'</small>'+(buttons && c.frames.length?'<button class="btn btn-quiet" onclick="camrViewReviewed('+c.ch+',this)">افتح العينة</button>':'')+'</div>';
+    return '<div class="camr-camera '+(c.notes?'has-notes':c.frames.length?'reviewed':'unknown')+'"><b>كاميرا '+c.ch+'</b><small>'+label+'</small><small>'+(c.notes?'عليها علامات بالملاحظات':c.frames.length?'بدون صفحة ملاحظات؛ مش شهادة سلامة':'راجع حدود التقرير')+'</small>'+'</div>';
   }).join('')+'</div>';
-}
-function camrViewReviewed(ch,button){
-  var cur=CAMR.cur;if(!cur)return;
-  var frames=(cur.r.reviewedFrames || []).filter(function(f){return +f.ch===ch;}).sort(function(a,b){return Date.parse(b.at)-Date.parse(a.at);});
-  if(!frames.length)return;button.disabled=true;button.textContent='بجيب العينة…';
-  camrFrame(frames[0].file).then(function(im){if(CAMR.cur===cur)camrZoom(im.src);}).catch(function(){toast('العينة ما اتحملتش؛ جرّب تاني');}).finally(function(){button.disabled=false;button.textContent='افتح العينة';});
 }
 var CAMR_C = { navy: '#0e2240', navy2: '#163e6c', blue: '#2484c4', red: '#cd303e', grn: '#188c60', ink: '#1a2434', muted: '#6e7a8c', bg: '#f4f6fa' };
 var CAMR_ORDER = [2, 3, 4, 1, 6];
@@ -5900,7 +5894,7 @@ function camReportView(i){
   var b=camrSheet(CameraAssessment.title(r)+' · '+(r.dayLabel || r.date || '')), n=camrNotes(r), cams=camrPages(r);
   var reviewed=(r.reviewedFrames || []).length, channels=camrCoverage(r).filter(function(c){return c.frames.length;}).length;
   b.innerHTML='<div class="camr-bar"><button class="btn btn-quiet" onclick="camReportsOpen()">‹ كل التقارير</button><button class="btn btn-primary" id="camrPdf" onclick="camReportPdf()" disabled>مشاركة PDF</button></div>'+
-    '<div class="camr-sum">'+n+' ملاحظات · '+(reviewed?reviewed+' عينة من '+channels+' كاميرات':cams.length+' صفحات دليل')+'</div>'+camrCoverageHtml(r,true)+
+    '<div class="camr-sum">'+n+' ملاحظات · '+(reviewed?reviewed+' عينة من '+channels+' كاميرات':cams.length+' صفحات دليل')+'</div>'+camrCoverageHtml(r)+
     '<div id="camrAssessment">'+appearanceReportDetails(r)+'</div>'+
     '<details class="camr-method"><summary>نطاق المراجعة ووقت الإعداد</summary><p>'+esc(r.note || 'حدود التغطية غير مسجلة')+'</p></details>'+
     '<details class="camr-findings" open><summary>الملاحظات ('+n+')</summary>'+(r.summary || []).map(function(q){return '<div class="camr-finding '+(q.sev==='r'?'urgent':'order')+'"><b>'+esc(q.text)+'</b><small>'+esc(q.where || '')+' · '+esc((q.times || []).join('، '))+'</small></div>';}).join('')+'</details>'+

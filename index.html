@@ -657,7 +657,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=20261103-home-fit">
+<link rel="stylesheet" href="dashboard-ui.css?v=20261103-compact-period">
 </head>
 <body>
 
@@ -1431,8 +1431,19 @@ function loadHomeDayExpenses(day,force){
   });
 }
 function monthSlide(M){
-  var result=monthSlideRegular(M);return typeof HOME_FLASH_MODE!=='undefined' && HOME_FLASH_MODE?homeFlashPeriodContent(result):result;
+  var result=monthSlideRegular(M);if(typeof HOME_FLASH_MODE!=='undefined' && HOME_FLASH_MODE){result=homeFlashPeriodContent(result);var chart=homePeriodChartHtml(M);return result.replace('<div class="period-card-footer">',chart+'<div class="period-card-footer">');}return result;
 }
+var HOME_PERIOD_CHART_DATA=null;
+function homePeriodChartHtml(M){
+  var r=M.r || homeRange(),m=M.m || {},start=Date.parse(r.from+'T12:00:00Z'),end=Date.parse(r.to+'T12:00:00Z');
+  var rows=m.source==='pos-invoices-v1' && Array.isArray(m.daily)?m.daily.filter(function(d){return d.date>=r.from && d.date<=r.to && d.net!=null && Number.isFinite(Number(d.net));}).slice().sort(function(a,b){return a.date.localeCompare(b.date);}):[];
+  HOME_PERIOD_CHART_DATA={range:r,rows:rows};
+  if(!rows.length)return '<div class="period-trend-empty">الرسم غير متاح لهذه الفترة</div>';
+  var values=rows.map(function(d){return Number(d.net);}),low=Math.min.apply(null,[0].concat(values)),high=Math.max.apply(null,[1].concat(values)),path='',previous=null;
+  var points=rows.map(function(d){var t=Date.parse(d.date+'T12:00:00Z'),x=end>start?8+(t-start)/(end-start)*304:160,y=60-(Number(d.net)-low)/(high-low)*52;path+=(previous!==null && t-previous===86400000?' L':' M')+x.toFixed(1)+' '+y.toFixed(1);previous=t;return '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="2.5" fill="var(--brand)"/>';}).join('');
+  return '<button class="period-trend" onclick="homePeriodChartDetails()" aria-label="تفاصيل حركة مبيعات الفترة"><small>حركة صافي المبيعات · '+rows.length+' يوم متاح</small><svg viewBox="0 0 320 68" role="img" aria-label="صافي المبيعات من '+esc(r.from)+' إلى '+esc(r.to)+'"><path d="'+path+'" fill="none" stroke="var(--brand)" stroke-width="2.5" stroke-linejoin="round"/>'+points+'</svg><span><small>'+esc(r.from)+'</small><small>'+esc(r.to)+'</small></span></button>';
+}
+function homePeriodChartDetails(){var data=HOME_PERIOD_CHART_DATA;if(!data)return;openMenu('حركة صافي المبيعات','<p class="camera-meta">'+esc(data.range.from)+' — '+esc(data.range.to)+' · الأيام غير المتاحة لا تُحسب صفرًا</p>'+data.rows.map(function(d){return row(esc(d.date),'',ltr(num(d.net))+' جنيه');}).join(''));}
 function monthSlideRegular(M){
   var m=M.m || {},R=M.r || homeRange(),pl=M.pl || {},g=goalOf('daily_sales',10000),net=Number(m.net_sales || 0),gp=Number(m.profit_total || 0),inv=Number(m.invoices_total || 0),np=null;
   var days=R.month?new Date(Date.UTC(+R.month.slice(0,4),+R.month.slice(5,7),0)).getUTCDate():1,target=g*(R.key==='yesterday'?1:R.key==='custom'?Math.round((Date.parse(R.to+'T12:00:00Z')-Date.parse(R.from+'T12:00:00Z'))/86400000)+1:days),left=Math.max(0,target-net);
@@ -3459,7 +3470,9 @@ function homeFlashPeriodContent(html){
   var details=template.content.querySelector('.period-details'),extra='';
   var heading=template.content.querySelector('.period-card > .h-top');if(heading){extra+=heading.outerHTML;var dates=heading.querySelector('span');if(template.content.querySelector('.home-period-controls .ctl-more.dot') && dates){heading.innerHTML=dates.outerHTML;heading.className='home-period-dates';}else heading.remove();}
   template.content.querySelectorAll('.period-card > .camera-meta').forEach(function(note){extra+=note.outerHTML;note.remove();});
-  if(details){details.setAttribute('open','');HOME_FLASH_PERIOD_DETAILS=extra+details.outerHTML;var button=document.createElement('button');button.className='btn btn-quiet';button.textContent='تفاصيل الفترة';button.setAttribute('onclick','homeFlashPeriodDetails()');details.replaceWith(button);}
+  if(details){details.setAttribute('open','');HOME_FLASH_PERIOD_DETAILS=extra+details.outerHTML;var button=document.createElement('button');button.className='btn btn-quiet';button.textContent='تفاصيل الفترة';button.setAttribute('onclick','homeFlashPeriodDetails()');details.replaceWith(button);
+    var footer=document.createElement('div');footer.className='period-card-footer';var info=document.createElement('div');info.className='period-expense-info';var expense=template.content.querySelector('.h-expense'),stamp=template.content.querySelector('.expense-updated');if(expense)info.appendChild(expense);if(stamp)info.appendChild(stamp);button.before(footer);footer.appendChild(info);footer.appendChild(button);
+  }
   return template.innerHTML;
 }
 function homeFlashPeriodDetails(){openMenu('تفاصيل الفترة',HOME_FLASH_PERIOD_DETAILS || '<p>لا توجد بيانات متاحة</p>');}
@@ -3471,7 +3484,7 @@ function homeFlashActionsDetails(){openMenu('كل الإجراءات',HOME_FLASH
 function homePresenceHtml(employees,live,error){
   HOME_PRESENCE_ITEMS=error?[]:staffCardEntries(employees,live,[]).filter(function(item){return !!item.live;});
   var current=HOME_PRESENCE_SALES_DAY===cairoNow().date;
-  return '<article class="staff-flash-card home-presence-page" data-flash-key="presence">'+staffFlashHeader('الموجودون الآن',error?'الحضور غير متاح':live.length+' من الفريق',false)+'<div class="home-presence-list">'+(error?'<p>تعذر تحديث الحضور</p>':HOME_PRESENCE_ITEMS.length?HOME_PRESENCE_ITEMS.slice(0,3).map(function(item,i){return '<button class="home-presence-person" onclick="homePresenceOpen('+i+')"><span><b>'+esc(item.name)+'</b><small>دخول '+staffCairoClock(item.live.checkInTimestamp)+'</small></span><span><b>'+staffFlashValue(current && item.employee?item.employee.net:null)+'</b><small>صافي مبيعات اليوم</small></span></button>';}).join(''):'<p>لا يوجد حضور مسجل حاليًا</p>')+'</div><div class="staff-flash-footer"><button class="btn btn-quiet" onclick="go(\'team\',0)">صفحة الفريق ←</button><small>'+(HOME_PRESENCE_ITEMS.length>3?'+'+(HOME_PRESENCE_ITEMS.length-3)+' في صفحة الفريق':'')+'</small></div></article>';
+  return '<section class="home-presence-strip" aria-label="الموجودون الآن"><div class="home-presence-heading"><small>الموجودون الآن</small><button onclick="go(\'team\',0)">'+(error?'الفريق':live.length+' في الفريق')+' ←</button></div><div class="home-presence-rows">'+(error?'<p>الحضور غير متاح</p>':HOME_PRESENCE_ITEMS.length?HOME_PRESENCE_ITEMS.slice(0,2).map(function(item,i){return '<button class="home-presence-line" onclick="homePresenceOpen('+i+')"><b>'+esc(item.name)+'</b><small>دخول '+staffCairoClock(item.live.checkInTimestamp)+'</small><span>'+staffFlashValue(current && item.employee?item.employee.net:null)+' <small>ج</small></span></button>';}).join(''):'<p>لا يوجد حضور مسجل حاليًا</p>')+'</div></section>';
 }
 function homePresenceOpen(index){var item=HOME_PRESENCE_ITEMS[index];if(!item)return;STAFF_PENDING_FOCUS=item.name;RANGE.perf='today';go('team',0);}
 function staffFocusPending(){
@@ -3487,12 +3500,11 @@ function homeFlashLayout(html){
   var root=document.createElement('div');root.className='home-flash-deck staff-flash-deck';root.setAttribute('role','region');root.setAttribute('aria-label','أقسام الرئيسية؛ اسحب يمينًا أو يسارًا');root.setAttribute('onscroll','staffFlashRemember(this)');
   var heroes=template.content.querySelectorAll('#heroSlides > .h-slide');
   heroes.forEach(function(card,index){card.classList.add('home-flash-page');card.setAttribute('data-flash-key',index?'period':'overview');
-    if(!index){card.classList.add('home-flash-today');var pace=card.querySelector('.h-pace');if(pace)pace.remove();var head=card.querySelector('.h-top'),title=head && head.querySelector('h2');if(head)head.innerHTML=(title?title.outerHTML:'<h2>اليوم</h2>')+'<button class="ctl-more" onclick="homeFlashTodayDetails()" aria-label="تفاصيل اليوم">⋯</button>';}
+    if(!index){card.classList.add('home-flash-today');var pace=card.querySelector('.h-pace');if(pace)pace.remove();var head=card.querySelector('.h-top'),title=head && head.querySelector('h2'),mainLabel=card.querySelector('.h-num>small');if(mainLabel && title)mainLabel.textContent='صافي المبيعات · '+title.textContent;if(head)head.innerHTML='<button class="ctl-more" onclick="homeFlashTodayDetails()" aria-label="تفاصيل اليوم">⋯</button>';}
     root.appendChild(card);
   });
-  var team=template.content.querySelector('#homeTeamCards');if(team){team.style.display='contents';root.appendChild(team);}
+  var team=template.content.querySelector('#homeTeamCards'),overview=root.querySelector('[data-flash-key="overview"]');if(team && overview){team.style.display='block';overview.appendChild(team);}
   var priorities=template.content.querySelector('.home-actions');if(priorities){priorities.classList.add('home-flash-page','home-flash-priorities');priorities.setAttribute('data-flash-key','priorities');var more=document.createElement('button');more.className='btn btn-quiet';more.textContent='كل الإجراءات';more.setAttribute('onclick','homeFlashActionsDetails()');priorities.appendChild(more);root.appendChild(priorities);}
-  var chart=template.content.querySelector('#homeChart');if(chart){var card=chart.closest('.card');card.classList.add('home-flash-page','home-flash-chart');card.setAttribute('data-flash-key','chart');root.appendChild(card);}
   homeFlashPrepareInsights(root);return root.outerHTML;
 }
 function staffFlashValue(value){return value===null || value===undefined || !Number.isFinite(Number(value))?'—':ltr(num(value));}

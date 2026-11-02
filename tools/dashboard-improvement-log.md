@@ -37,3 +37,12 @@ Authorized by Ahmed after the full dashboard review. Weekly review task enabled 
 6. Measure customer follow-up outcomes and refine incomplete medicine-search aggregation; retain original audit history.
 7. Add camera missing-window and stale-report status based on saved report evidence; preserve capture/report schedules and paused video work.
 8. Test touch, native sharing, contrast and layout on iPhone. Re-enable accelerated protected reads only after the Worker authorization path is verified.
+
+
+## 2026-11-02 — visual refinement follow-up
+- Added the visual review to the existing weekly task without changing its schedule or creating a duplicate task.
+- Shared dark/light design tokens, stronger secondary text contrast, larger small labels, consistent card spacing/radii and period controls, 44px controls, explicit focus states, and desktop grid layout.
+- Home's period selector is above the hero; forecast details collapse; synchronous/asynchronous tasks combine into one top-three list with remaining items expandable. Camera assessment stays inside the daily card.
+- Clear sign-in card after an origin lock/cancel rather than a generic loading failure. Network failure retains its own retry state. Owner authentication is not bypassed.
+- Only presentation and UI state are changed. Original financial calculations, camera schedules, delivery system and operational records remain untouched.
+- Validation: dashboard JS syntax and existing 20 dashboard/15 camera checks passed. Authenticated private data views and physical iPhone behavior require separate live verification. Cloudflare deployment remains blocked until an authenticated service connection is available.

@@ -657,6 +657,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
+<link rel="stylesheet" href="dashboard-ui.css?v=20261102-1">
 </head>
 <body>
 
@@ -1155,7 +1156,7 @@ function adminPin(){
 }
 /* 🔒 لو اللوحة مقفولة: الرقم السري بيتطلب مرة واحدة على الجهاز ده ويتبعت مع كل طلب */
 function storedPin(){ try { return localStorage.getItem('adminPin') || ''; } catch (e) { return ''; } }
-var PIN_ASK = null;
+var PIN_ASK = null, AUTH_REQUIRED=false;
 function askPinOnce(){
   if (!PIN_ASK) PIN_ASK = new Promise(function(res){
     setTimeout(function(){
@@ -1172,6 +1173,7 @@ function api(action, params, base){
     var pin0 = storedPin();
     return api_(action, pin0 ? Object.assign({}, params || {}, { pin: pin0 }) : params, base).then(function(d){
       if (!(d && d.lockError)) return d;
+      AUTH_REQUIRED=true;
       try { localStorage.removeItem('adminPin'); } catch (e) {}
       return askPinOnce().then(function(p){ return p ? api_(action, Object.assign({}, params || {}, { pin: p }), base) : d; });
     });
@@ -1201,14 +1203,21 @@ function post(body){
   var b0 = Object.assign({}, body); if (!b0.pin && storedPin()) b0.pin = storedPin();
   return send(b0).then(function(d){
     if (!(d && d.lockError)) return d;
+    AUTH_REQUIRED=true;
     try { localStorage.removeItem('adminPin'); } catch (e) {}
     return askPinOnce().then(function(p){ return p ? send(Object.assign({}, body, { pin: p })) : d; });
   });
 }
 function busy(box){ box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>'; }
+function dashboardSignIn(box){
+  box.innerHTML='<section class="card access-card" role="status"><span class="access-icon" aria-hidden="true">⌑</span><h2>سجّل الدخول لعرض البيانات</h2><p>بيانات الصيدلية محمية. أدخل الرقم السري للمتابعة إلى لوحة الإدارة.</p><button class="btn btn-primary" onclick="dashboardLogin()">تسجيل الدخول</button></section>';
+}
+function dashboardLogin(){
+  askPinOnce().then(function(pin){if(pin){AUTH_REQUIRED=false;render(CUR,TAB);}});
+}
 function oops(box, again){
-  box.innerHTML = '<div class="state err">' + tr('failed') +
-    ' <button class="retry" onclick="' + again + '">' + tr('retry') + '</button></div>';
+  if(AUTH_REQUIRED&&!storedPin()){dashboardSignIn(box);return;}
+  box.innerHTML='<section class="card access-card" role="status"><span class="access-icon" aria-hidden="true">!</span><h2>تعذر تحميل البيانات</h2><p>تحقق من الاتصال ثم أعد المحاولة. لم يتم تغيير البيانات المحفوظة.</p>'+(again?'<button class="btn btn-primary" onclick="'+again+'">إعادة المحاولة</button>':'')+'</section>';
 }
 
 /* لبنات جاهزة — كل الصفحات بتستخدمها فلا توجد شكلين لنفس الحاجة */
@@ -1252,7 +1261,7 @@ function alertBox(tone, title, sub, jump){
 }
 /* سطر مهمة: نقطة + عنوان + رقم كبير على الطرف + سهم */
 function task(tone, title, sub, count, jump){
-  return '<div class="task" style="--tone:var(--' + tone + ')" onclick="' + jump + '" role="button" tabindex="0">' +
+  return '<div class="task" style="--tone:var(--' + tone + ')" onclick="' + jump + '" role="button" tabindex="0" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click()}">' +
     '<span class="dot"></span><div class="task-m"><b>' + title + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</div>' +
     '<span class="task-n">' + ltr(typeof count === 'number' ? num(count) : count) + '</span>' +
     '<span class="task-a">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></div>';
@@ -1510,7 +1519,7 @@ function apiCached(action, params, box, draw){
   if (!seed) busy(box);
   return apiFresh(action, params).then(function(d){
     if(CUR!==section || TAB!==tab)return d;
-    if(d && (d.lockError || d.pinError)){box.innerHTML='<div class="state err">سجّل الدخول لعرض البيانات</div>';return d;}
+    if(d && (d.lockError || d.pinError)){dashboardSignIn(box);return d;}
     markSync(); draw(d, box); return d;
   }).catch(function(e){ logErr(e); if (!seed) oops(box, ''); else box.insertAdjacentHTML('afterbegin','<div class="state err" role="status">تعذر التحديث؛ المعروض نسخة محفوظة وقديمة.</div>'); });
 }
@@ -2243,12 +2252,11 @@ function drawHome(b, kpi, isOld){
       var f = (hrs - OPEN) / (CLOSE - OPEN), leftH = Math.max(0.5, CLOSE - hrs);
       if (f > 0.12 && f < 0.97){
         var proj = Math.round(salesT / f / 50) * 50;
-        paceLine = '<div class="h-pace"><span>تقدير مبدئي للإغلاق، بافتراض معدل ثابت: <b>' + ltr(num(proj)) + '</b></span>' +
-          '<span>محتاجين <b>' + ltr(num(Math.ceil(left / leftH / 10) * 10)) + '</b> في الساعة للهدف</span></div>';
+        paceLine = '<details class="h-pace"><summary>توقع الإغلاق <b>' + ltr(num(proj)) + '</b></summary><span>تقدير مبدئي بافتراض معدل بيع ثابت. المطلوب <b>' + ltr(num(Math.ceil(left / leftH / 10) * 10)) + '</b> جنيه في الساعة للوصول إلى الهدف.</span></details>';
       }
     }
     html += '<div class="home-grid"><div class="home-col">';
-    html += '<div class="h-slides" id="heroSlides" onscroll="heroDots()"><div class="card h-hero h-slide">' +
+    html += '<div class="h-dots" id="heroDots" aria-label="فترة الأداء"><button type="button" class="on" onclick="heroSelect(0)">اليوم</button><button type="button" onclick="heroSelect(1)">الفترات السابقة</button></div><div class="h-slides" id="heroSlides" onscroll="heroDots()"><div class="card h-hero h-slide">' +
       '<div class="h-top"><h2>' + dayWord + (isStaleDay ? ' <span class="h-tag">لسه مفتحناش</span>' : '') + '</h2>' +
         '<span>' + esc(new Date(Date.now() - (isStaleDay ? 86400000 : 0)).toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Africa/Cairo' })) + '</span></div>' +
       (!isStaleDay&&!canonicalReady?'<div class="state err">مصدر المبيعات الموحد غير متاح؛ الأرقام التالية مؤقتة حتى تحديث السيرفر والبيانات.</div>':'')+'<div class="h-main">' + ring + '<div class="h-num"><small>صافي المبيعات</small><b>' + ltr(num(salesT)) + '</b>' +
@@ -2261,7 +2269,7 @@ function drawHome(b, kpi, isOld){
         mini('المرتجع', ltr(num(retVal)) + ' ' + tr('egp'), ltr(num(retCnt)) + ' مرتجع' + (salesT > 0 && retVal > 0 ? ' · ' + ltr(pct(retVal, salesT + retVal) + '%') : '')) +
       '</div><div id="homeDayExpenses" data-day="'+homeDay+'">'+homeExpenseHtml((HOME_PL_CACHE[homeDay.slice(0,7)] || {}).data,homeDay,homeDay,true)+'</div><div class="home-camera" id="homeAppearance" aria-live="polite">'+(storedPin() && CAMR.list?appearanceHomeHtml(CAMR.list,CAMR.at===0):'<div class="camera-wait">'+(storedPin()?'بجيب آخر تقييم بالكاميرات…':'افتح التقارير بالرقم السري لعرض التقييم')+'</div>')+'</div></div>' +
       '<div class="card h-hero h-slide" id="heroMonth">' + (HOME_MONTH ? monthSlide(HOME_MONTH) : '<div class="state"><div class="spin"></div></div>') + '</div>' +
-      '</div><div class="h-dots" id="heroDots" aria-label="فترة الأداء"><button type="button" class="on" onclick="heroSelect(0)">اليوم</button><button type="button" onclick="heroSelect(1)">الفترات السابقة</button></div>';
+      '</div>';
 
     /* ── مطلوب اليوم ── */
     var acts = [];
@@ -2276,9 +2284,10 @@ function drawHome(b, kpi, isOld){
     if (weak && weak.reg_pct < 50) acts.push(task('warn', 'تسجيل ' + esc(weak.name) + ' ضعيف', 'الهدف 75%', weak.reg_pct + '%', "go('team',0)"));
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
     if (dueAgents.length) acts.push(task('warn', 'مستحقات مندوبين', ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0))) + ' ' + tr('egp'), dueAgents.length, "go('admin',0)"));
+    HOME_PRIMARY=acts;HOME_MORE=homeMoreHtml();
     var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
     html += '<div class="card home-actions"><div class="card-head"><div><small class="section-eyebrow">الأولويات</small><h3>يحتاج إلى إجراء</h3></div></div>' +
-      '<div id="homeMore">' + (HOME_MORE || '') + '</div>' + acts.slice(0,2).join('') + (acts.length>2?'<details class="home-more"><summary>باقي التنبيهات ('+(acts.length-2)+')</summary>'+acts.slice(2).join('')+'</details>':'') +
+      '<div id="homeMore">' + (HOME_MORE || '') + '</div>' +
       (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>') + '</div>';
     setTimeout(homeCamLatest,600);
     html += '</div><div class="home-col">';
@@ -2325,8 +2334,13 @@ var HOME_MORE = '', HOME_MORE_AT = 0;
 /* كل مهمة بتتحمّل لوحدها وتظهر أول ما توصل (مش بتستنى أبطأ واحدة)،
    وآخر نتيجة محفوظة على الموبايل فبتظهر فورًا وانت فاتح */
 var HOME_SLOTS = (function(){ try { if(!storedPin())return {};return JSON.parse(localStorage.getItem('homeSlots') || '{}'); } catch (e) { return {}; } })();
+var HOME_PRIMARY=[];
 var HOME_ORDER = ['bot', 'calls', 'short', 'docs', 'exp'];
-function homeMoreHtml(){var rows=HOME_ORDER.map(function(k){return HOME_SLOTS[k] || '';}).filter(Boolean);return rows.slice(0,2).join('')+(rows.length>2?'<details class="home-more"><summary>مهام إضافية ('+(rows.length-2)+')</summary>'+rows.slice(2).join('')+'</details>':'');}
+function homeMoreHtml(){
+  var rows=(HOME_PRIMARY||[]).concat(HOME_ORDER.map(function(k){return HOME_SLOTS[k]||'';})).filter(Boolean);
+  rows=rows.map(function(html,i){return {html:html,i:i,priority:html.indexOf('var(--bad)')>=0?0:html.indexOf('var(--warn)')>=0?1:2};}).sort(function(a,b){return a.priority-b.priority||a.i-b.i;}).map(function(x){return x.html;});
+  return rows.slice(0,3).join('')+(rows.length>3?'<details class="home-more"><summary>عرض بقية الإجراءات ('+(rows.length-3)+')</summary>'+rows.slice(3).join('')+'</details>':'');
+}
 HOME_MORE = homeMoreHtml();
 function setHomeSlot(k, html){
   HOME_SLOTS[k] = html || '';
@@ -6629,6 +6643,7 @@ try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 </script>
 </body>
 </html>
+
 
 
 

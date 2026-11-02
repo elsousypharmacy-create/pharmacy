@@ -1459,9 +1459,9 @@ function loadHomeMonth(){
 }
 function heroSelect(i){var s=document.getElementById('heroSlides');if(s && s.children[i])s.children[i].scrollIntoView({behavior:window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest',inline:'center'});}
 function heroDots(){
-  var s = document.getElementById('heroSlides'), d = document.getElementById('heroDots'); if (!s || !d) return;
+  var s = document.getElementById('heroSlides'), d = document.getElementById('heroDots'); if (!s) return;
   var i = Math.round(Math.abs(s.scrollLeft) / s.clientWidth);
-  [].forEach.call(d.children,function(x,j){x.className=j===i?'on':'';x.setAttribute('aria-pressed',j===i?'true':'false');});
+  [].forEach.call(d ? d.children : [],function(x,j){x.className=j===i?'on':'';x.setAttribute('aria-pressed',j===i?'true':'false');});
   try { sessionStorage.setItem('heroSlide', String(i)); } catch (e) {}
 }
 var HOME_DAYS = null, HOME_YK = null, HOME_LIST = [], HOME_SEL = 13;
@@ -2355,7 +2355,7 @@ function drawHome(b, kpi, isOld){
       }
     }
     html += '<div class="home-grid"><div class="home-col">';
-    html += '<div class="h-dots" id="heroDots" aria-label="فترة الأداء"><button type="button" class="on" onclick="heroSelect(0)">اليوم</button><button type="button" onclick="heroSelect(1)">الفترات السابقة</button></div><div class="h-slides" id="heroSlides" onscroll="heroDots()"><div class="card h-hero h-slide">' +
+    html += '<div class="h-slides" id="heroSlides" onscroll="heroDots()"><div class="card h-hero h-slide">' +
       '<div class="h-top"><h2>' + dayWord + (isStaleDay ? ' <span class="h-tag">لسه مفتحناش</span>' : '') + '</h2>' +
         '<span>' + esc(new Date(Date.now() - (isStaleDay ? 86400000 : 0)).toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Africa/Cairo' })) + '</span></div>' +
       (!isStaleDay&&!canonicalReady?'<div class="state err">مصدر المبيعات الموحد غير متاح؛ الأرقام التالية مؤقتة حتى تحديث السيرفر والبيانات.</div>':'')+'<div class="h-main">' + ring + '<div class="h-num"><small>صافي المبيعات</small><b>' + ltr(num(salesT)) + '</b>' +

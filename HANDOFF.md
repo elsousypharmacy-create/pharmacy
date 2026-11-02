@@ -198,3 +198,7 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 - Team page now has an explicit «دخول وخروج الفريق» attendance section from the existing getStaffHub.rows, including staff without POS sales. Times are already formatted Africa/Cairo by the server, relabeled as Cairo and AM/PM localized; do not shift them again. Employee shift details and attendance exports explicitly label Cairo time.
 - Home shows each live employee's actual check-in timestamp formatted via Intl Africa/Cairo, independently of the owner's phone timezone, alongside elapsed duration and a link to the full in/out record. Missing clock-out is «لم يسجل الخروج», never an invented departure. Existing server/API calls and payroll records are unchanged.
 - Frontend only; no server update required. Tests: tools/test-staff-cairo.js covers epoch seconds/milliseconds, winter/summer offsets, missing input and escaping. tools/test-camera-refresh-feedback.js covers unchanged/new report and missing-owner feedback; 15 camera assessment checks and dashboard JS syntax passed. Actual private attendance values and live owner latency remain unverified without owner access.
+
+
+## Remove redundant hero tabs — 2026-11-02
+- Ahmed requested removing the top «اليوم / الفترات السابقة» button row because the cards already identify their periods. Removed only that redundant row; card headings, dates, swipe navigation, period tabs and custom-range menu remain. heroDots still remembers swipe position without the removed controls. Frontend only; JavaScript syntax checked.

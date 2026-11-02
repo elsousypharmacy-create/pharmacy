@@ -90,3 +90,11 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 - New Home action «طلب تحليل من الشات» prepares/copies a request and opens ChatGPT for the owner to send. It explicitly does NOT trigger autonomous instant analysis. Existing Gemini credentials were observed by source references only, never read. Enabling paid/direct Gemini camera-image analysis was NOT authorized or activated; explain this separately if requested.
 - Run `node tools/test-camera-assessment.js` and parse dashboard scripts. Scored live output is pending the first new evidence-backed report; do not claim the demonstration score is real. Existing external Claude routines still require owner pause if active.
 
+
+
+## Camera UI and missing-window recovery (2026-11-02)
+- Three camera automations now check actual saved windows since 1 Nov 2026 and prepare missing completed periods oldest first. A run/no_update is not proof of a saved report. Check again before saving to avoid duplicates; report remaining backlog/failures explicitly. Capture cadence, sampling recipe and schedules unchanged.
+- Home/report UI commit 219db91097bd702eda7a4af71265da710f118d63: keep last loaded appearance card visible on redraw; share in-flight report fetches, RAM cache 5 minutes, explicit refresh bypass, preserve last result on network failure. No evidence images load just to display Home.
+- Report coverage now lists all five cameras 1/2/3/4/6 from reviewedFrames, separately from annotated pages. Latest reviewed original for each camera opens on demand. Blue means reviewed, amber means evidence annotations, gray means unavailable coverage; no inferred all-clear from absent pages. Legacy coverage remains explicitly unknown when not recorded.
+- Report pages show progressively with two workers: original first, repeats then redraw. Guard against responses writing into a newer report. Loading progress/retry visible; PDF waits for successful page and repeat loading. PDF summary text wraps and preserves full scope note; HTML has readable findings and review scope.
+- Validation: dashboard JS syntax, 15 appearance checks, server bundle check, real-report coverage (5 reviewed / 3 annotated cameras), shared/cached/forced/offline fetch behavior and progressive-render/PDF completion checks passed. Visual iPhone/browser rendering not verified: no local Chromium executable. No backend update required.

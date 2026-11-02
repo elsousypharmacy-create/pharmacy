@@ -242,3 +242,9 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 - Checks: tools/test-period-trend.js validates full selected month (31 days), custom bounds, gaps, known zero/negative and single-day chart; Home presence/viewport, 16 expense-period and dashboard JS syntax passed. Browser QA of these updated fixtures is pending at publication; earlier viewport fixtures had zero overflow and an 8px navbar clearance on all four tested sizes.
 
 - Browser QA found two legacy specificity conflicts: #p-home padding and two-column rules, plus the global full-width .btn inside the period footer reducing expense text width to zero. Scoped compact overrides fix these three causes; period details button uses auto width, metrics use one intrinsic row, and duplicate goal text remains in details. Re-run the four-size fixture after the final compact-period3 stylesheet loads.
+
+
+## Align Home content to the top after owner screenshot — 2026-11-03
+- Ahmed's IMG_9751 showed excessive top/bottom blank space because the whole fixed card used vertical centering. Home daily and period cards now explicitly start their compact blocks at the top, with fixed padding and unchanged intrinsic KPI sizes. The outer viewport size and horizontal navigation remain.
+- Daily main label now uses the actual displayed date rather than copying the informal «أمس لسه مفتحناش» title into the number label. Home camera timestamp omits the redundant Cairo-time phrase; conversion/source timestamp remains unchanged. No numeric, attendance or date-source calculation changes.
+- JS syntax, 15 camera assessment checks and Home presence checks passed. Existing four-size viewport fixtures regenerated for the new stylesheet version. Owner-private rendering not inspected; the supplied screenshot is the evidence for alignment changes.

@@ -657,7 +657,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=20261103-compact-period3">
+<link rel="stylesheet" href="dashboard-ui.css?v=20261103-top-aligned">
 </head>
 <body>
 
@@ -3500,7 +3500,7 @@ function homeFlashLayout(html){
   var root=document.createElement('div');root.className='home-flash-deck staff-flash-deck';root.setAttribute('role','region');root.setAttribute('aria-label','أقسام الرئيسية؛ اسحب يمينًا أو يسارًا');root.setAttribute('onscroll','staffFlashRemember(this)');
   var heroes=template.content.querySelectorAll('#heroSlides > .h-slide');
   heroes.forEach(function(card,index){card.classList.add('home-flash-page');card.setAttribute('data-flash-key',index?'period':'overview');
-    if(!index){card.classList.add('home-flash-today');var pace=card.querySelector('.h-pace');if(pace)pace.remove();var head=card.querySelector('.h-top'),title=head && head.querySelector('h2'),mainLabel=card.querySelector('.h-num>small');if(mainLabel && title)mainLabel.textContent='صافي المبيعات · '+title.textContent;if(head)head.innerHTML='<button class="ctl-more" onclick="homeFlashTodayDetails()" aria-label="تفاصيل اليوم">⋯</button>';}
+    if(!index){card.classList.add('home-flash-today');var pace=card.querySelector('.h-pace');if(pace)pace.remove();var head=card.querySelector('.h-top'),title=head && head.querySelector('h2'),mainLabel=card.querySelector('.h-num>small');if(mainLabel){var day=HOME_FLASH_DAY_STATS && HOME_FLASH_DAY_STATS.date;mainLabel.textContent='صافي المبيعات'+(day?' · '+new Date(day+'T12:00:00Z').toLocaleDateString('ar-EG',{day:'numeric',month:'short',timeZone:'Africa/Cairo'}):'');}if(head)head.innerHTML='<button class="ctl-more" onclick="homeFlashTodayDetails()" aria-label="تفاصيل اليوم">⋯</button>';}
     root.appendChild(card);
   });
   var team=template.content.querySelector('#homeTeamCards'),overview=root.querySelector('[data-flash-key="overview"]');if(team && overview){team.style.display='block';overview.appendChild(team);}
@@ -6540,7 +6540,7 @@ function homeCameraPlaceholder(message){
 function appearanceHomeHtml(reports,isCached){
   var latest=CameraAssessment.assessReports(reports)[0];
   if(!latest)return homeCameraPlaceholder('لا يوجد تقرير متاح؛ أول تقرير جديد هيظهر هنا');
-  var r=latest.report,a=latest.result,stamp=CameraAssessment.timestamp(r.generatedAt),notes=(r.summary || []).slice(),opened=typeof HOME_INSIGHT_OPEN!=='undefined' && HOME_INSIGHT_OPEN==='camera';
+  var r=latest.report,a=latest.result,stamp=CameraAssessment.timestamp(r.generatedAt).replace(/\s*[·،-]?\s*ب?توقيت مصر\s*/g,'').trim(),notes=(r.summary || []).slice(),opened=typeof HOME_INSIGHT_OPEN!=='undefined' && HOME_INSIGHT_OPEN==='camera';
   if(!notes.length && a.ready)notes=(a.issues || []).filter(function(q){return q.status==='new' || q.status==='ongoing';}).map(function(q){return {text:q.title,where:(q.frames || []).map(function(f){return 'ك'+f.ch;}).join('، '),times:(q.frames || []).map(function(f){return CameraAssessment.clock(f.at);})};});
   var score=a.ready?'<span class="camera-score" style="--score:'+a.score+'%"><b>'+a.score+'</b></span>':'<span class="camera-score unknown"><b>—</b></span>';
   var h='<button type="button" class="home-insight-card camera-card" data-insight-toggle="camera" aria-controls="homeCameraPanel" aria-expanded="'+opened+'" onclick="homeInsightToggle(\'camera\')"><span class="insight-heading">الكاميرات <span aria-hidden="true">⌄</span></span><b class="insight-value">'+(a.ready?a.score+' <small>/ 100</small>':'—')+'</b><small class="insight-updated">آخر تحديث: '+esc(stamp || '—')+'</small></button><div id="homeCameraPanel" class="home-insight-panel camera-notes" data-insight-panel="camera"'+(opened?'':' hidden')+'><b>'+esc(CameraAssessment.title(r))+'</b><p class="camera-meta">'+esc(r.dayLabel || r.date || '')+(a.ready?' · تغطية '+a.coverage+'%':' · لا يتم عرض درجة افتراضية')+'</p>';

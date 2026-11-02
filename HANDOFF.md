@@ -182,3 +182,11 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 
 ## Minimal expense footer — 2026-11-02
 - Ahmed requested removing explanatory text below Home expenses. Daily and period expense rows now show only a small neutral «آخر تحديث» footer, using the actual cached aggregate _uiAt in Cairo time (date and time). Missing timestamps display a dash, never the current time. Removed the operating/stock subtitle and expense-status prose/disclosure. On failure, retain the saved amount/timestamp and provide a plain retry button. Calculations, pending-ledger separation and loading/cache behavior are unchanged.
+
+
+## Two daily insight cards — 2026-11-02
+- Ahmed requested expenses and cameras side by side INSIDE today's hero, each showing its own last-update timestamp and opening details on tap. Implemented two equal grid columns with semantic buttons, aria-expanded/controls and one full-width detail panel below the pair. Opening one closes the other; active panel survives async redraws. Missing camera/report states retain the same card layout and do not invent a score or timestamp.
+- Expense card shows itemized operating/salary total; details include available category sums, pending unitemized difference and navigation to Expenses. Aggregate-only category/day sums are retained without names or item detail. Legacy cached aggregates still show total and an Expenses link until refreshed. Monthly card keeps its minimal last-update footer.
+- Camera card shows the actual report score or a dash and generatedAt as its last update (not metadata refresh time). Coverage, covered period, findings and report/image controls are inside the expanded panel. Camera capture and analysis schedules are unchanged.
+- The owner also requested the top amount to be net. Main hero already uses canonical net_sales (sales minus returns); retain the explicit «صافي المبيعات» label. He did not answer the net-profit-versus-net-sales clarification; no profit-after-expense number is substituted by assumption.
+- Frontend only; no server deployment required. Home expense loading/interaction checks, 16 expense-period checks, 15 camera assessment checks and dashboard JavaScript syntax passed. Actual native iPhone/private-data layout is not verified from these mocked checks.

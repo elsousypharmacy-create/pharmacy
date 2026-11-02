@@ -657,7 +657,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=20261102-blue-accent">
+<link rel="stylesheet" href="dashboard-ui.css?v=20261102-insight-cards">
 </head>
 <body>
 
@@ -1343,7 +1343,7 @@ function homeNormalizeExpenses(d,month){
     if(e.isIncome || /مشتروات|مشتريات/.test(String(e.category)) || String(e.date).slice(0,7)!==month)return;
     var amount=Number(e.amount);if(e.amount==null || !Number.isFinite(amount) || amount<0)throw new Error('invalid expense');
     var day=days[e.date] || (days[e.date]={date:e.date,expenses:0,pending_expenses:0});
-    day.expenses+=amount;if(e.fromLedger){day.pending_expenses+=amount;pending+=amount;}
+    day.expenses+=amount;if(e.fromLedger){day.pending_expenses+=amount;pending+=amount;}else{day.categories=day.categories||{};var category=String(e.category||'مصروفات أخرى');day.categories[category]=(day.categories[category]||0)+amount;}
   });
   return {ok:true,month:month,financial_schema:'finance-review-v1',_expenseOnly:true,days:Object.keys(days).sort().map(function(k){return days[k];}),
     pending_expenses:pending,exp_last_entry:d.lastEntry,exp_stale_days:d.staleDays,exp_stale:!!d.stale,expense_source_error:false,_uiAt:Date.now()};
@@ -1361,7 +1361,7 @@ function homeExpenseMonth(month,force){
       if(!pin || storedPin()!==pin)throw new Error('access changed');
       var data=homeNormalizeExpenses(d,month);
       HOME_EXP_CACHE[month]={at:data._uiAt,data:data};cacheSet('homeExpense.v1',{month:month},data);delete HOME_EXP_FAILURES[month];
-      if(timedOut){var box=document.getElementById('homeDayExpenses'),day=box && box.getAttribute('data-day');if(day && day.slice(0,7)===month)box.innerHTML=homeExpenseHtml(data,day,day,false);}
+      if(timedOut){var box=document.getElementById('homeDayExpenses'),day=box && box.getAttribute('data-day');if(day && day.slice(0,7)===month)box.innerHTML=homeExpenseHtml(data,day,day,false,true);}
       resolve(data);
     }).catch(reject);
   }).catch(function(e){HOME_EXP_FAILURES[month]=Date.now();throw e;}).finally(function(){clearTimeout(timer);if(HOME_EXP_REQUESTS[month]===request)delete HOME_EXP_REQUESTS[month];});
@@ -1397,19 +1397,32 @@ function reportDataStatus(content,attention,key,cached){
   key=key||'report';
   return '<details class="report-data-status" data-status-key="'+esc(key)+'"'+(REPORT_STATUS_OPEN[key]?' open':'')+' ontoggle="reportStatusToggle(this)"><summary><span class="report-status-dot'+(attention?' attention':'')+'" aria-hidden="true"></span>حالة البيانات'+(cached?' <small>· محفوظة</small>':'')+'<span class="report-status-arrow" aria-hidden="true">⌄</span></summary><div class="report-status-content">'+content+'</div></details>';
 }
-function homeExpenseHtml(pl,from,to,loading){
+var HOME_INSIGHT_OPEN='';
+function homeInsightToggle(kind){
+  HOME_INSIGHT_OPEN=HOME_INSIGHT_OPEN===kind?'':kind;
+  document.querySelectorAll('[data-insight-toggle]').forEach(function(el){el.setAttribute('aria-expanded',el.getAttribute('data-insight-toggle')===HOME_INSIGHT_OPEN?'true':'false');});
+  document.querySelectorAll('[data-insight-panel]').forEach(function(el){el.hidden=el.getAttribute('data-insight-panel')!==HOME_INSIGHT_OPEN;});
+}
+function homeExpenseHtml(pl,from,to,loading,compact){
   var totals=homeExpenseTotals(pl,from,to),amount=totals?totals.itemized:null,at=pl && Number(pl._uiAt),updated='—';
   if(at && Number.isFinite(at))updated=new Date(at).toLocaleString('ar-EG',{timeZone:'Africa/Cairo',day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});
+  if(compact){
+    var opened=HOME_INSIGHT_OPEN==='expenses',cats={},pending=totals?totals.pending:0;
+    if(pl && Array.isArray(pl.days))pl.days.forEach(function(d){if(d.date>=from && d.date<=to)Object.keys(d.categories||{}).forEach(function(k){cats[k]=(cats[k]||0)+d.categories[k];});});
+    var value=amount===null?(loading?'جارٍ التحميل…':'غير متاح'):ltr(num(amount))+' <small>جنيه</small>';
+    return '<button type="button" class="home-insight-card expense-card" data-insight-toggle="expenses" aria-controls="homeExpensePanel" aria-expanded="'+opened+'" onclick="homeInsightToggle(\'expenses\')"><span class="insight-heading">المصروفات <span aria-hidden="true">⌄</span></span><b class="insight-value">'+value+'</b><small class="insight-updated">آخر تحديث: '+esc(updated)+'</small></button>'+
+      '<div id="homeExpensePanel" class="home-insight-panel" data-insight-panel="expenses"'+(opened?'':' hidden')+'><b>تفاصيل المصروفات · '+esc(from)+'</b>'+Object.keys(cats).map(function(k){return row(esc(k),'',ltr(num(cats[k]))+' جنيه');}).join('')+row('المصروفات المفصّلة','',amount===null?'غير متاح':ltr(num(amount))+' جنيه')+(pending>0?row('فرق غير مفصّل','يحتاج إلى مطابقة',ltr(num(pending))+' جنيه'):'')+'<button class="btn btn-quiet" onclick="go(\'money\',2)">كل المصروفات ←</button></div>';
+  }
   return '<div class="h-expense"><div><small>المصروفات المفصّلة</small></div><b>'+(amount===null?(loading?'جارٍ التحميل…':'غير متاح'):ltr(num(amount))+' <small>جنيه</small>')+'</b></div><small class="expense-updated" style="display:block;margin:0 0 10px;font-size:11px;color:var(--ink-3)">آخر تحديث: '+esc(updated)+'</small>';
 }
 function loadHomeDayExpenses(day,force){
   var box=document.getElementById('homeDayExpenses');if(!box)return;
   function active(){return document.getElementById('homeDayExpenses')===box && box.getAttribute('data-day')===day;}
   var cached=homeReadExpense(day.slice(0,7));
-  if(cached)box.innerHTML=homeExpenseHtml(cached.data,day,day,false);
-  homeExpenseMonth(day.slice(0,7),force).then(function(pl){if(active())box.innerHTML=homeExpenseHtml(pl,day,day,false);}).catch(function(){
+  if(cached)box.innerHTML=homeExpenseHtml(cached.data,day,day,false,true);
+  homeExpenseMonth(day.slice(0,7),force).then(function(pl){if(active())box.innerHTML=homeExpenseHtml(pl,day,day,false,true);}).catch(function(){
     if(!active())return;
-    if(!cached)box.innerHTML=homeExpenseHtml(null,day,day,false);
+    if(!cached)box.innerHTML=homeExpenseHtml(null,day,day,false,true);
     box.insertAdjacentHTML('beforeend','<button class="btn btn-quiet" onclick="loadHomeDayExpenses(this.closest(\'div[data-day]\').getAttribute(\'data-day\'),true)">إعادة المحاولة</button>');
   });
 }
@@ -2353,7 +2366,7 @@ function drawHome(b, kpi, isOld){
         mini('ربح البيع', ltr(num(profitT)), salesT > 0 ? 'هامش ' + ltr(pct(profitT, salesT) + '%') : '') +
         ((isStaleDay && !kpi._yesterday) ? mini('أول فاتورة', '—', 'هتصفّر العداد') : mini('متوسط الفاتورة', ltr(num(avgInv)), ltr(num(tot.inv)) + ' فاتورة')) +
         mini('المرتجع', ltr(num(retVal)) + ' ' + tr('egp'), ltr(num(retCnt)) + ' مرتجع' + (salesT > 0 && retVal > 0 ? ' · ' + ltr(pct(retVal, salesT + retVal) + '%') : '')) +
-      '</div><div id="homeDayExpenses" data-day="'+homeDay+'">'+homeExpenseHtml((homeReadExpense(homeDay.slice(0,7)) || {}).data,homeDay,homeDay,true)+'</div><div class="home-camera" id="homeAppearance" aria-live="polite">'+(storedPin() && CAMR.list?appearanceHomeHtml(CAMR.list,CAMR.at===0):'<div class="camera-wait">'+(storedPin()?'بجيب آخر تقييم بالكاميرات…':'افتح التقارير بالرقم السري لعرض التقييم')+'</div>')+'</div></div>' +
+      '</div><div class="home-insight-grid"><div class="home-insight-slot" id="homeDayExpenses" data-day="'+homeDay+'">'+homeExpenseHtml((homeReadExpense(homeDay.slice(0,7)) || {}).data,homeDay,homeDay,true,true)+'</div><div class="home-camera home-insight-slot" id="homeAppearance" aria-live="polite">'+(storedPin() && CAMR.list?appearanceHomeHtml(CAMR.list,CAMR.at===0):homeCameraPlaceholder(storedPin()?'جارٍ التحميل…':'سجّل الدخول'))+'</div></div></div>' +
       '<div class="card h-hero h-slide" id="heroMonth">' + (HOME_MONTH ? monthSlide(HOME_MONTH) : '<div class="state"><div class="spin"></div></div>') + '</div>' +
       '</div>';
 
@@ -6322,11 +6335,11 @@ function homeCamLatest(force){
     if(el && CAMR.list && CAMR.list.length){var r=CAMR.list[0],n=camrNotes(r);el.textContent=CameraAssessment.title(r)+(n?' · '+n+' ملاحظات':' · راجع التغطية');el.className='';}
   }
   if(CAMR.list)paint();
-  var waiting=setTimeout(function(){var box=document.getElementById('homeAppearance');if(box && !CAMR.list)box.innerHTML='<div class="camera-wait" role="status">السيرفر متأخر؛ لا توجد تقييم محفوظ لسه.</div>';},12000);
+  var waiting=setTimeout(function(){var box=document.getElementById('homeAppearance');if(box && !CAMR.list)box.innerHTML=homeCameraPlaceholder('السيرفر متأخر؛ لا يوجد تقييم محفوظ بعد.');},12000);
   camrReportsFetch(force===true).then(paint).catch(function(){
     var box=document.getElementById('homeAppearance');if(!box)return;
     if(CAMR.list){paint();box.insertAdjacentHTML('beforeend','<div class="cam-note" role="status">التحديث ماكملش؛ ده آخر تقرير محمّل. <button class="btn btn-quiet" onclick="homeCamLatest(true)">إعادة المحاولة</button></div>');}
-    else box.innerHTML='<div class="camera-wait">تعذر تحميل تقييم الكاميرات</div><button class="btn btn-quiet" onclick="homeCamLatest(true)">إعادة المحاولة</button>';
+    else box.innerHTML=homeCameraPlaceholder('تعذر تحميل تقييم الكاميرات')+'<button class="btn btn-quiet insight-retry" onclick="homeCamLatest(true)">إعادة المحاولة</button>';
   }).finally(function(){clearTimeout(waiting);});
 }
 var HOME_APPEARANCE_OPEN=false;
@@ -6335,19 +6348,22 @@ function appearanceOpenLatestReport(){
   var latest=CameraAssessment.sortReports(CAMR.list || [])[0];if(!latest)return;
   var i=CAMR.list.indexOf(latest);if(i>=0)camReportView(i);
 }
+function homeCameraPlaceholder(message){
+  return '<button type="button" class="home-insight-card camera-card" data-insight-toggle="camera" aria-expanded="'+(typeof HOME_INSIGHT_OPEN!=='undefined' && HOME_INSIGHT_OPEN==='camera')+'" aria-controls="homeCameraPanel" onclick="homeInsightToggle(\'camera\')"><span class="insight-heading">الكاميرات <span aria-hidden="true">⌄</span></span><b class="insight-value">—</b><small class="insight-updated">آخر تحديث: —</small></button><div id="homeCameraPanel" class="home-insight-panel" data-insight-panel="camera"'+(typeof HOME_INSIGHT_OPEN!=='undefined' && HOME_INSIGHT_OPEN==='camera'?'':' hidden')+'><p>'+esc(message)+'</p><button class="camera-link" onclick="camReportsOpen()">كل التقارير ←</button></div>';
+}
 function appearanceHomeHtml(reports,isCached){
   var latest=CameraAssessment.assessReports(reports)[0];
-  if(!latest)return '<div class="camera-wait">لا يوجد تقرير متاح؛ أول تقرير جديد هيظهر هنا</div><button class="camera-link" onclick="camReportsOpen()">كل التقارير ←</button>';
-  var r=latest.report,a=latest.result,stamp=CameraAssessment.timestamp(r.generatedAt),notes=(r.summary || []).slice(),opened=typeof HOME_APPEARANCE_OPEN!=='undefined' && HOME_APPEARANCE_OPEN;
+  if(!latest)return homeCameraPlaceholder('لا يوجد تقرير متاح؛ أول تقرير جديد هيظهر هنا');
+  var r=latest.report,a=latest.result,stamp=CameraAssessment.timestamp(r.generatedAt),notes=(r.summary || []).slice(),opened=typeof HOME_INSIGHT_OPEN!=='undefined' && HOME_INSIGHT_OPEN==='camera';
   if(!notes.length && a.ready)notes=(a.issues || []).filter(function(q){return q.status==='new' || q.status==='ongoing';}).map(function(q){return {text:q.title,where:(q.frames || []).map(function(f){return 'ك'+f.ch;}).join('، '),times:(q.frames || []).map(function(f){return CameraAssessment.clock(f.at);})};});
   var score=a.ready?'<span class="camera-score" style="--score:'+a.score+'%"><b>'+a.score+'</b></span>':'<span class="camera-score unknown"><b>—</b></span>';
-  var h='<details class="camera-inline"'+(opened?' open':'')+' ontoggle="homeAppearanceToggle(this)"><summary>'+score+'<span class="camera-label"><b>آخر تقييم بالكاميرات</b><small>'+esc(CameraAssessment.title(r))+' · '+notes.length+' ملاحظات</small><small>'+esc(r.dayLabel || r.date || '')+(a.ready?' · '+a.score+'/100 · تغطية '+a.coverage+'%':' · لا يتم عرض درجة افتراضية')+'</small></span><span class="camera-chevron" aria-hidden="true">⌄</span></summary><div class="camera-notes">';
+  var h='<button type="button" class="home-insight-card camera-card" data-insight-toggle="camera" aria-controls="homeCameraPanel" aria-expanded="'+opened+'" onclick="homeInsightToggle(\'camera\')"><span class="insight-heading">الكاميرات <span aria-hidden="true">⌄</span></span><b class="insight-value">'+(a.ready?a.score+' <small>/ 100</small>':'—')+'</b><small class="insight-updated">آخر تحديث: '+esc(stamp || '—')+'</small></button><div id="homeCameraPanel" class="home-insight-panel camera-notes" data-insight-panel="camera"'+(opened?'':' hidden')+'><b>'+esc(CameraAssessment.title(r))+'</b><p class="camera-meta">'+esc(r.dayLabel || r.date || '')+(a.ready?' · تغطية '+a.coverage+'%':' · لا يتم عرض درجة افتراضية')+'</p>';
   h+='<p class="camera-meta">'+(isCached?'محفوظ · بنتحقق من الجديد. ':'')+(stamp?'إعداد '+esc(stamp):'وقت الإعداد غير مسجل')+'</p>';
   if(a.ready)h+='<p class="camera-meta">'+a.assessedZones+' من 10 مناطق مقيمة'+(a.coverage<100?' · تقييم جزئي للمناطق الواضحة':'')+'</p>';
   if(notes.length)h+=notes.map(function(q,i){return '<div class="camera-finding"><span>'+(i+1)+'</span><div><b>'+esc(q.text || '')+'</b><small>'+esc(q.where || '')+((q.times || []).length?' · '+esc(q.times.join('، ')):'')+'</small></div></div>';}).join('');
   else h+='<p class="camera-meta">لا توجد ملاحظات مؤكدة مسجلة في العينات؛ راجع التغطية.</p>';
   if(a.ready && a.issues && a.issues.length)h+='<p class="camera-meta">'+a.counts.new+' جديدة · '+a.counts.ongoing+' مستمرة · '+a.counts.unverified+' غير محسومة</p>';
-  h+='<button class="btn btn-primary camera-details" onclick="appearanceOpenLatestReport()">تفاصيل التقرير والصور ←</button><div class="camera-tools"><button onclick="camReportsOpen()">كل التقارير</button><button onclick="appearanceAnalysisRequest()">طلب تحليل</button><button onclick="homeCamLatest(true)">تحديث التقييم</button><button id="camSnapBtn" onclick="camSnapNow()">التقاط صور الآن</button></div><div id="homeCamSnap"></div></div></details>';
+  h+='<button class="btn btn-primary camera-details" onclick="appearanceOpenLatestReport()">تفاصيل التقرير والصور ←</button><div class="camera-tools"><button onclick="camReportsOpen()">كل التقارير</button><button onclick="appearanceAnalysisRequest()">طلب تحليل</button><button onclick="homeCamLatest(true)">تحديث التقييم</button><button id="camSnapBtn" onclick="camSnapNow()">التقاط صور الآن</button></div><div id="homeCamSnap"></div></div>';
   return h;
 }
 function appearanceReportDetails(r){

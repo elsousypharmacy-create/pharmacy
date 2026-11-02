@@ -15,7 +15,7 @@ function setup(){
   localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},sessionStorage:{getItem:()=>null},
   storedPin:()=>auth,cairoNow:()=>({date:'2026-11-02'}),isoAdd:()=>'',esc:String,ltr:String,num:String,
   cacheKey:(a,p)=>a+JSON.stringify(p),setTimeout:f=>{timers.set(++seq,f);return seq},clearTimeout:k=>timers.delete(k),
-  goalOf:()=>10000,logErr:()=>{},api:(a,p)=>{calls.push({a,p});return new Promise(r=>reply=r)}};
+  row:(label,sub,value)=>'<div>'+label+sub+value+'</div>',goalOf:()=>10000,logErr:()=>{},api:(a,p)=>{calls.push({a,p});return new Promise(r=>reply=r)}};
  c.cacheSet=(a,p,d)=>storage.set(c.cacheKey(a,p),JSON.stringify({t:Date.now(),d}));
  vm.createContext(c);vm.runInContext(source,c);
  return {c,box,calls,timers,reply:d=>reply(d),logout:()=>auth='',tick:async()=>{for(let i=0;i<8;i++)await Promise.resolve()}};
@@ -28,6 +28,8 @@ function setup(){
  f.reply(sample);const data=await p;
  assert.equal(c.homeExpenseTotals(data,'2026-11-02','2026-11-02').itemized,17);
  assert.equal(c.homeExpenseTotals(data,'2026-11-02','2026-11-02').pending,3);
+ const compact=c.homeExpenseHtml(data,'2026-11-02','2026-11-02',false,true);assert(compact.includes('data-insight-toggle="expenses"'));assert(compact.includes('data-insight-panel="expenses" hidden'));assert(compact.includes('تشغيل'));assert(compact.includes('آخر تحديث'));c.HOME_INSIGHT_OPEN='expenses';assert(!c.homeExpenseHtml(data,'2026-11-02','2026-11-02',false,true).includes('data-insight-panel="expenses" hidden'));
+ let controls=['expenses','camera'].map(kind=>({kind,getAttribute:()=>kind,setAttribute:(k,v)=>{controls.find(x=>x.kind===kind)[k]=v}})),panels=['expenses','camera'].map(kind=>({kind,getAttribute:()=>kind,hidden:true}));c.document.querySelectorAll=q=>q.includes('toggle')?controls:panels;c.HOME_INSIGHT_OPEN='';c.homeInsightToggle('expenses');assert.equal(controls[0]['aria-expanded'],'true');assert.equal(panels[0].hidden,false);c.homeInsightToggle('camera');assert.equal(panels[0].hidden,true);assert.equal(panels[1].hidden,false);c.homeInsightToggle('camera');assert(panels.every(x=>x.hidden));
  assert(!JSON.stringify(data).includes('private fixture'));assert.equal(f.timers.size,0);
  assert(!c.HOME_PL_CACHE['2026-11'],'expense-only response must not replace financial P&L');
  f=setup();c=f.c;c.loadHomeDayExpenses('2026-11-02');assert(f.box.innerHTML.includes('17'));

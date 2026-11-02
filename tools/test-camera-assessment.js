@@ -24,7 +24,7 @@ test('closing window and revisions sort by actual end, not filename or generatio
 test('comparisons remain valid through a resolved-issue report chain',()=>{const a=report('r_00001');a.assessment.issues=[issue(a)];const b=report('r_00002','2026-11-02T18:00:00+02:00');b.assessment.previousReportId=a.id;b.assessment.issues=[issue(b,{status:'resolved',comparisonVerified:true})];const c=report('r_00003','2026-11-03T01:00:00+02:00');c.assessment.previousReportId=b.id;const out=A.assessReports([a,c,b]);assert.equal(out[0].result.delta,0);assert.equal(out[1].result.delta,3);});
 test('home renderer escapes stored report content and has a safe legacy state',()=>{
   const html=fs.readFileSync(require('path').join(__dirname,'../index.html'),'utf8');
-  const code=html.slice(html.indexOf('function appearanceHomeHtml('),html.indexOf('function camSnapNow('));
+  const code=html.slice(html.indexOf('function homeCameraPlaceholder('),html.indexOf('function camSnapNow('));
   const c=vm.createContext({CameraAssessment:A,esc:s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')});vm.runInContext(code,c);
   assert(c.appearanceHomeHtml([]).includes('لا يوجد تقرير متاح'));
   const r=report();r.range='<img onerror=evil>';r.assessment.issues=[issue(r,{title:'<script>evil()</script>'})];const rendered=c.appearanceHomeHtml([r]);assert(!rendered.includes('<script>'));assert(rendered.includes('&lt;script&gt;'));assert(rendered.includes('97'));

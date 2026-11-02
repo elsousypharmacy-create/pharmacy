@@ -1849,8 +1849,8 @@ function expMsgs(k){
 }
 function expAtt(k){
   var rows = ((HR.hist || {}).rows || []).map(function(x){
-    return { 'التاريخ': x.date, 'الموظف': x.name, 'دخول': x.checkIn,
-             'خروج': x.checkOut, 'المدة (دقيقة)': x.durationMin === null ? 'مفتوح' : x.durationMin };
+    return { 'التاريخ': x.date, 'الموظف': x.name, 'دخول (بتوقيت مصر)': x.checkIn,
+             'خروج (بتوقيت مصر)': x.checkOut, 'المدة (دقيقة)': x.durationMin === null ? 'مفتوح' : x.durationMin };
   });
   k === 'x' ? toExcel(rows, 'attendance') : toPDF(rows, tr('attendance'));
 }
@@ -2401,17 +2401,17 @@ function drawHome(b, kpi, isOld){
       var on = null, v = e.net || e.sales || 0;
       Object.keys(onNow).some(function(k){ if (sameStaff(e.name, onNow[k].name)){ on = onNow[k]; delete onNow[k]; return true; } });
       return '<div class="h-team"><span class="h-dot' + (on ? ' on' : '') + '"></span><div class="h-tn"><b>' + esc(e.name) + '</b><small>' +
-        ltr(e.invoices) + ' فاتورة · تسجيل ' + ltr(e.reg_pct + '%') + (on ? ' · حاضر ' + hm(on.elapsedMinutes) : '') + '</small>' +
+        ltr(e.invoices) + ' فاتورة · تسجيل ' + ltr(e.reg_pct + '%') + (on ? ' · دخول ' + staffCairoClock(on.checkInTimestamp) + ' بتوقيت مصر · حاضر ' + hm(on.elapsedMinutes) : '') + '</small>' +
         '<span class="h-share"><i style="width:' + Math.round(v / teamTot * 100) + '%"></i></span></div>' +
         '<b class="h-tv">' + ltr(num(v)) + '</b></div>';
     });
     Object.keys(onNow).forEach(function(k){ var p = onNow[k];
-      teamRows.push('<div class="h-team"><span class="h-dot on"></span><div class="h-tn"><b>' + esc(p.name) + '</b><small>حاضر ' + hm(p.elapsedMinutes) + ' · لسه مباعش</small></div><b class="h-tv">—</b></div>');
+      teamRows.push('<div class="h-team"><span class="h-dot on"></span><div class="h-tn"><b>' + esc(p.name) + '</b><small>دخول ' + staffCairoClock(p.checkInTimestamp) + ' بتوقيت مصر · حاضر ' + hm(p.elapsedMinutes) + ' · لسه مباعش</small></div><b class="h-tv">—</b></div>');
     });
     var liveN = live.length;
     html += '<div class="card"><div class="card-head"><div><h3>' + (isStaleDay ? 'الفريق أمس' : 'الفريق اليوم') + '</h3><p>' +
       (liveN ? ltr(liveN) + ' حاضرين دلوقتي' : 'لا يوجد حضور مسجل الآن') + '</p></div></div>' +
-      (teamRows.length ? teamRows.join('') : '<div class="state">لسه محدش باع اليوم</div>') + '</div>';
+      (teamRows.length ? teamRows.join('') : '<div class="state">لسه محدش باع اليوم</div>') + '<button class="btn btn-quiet" onclick="go(\'team\',0)">سجل الدخول والخروج · بتوقيت مصر ←</button></div>';
     /* ── آخر 14 يوم ── */
     html += '<div class="card"><div class="card-head"><div><h3>آخر 14 يوم</h3><p id="homeChartSub">صافي كل يوم · الأخضر عدّى الهدف</p></div></div>' +
       '<div id="homeChart">' + (HOME_DAYS ? homeChart(HOME_DAYS, salesT, isStaleDay, gS) : '<div class="state">…</div>') + '</div></div>';
@@ -3375,6 +3375,20 @@ function liveFor(name){
   })[0];
 }
 
+function staffCairoClock(timestamp){
+  if(timestamp===null || timestamp===undefined || timestamp==='')return '—';
+  var n=Number(timestamp),d=Number.isFinite(n)?new Date(n<1e12?n*1000:n):new Date(timestamp);
+  if(!Number.isFinite(+d))return '—';
+  return d.toLocaleTimeString('ar-EG-u-nu-latn',{timeZone:'Africa/Cairo',hour:'2-digit',minute:'2-digit',hour12:true});
+}
+function staffClockLabel(value){return esc(String(value || '—').replace(/\bAM\b/gi,'ص').replace(/\bPM\b/gi,'م'));}
+function staffAttendanceRows(rows){
+  if(!rows || !rows.length)return '<div class="state">لا توجد بصمات مسجلة في الفترة المختارة</div>';
+  return rows.slice().sort(function(a,b){return b.date.localeCompare(a.date)||a.name.localeCompare(b.name);}).map(function(x){
+    return '<div class="row"><div class="row-main"><b>'+esc(x.name)+'</b><small>'+esc(x.date)+' · بتوقيت مصر</small><small>دخول: '+ltr(staffClockLabel(x.checkIn))+' · خروج: '+(x.checkOut==='مفتوح'?'لم يسجل الخروج':ltr(staffClockLabel(x.checkOut)))+'</small></div></div>';
+  }).join('');
+}
+
 function drawStaffHub(isOld){
   var box = document.getElementById('p-hr');
   var list = (HR.kpi.employees || []);
@@ -3393,6 +3407,7 @@ function drawStaffHub(isOld){
     RANGE.perf === 'custom' || RANGE.perf === 'lastMonth');
 
   var teamSales = list.reduce(function(s, e){ return s + (e.net || e.sales || 0); }, 0);
+  html+=card('دخول وخروج الفريق','بتوقيت مصر',HR.live.ok===false?'<div class="state err">'+esc(HR.live.error || 'تعذر تحميل الحضور')+'</div>':staffAttendanceRows(HR.hist.rows || []));
   html += vitals(tr('staffToday'), HR.kpi.label || '', [
     RANGE.perf === 'today'
       ? { value: num(live.length), label: tr('onShiftNow'), tone: live.length ? 'ok' : 'warn', note: num(list.length), sub: 'باعوا' }
@@ -3487,14 +3502,14 @@ function staffSheet(i){
     part(tr('pNew'), e.care_new) + part(tr('pReg'), e.care_reg) +
     part(tr('pRepeat'), e.care_repeat) + part(tr('pReturn'), e.care_return) +
 
-    '<div class="group-title">' + tr('shifts') + '</div>' +
+    '<div class="group-title">' + tr('shifts') + ' · بتوقيت مصر</div>' +
     (shifts.length
       ? rowLite(tr('totalHours'), ltr(shifts.length) + ' ' + tr('shiftsCount'),
           ltr(Math.round(mins / 60) + 'h')) +
         shifts.slice().reverse().slice(0, 14).map(function(x){
           return rowLite(x.date,
-            ltr(x.checkIn) + ' → ' + (x.checkOut === 'مفتوح' ? '—' : ltr(x.checkOut)),
-            x.durationMin ? ltr(dur(x.durationMin)) : badge(tr('stillIn'), 'warn'));
+            'دخول '+ltr(staffClockLabel(x.checkIn)) + ' · خروج ' + (x.checkOut === 'مفتوح' ? 'لم يسجل الخروج' : ltr(staffClockLabel(x.checkOut))),
+            x.durationMin !== null ? ltr(dur(x.durationMin)) : badge(tr('stillIn'), 'warn'));
         }).join('')
       : '<div class="state">' + tr('noShift') + '</div>');
 }
@@ -6328,7 +6343,8 @@ function srvBadgeCheck(){
 }
 var SRV_NEWER = false, SRV_FULL = false, SRV_VER = -1;
 function homeCamLatest(force){
-  if (!storedPin()) return;
+  if (!storedPin()){if(force===true)toast('سجّل الدخول لتحديث التقارير');return;}
+  var previous=CameraAssessment.sortReports(CAMR.list || [])[0],previousKey=previous && JSON.stringify([previous.id,previous.generatedAt,previous.windowEnd]);
   function paint(){
     var el=document.getElementById('homeCamRep'),box=document.getElementById('homeAppearance');
     if(box)box.innerHTML=appearanceHomeHtml(CAMR.list || [],CAMR.at===0);
@@ -6336,7 +6352,7 @@ function homeCamLatest(force){
   }
   if(CAMR.list)paint();
   var waiting=setTimeout(function(){var box=document.getElementById('homeAppearance');if(box && !CAMR.list)box.innerHTML=homeCameraPlaceholder('السيرفر متأخر؛ لا يوجد تقييم محفوظ بعد.');},12000);
-  camrReportsFetch(force===true).then(paint).catch(function(){
+  camrReportsFetch(force===true).then(function(){paint();if(force===true){var latest=CameraAssessment.sortReports(CAMR.list || [])[0],key=latest && JSON.stringify([latest.id,latest.generatedAt,latest.windowEnd]);toast(!latest?'لا يوجد تقرير محفوظ بعد':key===previousKey?'لا يوجد تقرير أحدث محفوظ':'تم تحميل التقرير الأحدث');}}).catch(function(){
     var box=document.getElementById('homeAppearance');if(!box)return;
     if(CAMR.list){paint();box.insertAdjacentHTML('beforeend','<div class="cam-note" role="status">التحديث ماكملش؛ ده آخر تقرير محمّل. <button class="btn btn-quiet" onclick="homeCamLatest(true)">إعادة المحاولة</button></div>');}
     else box.innerHTML=homeCameraPlaceholder('تعذر تحميل تقييم الكاميرات')+'<button class="btn btn-quiet insight-retry" onclick="homeCamLatest(true)">إعادة المحاولة</button>';
@@ -6363,7 +6379,7 @@ function appearanceHomeHtml(reports,isCached){
   if(notes.length)h+=notes.map(function(q,i){return '<div class="camera-finding"><span>'+(i+1)+'</span><div><b>'+esc(q.text || '')+'</b><small>'+esc(q.where || '')+((q.times || []).length?' · '+esc(q.times.join('، ')):'')+'</small></div></div>';}).join('');
   else h+='<p class="camera-meta">لا توجد ملاحظات مؤكدة مسجلة في العينات؛ راجع التغطية.</p>';
   if(a.ready && a.issues && a.issues.length)h+='<p class="camera-meta">'+a.counts.new+' جديدة · '+a.counts.ongoing+' مستمرة · '+a.counts.unverified+' غير محسومة</p>';
-  h+='<button class="btn btn-primary camera-details" onclick="appearanceOpenLatestReport()">تفاصيل التقرير والصور ←</button><div class="camera-tools"><button onclick="camReportsOpen()">كل التقارير</button><button onclick="appearanceAnalysisRequest()">طلب تحليل</button><button onclick="homeCamLatest(true)">تحديث التقييم</button><button id="camSnapBtn" onclick="camSnapNow()">التقاط صور الآن</button></div><div id="homeCamSnap"></div></div>';
+  h+='<button class="btn btn-primary camera-details" onclick="appearanceOpenLatestReport()">تفاصيل التقرير والصور ←</button><div class="camera-tools"><button onclick="camReportsOpen()">كل التقارير</button><button onclick="appearanceAnalysisRequest()">طلب تحليل</button><button onclick="homeCamLatest(true)">تحديث قائمة التقارير</button><button id="camSnapBtn" onclick="camSnapNow()">التقاط صور الآن</button></div><div id="homeCamSnap"></div></div>';
   return h;
 }
 function appearanceReportDetails(r){

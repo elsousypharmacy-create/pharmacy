@@ -657,7 +657,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=20261103-home-flash">
+<link rel="stylesheet" href="dashboard-ui.css?v=20261103-home-fit">
 </head>
 <body>
 
@@ -3456,8 +3456,10 @@ function homeFlashPrepareInsights(root){
 }
 function homeFlashPeriodContent(html){
   var template=document.createElement('template');template.innerHTML=html;
-  var details=template.content.querySelector('.period-details');
-  if(details){details.setAttribute('open','');HOME_FLASH_PERIOD_DETAILS=details.outerHTML;var button=document.createElement('button');button.className='btn btn-quiet';button.textContent='تفاصيل الفترة';button.onclick=null;button.setAttribute('onclick','homeFlashPeriodDetails()');details.replaceWith(button);}
+  var details=template.content.querySelector('.period-details'),extra='';
+  var heading=template.content.querySelector('.period-card > .h-top');if(heading){extra+=heading.outerHTML;var dates=heading.querySelector('span');if(template.content.querySelector('.home-period-controls .ctl-more.dot') && dates){heading.innerHTML=dates.outerHTML;heading.className='home-period-dates';}else heading.remove();}
+  template.content.querySelectorAll('.period-card > .camera-meta').forEach(function(note){extra+=note.outerHTML;note.remove();});
+  if(details){details.setAttribute('open','');HOME_FLASH_PERIOD_DETAILS=extra+details.outerHTML;var button=document.createElement('button');button.className='btn btn-quiet';button.textContent='تفاصيل الفترة';button.setAttribute('onclick','homeFlashPeriodDetails()');details.replaceWith(button);}
   return template.innerHTML;
 }
 function homeFlashPeriodDetails(){openMenu('تفاصيل الفترة',HOME_FLASH_PERIOD_DETAILS || '<p>لا توجد بيانات متاحة</p>');}
@@ -3538,15 +3540,24 @@ function staffFlashRestore(){
   staffFlashFit();var cards=typeof deck.querySelectorAll==='function'?deck.querySelectorAll('[data-flash-key]'):deck.children,first=cards[0],target=Array.prototype.filter.call(cards,function(el){return el.getAttribute('data-flash-key')===HOME_STAFF_FLASH_POSITION;})[0] || first;
   if(first && target)deck.scrollLeft=target.offsetLeft-first.offsetLeft;
 }
+function homeFlashViewportBounds(viewport,header,nav){
+  var top=Math.max(viewport.top,header?header.bottom:viewport.top)+8;
+  var bottom=Math.min(viewport.bottom,nav?nav.top:viewport.bottom)-8;
+  return {top:top,height:Math.max(0,Math.floor(bottom-top))};
+}
 function staffFlashFit(){
   if(typeof window==='undefined' || typeof document.querySelector!=='function')return;
   var deck=document.querySelector('.staff-flash-deck');if(!deck)return;
   var top=document.querySelector('header.top'),nav=document.getElementById('secnav'),height=(window.visualViewport && window.visualViewport.height)||window.innerHeight;
-  var available=Math.max(280,Math.floor(height-(top?top.getBoundingClientRect().height:90)-(nav?nav.getBoundingClientRect().height:80)-32));
-  deck.style.setProperty('--staff-flash-height',available+'px');deck.setAttribute('data-compact',available<420?'true':'false');
-  if(deck.classList && deck.classList.contains('home-flash-deck')){document.documentElement.style.setProperty('--home-flash-top',((top?top.getBoundingClientRect().bottom:90)+8)+'px');document.documentElement.style.setProperty('--home-flash-bottom',((nav?height-nav.getBoundingClientRect().top:80)+8)+'px');}
+  var available=Math.max(0,Math.floor(height-(top?top.getBoundingClientRect().height:90)-(nav?nav.getBoundingClientRect().height:80)-32));
+  if(deck.classList && deck.classList.contains('home-flash-deck')){
+    var viewportTop=window.visualViewport && window.visualViewport.offsetTop || 0;
+    var bounds=homeFlashViewportBounds({top:viewportTop,bottom:viewportTop+height},top && top.getBoundingClientRect(),nav && nav.getBoundingClientRect());
+    document.documentElement.style.setProperty('--home-flash-top',bounds.top+'px');document.documentElement.style.setProperty('--home-flash-host-height',bounds.height+'px');available=bounds.height;
+  }
+  deck.style.setProperty('--staff-flash-height',available+'px');deck.style.height=available+'px';deck.setAttribute('data-compact',available<480?'true':'false');
 }
-if(typeof window!=='undefined' && window.addEventListener){window.addEventListener('resize',staffFlashFit);if(window.visualViewport)window.visualViewport.addEventListener('resize',staffFlashFit);}
+if(typeof window!=='undefined' && window.addEventListener){window.addEventListener('resize',staffFlashFit);if(window.visualViewport){window.visualViewport.addEventListener('resize',staffFlashFit);window.visualViewport.addEventListener('scroll',staffFlashFit);}if(document.fonts && document.fonts.ready)document.fonts.ready.then(staffFlashFit);}
 
 function staffCardsHtml(employees,live,history,context,attendanceError){
   if(context==='home' || context==='home-period')return typeof HOME_FLASH_MODE!=='undefined' && HOME_FLASH_MODE?homePresenceHtml(employees,live,attendanceError):staffFlashHtml(employees,live,history,attendanceError);

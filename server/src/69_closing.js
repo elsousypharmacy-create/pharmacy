@@ -7,10 +7,19 @@ var CLOSE_PDF_FOLDER_ = '19EZWuzPtOIyr-9mpEKTKiKqeIylZ5a3v';   // PDF التقف
 
 function closingDay_(dateStr) {
   var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
-  var ck = 'close1_' + dateStr, cache = CacheService.getScriptCache();
-  if (dateStr < today) { var c = cache.get(ck); if (c) return JSON.parse(c); }
+  var ck = 'close2_' + dateStr, cache = CacheService.getScriptCache();
   var folder = DriveApp.getFolderById(SALES_FOLDER);
-  var read = function (name) { var it = folder.getFilesByName(name); return it.hasNext() ? it.next().getBlob().getDataAsString('UTF-8') : ''; };
+  var files = {}, versions = [];
+  ['sales', 'Returnsales', 'debits'].forEach(function (prefix) {
+    var name = prefix + dateStr + '.txt', it = folder.getFilesByName(name), list = [];
+    while (it.hasNext()) list.push(it.next());
+    list.sort(function (a, b) { return b.getLastUpdated().getTime() - a.getLastUpdated().getTime(); });
+    files[name] = list[0] || null;
+    if (list[0]) versions.push(list[0].getId() + ':' + list[0].getLastUpdated().getTime() + ':' + list[0].getSize());
+  });
+  var sourceVersion = versions.join('|');
+  if (dateStr < today) { var c = cache.get(ck); if (c) { var saved = JSON.parse(c); if (saved.sourceVersion === sourceVersion) return saved; } }
+  var read = function (name) { return files[name] ? files[name].getBlob().getDataAsString('UTF-8') : ''; };
   var sales = read('sales' + dateStr + '.txt') + '\n' + read('Returnsales' + dateStr + '.txt');
   var debits = read('debits' + dateStr + '.txt');
   var by = {}, ret = 0, retN = 0, inv = 0, collected = 0, seen = {};
@@ -43,11 +52,28 @@ function closingDay_(dateStr) {
   var out = {
     date: dateStr, has: inv > 0 || retN > 0, invoices: inv, returns_n: retN,
     cash: r2(cash), credit: r2(credit), card: r2(card), other: other, gross: r2(gross),
-    ret: r2(ret), net: r2(gross - ret), cash_net: r2(cashNet), collected: r2(collected),
-    expected_cash: r2(cashNet + collected)   // اللي المفروض يبقى في الدرج من حركة اليوم (من غير العهدة)
+    ret: r2(ret), net: r2(gross - ret), cash_net: r2(cashNet), raw_collections: r2(collected),
+    collected: null, expected_cash: null, expected_drawer_total: null,
+    closing_schema: 'closing-review-v2', sourceVersion: sourceVersion // انخفاض الدين لا يحدد وسيلة السداد
   };
   if (dateStr < today) try { cache.put(ck, JSON.stringify(out), 21600); } catch (e2) {}
   return out;
+}
+
+/* ملف الإغلاق وحده يحدد تحصيل الكاش والدرج والعهدة؛ نحافظ على الفواتير للمطابقة. */
+function closingApplyPdf_(x, pdf) {
+  if (x.raw_collections === undefined) x.raw_collections = x.collected;
+  x.collected = null; x.expected_cash = null; x.expected_drawer_total = null;
+  x.custody = null; x.collection_source = 'unavailable'; x.closing_schema = 'closing-review-v2';
+  var R = pdf && pdf.daily && pdf.daily.rows;
+  var number = function (row) { return row && typeof row.sys === 'number' && isFinite(row.sys) ? row.sys : null; };
+  if (!R) return x;
+  x.collected = number(R.collected_cash);
+  if (x.collected !== null) x.collection_source = 'closing_pdf';
+  x.expected_drawer_total = number(R.drawer); x.custody = number(R.custody);
+  if (x.expected_drawer_total !== null && x.custody !== null)
+    x.expected_cash = Math.round((x.expected_drawer_total - x.custody) * 100) / 100;
+  return x;
 }
 
 function getClosingDays(p) {
@@ -77,8 +103,9 @@ function getClosingDays(p) {
       }
     } catch (eP) {}
     dates.forEach(function (d) {
-      var x = closingDay_(d); if (!x.has) return;
       var cp = closingPdfRead_(d);
+      var x = closingDay_(d); if (!x.has && !cp.daily) return;
+      closingApplyPdf_(x, cp);
       x.pdf = (cp.daily && cp.daily.url) || pdf[d] || '';
       x.close = cp.daily ? { rows: cp.daily.rows, closed_at: cp.daily.closed_at, shifts: cp.shifts } : null;
       x.checks = closingChecks_(x, cp);
@@ -90,3 +117,4 @@ function getClosingDays(p) {
     return { ok: true, days: list, totals: tot, from: oldest, to: dates[0] };
   } catch (e) { return { ok: false, error: String(e.message || e) }; }
 }
+

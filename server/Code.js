@@ -8802,10 +8802,19 @@ var CLOSE_PDF_FOLDER_ = '19EZWuzPtOIyr-9mpEKTKiKqeIylZ5a3v';   // PDF التقف
 
 function closingDay_(dateStr) {
   var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
-  var ck = 'close1_' + dateStr, cache = CacheService.getScriptCache();
-  if (dateStr < today) { var c = cache.get(ck); if (c) return JSON.parse(c); }
+  var ck = 'close2_' + dateStr, cache = CacheService.getScriptCache();
   var folder = DriveApp.getFolderById(SALES_FOLDER);
-  var read = function (name) { var it = folder.getFilesByName(name); return it.hasNext() ? it.next().getBlob().getDataAsString('UTF-8') : ''; };
+  var files = {}, versions = [];
+  ['sales', 'Returnsales', 'debits'].forEach(function (prefix) {
+    var name = prefix + dateStr + '.txt', it = folder.getFilesByName(name), list = [];
+    while (it.hasNext()) list.push(it.next());
+    list.sort(function (a, b) { return b.getLastUpdated().getTime() - a.getLastUpdated().getTime(); });
+    files[name] = list[0] || null;
+    if (list[0]) versions.push(list[0].getId() + ':' + list[0].getLastUpdated().getTime() + ':' + list[0].getSize());
+  });
+  var sourceVersion = versions.join('|');
+  if (dateStr < today) { var c = cache.get(ck); if (c) { var saved = JSON.parse(c); if (saved.sourceVersion === sourceVersion) return saved; } }
+  var read = function (name) { return files[name] ? files[name].getBlob().getDataAsString('UTF-8') : ''; };
   var sales = read('sales' + dateStr + '.txt') + '\n' + read('Returnsales' + dateStr + '.txt');
   var debits = read('debits' + dateStr + '.txt');
   var by = {}, ret = 0, retN = 0, inv = 0, collected = 0, seen = {};
@@ -8838,11 +8847,28 @@ function closingDay_(dateStr) {
   var out = {
     date: dateStr, has: inv > 0 || retN > 0, invoices: inv, returns_n: retN,
     cash: r2(cash), credit: r2(credit), card: r2(card), other: other, gross: r2(gross),
-    ret: r2(ret), net: r2(gross - ret), cash_net: r2(cashNet), collected: r2(collected),
-    expected_cash: r2(cashNet + collected)   // اللي المفروض يبقى في الدرج من حركة اليوم (من غير العهدة)
+    ret: r2(ret), net: r2(gross - ret), cash_net: r2(cashNet), raw_collections: r2(collected),
+    collected: null, expected_cash: null, expected_drawer_total: null,
+    closing_schema: 'closing-review-v2', sourceVersion: sourceVersion // انخفاض الدين لا يحدد وسيلة السداد
   };
   if (dateStr < today) try { cache.put(ck, JSON.stringify(out), 21600); } catch (e2) {}
   return out;
+}
+
+/* ملف الإغلاق وحده يحدد تحصيل الكاش والدرج والعهدة؛ نحافظ على الفواتير للمطابقة. */
+function closingApplyPdf_(x, pdf) {
+  if (x.raw_collections === undefined) x.raw_collections = x.collected;
+  x.collected = null; x.expected_cash = null; x.expected_drawer_total = null;
+  x.custody = null; x.collection_source = 'unavailable'; x.closing_schema = 'closing-review-v2';
+  var R = pdf && pdf.daily && pdf.daily.rows;
+  var number = function (row) { return row && typeof row.sys === 'number' && isFinite(row.sys) ? row.sys : null; };
+  if (!R) return x;
+  x.collected = number(R.collected_cash);
+  if (x.collected !== null) x.collection_source = 'closing_pdf';
+  x.expected_drawer_total = number(R.drawer); x.custody = number(R.custody);
+  if (x.expected_drawer_total !== null && x.custody !== null)
+    x.expected_cash = Math.round((x.expected_drawer_total - x.custody) * 100) / 100;
+  return x;
 }
 
 function getClosingDays(p) {
@@ -8872,8 +8898,9 @@ function getClosingDays(p) {
       }
     } catch (eP) {}
     dates.forEach(function (d) {
-      var x = closingDay_(d); if (!x.has) return;
       var cp = closingPdfRead_(d);
+      var x = closingDay_(d); if (!x.has && !cp.daily) return;
+      closingApplyPdf_(x, cp);
       x.pdf = (cp.daily && cp.daily.url) || pdf[d] || '';
       x.close = cp.daily ? { rows: cp.daily.rows, closed_at: cp.daily.closed_at, shifts: cp.shifts } : null;
       x.checks = closingChecks_(x, cp);
@@ -9059,22 +9086,28 @@ function pdfParseClose_(content) {   // بيرجّع {rows:{key:{sys,user,diff}|
 var CLOSE_SHIFT_FOLDER_ = '1byAiIt5nBO483x_mKJVHkB2bI_t-84V9';   // PDF تقفيل كل وردية
 /* بيقرا تقفيل يوم (اليومي + ورديّاته) من الدرايف. اليوم المقفول مابيتغيّرش فبيتخزن (٦٠ يوم بس عشان حد التخزين). */
 function closingPdfRead_(dateStr) {
-  var P = PropertiesService.getScriptProperties(), key = 'CLP_' + dateStr;
-  var cached = P.getProperty(key);
-  if (cached) { try { return JSON.parse(cached); } catch (e0) {} }
+  var P = PropertiesService.getScriptProperties(), key = 'CLP2_' + dateStr;
   var read = function (f) {
     try { var c = pdfContent_(pdfBin_(f.getBlob().getBytes())); return c ? pdfParseClose_(c) : null; } catch (e) { return null; }
   };
   var out = { daily: null, shifts: [] };
   try {
-    var it = DriveApp.getFolderById(CLOSE_PDF_FOLDER_).searchFiles("title contains 'dailyclose_" + dateStr + "'");
-    if (it.hasNext()) {
-      var f = it.next(), r = read(f);
+    var it = DriveApp.getFolderById(CLOSE_PDF_FOLDER_).searchFiles("title contains 'dailyclose_" + dateStr + "'"), dailyFiles = [], shiftFiles = [];
+    while (it.hasNext()) dailyFiles.push(it.next());
+    var si = DriveApp.getFolderById(CLOSE_SHIFT_FOLDER_).searchFiles("title contains '_" + dateStr + "_'");
+    while (si.hasNext()) shiftFiles.push(si.next());
+    var signature = function (f) { return f.getId() + ':' + f.getLastUpdated().getTime() + ':' + f.getSize(); };
+    var sourceVersion = dailyFiles.concat(shiftFiles).map(signature).sort().join('|');
+    var cached = P.getProperty(key);
+    if (cached) { try { var saved = JSON.parse(cached); if (saved.sourceVersion === sourceVersion) return saved; } catch (e0) {} }
+    out.sourceVersion = sourceVersion;
+    dailyFiles.sort(function (a, b) { return b.getLastUpdated().getTime() - a.getLastUpdated().getTime(); });
+    if (dailyFiles.length) {
+      var f = dailyFiles[0], r = read(f);
       if (r && r.found >= 6) out.daily = { rows: r.rows, closed_at: r.closed_at || '', url: f.getUrl() };
     }
-    var si = DriveApp.getFolderById(CLOSE_SHIFT_FOLDER_).searchFiles("title contains '_" + dateStr + "_'");
-    while (si.hasNext()) {
-      var sf = si.next(), mm = /shiftid_(\d+)_userid_(\d+)_/.exec(sf.getName()), sr = read(sf);
+    for (var i = 0; i < shiftFiles.length; i++) {
+      var sf = shiftFiles[i], mm = /shiftid_(\d+)_userid_(\d+)_/.exec(sf.getName()), sr = read(sf);
       if (mm && sr && sr.found >= 5) out.shifts.push({ no: parseInt(mm[1], 10), user: mm[2], rows: sr.rows, closed_at: sr.closed_at || '', url: sf.getUrl() });
     }
     out.shifts.sort(function (a, b) { return a.no - b.no; });
@@ -9083,7 +9116,7 @@ function closingPdfRead_(dateStr) {
     try {
       P.setProperty(key, JSON.stringify(out));
       var cut = Utilities.formatDate(new Date(Date.now() - 60 * 86400000), 'Africa/Cairo', 'yyyy-MM-dd');
-      P.getKeys().forEach(function (k) { if (k.indexOf('CLP_') === 0 && k.slice(4) < cut) P.deleteProperty(k); });
+      P.getKeys().forEach(function (k) { if ((k.indexOf('CLP_') === 0 && k.slice(4) < cut) || (k.indexOf('CLP2_') === 0 && k.slice(5) < cut)) P.deleteProperty(k); });
     } catch (e2) {}
   }
   return out;
@@ -9100,7 +9133,7 @@ function closingChecks_(x, pdf) {
   add('كارت بنكي', R.bank_card && R.bank_card.sys, x.card);
   add('آجل (الديون)', R.debts && R.debts.v, x.credit);
   add('مرتجعات', R.returns && R.returns.v, x.ret);
-  add('تحصيل ديون', R.collected_cash && R.collected_cash.sys, x.collected);
+  // ملف الديون النصي لا يسجل وسيلة السداد؛ لا نقارنه بتحصيل الكاش.
   return chk;
 }
 

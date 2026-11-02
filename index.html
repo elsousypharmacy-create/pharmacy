@@ -2923,12 +2923,16 @@ function clsLabel(x){
   return new Date(x.date + 'T12:00:00').toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 /* جسم اليوم: وسائل الدفع + المطابقة + العدّ الفعلي + الورديات */
+function clsMoney(v){ return v === null || v === undefined ? 'غير متاح' : ltr(n2(v)); }
 function clsDayBody(x){
+  var verified = x.closing_schema === 'closing-review-v2';
   var rows = row('كاش', '', ltr(num(x.cash))) + row('آجل', '', ltr(num(x.credit))) + row('كارت بنكي', '', ltr(num(x.card)));
   Object.keys(x.other || {}).forEach(function(k){ rows += row('وسيلة دفع ' + esc(k), '', ltr(num(x.other[k]))); });
   rows += row('مرتجعات', 'بتتخصم من الكاش', x.ret ? '−' + ltr(num(x.ret)) : ltr('0')) +
-          row('تحصيل ديون', 'سداد عملاء', ltr(num(x.collected))) +
-          row('المفروض في الدرج', 'كاش − مرتجعات + تحصيل (من غير العهدة)', '<b>' + ltr(num(x.expected_cash)) + '</b>');
+          row('تحصيل ديون نقدي', 'من ملف إغلاق النظام؛ انخفاض الدين وحده لا يحدد وسيلة السداد', clsMoney(verified ? x.collected : null)) +
+          row('حركة النقد دون العهدة', 'من إغلاق النظام بعد استبعاد العهدة', clsMoney(verified ? x.expected_cash : null)) +
+          row('المفروض في الدرج شامل العهدة', 'من ملف إغلاق النظام', '<b>' + clsMoney(verified ? x.expected_drawer_total : null) + '</b>');
+  if (!verified) rows += '<div class="state">يلزم تحديث السيرفر لتصحيح حساب تحصيل الديون والدرج.</div>';
   if (x.checks){
     rows += '<div class="group-title">مطابقة الفواتير بإغلاق النظام</div>' + x.checks.map(function(c){
       var ok = Math.abs(c.diff) <= 0.5;
@@ -2995,15 +2999,16 @@ function clsDrawDay(x, logo){
   var row2 = function(l, v, b){ items.push({ t: 'row', l: l, v: v, b: b }); };
   var sec = function(s2){ items.push({ t: 'sec', s: s2 }); };
   var pill = function(l, sub, txt, tone){ items.push({ t: 'pill', l: l, sub: sub, txt: txt, tone: tone }); };
-  var f0 = function(v){ return n2(Math.round(v * 100) / 100); };
+  var f0 = function(v){ return v === null || v === undefined ? 'غير متاح' : n2(Math.round(v * 100) / 100); };
   var bn = function(v){ return '\u2066' + f0(v) + '\u2069'; };   // رقم معزول عشان السالب مايتعكسش
   sec('وسائل الدفع');
   row2('كاش', f0(x.cash)); row2('آجل', f0(x.credit)); row2('كارت بنكي', f0(x.card));
   Object.keys(x.other || {}).forEach(function(k){ row2('وسيلة دفع ' + k, f0(x.other[k])); });
   sec('الحركة');
   row2('مرتجعات (بتتخصم من الكاش)', x.ret ? '-' + f0(x.ret) : '0');
-  row2('تحصيل ديون', f0(x.collected));
-  row2('المفروض في الدرج', f0(x.expected_cash), true);
+  row2('تحصيل ديون نقدي من إغلاق النظام', f0(x.closing_schema === 'closing-review-v2' ? x.collected : null));
+  row2('حركة النقد دون العهدة', f0(x.closing_schema === 'closing-review-v2' ? x.expected_cash : null));
+  row2('المفروض في الدرج شامل العهدة', f0(x.closing_schema === 'closing-review-v2' ? x.expected_drawer_total : null), true);
   if (x.checks){
     sec('مطابقة الفواتير بإغلاق النظام');
     x.checks.forEach(function(c){
@@ -3084,10 +3089,10 @@ function drawClosing(){
   if (!d.days.length){ box.innerHTML = html + (d.loading ? '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>' :
       '<div class="state">لا توجد مبيعات في الفترة دي</div>' + (RANGE.close === 'month' ? '<button class="btn btn-quiet" onclick="setClsRange(\'lastMonth\')">اعرض الشهر السابق</button>' : '')); return; }
   var bad = d.days.filter(clsProblem);
-  if (bad.length) html += alertBox('warn', bad.length + ' يوم فيه فرق في الإغلاق اليومي', 'اضغط على اليوم وشوف الفرق بالظبط', '');
+  if (bad.length) html += alertBox('warn', bad.length + ' يوم يحتاج مراجعة الإغلاق', 'افتح اليوم لتمييز فرق المصادر عن فرق العدّ', '');
   html += '<div id="clsBar">' + clsBarHtml() + '</div><div id="clsList">' + clsListHtml() + '</div>';
   if (d.loading) html += '<div class="state"><div class="spin"></div>بحمّل باقي الأيام…</div>';
-  html += '<div class="state" style="padding:4px 0 12px;font-size:11px">الأرقام من ملفات نظام البيع وبتطابق إغلاق النظام. قارن «المفروض في الدرج» بالكاش اللي عديته فعلًا.</div>';
+  html += '<div class="state" style="padding:4px 0 12px;font-size:11px">وسائل دفع المبيعات من الفواتير، وتحصيل الكاش والدرج من ملف الإغلاق. فرق مطابقة المصادر مستقل عن فرق العدّ الفعلي؛ المبلغ غير المتاح لا يُعتبر صفرًا.</div>';
   box.innerHTML = html;
 }
 

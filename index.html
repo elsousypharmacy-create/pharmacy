@@ -1326,7 +1326,7 @@ var HOME_PL_CACHE={},HOME_PL_REQUESTS={};
 function homeReadPL(month){
   if(!storedPin())return null;
   if(HOME_PL_CACHE[month])return HOME_PL_CACHE[month];
-  try{var saved=JSON.parse(localStorage.getItem(cacheKey('homePL.v2',{month:month}))||'null');if(saved && Date.now()-saved.t<86400000 && saved.d && saved.d.ok && saved.d.month===month && Array.isArray(saved.d.days)){saved.d._uiAt=saved.t;return HOME_PL_CACHE[month]={at:saved.t,data:saved.d};}}catch(e){}
+  try{var saved=JSON.parse(localStorage.getItem(cacheKey('homePL.v2',{month:month}))||'null');if(saved && Date.now()-saved.t<86400000 && saved.d && saved.d.ok && !saved.d.expense_source_error && saved.d.financial_schema==='finance-review-v1' && saved.d.month===month && Array.isArray(saved.d.days)){saved.d._uiAt=saved.t;return HOME_PL_CACHE[month]={at:saved.t,data:saved.d};}}catch(e){}
   return null;
 }
 function homeProfitLoss(month){
@@ -1334,7 +1334,7 @@ function homeProfitLoss(month){
   if(hit && Date.now()-hit.at<300000)return Promise.resolve(hit.data);
   if(HOME_PL_REQUESTS[month])return HOME_PL_REQUESTS[month];
   HOME_PL_REQUESTS[month]=api('getProfitLoss',{month:month}).then(function(d){
-    if(!d || d.ok!==true || d.month!==month || !Array.isArray(d.days))throw new Error('profit-loss unavailable');
+    if(!d || d.ok!==true || d.month!==month || !Array.isArray(d.days) || d.expense_source_error || d.financial_schema!=='finance-review-v1')throw new Error('profit-loss unavailable');
     d._uiAt=Date.now();HOME_PL_CACHE[month]={at:d._uiAt,data:d};cacheSet('homePL.v2',{month:month},d);return d;
   }).finally(function(){delete HOME_PL_REQUESTS[month];});
   return HOME_PL_REQUESTS[month];
@@ -1351,7 +1351,7 @@ function homeExpenseHtml(pl,from,to,loading){
   return '<div class="h-expense"><div><small>المصروفات المفصّلة</small><span>تشغيل ورواتب · دون شراء المخزون'+(old?' · آخر نتيجة محفوظة':'')+'</span></div><b'+(warning?' class="expense-stale"':'')+'>'+(amount===null?(loading?'جارٍ التحميل…':'غير متاح'):ltr(num(amount))+' <small>جنيه</small>')+'</b></div>'+
     (pending>0?'<p class="h-expense-note expense-stale">فرق غير مفصّل من إجمالي النظام: '+ltr(num(pending))+' جنيه. منفصل عن المبلغ أعلاه حتى المطابقة، وليس مصروفًا إضافيًا مؤكدًا.</p>':'')+
     (warning?'<p class="h-expense-note">مصدر المصروفات متأخر أو غير متاح؛ آخر تسجيل '+esc(pl.exp_last_entry||'غير معروف')+'.</p>':'')+
-    (old?'<p class="h-expense-note">نعرض آخر نتيجة محفوظة أثناء تحديث البيانات.</p>':'');
+    (pl && pl._refreshFailed?'<p class="h-expense-note">تعذر تحديث المصروفات؛ المعروض آخر نتيجة محفوظة.</p>':old?'<p class="h-expense-note">نعرض آخر نتيجة محفوظة أثناء تحديث البيانات.</p>':'');
 }
 function loadHomeDayExpenses(day){
   var box=document.getElementById('homeDayExpenses');if(!box)return;
@@ -1389,7 +1389,7 @@ function loadHomeMonth(){
   function safe(p){return p.catch(function(e){logErr(e);return null;});}
   HOME_PERIOD_REQUESTS[key]=Promise.all([safe(api('getMonthTotalsRaw',{from:R.from,to:R.to})),safe(homeRangePL(R))]).then(function(values){
     if(!values[0] || values[0].ok===false)throw new Error('period unavailable');
-    var data={r:R,m:values[0],pl:values[1] && values[1].ok!==false?values[1]:{},k:{}};
+    var data={r:R,m:values[0],pl:values[1] && values[1].ok!==false?values[1]:(old && old.data.pl && old.data.pl.ok?Object.assign({},old.data.pl,{_refreshFailed:true}):{}),k:{}};
     HOME_PERIOD_CACHE[key]={at:Date.now(),data:data};cacheSet('homePeriod.v2',{key:key},data);
     if(R.key==='month'){HOME_MONTH=data;try{localStorage.setItem('homeMonth',JSON.stringify(data));}catch(e){}}
     if(active()){var box=document.getElementById('heroMonth');if(box)box.innerHTML=monthSlide(data);}

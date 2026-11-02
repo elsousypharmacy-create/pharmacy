@@ -30,6 +30,7 @@ function pl(month='2026-11'){return {ok:true,month,financial_schema:'finance-rev
  reopened.auth(false);test('local expense data requires saved owner access',()=>assert.equal(reopened.c.homeReadPL('2026-11'),null));
  f=setup();c=f.c;const saved=pl();c.HOME_PL_CACHE['2026-11']={at:Date.now()-600000,data:saved};c.api=()=>Promise.reject(Error('offline'));await assert.rejects(c.homeProfitLoss('2026-11'));
  test('failed refresh keeps the last result for display',()=>assert.equal(c.homeReadPL('2026-11').data,saved));
+ c.api=()=>Promise.resolve({...pl(),expense_source_error:true});await assert.rejects(c.homeProfitLoss('2026-11'));test('source error response cannot replace cached expenses',()=>assert.equal(c.homeReadPL('2026-11').data,saved));
  f=setup();c=f.c;const combined=await c.homeRangePL({from:'2026-10-01',to:'2026-11-02'});
  test('custom periods merge all month expense sources',()=>{assert.equal(combined.days.length,4);assert.equal(c.homeExpenseTotals(combined,'2026-10-01','2026-11-02').itemized,33032);});
  console.log(count,'expense/period checks passed');

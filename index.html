@@ -1398,11 +1398,9 @@ function reportDataStatus(content,attention,key,cached){
   return '<details class="report-data-status" data-status-key="'+esc(key)+'"'+(REPORT_STATUS_OPEN[key]?' open':'')+' ontoggle="reportStatusToggle(this)"><summary><span class="report-status-dot'+(attention?' attention':'')+'" aria-hidden="true"></span>حالة البيانات'+(cached?' <small>· محفوظة</small>':'')+'<span class="report-status-arrow" aria-hidden="true">⌄</span></summary><div class="report-status-content">'+content+'</div></details>';
 }
 function homeExpenseHtml(pl,from,to,loading){
-  var totals=homeExpenseTotals(pl,from,to),amount=totals?totals.itemized:null,pending=totals?totals.pending:0,old=!!(pl && pl._uiAt && Date.now()-pl._uiAt>=300000),warning=!!(pl && (pl.exp_stale || pl.expense_source_error));
-  var notes=(pending>0?'<p>فرق غير مفصّل من إجمالي النظام: '+ltr(num(pending))+' جنيه. منفصل عن المبلغ أعلاه حتى المطابقة، وليس مصروفًا إضافيًا مؤكدًا.</p>':'')+
-    (warning?'<p>مصدر المصروفات متأخر أو غير متاح؛ آخر تسجيل '+esc(pl.exp_last_entry||'غير معروف')+'.</p>':'')+
-    (pl && pl._refreshFailed?'<p>تعذر تحديث المصروفات؛ المعروض آخر نتيجة محفوظة.</p>':old?'<p>نعرض آخر نتيجة محفوظة أثناء تحديث البيانات.</p>':'');
-  return '<div class="h-expense"><div><small>المصروفات المفصّلة</small><span>تشغيل ورواتب · دون شراء المخزون</span></div><b>'+(amount===null?(loading?'جارٍ التحميل…':'غير متاح'):ltr(num(amount))+' <small>جنيه</small>')+'</b></div>'+reportDataStatus(notes,pending>0||warning||!!(pl&&pl._refreshFailed),'expenses-'+from+'-'+to,old);
+  var totals=homeExpenseTotals(pl,from,to),amount=totals?totals.itemized:null,at=pl && Number(pl._uiAt),updated='—';
+  if(at && Number.isFinite(at))updated=new Date(at).toLocaleString('ar-EG',{timeZone:'Africa/Cairo',day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});
+  return '<div class="h-expense"><div><small>المصروفات المفصّلة</small></div><b>'+(amount===null?(loading?'جارٍ التحميل…':'غير متاح'):ltr(num(amount))+' <small>جنيه</small>')+'</b></div><small class="expense-updated" style="display:block;margin:0 0 10px;font-size:11px;color:var(--ink-3)">آخر تحديث: '+esc(updated)+'</small>';
 }
 function loadHomeDayExpenses(day,force){
   var box=document.getElementById('homeDayExpenses');if(!box)return;
@@ -1412,7 +1410,7 @@ function loadHomeDayExpenses(day,force){
   homeExpenseMonth(day.slice(0,7),force).then(function(pl){if(active())box.innerHTML=homeExpenseHtml(pl,day,day,false);}).catch(function(){
     if(!active())return;
     if(!cached)box.innerHTML=homeExpenseHtml(null,day,day,false);
-    box.insertAdjacentHTML('beforeend',reportDataStatus('<p>'+(cached?'تعذر التحديث؛ المعروض آخر نتيجة محفوظة.':'تأخر تحميل المصروفات؛ أعد المحاولة.')+'</p><button onclick="loadHomeDayExpenses(this.closest(\'div[data-day]\').getAttribute(\'data-day\'),true)">إعادة المحاولة</button>',true,'expenses-retry-'+day,!!cached));
+    box.insertAdjacentHTML('beforeend','<button class="btn btn-quiet" onclick="loadHomeDayExpenses(this.closest(\'div[data-day]\').getAttribute(\'data-day\'),true)">إعادة المحاولة</button>');
   });
 }
 function monthSlide(M){

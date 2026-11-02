@@ -178,3 +178,7 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 - Home expense request has a 25-second UI deadline, a 60-second automatic retry backoff, explicit retry bypass and late-success persistence/display. Failure keeps saved amounts. A late response after owner sign-out/PIN change cannot populate cache. Start daily expense loading immediately after Home DOM, before optional widgets.
 - Explicit Refresh invalidates the new aggregate cache/failure backoff. Backend/camera/delivery/financial record behavior is unchanged; no server update required.
 - Validation: tools/test-home-expense-loading.js covers lean endpoint, date bounds, request sharing, amount/remainder/exclusions, persistence, timeout/redraw/retry, late response and sign-out; tools/test-expense-period-ui.js has 16 cases, dashboard script syntax passed. Actual owner's private live latency is unverified without owner sign-in.
+
+
+## Minimal expense footer — 2026-11-02
+- Ahmed requested removing explanatory text below Home expenses. Daily and period expense rows now show only a small neutral «آخر تحديث» footer, using the actual cached aggregate _uiAt in Cairo time (date and time). Missing timestamps display a dash, never the current time. Removed the operating/stock subtitle and expense-status prose/disclosure. On failure, retain the saved amount/timestamp and provide a plain retry button. Calculations, pending-ledger separation and loading/cache behavior are unchanged.

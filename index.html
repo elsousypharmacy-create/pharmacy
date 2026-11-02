@@ -20,6 +20,11 @@
 .appearance-issue.status-new .appearance-state{color:var(--warn)}.appearance-issue.status-ongoing .appearance-state{color:var(--brand)}.appearance-issue.status-resolved .appearance-state{color:var(--ok)}.appearance-issue.status-unverified .appearance-state{color:var(--ink-2)}
 @media(min-width:700px){.camr-coverage{grid-template-columns:repeat(5,minmax(0,1fr))}}
 
+
+#settingsRoot [hidden],#settingsParking[hidden]{display:none!important}
+.settings-link{display:flex;align-items:center;gap:12px;width:100%;min-height:76px;padding:14px;margin:8px 0;background:var(--surface-2);color:var(--ink);border:1px solid var(--line);border-radius:var(--r2);font:inherit;text-align:start;cursor:pointer}.settings-link i{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:color-mix(in srgb,var(--brand) 10%,var(--surface));color:var(--brand);font-style:normal;font-size:21px;flex-shrink:0}.settings-link span{flex:1;min-width:0}.settings-link b,.settings-link small{display:block}.settings-link small,.settings-sub{font-size:13px;color:var(--ink-2);line-height:1.8}.settings-link em{font-style:normal;color:var(--ink-3);font-size:24px}.settings-link:active{background:var(--surface)}.settings-link:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+#settingsBar{display:flex;flex-wrap:wrap;gap:8px;position:sticky;top:-1px;z-index:2;background:var(--surface);padding:8px 0 12px;border-bottom:1px solid var(--line);margin-bottom:16px}#settingsBar .btn{flex:1;min-height:44px;margin:0;padding:9px}#settingsDraft{width:100%;color:var(--warn);font-size:12px}.settings-panel h3{margin:8px 0;font-size:18px}.settings-panel{padding-bottom:12px}.settings-panel .group-title{margin-top:20px}#settingsRoot .set-status:empty{display:none}
+
 </style>
 <style>
 /* ══════════════════════════════════════════════════════════
@@ -1483,7 +1488,7 @@ function setRange(key, v, redraw){
   RANGE[key] = v; redraw();
 }
 function askDates(key, redraw){
-  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var t = document.getElementById('sheet-title'), b = sheetBody();
   document.getElementById('sheet').classList.add('on');
   t.textContent = tr('rCustom');
   var today = cairoNow().date;
@@ -1524,7 +1529,7 @@ function menuRow(icon, tone, title, sub, action){
 }
 function openMenu(title, body){
   document.getElementById('sheet-title').textContent = title;
-  document.getElementById('sheet-body').innerHTML = body;
+  sheetBody().innerHTML = body;
   document.getElementById('sheet').classList.add('on');
 }
 /* أزرار التصدير جوه القايمة — مكان واحد بدل ما تتكرر */
@@ -1962,7 +1967,7 @@ function drawDoctors(d){
 }
 function docSheet(title, body){
   document.getElementById('sheet-title').textContent = title;
-  document.getElementById('sheet-body').innerHTML = body;
+  sheetBody().innerHTML = body;
   document.getElementById('sheet').classList.add('on');
 }
 function docForm(){
@@ -3208,7 +3213,7 @@ function drawStaffHub(isOld){
 /* نافذة تفاصيل الموظف */
 function staffSheet(i){
   var e = (HR.kpi.employees || [])[i]; if (!e) return;
-  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var t = document.getElementById('sheet-title'), b = sheetBody();
   document.getElementById('sheet').classList.add('on');
   t.textContent = e.name;
 
@@ -3465,7 +3470,7 @@ function openOrderCo(i){
   var co = ORD_NAMES[i]; if (co === undefined) return;
   var items = ORD_BY[co] || [];
   ORD_CUR = { co: co, items: items };
-  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var t = document.getElementById('sheet-title'), b = sheetBody();
   document.getElementById('sheet').classList.add('on');
   t.textContent = co;
   b.innerHTML =
@@ -3524,7 +3529,7 @@ function expSelGroups(){
 /* شارك: PDF بخط Cairo (منه تبعته واتساب أو تحفظه) أو نص على طول */
 function expShareSel(){
   var GR = expSelGroups(); if (!GR.length) return;
-  var s = document.getElementById('sheet'), ti = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var s = document.getElementById('sheet'), ti = document.getElementById('sheet-title'), b = sheetBody();
   s.classList.add('on'); ti.textContent = 'شارك مع العامل';
   b.innerHTML = '<div class="state" style="text-align:start;padding:0 0 12px">' + GR.map(function(g){ return esc(g.title) + ' (' + ltr(g.items.length) + ')'; }).join(' · ') + '</div>' +
     '<button class="btn btn-primary" onclick="closeSheet();expPDF(expSelGroups(), \'أصناف قربت تنتهي\')">PDF بخط Cairo</button>' +
@@ -3553,7 +3558,7 @@ function expStaffText(){
   return lines.join('\n');
 }
 function expStaffSheet(){
-  var s = document.getElementById('sheet'), ti = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var s = document.getElementById('sheet'), ti = document.getElementById('sheet-title'), b = sheetBody();
   s.classList.add('on'); ti.textContent = 'قايمة للعامل';
   var n = EXP_STAFF.reduce(function(a, g){ return a + g.items.length; }, 0);
   b.innerHTML = '<div class="state" style="text-align:start;padding:0 0 10px">' + ltr(n) + ' صنف بينتهوا خلال 6 شهور. ابعتها للعامل ينزّلها من الرف ويعلّم على اللي خلّصه.</div>' +
@@ -3916,7 +3921,7 @@ function catSheet(cat, scope){
   rows.sort(function(a, b){ return (b.cost || 0) - (a.cost || 0); });
   CAT_ROWS = rows;
 
-  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var t = document.getElementById('sheet-title'), b = sheetBody();
   document.getElementById('sheet').classList.add('on');
   t.textContent = cat;
   var tot = rows.reduce(function(a, x){ return a + (x.cost || 0); }, 0);
@@ -3958,7 +3963,7 @@ function expSheet(key){
     : (key === 'later' ? d.expiry_by_month.later
                        : d.expiry_by_month.months[key]);
   if (!bucket) return;
-  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var t = document.getElementById('sheet-title'), b = sheetBody();
   document.getElementById('sheet').classList.add('on');
   t.textContent = (key === 'expired') ? tr('expiredNow') : bucket.label;
   b.innerHTML =
@@ -4215,7 +4220,7 @@ function sendTest(){
 
 /* ── رصيد نقاط عميل ── */
 function pointsSheet(){
-  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var t = document.getElementById('sheet-title'), b = sheetBody();
   document.getElementById('sheet').classList.add('on');
   t.textContent = tr('pointsBal');
   b.innerHTML =
@@ -4249,7 +4254,7 @@ function loadPoints(){
 var COUPON = { list: [], sel: {} };
 
 function couponSheet(){
-  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var t = document.getElementById('sheet-title'), b = sheetBody();
   document.getElementById('sheet').classList.add('on');
   t.textContent = tr('sendCoupon');
   var d30 = cairoDate(30);
@@ -4723,7 +4728,7 @@ function openCust(phone){
   var c = findCust(phone); if (!c) return;
   CUST.one = c; CUST.hist = null; CUST.confirmBlock = false;
   CUST_LOG = { type: 'call', result: 'answered' };
-  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var t = document.getElementById('sheet-title'), b = sheetBody();
   document.getElementById('sheet').classList.add('on');
   t.textContent = c.name || c.phone;
   b.innerHTML = custSheetHtml(c);
@@ -4939,10 +4944,72 @@ function drawAgents(d, box){
   }
 }
 
+
+var SETTINGS={root:null,owner:null,key:'',scroll:{},loaded:{},dirty:{}};
+var SETTINGS_ITEMS=[['bot','الواتساب والردود','التشغيل والربط والمحادثات','💬'],['camera','الكاميرات','حالة الربط وإعدادات التصوير','📷'],['appearance','المظهر واللغة','الوضع الفاتح والغامق واللغة','◐'],['ai','الذكاء الاصطناعي','الموديل والاستهلاك والميزانية','✦'],['delivery','التوصيل','الرسوم والمناطق والمواعيد','🛵'],['security','الأمان وقفل اللوحة','الرقم السري وصلاحية الدخول','🔒'],['server','السيرفر والتحديثات','حالة التحديث والتنبيهات','↻'],['advanced','أدوات الصيانة','الفحص والنسخ الاحتياطي والتنظيف','⚙']];
+function settingsScroller(){return document.querySelector('#sheet .sheet-in');}
+function settingsRemember(){
+  var el=settingsScroller();if(el)SETTINGS.scroll[SETTINGS.key]=el.scrollTop;
+  try{sessionStorage.setItem('settingsPosition',JSON.stringify({key:SETTINGS.key,scroll:SETTINGS.scroll}));}catch(e){}
+}
+function settingsPark(){
+  var body=document.getElementById('sheet-body'),root=SETTINGS && SETTINGS.root;
+  if(!root || root.parentNode!==body)return;
+  settingsRemember();if(typeof camVideoStop==='function')camVideoStop();
+  var parking=document.getElementById('settingsParking');if(!parking){parking=document.createElement('div');parking.id='settingsParking';parking.hidden=true;document.body.appendChild(parking);}
+  parking.appendChild(root);
+}
+function sheetBody(){settingsPark();return document.getElementById('sheet-body');}
+function settingsDispose(){
+  if(SETTINGS.root)SETTINGS.root.remove();SETTINGS.root=null;SETTINGS.loaded={};SETTINGS.dirty={};
+}
+function settingsBuild(body){
+  var root=document.createElement('div');root.id='settingsRoot';
+  while(body.firstChild)root.appendChild(body.firstChild);
+  SETTINGS.root=root;SETTINGS.owner=storedPin();
+  try{var pos=JSON.parse(sessionStorage.getItem('settingsPosition') || '{}');SETTINGS.key=SETTINGS_ITEMS.some(function(x){return x[0]===pos.key;})?pos.key:'';SETTINGS.scroll=pos.scroll || {};}catch(e){}
+  var nav=document.createElement('div');nav.id='settingsNav';nav.innerHTML='<p class="settings-sub">اختار القسم اللي محتاجه</p>'+SETTINGS_ITEMS.map(function(x){return '<button class="settings-link" onclick="settingsSelect(\''+x[0]+'\')"><i>'+x[3]+'</i><span><b>'+x[1]+'</b><small>'+x[2]+'</small></span><em aria-hidden="true">‹</em></button>';}).join('');root.prepend(nav);
+  var bar=document.createElement('div');bar.id='settingsBar';bar.hidden=true;bar.innerHTML='<button class="btn btn-quiet" onclick="settingsSelect(\'\')">رجوع للإعدادات</button><button class="btn btn-quiet" id="settingsRefresh" onclick="settingsRefresh()">تحديث الحالة</button><small id="settingsDraft" role="status"></small>';root.prepend(bar);
+  root.addEventListener('input',function(e){var panel=e.target.closest('[data-setting]');if(!panel)return;SETTINGS.dirty[panel.dataset.setting]=true;settingsDraftHint();});
+  settingsMount(body);
+}
+function settingsMount(body){body.replaceChildren(SETTINGS.root);settingsSelect(SETTINGS.key,true);}
+function settingsSelect(key,restoring){
+  if(!SETTINGS.root)return;if(key && !SETTINGS_ITEMS.some(function(x){return x[0]===key;}))return;
+  if(!restoring)settingsRemember();SETTINGS.key=key;
+  SETTINGS.root.querySelector('#settingsNav').hidden=!!key;SETTINGS.root.querySelector('#settingsBar').hidden=!key;
+  SETTINGS.root.querySelectorAll('[data-setting]').forEach(function(panel){panel.hidden=panel.dataset.setting!==key;});
+  var title=SETTINGS_ITEMS.filter(function(x){return x[0]===key;})[0];document.getElementById('sheet-title').textContent=title?title[1]:tr('settings');
+  var sc=settingsScroller();if(sc)sc.scrollTop=+SETTINGS.scroll[key] || 0;
+  var refresh=document.getElementById('settingsRefresh');if(refresh)refresh.hidden=key==='appearance' || key==='advanced';
+  var status=document.getElementById('setStatus');if(status)status.hidden=!!key;
+  settingsDraftHint();try{sessionStorage.setItem('settingsPosition',JSON.stringify({key:key,scroll:SETTINGS.scroll}));}catch(e){}
+  settingsLoad(key);
+}
+function settingsDraftHint(){var el=document.getElementById('settingsDraft');if(el)el.textContent=SETTINGS.dirty[SETTINGS.key]?'عندك مدخلات لسه ما اتحفظتش':'';}
+function settingsSaved(keys){String(keys).split(',').forEach(function(k){delete SETTINGS.dirty[k];});settingsDraftHint();}
+function settingsLoad(key,force){
+  function once(name,fn){if(SETTINGS.loaded[name] && !force)return;SETTINGS.loaded[name]=true;fn();}
+  if(key==='bot' || key==='delivery' || key==='security')once('botSettings',loadBotSet);
+  if(key==='ai')once('ai',function(){loadAiCfg();loadAiUsage();});
+  if(key==='camera')once('camera',loadCam);
+  if(key==='server')once('server',function(){loadSrvUp();snapStatus();});
+}
+function settingsRefresh(){
+  var keys=SETTINGS.key==='bot' || SETTINGS.key==='delivery' || SETTINGS.key==='security'?['bot','delivery','security']:[SETTINGS.key];
+  if(keys.some(function(k){return SETTINGS.dirty[k];})){toast('احفظ تعديلاتك الأول عشان التحديث ما يمسحهاش');return;}
+  settingsLoad(SETTINGS.key,true);
+}
+function settingsCaptureDrafts(){
+  var drafts=[];if(!SETTINGS.root)return drafts;
+  SETTINGS.root.querySelectorAll('[data-setting]').forEach(function(panel){if(!SETTINGS.dirty[panel.dataset.setting])return;panel.querySelectorAll('input[id],textarea[id],select[id]').forEach(function(el){drafts.push({id:el.id,value:el.value,checked:el.checked});});});return drafts;
+}
+function settingsRestoreDrafts(drafts){drafts.forEach(function(d){var el=document.getElementById(d.id);if(el){el.value=d.value;if(el.type==='checkbox' || el.type==='radio')el.checked=d.checked;}});}
+
 /* ═══════════ الإعدادات ═══════════ */
 function openSheet(kind){
   var s = document.getElementById('sheet'), t = document.getElementById('sheet-title'),
-      b = document.getElementById('sheet-body');
+      b = sheetBody();
   s.classList.add('on'); s.classList.remove('wide');
   if (kind === 'more'){
     t.textContent = 'المزيد';
@@ -4967,12 +5034,15 @@ function openSheet(kind){
   }
   if (kind === 'settings'){
     t.textContent = tr('settings');
+    if(SETTINGS.root && SETTINGS.owner!==storedPin())settingsDispose();
+    if(SETTINGS.root){settingsMount(b);return;}
+    var groupIndex=0, groupKeys=['bot','ai','camera','delivery','security','server','advanced'];
     var grp = function(icon, title, sub, body, open){
-      return '<details class="setg"' + (open ? ' open' : '') + '><summary><span><b>' + icon + ' ' + title + '</b><small>' + sub + '</small></span></summary>' + body + '</details>';
+      var key=groupKeys[groupIndex++];return '<section class="settings-panel" data-setting="'+key+'" hidden><h3>'+icon+' '+title+'</h3><p class="settings-sub">'+sub+'</p>'+body+'</section>';
     };
     b.innerHTML =
-      '<div class="set-prefs"><button class="btn btn-quiet" onclick="toggleTheme()">◐ فاتح / غامق</button>' +
-      '<button class="btn btn-quiet" id="langBtn" onclick="setLang(LANG===\'ar\'?\'en\':\'ar\')">' + (LANG === 'ar' ? 'English' : 'عربي') + '</button></div>' +
+      '<section class="settings-panel" data-setting="appearance" hidden><h3>المظهر واللغة</h3><div class="set-prefs"><button class="btn btn-quiet" onclick="toggleTheme()">◐ فاتح / غامق</button>' +
+      '<button class="btn btn-quiet" id="langBtn" onclick="setLang(LANG===\'ar\'?\'en\':\'ar\')">' + (LANG === 'ar' ? 'English' : 'عربي') + '</button></div></section>' +
       '<div id="setStatus" class="set-status"></div>' +
       grp('🤖', 'بوت الواتساب', 'تشغيل/إيقاف · اختبار · الموديل',
         '<div id="botpause"><div class="state"><div class="spin"></div></div></div>' +
@@ -4980,12 +5050,12 @@ function openSheet(kind){
         '<div class="btn-row"><button class="btn btn-quiet" onclick="runAiTest()">اختبر الرد</button>' +
         '<button class="btn btn-quiet" onclick="runBotStatus()">سرعة البوت</button></div>' +
         '<div id="aibox"></div>' +
-        '<div class="group-title">الموديل</div><div id="aiuse"></div>' +
-        '<div id="aicfg"><div class="state"><div class="spin"></div></div></div>' +
         '<div class="group-title">ربط واتساب</div>' +
         '<button class="btn btn-quiet" onclick="loadWa()">اعرض بيانات الربط</button><div id="wabox"></div>', true) +
+      grp('✦', 'الذكاء الاصطناعي', 'الموديل · ميزانية الاستخدام',
+        '<div id="aicfg"><div class="state"><div class="spin"></div></div></div><div class="group-title">الاستهلاك</div><div id="aiuse"></div>') +
       grp('📷', 'الكاميرات', 'مفتاح الـ API · حالة الربط',
-        '<button class="btn btn-quiet" onclick="loadCam()">اعرض حالة الربط</button><div id="cambox"></div>') +
+        '<div id="cambox"><div class="state"><div class="spin"></div></div></div>') +
       grp('🛵', 'التوصيل', 'الرسوم · المناطق · المواعيد · المسافة',
         '<div id="botset"><div class="state"><div class="spin"></div></div></div>') +
       grp('🔒', 'قفل اللوحة', 'الرقم السري للمبيعات والعملاء والديون',
@@ -5022,14 +5092,10 @@ function openSheet(kind){
         (ERRORS.length ? ERRORS.slice().reverse().map(function(e){
           return row(e.m, ltr(e.t));
         }).join('') : '<div class="state">' + tr('noErrors') + '</div>'));
-    snapStatus();
-    loadAiCfg();
-    loadAiUsage();
-    loadBotSet();
-    loadSrvUp();
+    settingsBuild(b);
   }
 }
-function closeSheet(){ document.getElementById('sheet').classList.remove('on', 'wide'); }
+function closeSheet(){settingsPark();document.getElementById('sheet').classList.remove('on','wide');}
 
 function snapStatus(){
   api('snapshotStatus').then(function(d){
@@ -5153,7 +5219,7 @@ function drawCounts(){
 
 /* تفاصيل جلسة — الفروقات بس بتهمّك، فبتيجي الأول */
 function openCount(id){
-  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var t = document.getElementById('sheet-title'), b = sheetBody();
   document.getElementById('sheet').classList.add('on');
   t.textContent = tr('countDetail');
   b.innerHTML = '<div class="state"><div class="spin"></div></div>';
@@ -5192,7 +5258,7 @@ function openCount(id){
    بنطلب من المستخدم يكتب "مسح" بنفسه — نقرة "متأكد؟" سهل جدًا
    تتدوس بالغلط، وده مالوش رجعة. */
 function askDeleteCount(id, title, lines){
-  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var t = document.getElementById('sheet-title'), b = sheetBody();
   document.getElementById('sheet').classList.add('on');
   t.textContent = tr('deleteCount');
   b.innerHTML =
@@ -5209,7 +5275,7 @@ function askDeleteCount(id, title, lines){
   setTimeout(function(){ var e = document.getElementById('delWord'); e && e.focus(); }, 250);
 }
 
-function closeSheetX(){ document.getElementById('sheet').classList.remove('on', 'wide'); }
+function closeSheetX(){closeSheet();}
 
 function doDeleteCount(id){
   var w = (document.getElementById('delWord') || {}).value || '';
@@ -5236,7 +5302,7 @@ function agoMs(ms){
    الفئة لوحدها رقم مجمّع — الفايدة إنك تشوف مكوّناته: مين أكبر
    مورّد، وإزاي اتوزّع على الأيام. */
 function openExpCat(cat){
-  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var t = document.getElementById('sheet-title'), b = sheetBody();
   document.getElementById('sheet').classList.add('on');
   t.textContent = cat;
 
@@ -5288,7 +5354,7 @@ function openExpCat(cat){
 function openExpItem(id){
   var i = (EXP_ITEMS || []).filter(function(x){ return String(x.id) === String(id); })[0];
   if (!i) return;
-  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var t = document.getElementById('sheet-title'), b = sheetBody();
   document.getElementById('sheet').classList.add('on');
   t.textContent = i.name || i.category;
 
@@ -5310,7 +5376,7 @@ function openExpItem(id){
 var FIX = null;
 
 function openFix(id){
-  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var t = document.getElementById('sheet-title'), b = sheetBody();
   document.getElementById('sheet').classList.add('on');
   t.textContent = tr('fixOrder');
   b.innerHTML = '<div class="state"><div class="spin"></div></div>';
@@ -5401,7 +5467,7 @@ function tgFix(id){
    الترتيب بالخطورة = القيمة × مدة الإهمال. صنف بـ2400 جنيه معدّاش
    عليه 6 شهور أخطر من صنف بـ20 جنيه معدّاش عليه سنة. */
 function openDue(){
-  var t = document.getElementById('sheet-title'), b = document.getElementById('sheet-body');
+  var t = document.getElementById('sheet-title'), b = sheetBody();
   document.getElementById('sheet').classList.add('on');
   t.textContent = tr('needsCount');
   b.innerHTML = '<div class="state"><div class="spin"></div></div>';
@@ -5487,8 +5553,8 @@ function loadAiUsage(){
   }).catch(function(){});
 }
 function loadAiCfg(){
-  api('getAiConfig').then(function(d){ if (d && d.ok){ AI_CFG = d; drawAiCfg(d.provider); } })
-    .catch(function(){ var b = document.getElementById('aicfg'); if (b) b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+  api('getAiConfig').then(function(d){ if (d && d.ok){AI_CFG=d;if(!SETTINGS.dirty.ai)drawAiCfg(d.provider);}else{var box=document.getElementById('aicfg');if(box && !SETTINGS.dirty.ai)box.innerHTML='<div class="state err">تعذر تحميل الإعدادات؛ جرّب تحديث الحالة</div>';} })
+    .catch(function(){ var b = document.getElementById('aicfg'); if (b && !SETTINGS.dirty.ai) b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
 }
 function drawAiCfg(pr){
   var d = AI_CFG, box = document.getElementById('aicfg'); if (!box || !d) return;
@@ -5509,7 +5575,7 @@ function saveAiCfg(pr){
   var v = function(id){ return (document.getElementById(id) || {}).value || ''; };
   post({ action: 'setAiConfig', provider: pr, key: v('aiKey'), bot: v('aiBot'), dose: v('aiDose'), budget: v('aiBudget'), pin: v('aiPin') }).then(function(d){
     if (d && d.ok){ try { localStorage.setItem('adminPin', v('aiPin')); } catch (e) {}
-      AI_CFG = d; drawAiCfg(d.provider); loadAiUsage(); toast('✓ اتحفظ — شغال على ' + d.provider); }
+      settingsSaved('ai'); AI_CFG = d; drawAiCfg(d.provider); loadAiUsage(); toast('✓ اتحفظ — شغال على ' + d.provider); }
     else toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });
 }
@@ -5621,6 +5687,7 @@ document.addEventListener('visibilitychange', function(){ if (document.hidden) c
 function loadCam(){
   var b = document.getElementById('cambox'); b.innerHTML = '<div class="state"><div class="spin"></div></div>';
   api('camInfo').then(function(d){
+    if(SETTINGS.dirty.camera)return;
     if (!d || !d.ok){ if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} b.innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + '</div>'; return; }
     var opt = function(v, t){ return '<option value="' + v + '"' + (d.type === v ? ' selected' : '') + '>' + t + '</option>'; };
     b.innerHTML = row('المفتاح', d.hasKey ? '✅ متحط' + (d.savedAt ? ' — ' + esc(d.savedAt) : '') : '❌ لسه') +
@@ -5650,7 +5717,7 @@ function saveCam(){
   var p = { action: 'setCamConfig', type: g('camType'), url: g('camUrl'), key: g('camKey'), secret: g('camSec'), note: g('camNote'), pin: adminPin() };
   if (!p.key && !p.secret && !p.url && !p.type && !p.note){ toast('مفيش حاجة تتحفظ'); return; }
   post(p).then(function(d){
-    if (d && d.ok){ toast('✓ اتحفظ'); loadCam(); }
+    if (d && d.ok){settingsSaved('camera');toast('✓ اتحفظ');loadCam();}
     else { if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} toast((d && d.error) || tr('failed')); }
   }).catch(function(){ toast(tr('failed')); });
 }
@@ -5692,7 +5759,7 @@ var CAMR_ORDER = [2, 3, 4, 1, 6];
 function camrSheet(title){
   var s = document.getElementById('sheet'); s.classList.add('on', 'wide');
   document.getElementById('sheet-title').textContent = title;
-  return document.getElementById('sheet-body');
+  return sheetBody();
 }
 function camrNotes(r){ if (r.summary) return r.summary.length; return (r.cams || []).reduce(function(s, c){ return s + (c.items || []).length; }, 0); }
 /* صفحات التقرير: النسخة 2 (تقرير اليوم) = r.pages بالترتيب، القديمة = كاميرا واحدة لكل رقم */
@@ -6137,8 +6204,8 @@ function runSrvUp(){
 /* إعدادات البوت: رسوم التوصيل، المواعيد، أقصى مسافة، قفل اللوحة */
 var BOT_SET = null;
 function loadBotSet(){
-  api('getBotSettings').then(function(d){ if (d && d.ok){ BOT_SET = d; drawBotSet(); showBotPauseBanner(!!d.paused); } })
-    .catch(function(){ var b = document.getElementById('botset'); if (b) b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
+  api('getBotSettings').then(function(d){if(!d || !d.ok)throw new Error('settings');BOT_SET=d;drawBotSet();showBotPauseBanner(!!d.paused);})
+    .catch(function(){['botset','botpause','botlock'].forEach(function(id){var b=document.getElementById(id);if(b)b.innerHTML='<div class="state err">تعذر تحميل الحالة؛ استخدم تحديث الحالة</div>';});});
 }
 function showBotPauseBanner(on){
   var b = document.getElementById('botPauseBanner');
@@ -6167,6 +6234,7 @@ function toggleBotPause(paused){
   }).catch(function(){ toast(tr('failed')); });
 }
 function drawBotSet(){
+  var drafts=settingsCaptureDrafts();
   var d = BOT_SET, box = document.getElementById('botset'); if (!box || !d) return;
   var pb = document.getElementById('botpause');
   if (pb) pb.innerHTML = '<div class="set-line"><span><b>البوت ' + (d.paused ? 'واقف' : 'شغّال') + '</b><small>' +
@@ -6195,13 +6263,14 @@ function drawBotSet(){
     '<div class="state" style="font-size:12px">' + (d.lock ? '🔒 اللوحة مقفولة دلوقتي.' : 'اللوحة مفتوحة لأي حد معاه الرابط.') +
       (d.freeDelivery ? ' التوصيل مجاني.' : '') + '</div>';
   var hh = document.getElementById('bsHours'); if (hh) hh.dir = 'rtl';
+  settingsRestoreDrafts(drafts);
 }
 function saveBotSet(){
   var v = function(id){ return (document.getElementById(id) || {}).value || ''; };
   var lock = document.getElementById('bsLock').checked ? '1' : '0', pin = v('bsPin') || storedPin();
   var free = document.getElementById('bsFree').checked ? '1' : '0';
   post({ action: 'setBotSettings', fee: v('bsFee'), hours: v('bsHours'), maxKm: v('bsKm'), lock: lock, pin: pin, free: free, areas: v('bsAreas') }).then(function(d){
-    if (d && d.ok){ try { localStorage.setItem('adminPin', pin); } catch (e) {} BOT_SET = d; drawBotSet(); toast('✓ اتحفظ'); }
+    if (d && d.ok){ try { localStorage.setItem('adminPin', pin); } catch (e) {} settingsSaved('delivery,security');BOT_SET = d; drawBotSet(); toast('✓ اتحفظ'); }
     else toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });
 }

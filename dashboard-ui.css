@@ -1,5 +1,5 @@
 /* Unified dashboard presentation. Financial calculations and operational pages are unchanged. */
-:root{--bg:#10151d;--surface:#1a2230;--surface-2:#232e3e;--line:#354257;--ink:#f4f7fc;--ink-2:#c1cbda;--ink-3:#a7b4c7;--brand:#48b7f0;--t-micro:12px;--t-small:13px;--t-body:15px;--t-title:17px;--ui-shadow:0 8px 24px #00000012;--ui-control-radius:12px}
+:root{--bg:#090909;--surface:#151515;--surface-2:#202020;--line:#303030;--ink:#f3f1ed;--ink-2:#bfbcb5;--ink-3:#a19e97;--brand:#c5b18a;--t-micro:12px;--t-small:13px;--t-body:15px;--t-title:17px;--ui-shadow:0 12px 32px #00000030;--ui-control-radius:12px}
 body.light{--bg:#f2f5fa;--surface:#fff;--surface-2:#eaf0f7;--line:#c9d4e2;--ink:#182438;--ink-2:#42546c;--ink-3:#536680;--brand:#086eab;--ui-shadow:0 5px 18px #233e5b09}
 body{line-height:1.7;padding-bottom:calc(112px + env(safe-area-inset-bottom))}
 button,input,select,textarea{font:inherit}
@@ -33,3 +33,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible,[
 
 
 .home-period-controls{display:flex;align-items:center;gap:8px;margin-bottom:12px}.home-period-controls .period-tabs{flex:1;min-width:0;display:flex;overflow-x:auto;margin:0}.home-period-controls .ctl-more{flex:0 0 44px;color:var(--ink);background:var(--surface-2)}#homePeriodFrom,#homePeriodTo{display:block;width:100%;padding:12px;margin:8px 0 16px;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:12px;min-height:44px}#homePeriodError{color:var(--bad);font-size:13px;margin-bottom:12px}
+
+/* Owner preference: neutral charcoal with restrained champagne accents. */
+body:not(.light){color-scheme:dark}body:not(.light) .card,body:not(.light) #p-home .card{background:linear-gradient(155deg,#191919,#141414 70%);border-color:#303030}body:not(.light) .subtabs button.on,body:not(.light) .ctl-main button.on,body:not(.light) .period-tabs button.on,body:not(.light) .h-dots button.on{color:#e2d4b9;background:#282622;box-shadow:inset 0 0 0 1px #4d4639}body:not(.light) .secnav{background:#151515;box-shadow:0 12px 32px #0006}body:not(.light) .secnav button.on{color:#e2d4b9;background:#282622}body:not(.light) .btn-primary{background:#c5b18a;color:#17140f;border-color:#c5b18a}body:not(.light) #p-home .h-pace{background:#1c1b19}body:not(.light) .access-icon{background:#282622;color:#d8c49e}body:not(.light) .ibtn{background:#191919;border-color:#303030}body:not(.light) .h-dots{background:#111;border-color:#2b2b2b}

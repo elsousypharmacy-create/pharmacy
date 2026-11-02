@@ -657,7 +657,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=20261102-staff-carousel">
+<link rel="stylesheet" href="dashboard-ui.css?v=20261103-home-flash">
 </head>
 <body>
 
@@ -1276,6 +1276,8 @@ var HOME_MONTH = (function(){
 /* فترة السلايد: لحد امبارح دايمًا (اليوم لسه مكملش فبيبوّظ المتوسط) */
 var HOME_MR = (function(){try{var v=JSON.parse(sessionStorage.getItem('homePeriodChoice')||'null');return v&&['month','last','yesterday','custom'].indexOf(v.key)>=0?v:{key:'month'};}catch(e){return {key:'month'};}})();
 var HOME_PERIOD_CACHE = {}, HOME_PERIOD_REQUESTS = {};
+var HOME_FLASH_MODE=false,HOME_FLASH_ACTIONS='',HOME_FLASH_DETAILS={},HOME_FLASH_DAY_STATS=null,HOME_FLASH_PERIOD_DETAILS='';
+var HOME_PRESENCE_ITEMS=[],HOME_PRESENCE_SALES_DAY='',STAFF_PENDING_FOCUS='';
 function homeMonthName(month){
   return new Date(month+'-01T12:00:00Z').toLocaleDateString('ar-EG',{month:'long',timeZone:'UTC'});
 }
@@ -1361,7 +1363,7 @@ function homeExpenseMonth(month,force){
       if(!pin || storedPin()!==pin)throw new Error('access changed');
       var data=homeNormalizeExpenses(d,month);
       HOME_EXP_CACHE[month]={at:data._uiAt,data:data};cacheSet('homeExpense.v1',{month:month},data);delete HOME_EXP_FAILURES[month];
-      if(timedOut){var box=document.getElementById('homeDayExpenses'),day=box && box.getAttribute('data-day');if(day && day.slice(0,7)===month)box.innerHTML=homeExpenseHtml(data,day,day,false,true);}
+      if(timedOut){var box=document.getElementById('homeDayExpenses'),day=box && box.getAttribute('data-day');if(day && day.slice(0,7)===month)box.innerHTML=homeExpenseHtml(data,day,day,false,true);if(HOME_FLASH_MODE)homeFlashPrepareInsights();}
       resolve(data);
     }).catch(reject);
   }).catch(function(e){HOME_EXP_FAILURES[month]=Date.now();throw e;}).finally(function(){clearTimeout(timer);if(HOME_EXP_REQUESTS[month]===request)delete HOME_EXP_REQUESTS[month];});
@@ -1399,6 +1401,7 @@ function reportDataStatus(content,attention,key,cached){
 }
 var HOME_INSIGHT_OPEN='';
 function homeInsightToggle(kind){
+  if(typeof HOME_FLASH_MODE!=='undefined' && HOME_FLASH_MODE){homeFlashPrepareInsights();openMenu(kind==='camera'?'آخر تقييم بالكاميرات':'تفاصيل المصروفات',HOME_FLASH_DETAILS[kind] || '<p>البيانات غير متاحة بعد</p>');return;}
   HOME_INSIGHT_OPEN=HOME_INSIGHT_OPEN===kind?'':kind;
   document.querySelectorAll('[data-insight-toggle]').forEach(function(el){el.setAttribute('aria-expanded',el.getAttribute('data-insight-toggle')===HOME_INSIGHT_OPEN?'true':'false');});
   document.querySelectorAll('[data-insight-panel]').forEach(function(el){el.hidden=el.getAttribute('data-insight-panel')!==HOME_INSIGHT_OPEN;});
@@ -1419,14 +1422,18 @@ function loadHomeDayExpenses(day,force){
   var box=document.getElementById('homeDayExpenses');if(!box)return;
   function active(){return document.getElementById('homeDayExpenses')===box && box.getAttribute('data-day')===day;}
   var cached=homeReadExpense(day.slice(0,7));
-  if(cached)box.innerHTML=homeExpenseHtml(cached.data,day,day,false,true);
-  homeExpenseMonth(day.slice(0,7),force).then(function(pl){if(active())box.innerHTML=homeExpenseHtml(pl,day,day,false,true);}).catch(function(){
+  if(cached){box.innerHTML=homeExpenseHtml(cached.data,day,day,false,true);if(HOME_FLASH_MODE)homeFlashPrepareInsights();}
+  homeExpenseMonth(day.slice(0,7),force).then(function(pl){if(active()){box.innerHTML=homeExpenseHtml(pl,day,day,false,true);if(HOME_FLASH_MODE)homeFlashPrepareInsights();}}).catch(function(){
     if(!active())return;
     if(!cached)box.innerHTML=homeExpenseHtml(null,day,day,false,true);
+    if(HOME_FLASH_MODE){homeFlashPrepareInsights();HOME_FLASH_DETAILS.expenses=(HOME_FLASH_DETAILS.expenses || '')+'<button class="btn btn-quiet" onclick="closeSheet();loadHomeDayExpenses(\''+day+'\',true)">إعادة المحاولة</button>';return;}
     box.insertAdjacentHTML('beforeend','<button class="btn btn-quiet" onclick="loadHomeDayExpenses(this.closest(\'div[data-day]\').getAttribute(\'data-day\'),true)">إعادة المحاولة</button>');
   });
 }
 function monthSlide(M){
+  var result=monthSlideRegular(M);return typeof HOME_FLASH_MODE!=='undefined' && HOME_FLASH_MODE?homeFlashPeriodContent(result):result;
+}
+function monthSlideRegular(M){
   var m=M.m || {},R=M.r || homeRange(),pl=M.pl || {},g=goalOf('daily_sales',10000),net=Number(m.net_sales || 0),gp=Number(m.profit_total || 0),inv=Number(m.invoices_total || 0),np=null;
   var days=R.month?new Date(Date.UTC(+R.month.slice(0,4),+R.month.slice(5,7),0)).getUTCDate():1,target=g*(R.key==='yesterday'?1:R.key==='custom'?Math.round((Date.parse(R.to+'T12:00:00Z')-Date.parse(R.from+'T12:00:00Z'))/86400000)+1:days),left=Math.max(0,target-net);
   if(pl.ok && pl.financial_schema==='finance-review-v1' && !pl.expense_source_error && !pl.salary_conflict && Array.isArray(pl.days)){var rangeDays=pl.days.filter(function(x){return x.date>=R.from && x.date<=R.to;});if(homePeriodExpenses(pl,R.from,R.to)!==null && rangeDays.every(function(x){return x.net!=null;}))np=rangeDays.reduce(function(t,x){return t+Number(x.net);},0);}
@@ -1946,6 +1953,7 @@ function renderTabs(sec, tab){
   }).join('');
 }
 function render(sec, tab){
+  document.body.classList.toggle('home-flash-mode',sec==='sales' && tab===0);
   var key = SECTIONS[sec][tab][0];
   /* كل تاب في المبيعات ليه صندوقه — عشان رد متأخر من تاب ميكتبش فوق تاب تاني */
   var BOXES = { team: ['p-hr', 'p-team'] };
@@ -2249,6 +2257,7 @@ document.addEventListener('visibilitychange', function(){
 function drawHome(b, kpi, isOld){
   var box = document.getElementById('p-home');
   try{
+    HOME_FLASH_MODE=true;
     kpi = kpi || {};
     if (!b || !b.ok) throw new Error('bundle');
     if (!isOld) markSync();
@@ -2397,20 +2406,23 @@ function drawHome(b, kpi, isOld){
     var hm = function(m){ m = Math.max(0, Math.round(m || 0)); return ltr(Math.floor(m / 60) + ':' + ('0' + (m % 60)).slice(-2)) + ' ساعة'; };
     var teamList = (isStaleDay && !kpi._yesterday) ? [] : emps.slice().sort(function(a,b){ return (b.net || b.sales) - (a.net || a.sales); });
     var teamTot = teamList.reduce(function(s, e){ return s + (e.net || e.sales || 0); }, 0) || 1;
-    if(!HOME_TEAM_PERIOD_SELECTED)RANGE.homeStaff=isStaleDay?'yesterday':'today';
-    var teamCards=HOME_TEAM_PERIOD_SELECTED?homeStaffSavedHtml():staffCardsHtml(teamList,live,[],'home',at.ok===false);
+    if(!HOME_TEAM_PERIOD_SELECTED){RANGE.homeStaff=isStaleDay?'yesterday':'today';HOME_STAFF_LABEL=isStaleDay?'أمس':'اليوم';}
+    HOME_PRESENCE_SALES_DAY=homeDay;
+    var teamCards=staffCardsHtml(teamList,live,[],'home',at.ok===false);
     var liveN = live.length;
-    html += '<div class="card home-team-section"><div class="card-head"><div><h3>الفريق</h3><p id="homeTeamPeriod">' + (HOME_TEAM_PERIOD_SELECTED?'الفترة المختارة':isStaleDay?'أمس':'اليوم')+' · بتوقيت مصر</p></div><button class="ctl-more" onclick="homeStaffMenu()" aria-label="تحديد مدة تقرير الفريق">⋯</button></div>' +
-      '<div id="homeTeamCards" data-day="'+homeDay+'">'+teamCards+'</div>' + '<button class="btn btn-quiet" onclick="go(\'team\',0)">سجل الدخول والخروج · بتوقيت مصر ←</button></div>';
+    html += '<div class="home-team-section"><div id="homeTeamCards" data-day="'+homeDay+'">'+teamCards+'</div></div>';
     /* ── آخر 14 يوم ── */
     html += '<div class="card"><div class="card-head"><div><h3>آخر 14 يوم</h3><p id="homeChartSub">صافي كل يوم · الأخضر عدّى الهدف</p></div></div>' +
       '<div id="homeChart">' + (HOME_DAYS ? homeChart(HOME_DAYS, salesT, isStaleDay, gS) : '<div class="state">…</div>') + '</div></div>';
 
     html += '</div></div>';
 
-    box.innerHTML = html;
+    HOME_FLASH_DAY_STATS={date:homeDay,net:salesT,profit:profitT,invoices:tot.inv,returns:retVal,average:avgInv,pace:paceLine};
+    HOME_PRESENCE_SALES_DAY=homeDay;
+    box.innerHTML = homeFlashLayout(html);
     loadHomeDayExpenses(homeDay);
-    if(HOME_TEAM_PERIOD_SELECTED)loadHomeStaffPeriod();else loadHomeTeamCards(homeDay,teamList,live,at.ok===false);
+    staffFlashRestore();
+    if(!HOME_FLASH_MODE){if(HOME_TEAM_PERIOD_SELECTED)loadHomeStaffPeriod();else loadHomeTeamCards(homeDay,teamList,live,at.ok===false);}
     loadHomeMore();
     loadHomeDays(salesT, isStaleDay, gS, gV);
     loadHomeMonth();
@@ -2429,7 +2441,8 @@ var HOME_ORDER = ['bot', 'calls', 'short', 'docs', 'exp'];
 function homeMoreHtml(){
   var rows=(HOME_PRIMARY||[]).concat(HOME_ORDER.map(function(k){return HOME_SLOTS[k]||'';})).filter(Boolean);
   rows=rows.map(function(html,i){return {html:html,i:i,priority:html.indexOf('var(--bad)')>=0?0:html.indexOf('var(--warn)')>=0?1:2};}).sort(function(a,b){return a.priority-b.priority||a.i-b.i;}).map(function(x){return x.html;});
-  return rows.slice(0,3).join('')+(rows.length>3?'<details class="home-more"><summary>عرض بقية الإجراءات ('+(rows.length-3)+')</summary>'+rows.slice(3).join('')+'</details>':'');
+  HOME_FLASH_ACTIONS=rows.join('');
+  return rows.slice(0,3).join('')+(typeof HOME_FLASH_MODE!=='undefined' && HOME_FLASH_MODE?'':rows.length>3?'<details class="home-more"><summary>عرض بقية الإجراءات ('+(rows.length-3)+')</summary>'+rows.slice(3).join('')+'</details>':'');
 }
 HOME_MORE = homeMoreHtml();
 function setHomeSlot(k, html){
@@ -3376,29 +3389,31 @@ function staffClockLabel(value){return esc(String(value || '—').replace(/\bAM\
 function staffAttendanceRows(rows){
   if(!rows || !rows.length)return '<div class="state">لا توجد بصمات مسجلة في الفترة المختارة</div>';
   return rows.slice().sort(function(a,b){return b.date.localeCompare(a.date)||a.name.localeCompare(b.name);}).map(function(x){
-    return '<div class="row"><div class="row-main"><b>'+esc(x.name)+'</b><small>'+esc(x.date)+' · بتوقيت مصر</small><small>دخول: '+ltr(staffClockLabel(x.checkIn))+' · خروج: '+(x.checkOut==='مفتوح'?'لم يسجل الخروج':ltr(staffClockLabel(x.checkOut)))+'</small></div></div>';
+    return '<div class="row"><div class="row-main"><b>'+esc(x.name)+'</b><small>'+esc(x.date)+'</small><small>دخول: '+ltr(staffClockLabel(x.checkIn))+' · خروج: '+(x.checkOut==='مفتوح'?'لم يسجل الخروج':ltr(staffClockLabel(x.checkOut)))+'</small></div></div>';
   }).join('');
 }
 
 var STAFF_CARD_OPEN={};
+var HOME_STAFF_LABEL='اليوم',HOME_STAFF_FLASH=null,HOME_STAFF_FLASH_POSITION='summary';
 var HOME_TEAM_REQUESTS={};
 var HOME_TEAM_PERIOD_SELECTED=false,HOME_TEAM_PERIOD_REQUESTS={},HOME_TEAM_PERIOD_TOKEN=0;
 function homeStaffMenu(){openMenu('مدة تقرير الفريق',rangeMenuRows('homeStaff','setHomeStaffRange'));}
 function setHomeStaffRange(v){
   var previous=RANGE.homeStaff,previousCustom=CUSTOM.homeStaff;
-  function apply(){if(RANGE.homeStaff==='custom' && (!CUSTOM.homeStaff || !validHomePeriod(CUSTOM.homeStaff.from,CUSTOM.homeStaff.to))){RANGE.homeStaff=previous;CUSTOM.homeStaff=previousCustom;toast('اختر مدة صحيحة حتى اليوم، بحد أقصى سنة');return;}HOME_TEAM_PERIOD_SELECTED=true;loadHomeStaffPeriod();}
+  function apply(){if(RANGE.homeStaff==='custom' && (!CUSTOM.homeStaff || !validHomePeriod(CUSTOM.homeStaff.from,CUSTOM.homeStaff.to))){RANGE.homeStaff=previous;CUSTOM.homeStaff=previousCustom;toast('اختر مدة صحيحة حتى اليوم، بحد أقصى سنة');return;}HOME_TEAM_PERIOD_SELECTED=true;HOME_STAFF_FLASH_POSITION='summary';loadHomeStaffPeriod();}
   setRange('homeStaff',v,apply);
 }
 function homeStaffSavedHtml(){
   var saved=cacheGet('homeStaffPeriod',rangeParams('homeStaff'));
-  return saved?staffCardsHtml(saved.employees,saved.live,saved.rows,'home-period',!!saved.attendanceError):'<div class="state">جارٍ تحميل الفترة المختارة…</div>';
+  if(saved)HOME_STAFF_LABEL=saved.label || 'الفترة المختارة';
+  return saved?staffCardsHtml(saved.employees,saved.live,saved.rows,'home-period',!!saved.attendanceError):staffFlashLoadingHtml();
 }
 function loadHomeStaffPeriod(){
   var box=document.getElementById('homeTeamCards'),label=document.getElementById('homeTeamPeriod');if(!box)return;
   var params=rangeParams('homeStaff'),key=JSON.stringify(params),token=++HOME_TEAM_PERIOD_TOKEN,pin=storedPin(),cached=cacheGet('homeStaffPeriod',params);
   function active(){return document.getElementById('homeTeamCards')===box && token===HOME_TEAM_PERIOD_TOKEN && HOME_TEAM_PERIOD_SELECTED;}
-  function paint(d){if(active()){box.innerHTML=staffCardsHtml(d.employees,d.live,d.rows,'home-period',!!d.attendanceError);if(label)label.textContent=(d.label || 'الفترة المختارة')+' · بتوقيت مصر';}}
-  if(cached)paint(cached);else{box.innerHTML='<div class="state">جارٍ تحميل الفترة المختارة…</div>';if(label)label.textContent='الفترة المختارة · بتوقيت مصر';}
+  function paint(d){if(active()){HOME_STAFF_LABEL=d.label || 'الفترة المختارة';box.innerHTML=staffCardsHtml(d.employees,d.live,d.rows,'home-period',!!d.attendanceError);staffFlashRestore();if(label)label.textContent=HOME_STAFF_LABEL;}}
+  if(cached)paint(cached);else{box.innerHTML=staffFlashLoadingHtml();staffFlashRestore();if(label)label.textContent='الفترة المختارة';}
   if(cached && cached._uiAt && Date.now()-cached._uiAt<300000)return;
   if(!HOME_TEAM_PERIOD_REQUESTS[key]){
     var timer;
@@ -3412,7 +3427,7 @@ function loadHomeStaffPeriod(){
 function loadHomeTeamCards(day,employees,live,attendanceError){
   var box=document.getElementById('homeTeamCards');if(!box)return;
   var params={day:day},cached=cacheGet('homeTeamAttendance',params),pin=storedPin();
-  function paint(rows,error){if(!HOME_TEAM_PERIOD_SELECTED && document.getElementById('homeTeamCards')===box && box.getAttribute('data-day')===day)box.innerHTML=staffCardsHtml(employees,live,rows,'home',error || attendanceError);}
+  function paint(rows,error){if(!HOME_TEAM_PERIOD_SELECTED && document.getElementById('homeTeamCards')===box && box.getAttribute('data-day')===day){box.innerHTML=staffCardsHtml(employees,live,rows,'home',error || attendanceError);staffFlashRestore();}}
   if(cached && Array.isArray(cached.rows))paint(cached.rows,false);
   if(cached && cached._uiAt && Date.now()-cached._uiAt<300000)return;
   if(!HOME_TEAM_REQUESTS[day])HOME_TEAM_REQUESTS[day]=api('getAttendanceHistory',{from:day,to:day}).then(function(d){
@@ -3435,7 +3450,106 @@ function staffCardEntries(employees,live,history){
   (history||[]).forEach(function(r){find(r.name).shifts.push(r);});
   return entries.sort(function(a,b){return Number(!!b.live)-Number(!!a.live)||(b.employee && b.employee.net || 0)-(a.employee && a.employee.net || 0);});
 }
+function homeFlashPrepareInsights(root){
+  if(!HOME_FLASH_MODE)return;root=root || document;
+  root.querySelectorAll('[data-insight-panel]').forEach(function(panel){HOME_FLASH_DETAILS[panel.getAttribute('data-insight-panel')]=panel.innerHTML;panel.remove();});
+}
+function homeFlashPeriodContent(html){
+  var template=document.createElement('template');template.innerHTML=html;
+  var details=template.content.querySelector('.period-details');
+  if(details){details.setAttribute('open','');HOME_FLASH_PERIOD_DETAILS=details.outerHTML;var button=document.createElement('button');button.className='btn btn-quiet';button.textContent='تفاصيل الفترة';button.onclick=null;button.setAttribute('onclick','homeFlashPeriodDetails()');details.replaceWith(button);}
+  return template.innerHTML;
+}
+function homeFlashPeriodDetails(){openMenu('تفاصيل الفترة',HOME_FLASH_PERIOD_DETAILS || '<p>لا توجد بيانات متاحة</p>');}
+function homeFlashTodayDetails(){
+  var d=HOME_FLASH_DAY_STATS;if(!d)return;
+  openMenu('تفاصيل اليوم',row('التاريخ','',esc(d.date))+row('صافي المبيعات','بعد المرتجعات',staffFlashValue(d.net))+row('ربح البيع','قبل المصروفات',staffFlashValue(d.profit))+row('الفواتير','',staffFlashValue(d.invoices))+row('المرتجعات','',staffFlashValue(d.returns))+row('متوسط الفاتورة','',staffFlashValue(d.average))+(d.pace || ''));
+}
+function homeFlashActionsDetails(){openMenu('كل الإجراءات',HOME_FLASH_ACTIONS || '<p>لا توجد إجراءات معلقة</p>');}
+function homePresenceHtml(employees,live,error){
+  HOME_PRESENCE_ITEMS=error?[]:staffCardEntries(employees,live,[]).filter(function(item){return !!item.live;});
+  var current=HOME_PRESENCE_SALES_DAY===cairoNow().date;
+  return '<article class="staff-flash-card home-presence-page" data-flash-key="presence">'+staffFlashHeader('الموجودون الآن',error?'الحضور غير متاح':live.length+' من الفريق',false)+'<div class="home-presence-list">'+(error?'<p>تعذر تحديث الحضور</p>':HOME_PRESENCE_ITEMS.length?HOME_PRESENCE_ITEMS.slice(0,3).map(function(item,i){return '<button class="home-presence-person" onclick="homePresenceOpen('+i+')"><span><b>'+esc(item.name)+'</b><small>دخول '+staffCairoClock(item.live.checkInTimestamp)+'</small></span><span><b>'+staffFlashValue(current && item.employee?item.employee.net:null)+'</b><small>صافي مبيعات اليوم</small></span></button>';}).join(''):'<p>لا يوجد حضور مسجل حاليًا</p>')+'</div><div class="staff-flash-footer"><button class="btn btn-quiet" onclick="go(\'team\',0)">صفحة الفريق ←</button><small>'+(HOME_PRESENCE_ITEMS.length>3?'+'+(HOME_PRESENCE_ITEMS.length-3)+' في صفحة الفريق':'')+'</small></div></article>';
+}
+function homePresenceOpen(index){var item=HOME_PRESENCE_ITEMS[index];if(!item)return;STAFF_PENDING_FOCUS=item.name;RANGE.perf='today';go('team',0);}
+function staffFocusPending(){
+  if(typeof CUR!=='undefined' && CUR!=='team')return;
+  if(!STAFF_PENDING_FOCUS)return;var name=STAFF_PENDING_FOCUS;STAFF_PENDING_FOCUS='';
+  var emps=HR.kpi.employees || [],matches=emps.map(function(e,i){return {e:e,i:i};}).filter(function(x){return sameStaff(x.e.name,name);});
+  if(matches.length===1){staffSheet(matches[0].i);return;}
+  var live=(HR.live.live || []).filter(function(p){return staffKey(p.name)===staffKey(name);})[0],rows=(HR.hist.rows || []).filter(function(r){return staffKey(r.name)===staffKey(name);});
+  openMenu(name,(live?row('الدخول','',staffCairoClock(live.checkInTimestamp)):'')+'<p>لا توجد مبيعات متاحة لهذا الموظف في الفترة</p>'+staffAttendanceRows(rows));
+}
+function homeFlashLayout(html){
+  var template=document.createElement('template');template.innerHTML=html;
+  var root=document.createElement('div');root.className='home-flash-deck staff-flash-deck';root.setAttribute('role','region');root.setAttribute('aria-label','أقسام الرئيسية؛ اسحب يمينًا أو يسارًا');root.setAttribute('onscroll','staffFlashRemember(this)');
+  var heroes=template.content.querySelectorAll('#heroSlides > .h-slide');
+  heroes.forEach(function(card,index){card.classList.add('home-flash-page');card.setAttribute('data-flash-key',index?'period':'overview');
+    if(!index){card.classList.add('home-flash-today');var pace=card.querySelector('.h-pace');if(pace)pace.remove();var head=card.querySelector('.h-top'),title=head && head.querySelector('h2');if(head)head.innerHTML=(title?title.outerHTML:'<h2>اليوم</h2>')+'<button class="ctl-more" onclick="homeFlashTodayDetails()" aria-label="تفاصيل اليوم">⋯</button>';}
+    root.appendChild(card);
+  });
+  var team=template.content.querySelector('#homeTeamCards');if(team){team.style.display='contents';root.appendChild(team);}
+  var priorities=template.content.querySelector('.home-actions');if(priorities){priorities.classList.add('home-flash-page','home-flash-priorities');priorities.setAttribute('data-flash-key','priorities');var more=document.createElement('button');more.className='btn btn-quiet';more.textContent='كل الإجراءات';more.setAttribute('onclick','homeFlashActionsDetails()');priorities.appendChild(more);root.appendChild(priorities);}
+  var chart=template.content.querySelector('#homeChart');if(chart){var card=chart.closest('.card');card.classList.add('home-flash-page','home-flash-chart');card.setAttribute('data-flash-key','chart');root.appendChild(card);}
+  homeFlashPrepareInsights(root);return root.outerHTML;
+}
+function staffFlashValue(value){return value===null || value===undefined || !Number.isFinite(Number(value))?'—':ltr(num(value));}
+function staffFlashSum(employees,field){
+  if(!employees.length || employees.some(function(e){return e[field]===null || e[field]===undefined || !Number.isFinite(Number(e[field]));}))return null;
+  return employees.reduce(function(t,e){return t+Number(e[field]);},0);
+}
+function staffFlashMini(label,value){return '<div><small>'+esc(label)+'</small><b>'+value+'</b></div>';}
+function staffFlashHeader(title,subtitle,menu){return '<div class="staff-flash-head"><div><h3>'+esc(title)+'</h3><small>'+esc(subtitle)+'</small></div>'+(menu?'<button type="button" class="ctl-more" onclick="homeStaffMenu()" aria-label="تحديد مدة تقرير الفريق">⋯</button>':'')+'</div>';}
+function staffFlashLoadingHtml(){return '<div class="staff-flash-deck"><article class="staff-flash-card" data-flash-key="summary">'+staffFlashHeader('الفريق','الفترة المختارة',true)+'<div class="staff-flash-loading" role="status">جارٍ تحميل الفترة المختارة…</div></article></div>';}
+function staffFlashHtml(employees,live,history,attendanceError){
+  employees=employees||[];live=live||[];history=history||[];
+  var entries=staffCardEntries(employees,live,history),net=staffFlashSum(employees,'net'),profit=staffFlashSum(employees,'profit'),invoices=staffFlashSum(employees,'invoices');
+  var gross=staffFlashSum(employees,'sales'),average=invoices>0 && gross!==null?Math.round(gross/invoices):null;
+  if(invoices>0 && average===null && employees.every(function(e){return e.avg_inv!=null;}))average=Math.round(employees.reduce(function(t,e){return t+Number(e.avg_inv)*Number(e.invoices);},0)/invoices);
+  HOME_STAFF_FLASH={entries:entries,employees:employees,live:live,history:history,error:attendanceError,label:HOME_STAFF_LABEL,totals:{net:net,profit:profit,invoices:invoices,average:average}};
+  var count=entries.length+1,names=attendanceError?'الحضور غير متاح':live.length?live.slice(0,3).map(function(p){return p.name;}).join('، ')+(live.length>3?' +'+(live.length-3):''):'لا يوجد حضور مسجل حاليًا';
+  var h='<div class="staff-flash-deck" role="region" aria-label="ملخص الفريق ثم الموظفون؛ اسحب يمينًا أو يسارًا" onscroll="staffFlashRemember(this)"><article class="staff-flash-card staff-flash-summary" data-flash-key="summary" aria-label="ملخص الفريق">'+staffFlashHeader('الفريق',HOME_STAFF_LABEL,true)+'<div class="staff-flash-total"><small>إجمالي صافي المبيعات</small><b>'+staffFlashValue(net)+' <small>جنيه</small></b></div><div class="staff-flash-body"><div class="staff-flash-minis">'+staffFlashMini('ربح البيع',staffFlashValue(profit))+staffFlashMini('عدد الفواتير',staffFlashValue(invoices))+staffFlashMini('متوسط الفاتورة',staffFlashValue(average))+staffFlashMini('الموجودون الآن',attendanceError?'—':ltr(num(live.length)))+'</div><p class="staff-flash-presence" title="'+esc(names)+'">'+esc(names)+'</p></div><div class="staff-flash-footer"><button class="btn btn-quiet" onclick="staffFlashDetails(-1)">التفاصيل</button><small>1 / '+count+'</small></div></article>';
+  h+=entries.map(function(item,index){
+    var e=item.employee,p=item.live,shifts=item.shifts.slice().sort(function(a,b){return b.date.localeCompare(a.date)||staffFlashClockMinutes(b.checkIn)-staffFlashClockMinutes(a.checkIn);}),last=shifts[0];
+    var status=attendanceError?'الحضور غير متاح':p?'موجود الآن':last?(last.checkOut==='مفتوح'?'بصمة مفتوحة':'سجّل خروج'):'لا توجد بصمة حالية';
+    var checkIn=attendanceError?'—':p?staffCairoClock(p.checkInTimestamp):last?staffClockLabel(last.checkIn):'—';
+    var checkOut=attendanceError?'—':p?'لم يسجل الخروج':last?(last.checkOut==='مفتوح'?'لم يسجل الخروج':staffClockLabel(last.checkOut)):'—';
+    var minutes=null;
+    if(!attendanceError && shifts.length && shifts.every(function(r){return r.durationMin!==null && r.durationMin!==undefined;}))minutes=shifts.reduce(function(t,r){return t+Number(r.durationMin);},0);
+    if(!attendanceError && p && p.elapsedMinutes!=null)minutes=Number(p.elapsedMinutes)+shifts.filter(function(r){return r.durationMin!=null;}).reduce(function(t,r){return t+Number(r.durationMin);},0);
+    var duration=minutes===null?'—':ltr(Math.floor(minutes/60)+':'+String(Math.round(minutes%60)).padStart(2,'0'));
+    return '<article class="staff-flash-card" data-flash-key="'+esc(staffKey(item.name))+'" aria-label="'+esc(item.name)+'">'+staffFlashHeader(item.name,status,false)+'<div class="staff-flash-total"><small>صافي المبيعات</small><b>'+staffFlashValue(e && e.net)+' <small>جنيه</small></b></div><div class="staff-flash-body"><div class="staff-flash-minis">'+staffFlashMini('ربح البيع',staffFlashValue(e && e.profit))+staffFlashMini('الفواتير',staffFlashValue(e && e.invoices))+staffFlashMini('متوسط الفاتورة',staffFlashValue(e && e.avg_inv))+staffFlashMini('الدخول',checkIn)+staffFlashMini('الخروج',checkOut)+staffFlashMini('مدة العمل',duration)+'</div></div><div class="staff-flash-footer"><button class="btn btn-quiet" onclick="staffFlashDetails('+index+')">التفاصيل</button><small>'+(index+2)+' / '+count+'</small></div></article>';
+  }).join('');return h+'</div>';
+}
+function staffFlashClockMinutes(value){var m=String(value||'').match(/(\d{1,2}):(\d{2})\s*(AM|PM|ص|م)?/i);return m?(Number(m[1])%12+(/PM|م/i.test(m[3]||'')?12:0))*60+Number(m[2]):0;}
+function staffFlashDetails(index){
+  var data=HOME_STAFF_FLASH;if(!data)return;
+  if(index<0){openMenu('تفاصيل الفريق',row('الفترة','',esc(data.label))+row('صافي المبيعات','',staffFlashValue(data.totals.net))+row('ربح البيع','قبل المصروفات',staffFlashValue(data.totals.profit))+'<div class="group-title">الموجودون حاليًا</div>'+(data.error?'<p>الحضور غير متاح</p>':data.live.length?data.live.map(function(p){return row(esc(p.name),'دخول '+staffCairoClock(p.checkInTimestamp),'');}).join(''):'<p>لا يوجد حضور مسجل حاليًا</p>')+'<button class="btn btn-quiet" onclick="closeSheet();go(\'team\',0)">صفحة الفريق ←</button>');return;}
+  var item=data.entries[index];if(!item)return;var e=item.employee;
+  openMenu(item.name,'<p class="camera-meta">'+esc(data.label)+'</p>'+(e?row('ربح البيع','قبل المصروفات',staffFlashValue(e.profit))+row('تسجيل العملاء','',e.reg_pct==null?'—':staffFlashValue(e.reg_pct)+'%')+row('تقييم إرشادي','لا يكفي وحده للحكم على الموظف',e.invoices<20?'عينة محدودة':staffFlashValue(e.care_score)):'<p>لا توجد مبيعات متاحة للفترة</p>')+'<div class="group-title">سجل الحضور</div>'+staffAttendanceRows(item.shifts));
+}
+function staffFlashRemember(deck){
+  var rect=deck.getBoundingClientRect(),center=(rect.left+rect.right)/2,best=null,distance=Infinity;
+  Array.prototype.forEach.call(typeof deck.querySelectorAll==='function'?deck.querySelectorAll('[data-flash-key]'):deck.children,function(card){var r=card.getBoundingClientRect(),d=Math.abs((r.left+r.right)/2-center);if(d<distance){best=card;distance=d;}});
+  if(best)HOME_STAFF_FLASH_POSITION=best.getAttribute('data-flash-key') || 'summary';
+}
+function staffFlashRestore(){
+  if(typeof document.querySelector!=='function')return;var deck=document.querySelector('.staff-flash-deck');if(!deck)return;
+  staffFlashFit();var cards=typeof deck.querySelectorAll==='function'?deck.querySelectorAll('[data-flash-key]'):deck.children,first=cards[0],target=Array.prototype.filter.call(cards,function(el){return el.getAttribute('data-flash-key')===HOME_STAFF_FLASH_POSITION;})[0] || first;
+  if(first && target)deck.scrollLeft=target.offsetLeft-first.offsetLeft;
+}
+function staffFlashFit(){
+  if(typeof window==='undefined' || typeof document.querySelector!=='function')return;
+  var deck=document.querySelector('.staff-flash-deck');if(!deck)return;
+  var top=document.querySelector('header.top'),nav=document.getElementById('secnav'),height=(window.visualViewport && window.visualViewport.height)||window.innerHeight;
+  var available=Math.max(280,Math.floor(height-(top?top.getBoundingClientRect().height:90)-(nav?nav.getBoundingClientRect().height:80)-32));
+  deck.style.setProperty('--staff-flash-height',available+'px');deck.setAttribute('data-compact',available<420?'true':'false');
+  if(deck.classList && deck.classList.contains('home-flash-deck')){document.documentElement.style.setProperty('--home-flash-top',((top?top.getBoundingClientRect().bottom:90)+8)+'px');document.documentElement.style.setProperty('--home-flash-bottom',((nav?height-nav.getBoundingClientRect().top:80)+8)+'px');}
+}
+if(typeof window!=='undefined' && window.addEventListener){window.addEventListener('resize',staffFlashFit);if(window.visualViewport)window.visualViewport.addEventListener('resize',staffFlashFit);}
+
 function staffCardsHtml(employees,live,history,context,attendanceError){
+  if(context==='home' || context==='home-period')return typeof HOME_FLASH_MODE!=='undefined' && HOME_FLASH_MODE?homePresenceHtml(employees,live,attendanceError):staffFlashHtml(employees,live,history,attendanceError);
   var entries=staffCardEntries(employees,live,history);
   if(!entries.length)return '<div class="state">لا توجد بيانات فريق للفترة المختارة</div>';
   function value(n){return n===null || n===undefined || !Number.isFinite(Number(n))?'—':ltr(num(n));}
@@ -3444,10 +3558,10 @@ function staffCardsHtml(employees,live,history,context,attendanceError){
     var e=item.employee,p=item.live,shifts=item.shifts.slice().sort(function(a,b){return b.date.localeCompare(a.date)||clockMinutes(b)-clockMinutes(a);}),last=shifts[0],key=context+':'+staffKey(item.name),status=attendanceError?'الحضور غير متاح':p?'موجود الآن':last?(last.checkOut==='مفتوح'?'بصمة مفتوحة':'سجّل خروج'):'لا توجد بصمة حالية';
     var checkIn=p?staffCairoClock(p.checkInTimestamp):last?staffClockLabel(last.checkIn):'—',checkOut=p?'لم يسجل الخروج':last?(last.checkOut==='مفتوح'?'لم يسجل الخروج':staffClockLabel(last.checkOut)):'—';
     if(attendanceError){checkIn='—';checkOut='—';}
-    return '<details class="staff-hero-card" data-staff-card="'+esc(key)+'"'+(STAFF_CARD_OPEN[key]?' open':'')+' ontoggle="staffCardToggle(this)"><summary><span class="staff-hero-heading"><b>'+esc(item.name)+'</b><span class="badge" style="--tone:var(--'+(p&&!attendanceError?'ok':'ink-2')+')">'+status+'</span></span><span class="staff-hero-total"><small>صافي المبيعات</small><b>'+value(e && e.net)+' <small>جنيه</small></b></span><span class="staff-hero-minis"><span><small>الدخول · مصر</small><b>'+checkIn+'</b></span><span><small>الخروج · مصر</small><b>'+checkOut+'</b></span><span><small>الفواتير</small><b>'+value(e && e.invoices)+'</b></span><span><small>متوسط الفاتورة</small><b>'+value(e && e.avg_inv)+'</b></span></span><span class="staff-card-more">تفاصيل الأداء والحضور <span aria-hidden="true">⌄</span></span></summary><div class="staff-card-details">'+
+    return '<details class="staff-hero-card" data-staff-card="'+esc(key)+'"'+(STAFF_CARD_OPEN[key]?' open':'')+' ontoggle="staffCardToggle(this)"><summary><span class="staff-hero-heading"><b>'+esc(item.name)+'</b><span class="badge" style="--tone:var(--'+(p&&!attendanceError?'ok':'ink-2')+')">'+status+'</span></span><span class="staff-hero-total"><small>صافي المبيعات</small><b>'+value(e && e.net)+' <small>جنيه</small></b></span><span class="staff-hero-minis"><span><small>الدخول</small><b>'+checkIn+'</b></span><span><small>الخروج</small><b>'+checkOut+'</b></span><span><small>الفواتير</small><b>'+value(e && e.invoices)+'</b></span><span><small>متوسط الفاتورة</small><b>'+value(e && e.avg_inv)+'</b></span></span><span class="staff-card-more">تفاصيل الأداء والحضور <span aria-hidden="true">⌄</span></span></summary><div class="staff-card-details">'+
       (attendanceError?'<p class="camera-meta">تعذر تحديث الحضور؛ الحالة غير مؤكدة.</p>':'')+
       (e?row('ربح البيع','قبل المصروفات',value(e.profit))+row('تسجيل العملاء','',value(e.reg_pct)+'%')+row('تقييم إرشادي',e.invoices<20?'عينة محدودة؛ الدرجة غير معروضة':'لا يكفي وحده للحكم على الموظف',e.invoices<20?'—':value(e.care_score)):'<p class="camera-meta">لا توجد مبيعات متاحة لهذا الموظف في الفترة.</p>')+
-      (last?'<p class="camera-meta">آخر بصمة بالفترة: '+esc(last.date)+' · بتوقيت مصر</p>':'')+staffAttendanceRows(shifts)+
+      (last?'<p class="camera-meta">آخر بصمة بالفترة: '+esc(last.date)+'</p>':'')+staffAttendanceRows(shifts)+
       (context==='home'?'<button class="btn btn-quiet" onclick="go(\'team\',0)">كل تفاصيل الفريق ←</button>':'')+'</div></details>';
   }).join('')+'</div>';
 }
@@ -3484,6 +3598,7 @@ function drawStaffHub(isOld){
     '<div class="state err">' + esc(HR.live.error) + '</div>');
 
   box.innerHTML = html;
+  if(!isOld)staffFocusPending();
 }
 
 /* نافذة تفاصيل الموظف */
@@ -3534,7 +3649,7 @@ function staffSheet(i){
     part(tr('pNew'), e.care_new) + part(tr('pReg'), e.care_reg) +
     part(tr('pRepeat'), e.care_repeat) + part(tr('pReturn'), e.care_return) +
 
-    '<div class="group-title">' + tr('shifts') + ' · بتوقيت مصر</div>' +
+    '<div class="group-title">' + tr('shifts') + '</div>' +
     (shifts.length
       ? rowLite(tr('totalHours'), ltr(shifts.length) + ' ' + tr('shiftsCount'),
           ltr(Math.round(mins / 60) + 'h')) +
@@ -6379,7 +6494,7 @@ function homeCamLatest(force){
   var previous=CameraAssessment.sortReports(CAMR.list || [])[0],previousKey=previous && JSON.stringify([previous.id,previous.generatedAt,previous.windowEnd]);
   function paint(){
     var el=document.getElementById('homeCamRep'),box=document.getElementById('homeAppearance');
-    if(box)box.innerHTML=appearanceHomeHtml(CAMR.list || [],CAMR.at===0);
+    if(box){box.innerHTML=appearanceHomeHtml(CAMR.list || [],CAMR.at===0);if(HOME_FLASH_MODE)homeFlashPrepareInsights();}
     if(el && CAMR.list && CAMR.list.length){var r=CAMR.list[0],n=camrNotes(r);el.textContent=CameraAssessment.title(r)+(n?' · '+n+' ملاحظات':' · راجع التغطية');el.className='';}
   }
   if(CAMR.list)paint();

@@ -5,7 +5,7 @@ const requests=[],saved=new Map(),box={innerHTML:'',getAttribute:()=> '2026-11-0
 const c={Promise,Date,Array,JSON,setTimeout,clearTimeout,RANGE:{homeStaff:'month'},CUSTOM:{},storedPin:()=> 'owner',
  document:{getElementById:id=>id==='homeTeamCards'?box:label},cacheGet:(k,p)=>saved.get(JSON.stringify(p)),cacheSet:(k,p,d)=>saved.set(JSON.stringify(p),d),
  rangeParams:()=>c.RANGE.homeStaff==='custom'?c.CUSTOM.homeStaff:{range:c.RANGE.homeStaff},
- staffCardsHtml:(e,l,h)=>String(e[0]?.net ?? 'empty'),api:(a,p)=>new Promise(resolve=>requests.push({a,p,resolve})),
+ HOME_FLASH_MODE:false,staffFlashLoadingHtml:()=>'<div>loading</div>',staffFlashRestore:()=>{},staffCardsHtml:(e,l,h)=>String(e[0]?.net ?? 'empty'),api:(a,p)=>new Promise(resolve=>requests.push({a,p,resolve})),
  setRange:(k,v,fn)=>{c.RANGE[k]=v;fn()},validHomePeriod:()=>false,toast:()=>{}};
 vm.createContext(c);vm.runInContext(source,c);
 const tick=async()=>{for(let i=0;i<10;i++)await Promise.resolve()};
@@ -14,7 +14,7 @@ const tick=async()=>{for(let i=0;i<10;i++)await Promise.resolve()};
  assert.equal(requests[0].a,'getStaffHub');assert.equal(requests[0].p.range,'month');
  requests[1].resolve({ok:true,label:'week',employees:[{net:222}],live:[],rows:[]});await tick();assert.equal(box.innerHTML,'222');
  requests[0].resolve({ok:true,label:'month',employees:[{net:111}],live:[],rows:[]});await tick();assert.equal(box.innerHTML,'222','old period must not overwrite new selection');
- assert.equal(label.textContent,'week · بتوقيت مصر');
+ assert.equal(label.textContent,'week');
  c.loadHomeStaffPeriod();assert.equal(requests.length,2,'fresh period cache skips another request');
  c.RANGE.homeStaff='custom';c.CUSTOM.homeStaff={from:'2026-10-30',to:'2026-11-02'};c.loadHomeStaffPeriod();
  assert.equal(requests[2].p.from,'2026-10-30');assert.equal(requests[2].p.to,'2026-11-02');

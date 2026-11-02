@@ -6,6 +6,6 @@ assert(c.staffCairoClock(Date.parse('2026-11-02T12:00:00Z')/1000).includes('02:0
 assert(c.staffCairoClock(Date.parse('2026-07-02T12:00:00Z')).includes('03:00'));
 assert.equal(c.staffCairoClock('not a timestamp'),'—');assert.equal(c.staffCairoClock(null),'—');
 const h=c.staffAttendanceRows([{name:'<test>',date:'2026-11-02',checkIn:'08:30 AM',checkOut:'مفتوح',durationMin:null}]);
-assert(h.includes('&lt;test>'));assert(h.includes('08:30 ص'));assert(h.includes('لم يسجل الخروج'));assert(h.includes('بتوقيت مصر'));
+assert(h.includes('&lt;test>'));assert(h.includes('08:30 ص'));assert(h.includes('لم يسجل الخروج'));assert(!h.includes('بتوقيت مصر'));
 assert(c.staffAttendanceRows([]).includes('لا توجد بصمات'));
 console.log('Cairo attendance: seconds, milliseconds, summer/winter offsets, missing values and safe explicit in/out labels passed');

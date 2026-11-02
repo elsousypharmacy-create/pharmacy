@@ -2005,6 +2005,7 @@ function docDone(row){
 
 /* ─────── عامة ─────── */
 function pgHome(){
+  if(storedPin())homeCamLatest(); // Start camera metadata independently of the sales bundle.
   var box = document.getElementById('p-home');
   var seed = cacheGet('home', {});
   if (seed) drawHome(seed.b, seed.kpi, true); else busy(box);
@@ -2200,7 +2201,7 @@ function drawHome(b, kpi, isOld){
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
     if (dueAgents.length) acts.push(task('warn', 'مستحقات مندوبين', ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0))) + ' ' + tr('egp'), dueAgents.length, "go('admin',0)"));
     var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
-    html += '<div class="card" id="homeAppearance" aria-live="polite">' + (storedPin() && CAMR.list ? appearanceHomeHtml(CAMR.list) : '<h3>شكل الصيدلية ونظامها</h3><div class="state">'+(storedPin() ? 'بجيب آخر تقييم…' : 'افتح التقارير بالرقم السري لعرض التقييم')+'</div>') + '</div>';
+    html += '<div class="card" id="homeAppearance" aria-live="polite">' + (storedPin() && CAMR.list ? appearanceHomeHtml(CAMR.list,CAMR.at===0) : '<h3>شكل الصيدلية ونظامها</h3><div class="state">'+(storedPin() ? 'بجيب آخر تقييم…' : 'افتح التقارير بالرقم السري لعرض التقييم')+'</div>') + '</div>';
     html += '<div class="card cam-card"><div class="card-head"><div><h3>الكاميرات</h3><p id="homeCamSub">5 كاميرات · لقطة كل 10 دقايق</p></div><button class="ibtn" id="homeSrvBtn" onclick="homeSrvUp()" title="حدّث السيرفر" aria-label="حدّث السيرفر"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button></div>' +
       '<div class="q-acts">' +
         '<button class="q-act" id="camSnapBtn" onclick="camSnapNow()"><i><svg viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.5-2h6.4l1.5 2h1.8A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="12.5" r="3.6"/></svg></i><b>صوّر دلوقتي</b><small>5 كاميرات</small></button>' +
@@ -5655,12 +5656,21 @@ function saveCam(){
 }
 /* ═══ 📋 تقارير الكاميرات — Claude بيكتب الملاحظات، واللوحة بترسم الأسهم على اللقطة الأصلية ═══ */
 var CAMR = { list: null, cur: null, frames: {}, at: 0, request: null };
+// Safari reloads discard RAM. Restore metadata only; evidence images stay on demand.
+(function(){
+  if(!storedPin()){try{localStorage.removeItem(cacheKey('camReportsUI',{}));}catch(e){}return;}
+  var saved=cacheGet('camReportsUI',{});
+  if(saved && Array.isArray(saved.reports))CAMR.list=CameraAssessment.sortReports(saved.reports);
+})();
 function camrReportsFetch(force){
   if (CAMR.request) return CAMR.request;
   if (!force && CAMR.list && Date.now()-CAMR.at<300000) return Promise.resolve({ok:true,reports:CAMR.list});
   CAMR.request=api('camReports').then(function(d){
     if (!d || !d.ok) throw new Error((d && d.error) || 'تعذر تحميل التقارير');
-    CAMR.list=CameraAssessment.sortReports(d.reports || []); CAMR.at=Date.now(); return d;
+    CAMR.list=CameraAssessment.sortReports(d.reports || []); CAMR.at=Date.now(); cacheSet('camReportsUI',{}, {reports:CAMR.list}); return d;
+  }).catch(function(e){
+    if(!storedPin()){CAMR.list=null;CAMR.at=0;try{localStorage.removeItem(cacheKey('camReportsUI',{}));}catch(ignore){}}
+    throw e;
   }).finally(function(){CAMR.request=null;});
   return CAMR.request;
 }
@@ -5706,7 +5716,7 @@ function camReportsOpen(){
   camrReportsFetch(false).then(function(d){
     if (!d || !d.ok){ b.innerHTML = '<div class="state err">' + esc((d && d.error) || 'السيرفر لسه نسخة قديمة — دوس «حدّث السيرفر» من الرئيسية') + '</div>'; return; }
     CAMR.list = CameraAssessment.sortReports(d.reports || []);
-    var homeBox=document.getElementById('homeAppearance');if(homeBox)homeBox.innerHTML=appearanceHomeHtml(CAMR.list);
+    var homeBox=document.getElementById('homeAppearance');if(homeBox)homeBox.innerHTML=appearanceHomeHtml(CAMR.list,CAMR.at===0);
     if (!CAMR.list.length){ b.innerHTML = '<div class="state">لسه مفيش تقارير؛ اطلب تحليل من الشات أو استنى التقرير المجدول</div>'; return; }
     b.innerHTML = '<div class="camr-list">' + CAMR.list.map(function(r, i){
       var n = camrNotes(r);
@@ -5967,20 +5977,22 @@ function homeCamLatest(force){
   if (!storedPin()) return;
   function paint(){
     var el=document.getElementById('homeCamRep'),box=document.getElementById('homeAppearance');
-    if(box)box.innerHTML=appearanceHomeHtml(CAMR.list || []);
+    if(box)box.innerHTML=appearanceHomeHtml(CAMR.list || [],CAMR.at===0);
     if(el && CAMR.list && CAMR.list.length){var r=CAMR.list[0],n=camrNotes(r);el.textContent=CameraAssessment.title(r)+(n?' · '+n+' ملاحظات':' · راجع التغطية');el.className='';}
   }
   if(CAMR.list)paint();
+  var waiting=setTimeout(function(){var box=document.getElementById('homeAppearance');if(box && !CAMR.list)box.innerHTML='<h3>شكل الصيدلية ونظامها</h3><div class="state" role="status">السيرفر متأخر في أول تحميل؛ مفيش تقييم محفوظ على الجهاز لسه.</div>';},12000);
   camrReportsFetch(force===true).then(paint).catch(function(){
     var box=document.getElementById('homeAppearance');if(!box)return;
     if(CAMR.list){paint();box.insertAdjacentHTML('beforeend','<div class="cam-note" role="status">التحديث ماكملش؛ ده آخر تقرير محمّل. <button class="btn btn-quiet" onclick="homeCamLatest(true)">حاول تاني</button></div>');}
     else box.innerHTML='<h3>شكل الصيدلية ونظامها</h3><div class="state err">تعذر تحميل التقييم</div><button class="btn btn-quiet" onclick="homeCamLatest(true)">إعادة المحاولة</button>';
-  });
+  }).finally(function(){clearTimeout(waiting);});
 }
-function appearanceHomeHtml(reports){
+function appearanceHomeHtml(reports,isCached){
   var entries=CameraAssessment.assessReports(reports), latest=entries[0];
   var h='<div class="appearance-head"><h3>شكل الصيدلية ونظامها</h3><button class="ibtn" onclick="homeCamLatest(true)" aria-label="تحديث التقييم">↻</button></div>';
   if(!latest)return h+'<div class="state">لسه مفيش تقرير بتقييم؛ أول تقرير جديد هيظهر هنا</div>'+appearanceRequestButton();
+  if(isCached)h+='<div class="appearance-muted" role="status">آخر تقييم محفوظ على الجهاز · بنتحقق من الجديد</div>';
   var r=latest.report,a=latest.result,stamp=CameraAssessment.timestamp(r.generatedAt);
   h+='<div class="appearance-period">'+esc(CameraAssessment.title(r))+'</div><div class="appearance-muted">'+esc(r.dayLabel || r.date || '')+' · بتوقيت مصر</div>';
   if(!a.ready)h+='<div class="state">التقرير ده مفيهوش تقييم مدعوم بصور حديثة كفاية؛ مفيش درجة افتراضية</div>';

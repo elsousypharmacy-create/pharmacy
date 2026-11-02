@@ -635,9 +635,13 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 #settingsRoot{padding:0 2px 6px}.settings-intro{margin:2px 0 18px}.settings-intro h2{font-size:23px;letter-spacing:-.5px;font-weight:800;margin:0 0 4px}.settings-intro p{font-size:12px;color:var(--ink-2);margin:0;line-height:1.8}.settings-search{display:flex;align-items:center;gap:10px;background:var(--surface-2);border:1px solid var(--ui-edge);border-radius:12px;padding:0 12px;margin-bottom:22px}.settings-search svg{width:18px;height:18px;stroke:var(--ink-3);fill:none;stroke-width:1.7;flex-shrink:0}.settings-search input{width:100%;min-width:0;min-height:44px;background:transparent;border:0;outline:none;color:var(--ink);font:inherit;font-size:13px}.settings-search:focus-within{border-color:var(--brand)}.settings-search input::placeholder{color:var(--ink-3)}
 .settings-category{margin:0 0 20px}.settings-category h4{font-size:10px;color:var(--ink-3);font-weight:750;margin:0 10px 8px}.settings-group{border:1px solid var(--ui-edge);border-radius:16px;overflow:hidden;background:var(--surface-2)}.settings-link{margin:0;border:0;border-radius:0;min-height:72px;padding:13px 14px;background:transparent;gap:12px}.settings-link+.settings-link{border-top:1px solid var(--ui-edge)}.settings-link i{width:36px;height:36px;background:var(--surface);border:1px solid var(--ui-edge);border-radius:10px;color:var(--ink-2)}.settings-link svg,.settings-panel-title svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.settings-link b{font-size:14px;font-weight:700}.settings-link small{font-size:11px;color:var(--ink-3);margin-top:2px;line-height:1.6}.settings-link em{font-size:20px;opacity:.6}.settings-link:active{background:color-mix(in srgb,var(--brand) 5%,transparent)}.settings-panel-title{display:flex;align-items:center;gap:10px;font-size:18px!important}.settings-panel-title i{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;border:1px solid var(--line);color:var(--brand);font-style:normal}.settings-panel>.settings-sub{margin:0 0 20px;font-size:12px;color:var(--ink-3)}
 #settingsBar{gap:12px;padding:4px 0 12px}.settings-panel .group-title{font-size:12px;color:var(--ink-2)}#settingsBar .btn{border:1px solid var(--line);border-radius:10px;font-size:12px;background:transparent}.settings-panel input,.settings-panel textarea,.settings-panel select{border-radius:10px!important;min-height:44px}.settings-panel .btn{min-height:44px;border-radius:11px}
-.hero-switch{display:flex;justify-content:center;gap:3px;width:max-content;margin:0 auto;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}.hero-switch button{font:inherit;font-size:11px;font-weight:700;color:var(--ink-2);padding:7px 18px;min-height:38px;border:0;border-radius:7px;background:transparent;cursor:pointer}.hero-switch button.on{background:var(--surface-2);color:var(--ink)}
+
 @media(min-width:900px){#p-home .home-grid{grid-template-columns:1.12fr 1fr;gap:20px}}
 @media(prefers-reduced-motion:reduce){.settings-link,.monitor-actions button{transition:none}}
+</style>
+<style>
+/* Compact camera report: one summary, one image per evidence page. */
+.camera-report-view .report-toolbar{gap:10px;margin-bottom:8px}.camera-report-view .report-toolbar .btn{min-height:40px;min-width:0;padding:8px 14px;font-size:12px;border-radius:10px}.report-prepared{font-size:11px;color:var(--ink-2);margin:0 0 16px}.report-overview{display:flex;align-items:center;gap:18px;border:1px solid var(--line);background:var(--surface-2);border-radius:18px;padding:18px;margin-bottom:20px}.report-score{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:72px;flex-shrink:0;border-inline-end:1px solid var(--line);padding-inline-end:18px}.report-score strong{font-size:36px;line-height:1.2;color:var(--brand)}.report-score span,.report-overview small{font-size:11px;color:var(--ink-2)}.report-overview b{font-size:15px}.report-overview p{font-size:12px;margin:5px 0;color:var(--ink-2)}.report-findings{margin:16px 0 20px}.report-findings h3,.report-images-title h3{font-size:16px;margin:0}.report-findings h3>span{font-size:12px;color:var(--ink-2);margin-inline-start:5px}.report-finding{display:flex;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}.report-num{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:24px;height:24px;border-radius:8px;background:var(--surface-2);color:var(--warn);font-size:12px;font-weight:800}.report-finding.urgent .report-num{color:var(--bad)}.report-finding b{font-size:13px;line-height:1.8}.report-finding small{display:block;font-size:11px;color:var(--ink-2);margin-top:5px;line-height:1.8;overflow-wrap:anywhere}.report-fold{border-top:1px solid var(--line);padding:14px 0}.report-fold>summary{cursor:pointer;font-size:13px;font-weight:700;min-height:30px;line-height:30px}.report-fold>p{font-size:12px;line-height:1.9;color:var(--ink-2);overflow-wrap:anywhere}.report-camera-list>div,.report-category-list>div{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:10px 0;border-bottom:1px solid var(--line);font-size:12px}.report-camera-list span{color:var(--ink-2)}.report-category-list b{font-size:12px;white-space:nowrap}.report-images-title{display:flex;justify-content:space-between;align-items:center;margin:22px 0 8px}.report-images-title>span{font-size:11px;color:var(--ink-2)}.camera-report-view #camrPages{display:block}.camera-report-view .camr-page{border:1px solid var(--line);border-radius:14px;margin-bottom:18px;display:block;width:100%}.report-image-caption{padding:12px 14px}.report-image-caption>b{display:block;font-size:12px}.report-image-caption>small{display:block;font-size:11px;color:var(--ink-2);line-height:1.8;margin-top:4px}
 </style>
 </head>
 <body>
@@ -2211,7 +2215,7 @@ function drawHome(b, kpi, isOld){
         mini('المرتجع', ltr(num(retVal)) + ' ' + tr('egp'), ltr(num(retCnt)) + ' مرتجع' + (salesT > 0 && retVal > 0 ? ' · ' + ltr(pct(retVal, salesT + retVal) + '%') : '')) +
       '</div></div>' +
       '<div class="card h-hero h-slide" id="heroMonth">' + (HOME_MONTH ? monthSlide(HOME_MONTH) : '<div class="state"><div class="spin"></div></div>') + '</div>' +
-      '</div><div class="h-dots hero-switch" id="heroDots" aria-label="فترة الأداء"><button class="on" aria-pressed="true" onclick="heroSelect(0)">النهاردة</button><button aria-pressed="false" onclick="heroSelect(1)">الشهر</button></div>';
+      '</div><div class="h-dots" id="heroDots" aria-label="فترة الأداء"><i class="on"></i><i></i></div>';
 
     /* ── مطلوب النهاردة ── */
     var acts = [];
@@ -5779,10 +5783,20 @@ function camrCoverage(r){
   });
 }
 function camrCoverageHtml(r){
-  return '<div class="camr-coverage">'+camrCoverage(r).map(function(c){
-    var label=c.frames.length?'اتراجعت '+c.frames.length+' صور':c.notes?'دليل ملاحظات':'التغطية مش مسجلة';
-    return '<div class="camr-camera '+(c.notes?'has-notes':c.frames.length?'reviewed':'unknown')+'"><b>كاميرا '+c.ch+'</b><small>'+label+'</small><small>'+(c.notes?'عليها علامات بالملاحظات':c.frames.length?'بدون صفحة ملاحظات؛ مش شهادة سلامة':'راجع حدود التقرير')+'</small>'+'</div>';
-  }).join('')+'</div>';
+  return '<details class="report-fold"><summary>تغطية الكاميرات</summary><div class="report-camera-list">'+camrCoverage(r).map(function(c){return '<div><b>كاميرا '+c.ch+'</b><span>'+ (c.frames.length?c.frames.length+' صور مفحوصة':'عدد العينات غير مسجل')+'</span></div>';}).join('')+'</div><p class="appearance-muted">العينات لا تغطي كل الدقائق، وغياب الملاحظة مش شهادة سلامة.</p></details>';
+}
+function camrDisplayPages(r){
+  var source=camrPages(r), originals=new Set(source.map(function(c){return c.file;})), seen=new Set(), out=[];
+  source.forEach(function(c){out.push(Object.assign({},c,{repeats:[]}));(c.repeats || []).forEach(function(q){if(!q.file || originals.has(q.file) || seen.has(q.file))return;seen.add(q.file);out.push({ch:c.ch,name:c.name,title:'دليل إضافي: '+(c.title || 'نفس الملاحظة'),file:q.file,label:q.label || q.time || '',items:[],repeats:[],repeatOf:c.title || ''});});});
+  return out;
+}
+function camrReportOverview(r){
+  var entry=CameraAssessment.assessReports(CAMR.list).filter(function(x){return x.report===r || (r.id && x.report.id===r.id);})[0], a=entry && entry.result;
+  return '<section class="report-overview"><div class="report-score">'+(a && a.ready?'<strong>'+a.score+'</strong><span>من 100</span>':'<b>غير مقيّم</b>')+'</div><div><b>تقييم شكل الصيدلية</b><p>'+(a && a.ready?'تغطية '+a.coverage+'% · '+a.assessedZones+' من 10 مناطق':'مفيش درجة بدون دليل واضح وحديث')+'</p><small>'+camrNotes(r)+' ملاحظات · '+(r.reviewedFrames || []).length+' صور مفحوصة</small></div></section>';
+}
+function camrReportFindings(r){
+  var rows=(r.summary || []).slice().sort(function(a,b){return (a.sev==='r'?0:1)-(b.sev==='r'?0:1);});
+  return '<section class="report-findings"><h3>ملاحظات الفترة <span>'+rows.length+'</span></h3>'+rows.map(function(q,i){return '<div class="report-finding '+(q.sev==='r'?'urgent':'')+'"><span class="report-num">'+(i+1)+'</span><div><b>'+esc(q.text)+'</b><small>'+esc(q.where || '')+' · '+esc((q.times || []).join('، '))+'</small></div></div>';}).join('')+(rows.length?'':'<p class="appearance-muted">مفيش ملاحظات مؤكدة مسجلة في العينات.</p>')+'</section>';
 }
 var CAMR_C = { navy: '#0e2240', navy2: '#163e6c', blue: '#2484c4', red: '#cd303e', grn: '#188c60', ink: '#1a2434', muted: '#6e7a8c', bg: '#f4f6fa' };
 var CAMR_ORDER = [2, 3, 4, 1, 6];
@@ -5988,14 +6002,13 @@ function camrDrawCover(logo, r){
 }
 function camReportView(i){
   var r=CAMR.list[i], cur={r:r,canvases:[]}; CAMR.cur=cur;
-  var b=camrSheet(CameraAssessment.title(r)+' · '+(r.dayLabel || r.date || '')), n=camrNotes(r), cams=camrPages(r);
+  var b=camrSheet(CameraAssessment.title(r)+' · '+(r.dayLabel || r.date || '')), n=camrNotes(r), cams=camrDisplayPages(r);
   var reviewed=(r.reviewedFrames || []).length, channels=camrCoverage(r).filter(function(c){return c.frames.length;}).length;
-  b.innerHTML='<div class="camr-bar"><button class="btn btn-quiet" onclick="camReportsOpen()">‹ كل التقارير</button><button class="btn btn-primary" id="camrPdf" onclick="camReportPdf()" disabled>مشاركة PDF</button></div>'+
-    '<div class="camr-sum">'+n+' ملاحظات · '+(reviewed?reviewed+' عينة من '+channels+' كاميرات':cams.length+' صفحات دليل')+'</div>'+camrCoverageHtml(r)+
-    '<div id="camrAssessment">'+appearanceReportDetails(r)+'</div>'+
-    '<details class="camr-method"><summary>نطاق المراجعة ووقت الإعداد</summary><p>'+esc(r.note || 'حدود التغطية غير مسجلة')+'</p></details>'+
-    '<details class="camr-findings" open><summary>الملاحظات ('+n+')</summary>'+(r.summary || []).map(function(q){return '<div class="camr-finding '+(q.sev==='r'?'urgent':'order')+'"><b>'+esc(q.text)+'</b><small>'+esc(q.where || '')+' · '+esc((q.times || []).join('، '))+'</small></div>';}).join('')+'</details>'+
-    '<h3>صفحات الملاحظات</h3><div class="appearance-muted">مش كل كاميرا لازم يكون ليها صفحة ملاحظات؛ عينات الخمسة فوق.</div><div id="camrProgress" class="state" role="status">تحميل 0 من '+cams.length+'</div><div id="camrPages"></div>';
+  b.innerHTML='<div class="camera-report-view">'+'<div class="camr-bar report-toolbar"><button class="btn btn-quiet" onclick="camReportsOpen()">‹ كل التقارير</button><button class="btn btn-primary" id="camrPdf" onclick="camReportPdf()" disabled>مشاركة PDF</button></div>'+
+    '<p class="report-prepared">إعداد '+esc(CameraAssessment.timestamp(r.generatedAt) || 'غير مسجل')+'</p>'+camrReportOverview(r)+camrReportFindings(r)+
+    '<div id="camrAssessment">'+appearanceReportDetails(r)+'</div>'+camrCoverageHtml(r)+
+    '<details class="report-fold"><summary>نطاق المراجعة وحدودها</summary><p>'+esc(r.note || 'حدود التغطية غير مسجلة')+'</p></details>'+
+    '<div class="report-images-title"><h3>الصور والأدلة</h3><span>'+cams.length+' صور</span></div><div id="camrProgress" class="state" role="status">تحميل 0 من '+cams.length+'</div><div id="camrPages"></div></div>';
   var box=document.getElementById('camrPages'), slots=cams.map(function(c){var slot=document.createElement('div');slot.className='camr-page';slot.innerHTML='<div class="state"><div class="spin"></div>دليل كاميرا '+c.ch+'…</div>';box.appendChild(slot);return slot;});
   var alive=function(){return CAMR.cur===cur && box.isConnected && document.getElementById('camrPages')===box;};
   Promise.all([camrFonts(),camrLogo()]).then(function(a){
@@ -6003,10 +6016,9 @@ function camReportView(i){
     cur.cover=r.pages?camrDrawSummary(logo,r):camrDrawCover(logo,r);
     function worker(){
       if(!alive() || next>=cams.length)return Promise.resolve();var j=next++,c=cams[j],slot=slots[j];
-      function draw(im){if(!alive())return;var cv=r.pages?camrDrawPage(im,logo,c,r):camrDrawCam(im,logo,c,r);cur.canvases[j]=cv;slot.innerHTML='';var img=new Image();img.src=cv.toDataURL('image/jpeg',.9);img.alt='كاميرا '+c.ch+' · '+(c.label || '');img.onclick=function(){camrZoom(img.src);};slot.appendChild(img);}
+      function draw(im){if(!alive())return;var cv=r.pages?camrDrawPage(im,logo,c,r):camrDrawCam(im,logo,c,r);cur.canvases[j]=cv;slot.innerHTML='';var img=new Image();img.src=cv.toDataURL('image/jpeg',.9);img.alt='كاميرا '+c.ch+' · '+(c.label || '');img.onclick=function(){camrZoom(img.src);};slot.appendChild(img);var caption=document.createElement('div');caption.className='report-image-caption';caption.innerHTML='<b>كاميرا '+c.ch+' · '+esc(c.label || 'التوقيت غير مسجل')+'</b><small>'+esc(c.repeatOf?'دليل إضافي: '+c.repeatOf:(c.items || []).map(function(q){return q.now;}).join(' · ') || c.title || 'صورة ضمن نطاق المراجعة')+'</small>';slot.appendChild(caption);}
       return camrFrame(c.file).then(function(im){
-        draw(im); // Show the original page before waiting for repeat evidence.
-        return camrLoadAll((c.repeats || []).map(function(q){return q.file;})).then(function(){draw(im);if((c.repeats || []).some(function(q){return !CAMR.frames[q.file];})){failed++;if(alive())slot.insertAdjacentHTML('beforeend','<div class="state err">بعض صور التكرار ما اتحملتش</div><button class="btn btn-quiet" onclick="camReportView('+i+')">إعادة المحاولة</button>');}});
+        draw(im);
       }).catch(function(){failed++;if(alive())slot.innerHTML='<div class="state err">دليل كاميرا '+c.ch+' ما اتحملش</div><button class="btn btn-quiet" onclick="camReportView('+i+')">إعادة المحاولة</button>';}).then(function(){
         completed++;if(alive())document.getElementById('camrProgress').textContent='تحميل '+completed+' من '+cams.length+(failed?' · '+failed+' فشل':'');return worker();
       });
@@ -6096,10 +6108,10 @@ function appearanceHomeHtml(reports,isCached){
   return h;
 }
 function appearanceReportDetails(r){
-  var entries=CameraAssessment.assessReports(CAMR.list), entry=entries.filter(function(x){return x.report===r || (r.id && x.report.id===r.id);})[0];
+  var entry=CameraAssessment.assessReports(CAMR.list).filter(function(x){return x.report===r || (r.id && x.report.id===r.id);})[0];
   if(!entry || !r.assessment)return '';
-  var a=entry.result;
-  return '<div class="card"><h3>تقييم شكل الصيدلية: '+(a.ready?a.score+' / 100':'تعذّر التقييم')+'</h3><div class="appearance-muted">'+(a.ready?'التغطية '+a.coverage+'% · '+a.assessedZones+' من 10 مناطق':'مفيش درجة بدون دليل واضح وحديث')+'</div>'+a.categories.map(function(c){return '<div class="appearance-kpi"><div><span>'+esc(c.label)+'</span><b>'+(c.max?c.points+' / '+c.max:'تعذّر التقييم')+'</b></div></div>';}).join('')+a.issues.map(appearanceIssueHtml).join('')+'</div>';
+  var a=entry.result, comparison=a.issues.filter(function(q){return q.status==='resolved' || q.status==='unverified';});
+  return '<details class="report-fold"><summary>تفاصيل التقييم والمقارنة</summary><div class="report-category-list">'+a.categories.map(function(c){return '<div><span>'+esc(c.label)+'</span><b>'+(c.max?'<bdi dir="ltr">'+c.points+' / '+c.max+'</bdi>':'تعذّر التقييم')+'</b></div>';}).join('')+'</div><p class="appearance-muted">'+a.counts.new+' جديدة · '+a.counts.ongoing+' مستمرة · '+a.counts.resolved+' اتحلت · '+a.counts.unverified+' تعذّر التحقق'+(!a.comparable?' · التغطية لا تسمح بمقارنة رقمية':'')+'</p>'+comparison.map(appearanceIssueHtml).join('')+'</details>';
 }
 function appearanceIssueHtml(i){
   var labels={new:'جديدة',ongoing:'مستمرة',resolved:'اتحلت',unverified:'تعذّر التحقق'};

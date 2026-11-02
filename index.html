@@ -12,7 +12,15 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preload" href="fonts/cairo.woff" as="font" type="font/woff" crossorigin>
-<style>@font-face{font-family:'Cairo';src:url(fonts/cairo.woff) format('woff');font-weight:400 800;font-style:normal;font-display:block}</style>
+<style>@font-face{font-family:'Cairo';src:url(fonts/cairo.woff) format('woff');font-weight:400 800;font-style:normal;font-display:block}
+/* Camera coverage is distinct from pages of findings. */
+.cam-chips{flex-wrap:wrap}.cam-chip.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,var(--surface))}.cam-chip.reviewed{color:var(--brand);background:color-mix(in srgb,var(--brand) 12%,var(--surface))}
+.camr-coverage{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0}.camr-camera{padding:12px;border:1px solid var(--line);border-radius:var(--r2);border-inline-start:3px solid var(--ink-3);background:var(--surface-2)}.camr-camera b,.camr-camera small{display:block}.camr-camera small{font-size:12px;color:var(--ink-2);margin-top:4px;line-height:1.7}.camr-camera.reviewed{border-inline-start-color:var(--brand)}.camr-camera.has-notes{border-inline-start-color:var(--warn)}.camr-camera .btn{margin-top:8px;min-height:44px;width:100%}
+.camr-findings,.camr-method{border:1px solid var(--line);border-radius:var(--r2);padding:12px;margin:12px 0}.camr-findings summary,.camr-method summary{cursor:pointer;font-weight:800;min-height:32px}.camr-method p{font-size:13px;line-height:1.9;color:var(--ink-2);overflow-wrap:anywhere}.camr-finding{padding:12px;border-inline-start:3px solid var(--warn);background:var(--surface-2);border-radius:10px;margin-top:8px;line-height:1.8}.camr-finding.urgent{border-inline-start-color:var(--bad)}.camr-finding small{display:block;color:var(--ink-2);font-size:12px;margin-top:6px;overflow-wrap:anywhere}
+.appearance-issue.status-new .appearance-state{color:var(--warn)}.appearance-issue.status-ongoing .appearance-state{color:var(--brand)}.appearance-issue.status-resolved .appearance-state{color:var(--ok)}.appearance-issue.status-unverified .appearance-state{color:var(--ink-2)}
+@media(min-width:700px){.camr-coverage{grid-template-columns:repeat(5,minmax(0,1fr))}}
+
+</style>
 <style>
 /* ══════════════════════════════════════════════════════════
    نظام التصميم — المصدر الوحيد لكل شكل في التطبيق.
@@ -2192,7 +2200,7 @@ function drawHome(b, kpi, isOld){
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
     if (dueAgents.length) acts.push(task('warn', 'مستحقات مندوبين', ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0))) + ' ' + tr('egp'), dueAgents.length, "go('admin',0)"));
     var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
-    html += '<div class="card" id="homeAppearance" aria-live="polite"><h3>شكل الصيدلية ونظامها</h3><div class="state">' + (storedPin() ? 'بجيب آخر تقييم…' : 'افتح التقارير بالرقم السري لعرض التقييم') + '</div></div>';
+    html += '<div class="card" id="homeAppearance" aria-live="polite">' + (storedPin() && CAMR.list ? appearanceHomeHtml(CAMR.list) : '<h3>شكل الصيدلية ونظامها</h3><div class="state">'+(storedPin() ? 'بجيب آخر تقييم…' : 'افتح التقارير بالرقم السري لعرض التقييم')+'</div>') + '</div>';
     html += '<div class="card cam-card"><div class="card-head"><div><h3>الكاميرات</h3><p id="homeCamSub">5 كاميرات · لقطة كل 10 دقايق</p></div><button class="ibtn" id="homeSrvBtn" onclick="homeSrvUp()" title="حدّث السيرفر" aria-label="حدّث السيرفر"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button></div>' +
       '<div class="q-acts">' +
         '<button class="q-act" id="camSnapBtn" onclick="camSnapNow()"><i><svg viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.5-2h6.4l1.5 2h1.8A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="12.5" r="3.6"/></svg></i><b>صوّر دلوقتي</b><small>5 كاميرات</small></button>' +
@@ -5646,7 +5654,35 @@ function saveCam(){
   }).catch(function(){ toast(tr('failed')); });
 }
 /* ═══ 📋 تقارير الكاميرات — Claude بيكتب الملاحظات، واللوحة بترسم الأسهم على اللقطة الأصلية ═══ */
-var CAMR = { list: null, cur: null, frames: {} };
+var CAMR = { list: null, cur: null, frames: {}, at: 0, request: null };
+function camrReportsFetch(force){
+  if (CAMR.request) return CAMR.request;
+  if (!force && CAMR.list && Date.now()-CAMR.at<300000) return Promise.resolve({ok:true,reports:CAMR.list});
+  CAMR.request=api('camReports').then(function(d){
+    if (!d || !d.ok) throw new Error((d && d.error) || 'تعذر تحميل التقارير');
+    CAMR.list=CameraAssessment.sortReports(d.reports || []); CAMR.at=Date.now(); return d;
+  }).finally(function(){CAMR.request=null;});
+  return CAMR.request;
+}
+function camrCoverage(r){
+  return CAMR_ORDER.map(function(ch){
+    var frames=(r.reviewedFrames || []).filter(function(f){return +f.ch===ch;}), pages=camrPages(r).filter(function(c){return +c.ch===ch;});
+    var n=pages.reduce(function(sum,c){return sum+(c.items || []).length;},0);
+    return {ch:ch,frames:frames,notes:n};
+  });
+}
+function camrCoverageHtml(r,buttons){
+  return '<div class="camr-coverage">'+camrCoverage(r).map(function(c){
+    var label=c.frames.length?'اتراجعت '+c.frames.length+' صور':c.notes?'دليل ملاحظات':'التغطية مش مسجلة';
+    return '<div class="camr-camera '+(c.notes?'has-notes':c.frames.length?'reviewed':'unknown')+'"><b>كاميرا '+c.ch+'</b><small>'+label+'</small><small>'+(c.notes?'عليها علامات بالملاحظات':c.frames.length?'بدون صفحة ملاحظات؛ مش شهادة سلامة':'راجع حدود التقرير')+'</small>'+(buttons && c.frames.length?'<button class="btn btn-quiet" onclick="camrViewReviewed('+c.ch+',this)">افتح العينة</button>':'')+'</div>';
+  }).join('')+'</div>';
+}
+function camrViewReviewed(ch,button){
+  var cur=CAMR.cur;if(!cur)return;
+  var frames=(cur.r.reviewedFrames || []).filter(function(f){return +f.ch===ch;}).sort(function(a,b){return Date.parse(b.at)-Date.parse(a.at);});
+  if(!frames.length)return;button.disabled=true;button.textContent='بجيب العينة…';
+  camrFrame(frames[0].file).then(function(im){if(CAMR.cur===cur)camrZoom(im.src);}).catch(function(){toast('العينة ما اتحملتش؛ جرّب تاني');}).finally(function(){button.disabled=false;button.textContent='افتح العينة';});
+}
 var CAMR_C = { navy: '#0e2240', navy2: '#163e6c', blue: '#2484c4', red: '#cd303e', grn: '#188c60', ink: '#1a2434', muted: '#6e7a8c', bg: '#f4f6fa' };
 var CAMR_ORDER = [2, 3, 4, 1, 6];
 function camrSheet(title){
@@ -5667,18 +5703,14 @@ function camrFiles(r){
 }
 function camReportsOpen(){
   var b = camrSheet('تقارير الكاميرات'); busy(b);
-  api('camReports').then(function(d){
+  camrReportsFetch(false).then(function(d){
     if (!d || !d.ok){ b.innerHTML = '<div class="state err">' + esc((d && d.error) || 'السيرفر لسه نسخة قديمة — دوس «حدّث السيرفر» من الرئيسية') + '</div>'; return; }
     CAMR.list = CameraAssessment.sortReports(d.reports || []);
     var homeBox=document.getElementById('homeAppearance');if(homeBox)homeBox.innerHTML=appearanceHomeHtml(CAMR.list);
     if (!CAMR.list.length){ b.innerHTML = '<div class="state">لسه مفيش تقارير؛ اطلب تحليل من الشات أو استنى التقرير المجدول</div>'; return; }
     b.innerHTML = '<div class="camr-list">' + CAMR.list.map(function(r, i){
       var n = camrNotes(r);
-      var chips = CAMR_ORDER.map(function(ch){
-        var cs = camrPages(r).filter(function(x){ return x.ch === ch; }); if (!cs.length) return '';
-        var k = cs.reduce(function(s, x){ return s + (x.items || []).length; }, 0);
-        return '<span class="cam-chip ' + (k ? 'bad' : 'ok') + '">ك' + ch + (k ? ' · ' + k : ' ✓') + '</span>';
-      }).join('');
+      var chips = camrCoverage(r).map(function(c){return '<span class="cam-chip '+(c.notes?'warn':c.frames.length?'reviewed':'')+'">ك'+c.ch+' · '+(c.frames.length?'اتراجعت':c.notes?'دليل':'غير مسجلة')+'</span>';}).join('');
       return '<button class="camr-row" onclick="camReportView(' + i + ')"><div class="camr-rt"><b>' + esc(CameraAssessment.title(r)) + '</b><small>' + esc(r.dayLabel || r.date) + '</small></div>' +
         '<div class="camr-n ' + (n ? 'bad' : 'ok') + '">' + (n ? n + ' ملاحظة' : 'راجع التغطية') + '</div><div class="cam-chips">' + chips + '</div></button>';
     }).join('') + '</div>';
@@ -5687,9 +5719,9 @@ function camReportsOpen(){
 /* كل اللقطات في طلب واحد، وبتتحفظ في الذاكرة — التقرير التاني بيفتح على طول */
 function camrLoadAll(ids){
   var need = ids.filter(function(id){ return id && !CAMR.frames[id] && !(CAMR.pend || {})[id]; });
-  if (!need.length) return Promise.resolve();
+  if (!need.length) return Promise.all(ids.map(function(id){return (CAMR.pend || {})[id];}).filter(Boolean));
   CAMR.pend = CAMR.pend || {};
-  if (need.length > 8) return Promise.all([camrLoadAll(need.slice(0, 8)), camrLoadAll(need.slice(8))]);
+  if (need.length > 8) return camrLoadAll(need.slice(0, 8)).then(function(){return camrLoadAll(need.slice(8));});
   var p = api('camFrames', { ids: need.join(',') }).then(function(d){
     if (!d || !d.ok || !d.frames) throw new Error('old');
     return Promise.all(need.map(function(id){
@@ -5772,7 +5804,7 @@ function camrDrawCam(im, logo, c, r){
   });
   if (!(c.items || []).length){
     camrRR(x, 'rgba(255,255,255,.95)', W - 260, HH + 20, 230, 60, 30);
-    camrTxt(x, '✓ كله تمام', W - 145, HH + 51, '700 26px Cairo', CAMR_C.grn, 'center');
+    camrTxt(x, 'بدون علامات في الصورة', W - 145, HH + 51, '700 26px Cairo', CAMR_C.grn, 'center');
   }
   camrFoot(x, W, H);
   return cv;
@@ -5807,7 +5839,7 @@ function camrDrawPage(im, logo, c, r){
     x.beginPath(); x.arc(tx, ty, 9, 0, 7); x.fillStyle = CAMR_C.red; x.fill(); x.lineWidth = 3; x.strokeStyle = '#fff'; x.stroke();
   });
   items.forEach(function(it, i){ camrPill(x, it.now, it.n || (i + 1), it.lab[0] * k, it.lab[1] * k, W, HH, PH); });
-  if (!items.length){ camrRR(x, 'rgba(255,255,255,.95)', W - 260, HH + 20, 230, 60, 30); camrTxt(x, '✓ كله تمام', W - 145, HH + 51, '700 26px Cairo', CAMR_C.grn, 'center'); }
+  if (!items.length){ camrRR(x, 'rgba(255,255,255,.95)', W - 260, HH + 20, 230, 60, 30); camrTxt(x, 'بدون علامات في الصورة', W - 145, HH + 51, '700 26px Cairo', CAMR_C.grn, 'center'); }
   if (reps.length){
     var y0 = HH + PH;
     camrTxt(x, 'نفس المشكلة في أوقات تانية (' + reps.length + ')', W - 24, y0 + 32, '800 24px Cairo', CAMR_C.ink);
@@ -5822,28 +5854,17 @@ function camrDrawPage(im, logo, c, r){
   camrFoot(x, W, H);
   return cv;
 }
-function camrDrawSummary(logo, r){
-  var sm = r.summary || [], W = 1200, rowH = 112, H = Math.max(900, 300 + sm.length * (rowH + 18) + 120);
-  var cv = document.createElement('canvas'); cv.width = W; cv.height = H; var x = cv.getContext('2d');
-  x.fillStyle = CAMR_C.bg; x.fillRect(0, 0, W, H);
-  camrHead(x, W, logo, 'تقرير اليوم' + (r.range ? '  |  ' + r.range : ''), { label: CameraAssessment.title(r), date: r.dayLabel || r.date });
-  camrTxt(x, sm.length ? 'المشاكل (' + sm.length + ')' : 'مفيش ملاحظات مؤكدة', W - 50, 222, '800 38px Cairo', sm.length ? CAMR_C.ink : CAMR_C.grn);
-  if (r.note) camrTxt(x, r.note, W - 50, 268, '600 22px Cairo', CAMR_C.muted);
-  var y = 300;
-  sm.forEach(function(s, i){
-    var col = s.sev === 'y' ? '#e8930c' : CAMR_C.red;
-    x.save(); x.shadowColor = 'rgba(14,34,64,.13)'; x.shadowBlur = 16; x.shadowOffsetY = 4; camrRR(x, '#fff', 40, y, W - 80, rowH, 20); x.restore();
-    x.fillStyle = col; x.fillRect(W - 48, y + 18, 8, rowH - 36);
-    x.beginPath(); x.arc(W - 92, y + 40, 20, 0, 7); x.fillStyle = col; x.fill();
-    camrTxt(x, String(i + 1), W - 92, y + 41, '800 20px Cairo', '#fff', 'center');
-    camrTxt(x, s.text, W - 126, y + 40, '800 28px Cairo', CAMR_C.ink);
-    camrTxt(x, (s.where ? s.where + '  ·  ' : '') + (s.times || []).join('  ·  '), W - 126, y + 80, '600 21px Cairo', CAMR_C.muted);
-    var cnt = s.count || '';
-    if (cnt){ x.font = '800 24px Cairo'; var cw = x.measureText(cnt).width + 40; camrRR(x, s.sev === 'y' ? '#fff4e0' : '#fdecee', 64, y + rowH / 2 - 25, cw, 50, 25); camrTxt(x, cnt, 64 + cw / 2, y + rowH / 2 + 1, '800 24px Cairo', col, 'center'); }
-    y += rowH + 18;
-  });
-  camrFoot(x, W, H);
-  return cv;
+function camrDrawSummary(logo,r){
+  var W=1200,probe=document.createElement('canvas').getContext('2d');
+  function wrap(txt,font,width){probe.font=font;var lines=[],line='';String(txt || '').split(/\s+/).forEach(function(word){var next=line?line+' '+word:word;if(line && probe.measureText(next).width>width){lines.push(line);line=word;}else line=next;});if(line)lines.push(line);return lines;}
+  var note=wrap(r.note,'600 20px Cairo',1080), rows=(r.summary || []).map(function(q){var text=wrap(q.text,'800 27px Cairo',970),times=wrap((q.where || '')+' · '+(q.times || []).join('، '),'600 21px Cairo',970);return {q:q,text:text,times:times,h:Math.max(130,44+text.length*39+times.length*31+36)};});
+  var y=340+note.length*30,H=y+rows.reduce(function(sum,q){return sum+q.h+18;},0)+110,cv=document.createElement('canvas');cv.width=W;cv.height=Math.max(900,H);var x=cv.getContext('2d');x.fillStyle=CAMR_C.bg;x.fillRect(0,0,W,cv.height);
+  camrHead(x,W,logo,'تقرير الكاميرات',{label:CameraAssessment.title(r),date:r.dayLabel || r.date});
+  camrTxt(x,(r.summary || []).length+' ملاحظات · '+(r.reviewedFrames || []).length+' عينة',W-50,218,'800 34px Cairo',CAMR_C.ink);
+  camrTxt(x,'إعداد: '+(CameraAssessment.timestamp(r.generatedAt) || 'غير مسجل'),W-50,263,'600 22px Cairo',CAMR_C.muted);
+  note.forEach(function(line,j){camrTxt(x,line,W-50,307+j*30,'600 20px Cairo',CAMR_C.muted);});
+  rows.forEach(function(row,i){var q=row.q,col=q.sev==='r'?CAMR_C.red:'#b46b08';camrRR(x,'#fff',40,y,W-80,row.h,18);camrRR(x,col,W-48,y+18,6,row.h-36,3);camrTxt(x,String(i+1),W-82,y+40,'800 24px Cairo',col,'center');row.text.forEach(function(line,j){camrTxt(x,line,W-126,y+38+j*39,'800 27px Cairo',CAMR_C.ink);});var ty=y+48+row.text.length*39;row.times.forEach(function(line,j){camrTxt(x,line,W-126,ty+j*31,'600 21px Cairo',CAMR_C.muted);});if(q.count)camrTxt(x,q.count,W-126,y+row.h-22,'700 20px Cairo',col);y+=row.h+18;});
+  camrFoot(x,W,cv.height);return cv;
 }
 function camrDrawCover(logo, r){
   var W = 1200, H = 1600, cv = document.createElement('canvas'); cv.width = W; cv.height = H; var x = cv.getContext('2d');
@@ -5865,32 +5886,32 @@ function camrDrawCover(logo, r){
   return cv;
 }
 function camReportView(i){
-  var r = CAMR.list[i]; CAMR.cur = { r: r, canvases: [] };
-  var b = camrSheet(CameraAssessment.title(r) + ' · ' + (r.dayLabel || r.date || ''));
-  var n = camrNotes(r);
-  if (r.pages) setTimeout(function(){ var sm = b.querySelector('.camr-sum'); if (sm) sm.textContent = n ? n + ' مشكلة · ' + r.pages.length + ' صورة' : 'مفيش ملاحظات مؤكدة؛ راجع التغطية'; }, 0);
-  b.innerHTML = '<div class="camr-bar"><button class="btn btn-quiet" onclick="camReportsOpen()">‹ كل التقارير</button>' +
-    '<button class="btn btn-primary" id="camrPdf" onclick="camReportPdf()" disabled><svg viewBox="0 0 24 24"><path d="M12 15V3.5"/><path d="M7.5 8 12 3.5 16.5 8"/><path d="M5 12v6.5A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V12"/></svg> شير</button></div>' +
-    '<div class="camr-sum ' + (n ? 'bad' : 'ok') + '">' + (n ? n + ' ملاحظة في ' + (r.cams || []).filter(function(c){ return (c.items || []).length; }).length + ' كاميرات' : 'مفيش ملاحظات مؤكدة؛ راجع التغطية') + '</div>' +
-    '<div id="camrAssessment">' + appearanceReportDetails(r) + '</div>' +
-    '<div id="camrPages"><div class="state"><div class="spin"></div> بجيب اللقطات…</div></div>';
-  camrJsPdf();
-  var cams = camrPages(r);
-  Promise.all([camrFonts(), camrLogo(), camrLoadAll(camrFiles(r))]).then(function(a){
-    var logo = a[1], box = document.getElementById('camrPages'); box.innerHTML = '';
-    var cover = r.pages ? camrDrawSummary(logo, r) : camrDrawCover(logo, r); CAMR.cur.cover = cover;
-    var chain = Promise.resolve();
-    cams.forEach(function(c){
-      var slot = document.createElement('div'); slot.className = 'camr-page'; slot.innerHTML = '<div class="state"><div class="spin"></div> كاميرا ' + c.ch + '…</div>'; box.appendChild(slot);
-      chain = chain.then(function(){
-        return camrFrame(c.file).then(function(im){
-          var cv = r.pages ? camrDrawPage(im, logo, c, r) : camrDrawCam(im, logo, c, r); CAMR.cur.canvases.push(cv);
-          slot.innerHTML = ''; var img = new Image(); img.src = cv.toDataURL('image/jpeg', .9); img.alt = 'كاميرا ' + c.ch; img.onclick = function(){ camrZoom(img.src); }; slot.appendChild(img);
-        }).catch(function(e){ slot.innerHTML = '<div class="state err">كاميرا ' + c.ch + ': ' + esc(e.message || tr('failed')) + '</div>'; });
+  var r=CAMR.list[i], cur={r:r,canvases:[]}; CAMR.cur=cur;
+  var b=camrSheet(CameraAssessment.title(r)+' · '+(r.dayLabel || r.date || '')), n=camrNotes(r), cams=camrPages(r);
+  var reviewed=(r.reviewedFrames || []).length, channels=camrCoverage(r).filter(function(c){return c.frames.length;}).length;
+  b.innerHTML='<div class="camr-bar"><button class="btn btn-quiet" onclick="camReportsOpen()">‹ كل التقارير</button><button class="btn btn-primary" id="camrPdf" onclick="camReportPdf()" disabled>مشاركة PDF</button></div>'+
+    '<div class="camr-sum">'+n+' ملاحظات · '+(reviewed?reviewed+' عينة من '+channels+' كاميرات':cams.length+' صفحات دليل')+'</div>'+camrCoverageHtml(r,true)+
+    '<div id="camrAssessment">'+appearanceReportDetails(r)+'</div>'+
+    '<details class="camr-method"><summary>نطاق المراجعة ووقت الإعداد</summary><p>'+esc(r.note || 'حدود التغطية غير مسجلة')+'</p></details>'+
+    '<details class="camr-findings" open><summary>الملاحظات ('+n+')</summary>'+(r.summary || []).map(function(q){return '<div class="camr-finding '+(q.sev==='r'?'urgent':'order')+'"><b>'+esc(q.text)+'</b><small>'+esc(q.where || '')+' · '+esc((q.times || []).join('، '))+'</small></div>';}).join('')+'</details>'+
+    '<h3>صفحات الملاحظات</h3><div class="appearance-muted">مش كل كاميرا لازم يكون ليها صفحة ملاحظات؛ عينات الخمسة فوق.</div><div id="camrProgress" class="state" role="status">تحميل 0 من '+cams.length+'</div><div id="camrPages"></div>';
+  var box=document.getElementById('camrPages'), slots=cams.map(function(c){var slot=document.createElement('div');slot.className='camr-page';slot.innerHTML='<div class="state"><div class="spin"></div>دليل كاميرا '+c.ch+'…</div>';box.appendChild(slot);return slot;});
+  var alive=function(){return CAMR.cur===cur && box.isConnected && document.getElementById('camrPages')===box;};
+  Promise.all([camrFonts(),camrLogo()]).then(function(a){
+    if(!alive())return;var logo=a[1], next=0, completed=0, failed=0;
+    cur.cover=r.pages?camrDrawSummary(logo,r):camrDrawCover(logo,r);
+    function worker(){
+      if(!alive() || next>=cams.length)return Promise.resolve();var j=next++,c=cams[j],slot=slots[j];
+      function draw(im){if(!alive())return;var cv=r.pages?camrDrawPage(im,logo,c,r):camrDrawCam(im,logo,c,r);cur.canvases[j]=cv;slot.innerHTML='';var img=new Image();img.src=cv.toDataURL('image/jpeg',.9);img.alt='كاميرا '+c.ch+' · '+(c.label || '');img.onclick=function(){camrZoom(img.src);};slot.appendChild(img);}
+      return camrFrame(c.file).then(function(im){
+        draw(im); // Show the original page before waiting for repeat evidence.
+        return camrLoadAll((c.repeats || []).map(function(q){return q.file;})).then(function(){draw(im);if((c.repeats || []).some(function(q){return !CAMR.frames[q.file];})){failed++;if(alive())slot.insertAdjacentHTML('beforeend','<div class="state err">بعض صور التكرار ما اتحملتش</div><button class="btn btn-quiet" onclick="camReportView('+i+')">إعادة المحاولة</button>');}});
+      }).catch(function(){failed++;if(alive())slot.innerHTML='<div class="state err">دليل كاميرا '+c.ch+' ما اتحملش</div><button class="btn btn-quiet" onclick="camReportView('+i+')">إعادة المحاولة</button>';}).then(function(){
+        completed++;if(alive())document.getElementById('camrProgress').textContent='تحميل '+completed+' من '+cams.length+(failed?' · '+failed+' فشل':'');return worker();
       });
-    });
-    chain.then(function(){ var p = document.getElementById('camrPdf'); if (p) p.disabled = !CAMR.cur.canvases.length; });
-  });
+    }
+    return Promise.all([worker(),worker()]).then(function(){if(!alive())return;document.getElementById('camrPdf').disabled=!!failed || !cur.canvases.length;if(failed)document.getElementById('camrProgress').textContent+='؛ أعد المحاولة قبل مشاركة PDF';});
+  }).catch(function(){if(alive())document.getElementById('camrProgress').textContent='تحميل التقرير ماكملش؛ افتحه تاني';});
 }
 function camrZoom(src){
   var z = document.createElement('div'); z.className = 'camr-zoom';
@@ -5942,22 +5963,23 @@ function srvBadgeCheck(){
   }).catch(function(){});
 }
 var SRV_NEWER = false, SRV_FULL = false, SRV_VER = -1;
-function homeCamLatest(){
-  var el = document.getElementById('homeCamRep'), box = document.getElementById('homeAppearance');
-  if ((!el && !box) || !storedPin()) return;
-  api('camReports').then(function(d){
-    if (!d || !d.ok){ if(box && box.isConnected)box.innerHTML='<h3>شكل الصيدلية ونظامها</h3><div class="state err">تعذر تحميل التقييم</div>'; return; }
-    CAMR.list = CameraAssessment.sortReports(d.reports || []);
-    if (box && box.isConnected) box.innerHTML = appearanceHomeHtml(CAMR.list);
-    if (!CAMR.list.length) return;
-    var r = CAMR.list[0], n = camrNotes(r);
-    if(el && el.isConnected){ el.textContent = CameraAssessment.title(r) + (n ? ' · ' + n + ' ملاحظة' : ' · شوف نطاق المراجعة'); el.className = n ? 'bad' : ''; }
-    // Do not download all evidence images merely to open Home; load on demand.
-  }).catch(function(){ if(box && box.isConnected)box.innerHTML='<h3>شكل الصيدلية ونظامها</h3><div class="state err">الاتصال ماكملش؛ جرّب تحديث التقييم</div><button class="btn btn-quiet" onclick="homeCamLatest()">تحديث التقييم</button>'; });
+function homeCamLatest(force){
+  if (!storedPin()) return;
+  function paint(){
+    var el=document.getElementById('homeCamRep'),box=document.getElementById('homeAppearance');
+    if(box)box.innerHTML=appearanceHomeHtml(CAMR.list || []);
+    if(el && CAMR.list && CAMR.list.length){var r=CAMR.list[0],n=camrNotes(r);el.textContent=CameraAssessment.title(r)+(n?' · '+n+' ملاحظات':' · راجع التغطية');el.className='';}
+  }
+  if(CAMR.list)paint();
+  camrReportsFetch(force===true).then(paint).catch(function(){
+    var box=document.getElementById('homeAppearance');if(!box)return;
+    if(CAMR.list){paint();box.insertAdjacentHTML('beforeend','<div class="cam-note" role="status">التحديث ماكملش؛ ده آخر تقرير محمّل. <button class="btn btn-quiet" onclick="homeCamLatest(true)">حاول تاني</button></div>');}
+    else box.innerHTML='<h3>شكل الصيدلية ونظامها</h3><div class="state err">تعذر تحميل التقييم</div><button class="btn btn-quiet" onclick="homeCamLatest(true)">إعادة المحاولة</button>';
+  });
 }
 function appearanceHomeHtml(reports){
   var entries=CameraAssessment.assessReports(reports), latest=entries[0];
-  var h='<div class="appearance-head"><h3>شكل الصيدلية ونظامها</h3><button class="ibtn" onclick="homeCamLatest()" aria-label="تحديث التقييم">↻</button></div>';
+  var h='<div class="appearance-head"><h3>شكل الصيدلية ونظامها</h3><button class="ibtn" onclick="homeCamLatest(true)" aria-label="تحديث التقييم">↻</button></div>';
   if(!latest)return h+'<div class="state">لسه مفيش تقرير بتقييم؛ أول تقرير جديد هيظهر هنا</div>'+appearanceRequestButton();
   var r=latest.report,a=latest.result,stamp=CameraAssessment.timestamp(r.generatedAt);
   h+='<div class="appearance-period">'+esc(CameraAssessment.title(r))+'</div><div class="appearance-muted">'+esc(r.dayLabel || r.date || '')+' · بتوقيت مصر</div>';
@@ -5986,7 +6008,7 @@ function appearanceReportDetails(r){
 function appearanceIssueHtml(i){
   var labels={new:'جديدة',ongoing:'مستمرة',resolved:'اتحلت',unverified:'تعذّر التحقق'};
   var refs=(i.frames || []).map(function(f){return 'ك'+f.ch+' · '+CameraAssessment.clock(f.at);}).join('، ');
-  return '<div class="appearance-issue"><div><b>'+esc(i.title)+'</b><span class="appearance-state">'+labels[i.status]+'</span></div><p>'+esc(refs || i.reason || 'افتح التقرير لمراجعة الدليل')+'</p></div>';
+  return '<div class="appearance-issue status-'+i.status+'"><div><b>'+esc(i.title)+'</b><span class="appearance-state">'+labels[i.status]+'</span></div><p>'+esc(refs || i.reason || 'افتح التقرير لمراجعة الدليل')+'</p></div>';
 }
 function appearanceOpenReport(i){ if(CAMR.list[i])camReportView(i); }
 function appearanceRequestButton(){return '<button class="btn btn-quiet" style="margin-top:10px;width:100%" onclick="appearanceAnalysisRequest()">طلب تحليل من الشات</button>';}

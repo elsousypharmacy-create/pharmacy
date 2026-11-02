@@ -26,8 +26,9 @@ test('home renderer escapes stored report content and has a safe legacy state',(
   const html=fs.readFileSync(require('path').join(__dirname,'../index.html'),'utf8');
   const code=html.slice(html.indexOf('function appearanceHomeHtml('),html.indexOf('function camSnapNow('));
   const c=vm.createContext({CameraAssessment:A,esc:s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')});vm.runInContext(code,c);
-  assert(c.appearanceHomeHtml([]).includes('لسه مفيش تقرير'));
+  assert(c.appearanceHomeHtml([]).includes('لا يوجد تقرير متاح'));
   const r=report();r.range='<img onerror=evil>';r.assessment.issues=[issue(r,{title:'<script>evil()</script>'})];const rendered=c.appearanceHomeHtml([r]);assert(!rendered.includes('<script>'));assert(rendered.includes('&lt;script&gt;'));assert(rendered.includes('97'));
-  const legacy=c.appearanceHomeHtml([{id:'legacy',label:'قديم'}]);assert(legacy.includes('مفيش درجة افتراضية'));
+  const legacy=c.appearanceHomeHtml([{id:'legacy',label:'قديم'}]);assert(legacy.includes('لا يتم عرض درجة افتراضية'));
 });
 console.log(tests,'appearance checks passed');
+

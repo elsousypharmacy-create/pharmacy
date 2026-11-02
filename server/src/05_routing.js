@@ -21,6 +21,12 @@ function dashLocked_(pin) {
   var saved = P.getProperty('ADMIN_PIN');
   return !(saved && String(pin || '') === saved);
 }
+// Owner data is always protected; separate operational/delivery lock semantics are preserved.
+function ownerDashboardLocked_(pin){
+  var saved=PropertiesService.getScriptProperties().getProperty('ADMIN_PIN');
+  return !(saved && String(pin||'')===saved);
+}
+var LEGACY_OPERATIONAL_LOCK={ordersPage:1,orderEfficiency:1,logShortages:1};
 function lockedResp_() { return jsonResponseStaff({ ok: false, lockError: true, error: 'اللوحة مقفولة — اكتب الرقم السري' }); }
 
 function doGet(e) {
@@ -29,7 +35,9 @@ function doGet(e) {
     return ContentService.createTextOutput(e.parameter['hub.verify_token'] === waVerifyToken_() ? String(e.parameter['hub.challenge'] || '') : 'bad token');
   try { maybeEnsureTriggers_(); } catch (eT) {}
   var action = e.parameter.action;
-  if (LOCKED_GET[action] && dashLocked_(e.parameter.pin)) return lockedResp_();
+  if(action==='dashboardAuth') return adminPinOk_(e.parameter.pin)?jsonResponseStaff({ok:true}):lockedResp_();
+  if(action==='doctorAdmin' && !adminPinOk_(e.parameter.pin)) return lockedResp_();
+  if (LOCKED_GET[action] && (LEGACY_OPERATIONAL_LOCK[action]?dashLocked_(e.parameter.pin):ownerDashboardLocked_(e.parameter.pin))) return lockedResp_();
   if (action === 'eventAdd') return jsonResponseStaff(eventAdd_(e.parameter));
   if (action === 'callsReport') return jsonResponseStaff(callsReport_());
   if (action === 'getDailyRaw') return jsonResponseStaff(getDailyRaw(e.parameter));
@@ -139,14 +147,14 @@ function doGet(e) {
   if (action === 'setBalanceBase') return jsonResponseStaff(setBalanceBase(e.parameter));
   if (action === 'getDebtsByEmployee') return jsonResponseStaff(getDebtsByEmployee(e.parameter));
   if (action === 'getMonthTotalsRaw') return jsonResponseStaff(
-    cachedCall_('mtr', e.parameter, function(){ return getMonthTotalsFromRaw(e.parameter); }, cacheTTL_(e.parameter)));
+    cachedCall_('mtr_v2', e.parameter, function(){ return getMonthTotalsFromRaw(e.parameter); }, cacheTTL_(e.parameter)));
   if (action === 'sendDebtReminder') {
     return jsonResponseStaff(sendDebtReminderSMS_(e.parameter.phone, e.parameter.name, e.parameter.amount));
   }
   if (action === 'getExpensesData') return jsonResponseStaff(
-    cachedCall_('exp', e.parameter, function(){ return getExpensesData(e.parameter); }, cacheTTL_(e.parameter)));
+    cachedCall_('exp_review_v1', e.parameter, function(){ return getExpensesData(e.parameter); }, cacheTTL_(e.parameter)));
   if (action === 'getProfitLoss') return jsonResponseStaff(
-    cachedCall_('pl', e.parameter, function(){ return getProfitLossData(e.parameter); }, 600));
+    cachedCall_('pl_review_v1', e.parameter, function(){ return getProfitLossData(e.parameter); }, 600));
   if (action === 'getNetWorth') return jsonResponseStaff(getNetWorthData());
   if (action === 'getConnecteamHours') return jsonResponseStaff(getConnecteamHours(e.parameter.from, e.parameter.to));
   if (action === 'getDayInvoices') return jsonResponseStaff(getDayInvoices(e.parameter.date));
@@ -294,3 +302,4 @@ function getSystemDailyTotals() {
     return { ok: false, error: e.message };
   }
 }
+

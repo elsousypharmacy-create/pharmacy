@@ -324,7 +324,7 @@ function botSettings_() {
   var fee = P.getProperty('BOT_DELIVERY_FEE');
   if (fee === null || fee === undefined) fee = '';
   return { fee: fee, hours: P.getProperty('BOT_HOURS') || '',
-           maxKm: km === null ? 10 : (parseFloat(km) || 0), lock: P.getProperty('DASH_LOCK') === '1',
+           maxKm: km === null ? 10 : (parseFloat(km) || 0), lock: P.getProperty('DASH_LOCK') === '1', ownerProtection:'required-v1',
            freeDelivery: P.getProperty('BOT_FREE_DELIVERY') === '1' || String(fee) === '0',
            areas: P.getProperty('BOT_DELIVERY_AREAS') || '',
            paused: P.getProperty('BOT_PAUSED') === '1' };

@@ -47,6 +47,12 @@ function dashLocked_(pin) {
   var saved = P.getProperty('ADMIN_PIN');
   return !(saved && String(pin || '') === saved);
 }
+// Owner data is always protected; separate operational/delivery lock semantics are preserved.
+function ownerDashboardLocked_(pin){
+  var saved=PropertiesService.getScriptProperties().getProperty('ADMIN_PIN');
+  return !(saved && String(pin||'')===saved);
+}
+var LEGACY_OPERATIONAL_LOCK={ordersPage:1,orderEfficiency:1,logShortages:1};
 function lockedResp_() { return jsonResponseStaff({ ok: false, lockError: true, error: 'اللوحة مقفولة — اكتب الرقم السري' }); }
 
 function doGet(e) {
@@ -55,7 +61,9 @@ function doGet(e) {
     return ContentService.createTextOutput(e.parameter['hub.verify_token'] === waVerifyToken_() ? String(e.parameter['hub.challenge'] || '') : 'bad token');
   try { maybeEnsureTriggers_(); } catch (eT) {}
   var action = e.parameter.action;
-  if (LOCKED_GET[action] && dashLocked_(e.parameter.pin)) return lockedResp_();
+  if(action==='dashboardAuth') return adminPinOk_(e.parameter.pin)?jsonResponseStaff({ok:true}):lockedResp_();
+  if(action==='doctorAdmin' && !adminPinOk_(e.parameter.pin)) return lockedResp_();
+  if (LOCKED_GET[action] && (LEGACY_OPERATIONAL_LOCK[action]?dashLocked_(e.parameter.pin):ownerDashboardLocked_(e.parameter.pin))) return lockedResp_();
   if (action === 'eventAdd') return jsonResponseStaff(eventAdd_(e.parameter));
   if (action === 'callsReport') return jsonResponseStaff(callsReport_());
   if (action === 'getDailyRaw') return jsonResponseStaff(getDailyRaw(e.parameter));
@@ -165,14 +173,14 @@ function doGet(e) {
   if (action === 'setBalanceBase') return jsonResponseStaff(setBalanceBase(e.parameter));
   if (action === 'getDebtsByEmployee') return jsonResponseStaff(getDebtsByEmployee(e.parameter));
   if (action === 'getMonthTotalsRaw') return jsonResponseStaff(
-    cachedCall_('mtr', e.parameter, function(){ return getMonthTotalsFromRaw(e.parameter); }, cacheTTL_(e.parameter)));
+    cachedCall_('mtr_v2', e.parameter, function(){ return getMonthTotalsFromRaw(e.parameter); }, cacheTTL_(e.parameter)));
   if (action === 'sendDebtReminder') {
     return jsonResponseStaff(sendDebtReminderSMS_(e.parameter.phone, e.parameter.name, e.parameter.amount));
   }
   if (action === 'getExpensesData') return jsonResponseStaff(
-    cachedCall_('exp', e.parameter, function(){ return getExpensesData(e.parameter); }, cacheTTL_(e.parameter)));
+    cachedCall_('exp_review_v1', e.parameter, function(){ return getExpensesData(e.parameter); }, cacheTTL_(e.parameter)));
   if (action === 'getProfitLoss') return jsonResponseStaff(
-    cachedCall_('pl', e.parameter, function(){ return getProfitLossData(e.parameter); }, 600));
+    cachedCall_('pl_review_v1', e.parameter, function(){ return getProfitLossData(e.parameter); }, 600));
   if (action === 'getNetWorth') return jsonResponseStaff(getNetWorthData());
   if (action === 'getConnecteamHours') return jsonResponseStaff(getConnecteamHours(e.parameter.from, e.parameter.to));
   if (action === 'getDayInvoices') return jsonResponseStaff(getDayInvoices(e.parameter.date));
@@ -320,6 +328,7 @@ function getSystemDailyTotals() {
     return { ok: false, error: e.message };
   }
 }
+
 
 // ==== MODULE 10_staff_stats (split from server/Code.js; load order = file name order) ====
 
@@ -2110,6 +2119,7 @@ function handleStaffCommand_(chatId, text) {
   return false;
 }
 
+
 // ==== MODULE 22_handoff (split from server/Code.js; load order = file name order) ====
 
 
@@ -2510,7 +2520,7 @@ function botSettings_() {
   var fee = P.getProperty('BOT_DELIVERY_FEE');
   if (fee === null || fee === undefined) fee = '';
   return { fee: fee, hours: P.getProperty('BOT_HOURS') || '',
-           maxKm: km === null ? 10 : (parseFloat(km) || 0), lock: P.getProperty('DASH_LOCK') === '1',
+           maxKm: km === null ? 10 : (parseFloat(km) || 0), lock: P.getProperty('DASH_LOCK') === '1', ownerProtection:'required-v1',
            freeDelivery: P.getProperty('BOT_FREE_DELIVERY') === '1' || String(fee) === '0',
            areas: P.getProperty('BOT_DELIVERY_AREAS') || '',
            paused: P.getProperty('BOT_PAUSED') === '1' };
@@ -6753,7 +6763,7 @@ function getProfitLossData(params) {
       var dd = new Date(cutoff + 'T12:00:00Z'), endD = new Date(end + 'T12:00:00Z');
       while (dd <= endD) {
         var ds = dd.toISOString().slice(0, 10);
-        if (ds < today) { var rd = rawDay_(ds); if (rd.has) { dailySales[ds] = rd.net; dailyProfit[ds] = rd.profit; } }
+        var rd = rawDay_(ds); if (rd.has) { dailySales[ds] = rd.net; dailyProfit[ds] = rd.profit; }
         dd.setUTCDate(dd.getUTCDate() + 1);
       }
     } catch (e) {}
@@ -6761,9 +6771,11 @@ function getProfitLossData(params) {
     /* المصروفات من نفس المصدر الموحّد (ملف Drive + الأرشيف).
        قبل كده كانت بتقرا Monthly_Expenses لوحده — وده فيه يناير بس. */
     const dailyExpenses = {};
-    let expStale = null, expLast = '';
+    let expStale = null, expLast = '', expenseSourceError = false;
+    var pendingByDay = {}, paidSalaryByDay = {};
     try {
       const all = allExpenses_();
+      if(!all.latestEntry && all.staleDays==null)expenseSourceError=true;
       expStale = all.staleDays;
       expLast = all.latestEntry;
       all.items.forEach(function (e) {
@@ -6772,8 +6784,10 @@ function getProfitLossData(params) {
         if (String(e.category).indexOf('مشتروات') !== -1) return;
         if (String(e.category).indexOf('ايراد') === 0) return;   /* إيراد مش مصروف */
         dailyExpenses[e.date] = (dailyExpenses[e.date] || 0) + e.amount;
+        if(e.fromLedger) pendingByDay[e.date]=(pendingByDay[e.date]||0)+e.amount;
+        if(/مرتب|رواتب/.test(String(e.category))) paidSalaryByDay[e.date]=(paidSalaryByDay[e.date]||0)+e.amount;
       });
-    } catch(e) {}
+    } catch(e) { expenseSourceError = true; }
 
     const props = PropertiesService.getScriptProperties();
     const monthlySalaries = parseFloat(props.getProperty('monthlySalaries_' + monthKey) || '0');
@@ -6786,16 +6800,20 @@ function getProfitLossData(params) {
     const days = Object.keys(allDates).sort().map(function(d) {
       const sales = dailySales[d] || 0, profit = dailyProfit[d] || 0, exp = dailyExpenses[d] || 0;
       const net = Math.round(profit - exp - dailySalary);
-      return { date: d, sales: sales, profit: profit, expenses: Math.round(exp), salary_share: Math.round(dailySalary), net: net };
+      var pending=pendingByDay[d]||0, conflict=monthlySalaries>0 && Object.keys(paidSalaryByDay).length>0;
+      return { date: d, sales: sales, profit: profit, expenses: Math.round(exp), pending_expenses:pending, salary_share: Math.round(dailySalary), estimated_net:net, net:expenseSourceError||pending>0||conflict?null:net };
     });
 
     let totalSales = 0, totalProfit = 0, totalExpenses = 0;
     days.forEach(function(d) { totalSales += d.sales; totalProfit += d.profit; totalExpenses += d.expenses; });
     const totalSalariesSoFar = Math.round(dailySalary * days.length);
     const netProfit = Math.round(totalProfit - totalExpenses - totalSalariesSoFar);
+    var pendingTotal=Object.keys(pendingByDay).reduce(function(t,k){return t+pendingByDay[k];},0);
+    var salaryConflict=monthlySalaries>0 && Object.keys(paidSalaryByDay).length>0;
+    var incomplete=expenseSourceError||pendingTotal>0||salaryConflict;
 
     return {
-      ok: true, month: monthKey,
+      ok: true, month: monthKey, financial_schema:'finance-review-v1',
       /* تنبيه لو المصروفات باتت — الصافي بيبقى منفوخ من غيرها */
       exp_last_entry: expLast,
       exp_stale_days: expStale,
@@ -6803,7 +6821,8 @@ function getProfitLossData(params) {
       total_sales: totalSales, total_profit: totalProfit, total_expenses: totalExpenses,
       monthly_salaries: monthlySalaries, daily_salary: Math.round(dailySalary),
       total_salaries_so_far: totalSalariesSoFar,
-      net_profit: netProfit,
+      net_profit: incomplete?null:netProfit, estimated_net_profit:netProfit, net_status:incomplete?'needs_review':'calculated',
+      expense_source_error:expenseSourceError, pending_expenses:pendingTotal, salary_conflict:salaryConflict,
       days: days
     };
   } catch(e) {
@@ -7119,136 +7138,29 @@ function jsonResponseStaff(data) {
 // ═══════════════════════════════════════════════════════════════════
 function getMonthTotalsFromRaw(params) {
   try {
-    var folder   = DriveApp.getFolderById(SALES_FOLDER);
-    var tz       = 'Africa/Cairo';
-    var now      = new Date();
-    var todayStr = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
-
-    var R     = resolveRange_(params);
-    var from  = R.from;
-    var to    = R.to;
-    var label = R.label;
-
-    var includeToday = (from <= todayStr && to >= todayStr);
-    var rawTo        = includeToday
-      ? Utilities.formatDate(new Date(now.getTime() - 86400000), tz, 'yyyy-MM-dd')
-      : to;
-
-    var invoices = 0, sales = 0, discount = 0, profit = 0;
-    var returnsCount = 0, returnsValue = 0;
-    var seen = {};   // بنمنع عدّ نفس الفاتورة مرتين
-    var daysWithData = 0;   // 🆕 عشان نحسب المتوسط اليومي
-
-    if (rawTo >= from) {
-      var fromD    = new Date(from  + 'T00:00:00');
-      var toD      = new Date(rawTo + 'T00:00:00');
-      var dayCount = Math.round((toD - fromD) / 86400000) + 1;
-
-      // سقف أمان: أطول فترة نقراها من الملفات الخام سنة واحدة.
-      // من غيره، لو حد طلب "كل الوقت" السكربت بيضرب سقف الوقت.
-      if (dayCount > 366) {
-        fromD    = new Date(toD.getTime() - 365 * 86400000);
-        dayCount = 366;
-        label    = label + ' (آخر سنة)';
-      }
-
-      for (var i = 0; i < dayCount; i++) {
-        var d       = new Date(fromD.getTime() + i * 86400000);
-        var dateStr = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
-        if (dateStr === todayStr) continue;   // أمان إضافي
-
-        var salesContent = '';
-        var salesFiles = folder.getFilesByName('sales' + dateStr + '.txt');
-        if (salesFiles.hasNext()) {
-          salesContent = salesFiles.next().getBlob().getDataAsString('UTF-8');
-        }
-
-        var returnsContent = '';
-        var returnFiles = folder.getFilesByName('Returnsales' + dateStr + '.txt');
-        if (returnFiles.hasNext()) {
-          returnsContent = returnFiles.next().getBlob().getDataAsString('UTF-8');
-        }
-
-        if (!salesContent && !returnsContent) continue;
-        daysWithData++;
-
-        var stats = parseStaffStats(salesContent + '\n' + returnsContent, dateStr);
-        Object.keys(stats).forEach(function (emp) {
-          var st = stats[emp];
-          st.invoices.forEach(function (id) { seen[dateStr + '_' + id] = 1; });
-          sales        += st.sales;
-          discount     += st.discount;
-          profit       += st.profit;
-          returnsCount += st.returns.size;
-          returnsValue += st.returns_value;
-        });
-      }
+    var R = resolveRange_(params || {}), today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+    var from = R.from, to = R.to > today ? today : R.to;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to)
+      return {ok:false,error:'الفترة غير صحيحة'};
+    var end = new Date(to+'T12:00:00Z'), start = new Date(from+'T12:00:00Z');
+    if ((end-start)/86400000 >= 366) return {ok:false,error:'اختر فترة لا تتجاوز سنة'};
+    var sum={gross:0,ret:0,profit:0,invoices:0,returns:0,disc:0}, days=[],missing=[];
+    for(var d=new Date(start);d<=end;d.setUTCDate(d.getUTCDate()+1)){
+      var date=d.toISOString().slice(0,10), day=rawDay_(date);
+      if(!day.has){missing.push(date);continue;}
+      Object.keys(sum).forEach(function(k){sum[k]+=Number(day[k])||0;});
+      days.push({date:date,sales:day.net,net:day.net,profit:day.profit,invoices:day.invoices,new_c:null});
     }
-    invoices = Object.keys(seen).length;
-
-    var todayCounted = false;
-    if (includeToday) {
-      var t = getSystemDailyTotals();
-      if (t && t.ok) {
-        sales    += t.sales_today;
-        profit   += t.profit_today;
-        discount += t.discount_today;
-        todayCounted = true;
-
-        /* 🔧 إصلاح: كنا بناخد مبيعات النهاردة من غير عدد فواتيره،
-           فمتوسط الفاتورة كان بيطلع منفوخ — وفي فلتر "اليوم" بيطلع
-           صفر تمامًا لأن الملفات الخام مبتتقراش أصلاً.
-           عدد فواتير النهاردة بنجيبه من شيت "الموظفين" — بيتحدّث
-           كل دقيقة من التريجر الحي، فهو أدق مصدر متاح. */
-        var todayInv = 0;
-        try {
-          var sh = SpreadsheetApp.openById(STAFF_SHEET_ID).getSheetByName('الموظفين');
-          if (sh && sh.getLastRow() > 1) {
-            var rows = sh.getRange(2, 1, sh.getLastRow() - 1, 3).getValues();
-            var best = {};
-            rows.forEach(function (rr) {
-              var rd = rr[0] instanceof Date
-                ? Utilities.formatDate(rr[0], tz, 'yyyy-MM-dd')
-                : String(rr[0]).substring(0, 10);
-              if (rd !== todayStr || !rr[1]) return;
-              var emp = normalizeEmpId(rr[1]);
-              var n = parseInt(rr[2]) || 0;
-              if (!best[emp] || n > best[emp]) best[emp] = n;   // نتفادى الصفوف المكررة
-            });
-            Object.keys(best).forEach(function (e) { todayInv += best[e]; });
-          }
-        } catch (e) {}
-
-        if (todayInv > 0) { invoices += todayInv; daysWithData++; }
-      }
-    }
-
-    return {
-      ok: true,
-      label: label,
-      from: from,
-      to: to,
-      invoices_total:      invoices,
-      sales_total:         Math.round(sales),
-      discount_total:      Math.round(discount),
-      profit_total:        Math.round(profit),
-      returns_total:       returnsCount,
-      returns_value_total: Math.round(returnsValue),
-
-      /* 🆕 المتوسطات — كانت ناقصة تمامًا */
-      days_with_data:      daysWithData,
-      avg_invoice:         invoices > 0 ? Math.round(sales / invoices) : 0,
-      avg_daily_sales:     daysWithData > 0 ? Math.round(sales / daysWithData) : 0,
-      avg_daily_profit:    daysWithData > 0 ? Math.round(profit / daysWithData) : 0,
-      avg_daily_invoices:  daysWithData > 0 ? Math.round(invoices / daysWithData) : 0,
-      net_sales:           Math.round(sales - returnsValue),
-      avg_daily_net:       daysWithData > 0 ? Math.round((sales - returnsValue) / daysWithData) : 0,
-
-      today_included:      todayCounted
-    };
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
+    var net=sum.gross-sum.ret,n=days.length;
+    return {ok:true,label:R.label,from:from,to:to,source:'pos-invoices-v1',fetched_at:new Date().toISOString(),
+      provisional:from<=today && to>=today,missing_days:missing,daily:days,
+      invoices_total:sum.invoices,sales_total:sum.gross,net_sales:net,profit_total:sum.profit,
+      discount_total:sum.disc,returns_total:sum.returns,returns_value_total:sum.ret,days_with_data:n,
+      avg_invoice:sum.invoices?Math.round(sum.gross/sum.invoices):0,
+      avg_daily_sales:n?Math.round(sum.gross/n):0,avg_daily_net:n?Math.round(net/n):0,
+      avg_daily_profit:n?Math.round(sum.profit/n):0,avg_daily_invoices:n?Math.round(sum.invoices/n):0,
+      today_included:from<=today && to>=today};
+  }catch(e){return {ok:false,error:e.message};}
 }
 
 
@@ -7916,7 +7828,7 @@ function getExpensesData(params) {
         date: e.date, time: e.time || '',
         company: e.company || '', staff: e.staff || '',
         name: e.name || '', detail: e.detail || '',
-        isIncome: !!e.isIncome, fromLedger: !!e.fromLedger,
+        isIncome: !!e.isIncome, fromLedger: !!e.fromLedger, needsReview: !!e.fromLedger,
         desc: [e.name, e.detail].filter(function (x) { return x; }).join(' — ') || '—'
       };
       items.push(row);
@@ -7939,6 +7851,9 @@ function getExpensesData(params) {
       income: income, income_count: incomeCount,
       ledger_total: Math.round(ledgerTotal * 100) / 100, ledger_count: ledgerCount,
       byCategory: list, items: items,
+      operating_total:items.filter(function(e){return !e.isIncome && expKind_(e.category)!=='purch';}).reduce(function(t,e){return t+e.amount;},0),
+      purchases_total:items.filter(function(e){return !e.isIncome && expKind_(e.category)==='purch';}).reduce(function(t,e){return t+e.amount;},0),
+      pending_review_total:ledgerTotal,
       /* التنبيه: لو آخر مصروف بقاله كتير يبقى التصدير واقف */
       lastEntry: all.latestEntry,
       staleDays: all.staleDays,
@@ -8560,6 +8475,7 @@ function camVideoTest(request) {
   }
 }
 
+
 // One manual sample, bounded to 20-30 media seconds / 8 MiB / 45s polling.
 // Archive contains local media names ONLY: never provider URLs, tokens or keys.
 // HLS format: RFC 8216. Encrypted/ranged/discontinuous streams fail closed.
@@ -8731,6 +8647,7 @@ function camRecordSample(request) {
 function camRecordPilot() {
   [4, 3].forEach(function(channel) { console.log(JSON.stringify(camRecordSample({ channel: channel }))); });
 }
+
 
 // ==== MODULE 67_cam_reports — تقارير الكاميرات (Claude بيكتب ملف JSON صغير، واللوحة بترسم الأسهم على اللقطة الأصلية) ====
 // المكان: «كاميرات الصيدلية» / «تقارير» / report_yyyy-MM-dd_HHmm.json

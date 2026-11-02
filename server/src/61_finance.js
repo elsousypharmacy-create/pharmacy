@@ -292,7 +292,7 @@ function getProfitLossData(params) {
       var dd = new Date(cutoff + 'T12:00:00Z'), endD = new Date(end + 'T12:00:00Z');
       while (dd <= endD) {
         var ds = dd.toISOString().slice(0, 10);
-        if (ds < today) { var rd = rawDay_(ds); if (rd.has) { dailySales[ds] = rd.net; dailyProfit[ds] = rd.profit; } }
+        var rd = rawDay_(ds); if (rd.has) { dailySales[ds] = rd.net; dailyProfit[ds] = rd.profit; }
         dd.setUTCDate(dd.getUTCDate() + 1);
       }
     } catch (e) {}
@@ -300,9 +300,11 @@ function getProfitLossData(params) {
     /* المصروفات من نفس المصدر الموحّد (ملف Drive + الأرشيف).
        قبل كده كانت بتقرا Monthly_Expenses لوحده — وده فيه يناير بس. */
     const dailyExpenses = {};
-    let expStale = null, expLast = '';
+    let expStale = null, expLast = '', expenseSourceError = false;
+    var pendingByDay = {}, paidSalaryByDay = {};
     try {
       const all = allExpenses_();
+      if(!all.latestEntry && all.staleDays==null)expenseSourceError=true;
       expStale = all.staleDays;
       expLast = all.latestEntry;
       all.items.forEach(function (e) {
@@ -311,8 +313,10 @@ function getProfitLossData(params) {
         if (String(e.category).indexOf('مشتروات') !== -1) return;
         if (String(e.category).indexOf('ايراد') === 0) return;   /* إيراد مش مصروف */
         dailyExpenses[e.date] = (dailyExpenses[e.date] || 0) + e.amount;
+        if(e.fromLedger) pendingByDay[e.date]=(pendingByDay[e.date]||0)+e.amount;
+        if(/مرتب|رواتب/.test(String(e.category))) paidSalaryByDay[e.date]=(paidSalaryByDay[e.date]||0)+e.amount;
       });
-    } catch(e) {}
+    } catch(e) { expenseSourceError = true; }
 
     const props = PropertiesService.getScriptProperties();
     const monthlySalaries = parseFloat(props.getProperty('monthlySalaries_' + monthKey) || '0');
@@ -325,16 +329,20 @@ function getProfitLossData(params) {
     const days = Object.keys(allDates).sort().map(function(d) {
       const sales = dailySales[d] || 0, profit = dailyProfit[d] || 0, exp = dailyExpenses[d] || 0;
       const net = Math.round(profit - exp - dailySalary);
-      return { date: d, sales: sales, profit: profit, expenses: Math.round(exp), salary_share: Math.round(dailySalary), net: net };
+      var pending=pendingByDay[d]||0, conflict=monthlySalaries>0 && Object.keys(paidSalaryByDay).length>0;
+      return { date: d, sales: sales, profit: profit, expenses: Math.round(exp), pending_expenses:pending, salary_share: Math.round(dailySalary), estimated_net:net, net:expenseSourceError||pending>0||conflict?null:net };
     });
 
     let totalSales = 0, totalProfit = 0, totalExpenses = 0;
     days.forEach(function(d) { totalSales += d.sales; totalProfit += d.profit; totalExpenses += d.expenses; });
     const totalSalariesSoFar = Math.round(dailySalary * days.length);
     const netProfit = Math.round(totalProfit - totalExpenses - totalSalariesSoFar);
+    var pendingTotal=Object.keys(pendingByDay).reduce(function(t,k){return t+pendingByDay[k];},0);
+    var salaryConflict=monthlySalaries>0 && Object.keys(paidSalaryByDay).length>0;
+    var incomplete=expenseSourceError||pendingTotal>0||salaryConflict;
 
     return {
-      ok: true, month: monthKey,
+      ok: true, month: monthKey, financial_schema:'finance-review-v1',
       /* تنبيه لو المصروفات باتت — الصافي بيبقى منفوخ من غيرها */
       exp_last_entry: expLast,
       exp_stale_days: expStale,
@@ -342,7 +350,8 @@ function getProfitLossData(params) {
       total_sales: totalSales, total_profit: totalProfit, total_expenses: totalExpenses,
       monthly_salaries: monthlySalaries, daily_salary: Math.round(dailySalary),
       total_salaries_so_far: totalSalariesSoFar,
-      net_profit: netProfit,
+      net_profit: incomplete?null:netProfit, estimated_net_profit:netProfit, net_status:incomplete?'needs_review':'calculated',
+      expense_source_error:expenseSourceError, pending_expenses:pendingTotal, salary_conflict:salaryConflict,
       days: days
     };
   } catch(e) {

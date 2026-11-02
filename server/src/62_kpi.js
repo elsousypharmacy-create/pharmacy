@@ -16,136 +16,29 @@
 // ═══════════════════════════════════════════════════════════════════
 function getMonthTotalsFromRaw(params) {
   try {
-    var folder   = DriveApp.getFolderById(SALES_FOLDER);
-    var tz       = 'Africa/Cairo';
-    var now      = new Date();
-    var todayStr = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
-
-    var R     = resolveRange_(params);
-    var from  = R.from;
-    var to    = R.to;
-    var label = R.label;
-
-    var includeToday = (from <= todayStr && to >= todayStr);
-    var rawTo        = includeToday
-      ? Utilities.formatDate(new Date(now.getTime() - 86400000), tz, 'yyyy-MM-dd')
-      : to;
-
-    var invoices = 0, sales = 0, discount = 0, profit = 0;
-    var returnsCount = 0, returnsValue = 0;
-    var seen = {};   // بنمنع عدّ نفس الفاتورة مرتين
-    var daysWithData = 0;   // 🆕 عشان نحسب المتوسط اليومي
-
-    if (rawTo >= from) {
-      var fromD    = new Date(from  + 'T00:00:00');
-      var toD      = new Date(rawTo + 'T00:00:00');
-      var dayCount = Math.round((toD - fromD) / 86400000) + 1;
-
-      // سقف أمان: أطول فترة نقراها من الملفات الخام سنة واحدة.
-      // من غيره، لو حد طلب "كل الوقت" السكربت بيضرب سقف الوقت.
-      if (dayCount > 366) {
-        fromD    = new Date(toD.getTime() - 365 * 86400000);
-        dayCount = 366;
-        label    = label + ' (آخر سنة)';
-      }
-
-      for (var i = 0; i < dayCount; i++) {
-        var d       = new Date(fromD.getTime() + i * 86400000);
-        var dateStr = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
-        if (dateStr === todayStr) continue;   // أمان إضافي
-
-        var salesContent = '';
-        var salesFiles = folder.getFilesByName('sales' + dateStr + '.txt');
-        if (salesFiles.hasNext()) {
-          salesContent = salesFiles.next().getBlob().getDataAsString('UTF-8');
-        }
-
-        var returnsContent = '';
-        var returnFiles = folder.getFilesByName('Returnsales' + dateStr + '.txt');
-        if (returnFiles.hasNext()) {
-          returnsContent = returnFiles.next().getBlob().getDataAsString('UTF-8');
-        }
-
-        if (!salesContent && !returnsContent) continue;
-        daysWithData++;
-
-        var stats = parseStaffStats(salesContent + '\n' + returnsContent, dateStr);
-        Object.keys(stats).forEach(function (emp) {
-          var st = stats[emp];
-          st.invoices.forEach(function (id) { seen[dateStr + '_' + id] = 1; });
-          sales        += st.sales;
-          discount     += st.discount;
-          profit       += st.profit;
-          returnsCount += st.returns.size;
-          returnsValue += st.returns_value;
-        });
-      }
+    var R = resolveRange_(params || {}), today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+    var from = R.from, to = R.to > today ? today : R.to;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to)
+      return {ok:false,error:'الفترة غير صحيحة'};
+    var end = new Date(to+'T12:00:00Z'), start = new Date(from+'T12:00:00Z');
+    if ((end-start)/86400000 >= 366) return {ok:false,error:'اختر فترة لا تتجاوز سنة'};
+    var sum={gross:0,ret:0,profit:0,invoices:0,returns:0,disc:0}, days=[],missing=[];
+    for(var d=new Date(start);d<=end;d.setUTCDate(d.getUTCDate()+1)){
+      var date=d.toISOString().slice(0,10), day=rawDay_(date);
+      if(!day.has){missing.push(date);continue;}
+      Object.keys(sum).forEach(function(k){sum[k]+=Number(day[k])||0;});
+      days.push({date:date,sales:day.net,net:day.net,profit:day.profit,invoices:day.invoices,new_c:null});
     }
-    invoices = Object.keys(seen).length;
-
-    var todayCounted = false;
-    if (includeToday) {
-      var t = getSystemDailyTotals();
-      if (t && t.ok) {
-        sales    += t.sales_today;
-        profit   += t.profit_today;
-        discount += t.discount_today;
-        todayCounted = true;
-
-        /* 🔧 إصلاح: كنا بناخد مبيعات النهاردة من غير عدد فواتيره،
-           فمتوسط الفاتورة كان بيطلع منفوخ — وفي فلتر "اليوم" بيطلع
-           صفر تمامًا لأن الملفات الخام مبتتقراش أصلاً.
-           عدد فواتير النهاردة بنجيبه من شيت "الموظفين" — بيتحدّث
-           كل دقيقة من التريجر الحي، فهو أدق مصدر متاح. */
-        var todayInv = 0;
-        try {
-          var sh = SpreadsheetApp.openById(STAFF_SHEET_ID).getSheetByName('الموظفين');
-          if (sh && sh.getLastRow() > 1) {
-            var rows = sh.getRange(2, 1, sh.getLastRow() - 1, 3).getValues();
-            var best = {};
-            rows.forEach(function (rr) {
-              var rd = rr[0] instanceof Date
-                ? Utilities.formatDate(rr[0], tz, 'yyyy-MM-dd')
-                : String(rr[0]).substring(0, 10);
-              if (rd !== todayStr || !rr[1]) return;
-              var emp = normalizeEmpId(rr[1]);
-              var n = parseInt(rr[2]) || 0;
-              if (!best[emp] || n > best[emp]) best[emp] = n;   // نتفادى الصفوف المكررة
-            });
-            Object.keys(best).forEach(function (e) { todayInv += best[e]; });
-          }
-        } catch (e) {}
-
-        if (todayInv > 0) { invoices += todayInv; daysWithData++; }
-      }
-    }
-
-    return {
-      ok: true,
-      label: label,
-      from: from,
-      to: to,
-      invoices_total:      invoices,
-      sales_total:         Math.round(sales),
-      discount_total:      Math.round(discount),
-      profit_total:        Math.round(profit),
-      returns_total:       returnsCount,
-      returns_value_total: Math.round(returnsValue),
-
-      /* 🆕 المتوسطات — كانت ناقصة تمامًا */
-      days_with_data:      daysWithData,
-      avg_invoice:         invoices > 0 ? Math.round(sales / invoices) : 0,
-      avg_daily_sales:     daysWithData > 0 ? Math.round(sales / daysWithData) : 0,
-      avg_daily_profit:    daysWithData > 0 ? Math.round(profit / daysWithData) : 0,
-      avg_daily_invoices:  daysWithData > 0 ? Math.round(invoices / daysWithData) : 0,
-      net_sales:           Math.round(sales - returnsValue),
-      avg_daily_net:       daysWithData > 0 ? Math.round((sales - returnsValue) / daysWithData) : 0,
-
-      today_included:      todayCounted
-    };
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
+    var net=sum.gross-sum.ret,n=days.length;
+    return {ok:true,label:R.label,from:from,to:to,source:'pos-invoices-v1',fetched_at:new Date().toISOString(),
+      provisional:from<=today && to>=today,missing_days:missing,daily:days,
+      invoices_total:sum.invoices,sales_total:sum.gross,net_sales:net,profit_total:sum.profit,
+      discount_total:sum.disc,returns_total:sum.returns,returns_value_total:sum.ret,days_with_data:n,
+      avg_invoice:sum.invoices?Math.round(sum.gross/sum.invoices):0,
+      avg_daily_sales:n?Math.round(sum.gross/n):0,avg_daily_net:n?Math.round(net/n):0,
+      avg_daily_profit:n?Math.round(sum.profit/n):0,avg_daily_invoices:n?Math.round(sum.invoices/n):0,
+      today_included:from<=today && to>=today};
+  }catch(e){return {ok:false,error:e.message};}
 }
 
 

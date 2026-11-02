@@ -310,7 +310,7 @@ body.light .m-custom input{color-scheme:light}
 .vitals-head h2{font-size:var(--t-head);font-weight:700;letter-spacing:-.5px}
 .vitals-head span{font-size:var(--t-micro);color:var(--ink-3);white-space:nowrap}
 /* كل مؤشر في مربع مستقل — الرقم في سطر والكلام في سطر،
-   فمفيش خلط اتجاهات في نفس السطر أصلاً */
+   فلا توجد خلط اتجاهات في نفس السطر أصلاً */
 .vitals-row{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
 .vital{background:var(--surface-2);border-radius:var(--r2);padding:12px 10px;
   min-width:0;text-align:center;border-top:2px solid var(--tone,var(--brand))}
@@ -656,6 +656,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 .home-camera{border-top:1px solid var(--line);margin-top:16px;padding-top:16px}.camera-inline>summary{display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none;min-height:64px}.camera-inline>summary::-webkit-details-marker{display:none}.camera-score{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;background:conic-gradient(var(--brand) var(--score),var(--surface-2) 0)}.camera-score>b{display:grid;place-items:center;background:var(--surface);width:48px;height:48px;border-radius:50%;font-size:21px}.camera-score.unknown{background:var(--surface-2)}.camera-label{flex:1;min-width:0}.camera-label>b{display:block;font-size:15px}.camera-label>small{display:block;color:var(--ink-2);font-size:12px;line-height:1.9}.camera-chevron{font-size:24px;color:var(--brand);transition:transform .15s}.camera-inline[open] .camera-chevron{transform:rotate(180deg)}.camera-notes{padding-top:12px}.camera-meta,.camera-wait{color:var(--ink-2);font-size:13px;line-height:1.9;margin:6px 0}.camera-finding{display:flex;gap:9px;border-bottom:1px solid var(--line);padding:12px 0}.camera-finding>span{display:grid;place-items:center;flex-shrink:0;width:24px;height:26px;border-radius:7px;background:var(--surface-2);color:var(--warn);font-size:12px}.camera-finding b{font-size:14px;line-height:1.9}.camera-finding small{display:block;font-size:12px;color:var(--ink-2);margin-top:4px}.camera-details{margin-top:14px;width:100%;font-size:14px;min-height:46px}.camera-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.camera-tools button,.camera-link{font:inherit;font-size:12px;min-height:44px;background:none;border:0;color:var(--ink-2);cursor:pointer;padding:5px}.camera-inline>summary:focus-visible{outline:2px solid var(--brand);outline-offset:4px;border-radius:10px}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
+<style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
 </head>
 <body>
 
@@ -668,7 +669,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
     </div>
   </div>
   <div class="tools">
-    <button class="ibtn" id="refreshBtn" onclick="refreshNow()" title="حدّث دلوقتي" aria-label="حدّث دلوقتي"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button>
+    <button class="ibtn" id="refreshBtn" onclick="refreshNow()" title="تحديث البيانات" aria-label="تحديث البيانات"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button>
     <button class="ibtn" onclick="openSheet('settings')" title="الإعدادات" aria-label="الإعدادات"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
   </div>
 </header>
@@ -688,14 +689,14 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
   <div class="sheet-in">
     <div class="sheet-head"><b id="sheet-title"></b></div>
     <div id="sheet-body"></div>
-    <button class="sheet-close" onclick="closeSheet()" data-t="close">إقفال</button>
+    <button class="sheet-close" onclick="closeSheet()" data-t="close">إغلاق</button>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <nav class="secnav" id="secnav">
-  <button data-sec="sales" onclick="go('sales')"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg><span data-t="nav_sales">النهاردة</span></button>
+  <button data-sec="sales" onclick="go('sales')"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg><span data-t="nav_sales">اليوم</span></button>
   <button data-sec="cust" onclick="go('cust')" style="position:relative"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14a6.5 6.5 0 0 1 3.5 6"/></svg><span data-t="nav_cust">عملاء</span><b id="botBadge" class="nbadge" style="display:none"></b></button>
   <button data-sec="stock" onclick="go('stock')"><svg viewBox="0 0 24 24"><path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5"/><path d="M12 13v7"/></svg><span data-t="nav_stock">مخزون</span></button>
   <button data-sec="money" onclick="go('money')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2.5"/><circle cx="12" cy="12.5" r="2.6"/></svg><span data-t="nav_money">مالية</span></button>
@@ -713,9 +714,10 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 var SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7ctTVJjckmbTxegDq7E3R3p6aEBzqt275HNL8SBfWg/exec';
 /* ⚡ السيرفر السريع (Cloudflare): القراية من هنا، ولو وقع بنرجع لـ Google على طول */
 var FAST_URL = 'https://wispy-cloud-00a7.elsousypharmacy.workers.dev/';
-var FAST_READ = { callsGet:1, callsList:1, callsReport:1, getHomeBundle:1, getStaffKPI:1, getSystemDailyTotals:1, getMonthTotalsRaw:1,
+var LEGACY_FAST_READ = { callsGet:1, callsList:1, callsReport:1, getHomeBundle:1, getStaffKPI:1, getSystemDailyTotals:1, getMonthTotalsRaw:1,
   getBotChats:1, getShortages:1, getStaffHub:1, getExpensesData:1, getSMSLogFast:1, getCustomers:1, getNewCustomersDetail:1,
   getHistory:1, getDebtsData:1, getProfitLoss:1, getInventoryAging:1 };
+var FAST_READ = {}; // Origin authorization; re-enable only after the secured Worker is deployed.
 var SHORTAGE_URL = 'https://script.google.com/macros/s/AKfycbyKMrAmkZ9Ipjgy59Kak2nUT0YsW0xfTWVjypo8J1Izaiof-qky7p2-Ebugx--HWjGK8A/exec';
 
 /* ═══════════ ١) القاموس ═══════════
@@ -748,7 +750,7 @@ var T = {
   scanTotal:['إجمالي الأصناف','Total items'],
   scanInStock:['فيها رصيد','In stock'],
   scanBadCode:['أكواد شكلها غلط','Bad codes'],
-  scanMulti:['بأكتر من صلاحية','Multi-expiry'],
+  scanMulti:['بأكثر من صلاحية','Multi-expiry'],
   scanNoExp:['من غير صلاحية مسجلة','No expiry on file'],
   ofInStock:['من اللي فيها رصيد','of in-stock'],
   snapMissing:['لسه متبنيتش','not built yet'],
@@ -758,9 +760,9 @@ var T = {
                   'OK — pauses on roughly one in five items.'],
   scanVerdictBad:['عالي — الوقفات كتير أوي. لازم نغيّر تصميم شاشة الجرد.',
                   'High — too many pauses. The counting screen needs a different design.'],
-  expStale:['⚠️ المصروفات واقفة من','⚠️ Expenses stale for'],
+  expStale:['⚠️ تأخر تسجيل المصروفات لمدة','⚠️ Expenses stale for'],
   expStaleHint:['آخر مصروف مسجّل:','Last recorded entry:'],
-  plStale:['⚠️ الصافي مش دقيق — المصروفات واقفة من','⚠️ Net is off — expenses stale for'],
+  plStale:['⚠️ الصافي مش دقيق — تأخر تسجيل المصروفات لمدة','⚠️ Net is off — expenses stale for'],
   entries:['حركة','entries'],
   incomeIn:['إيرادات (فلوس داخلة)','Income (money in)'],
   byCategory:['حسب الفئة','By category'],
@@ -773,7 +775,7 @@ var T = {
   detail:['التفاصيل','Detail'],
   serial:['التسلسل','Serial'],
   total:['الإجمالي','Total'],
-  noData:['مفيش بيانات','No data'],
+  noData:['لا توجد بيانات','No data'],
   incomeNote:['دي فلوس داخلة (تسديد مديونية) — مش محسوبة في المصروفات',
               'This is money in (debt payment) — not counted as an expense'],
   neverSold:['بضاعة عمرها ما اتباعت','Never sold'],
@@ -786,25 +788,25 @@ var T = {
   fixSub:['أرصدة سالبة ودقة الجرد','Negative stock & count accuracy'],
   expSub:['بينتهي خلال 6 شهور — رجّعه للمورّد','Return to supplier before it expires'],
   orderSec:['اطلب','Order'],
-  orderSub:['خلصوا أو قربوا يخلصوا','Out or running low'],
+  orderSub:['أصناف نفدت أو قاربت على النفاد','Out or running low'],
   deadOnly:['راكد','Slow-moving'],
-  deadSub2:['ما اتباعش من 6 شهور أو أكتر — اعرضه أو خصّمه','Sold before, stopped — discount'],
-  neverSec:['ما اتباعش','Never sold'],
+  deadSub2:['دون مبيعات مسجلة من 6 شهور أو أكتر — اعرضه أو خصّمه','Sold before, stopped — discount'],
+  neverSec:['دون مبيعات مسجلة','Never sold'],
   neverSub:['عمره ما اتباع — راجع الشراء','Never sold — review buying'],
   countAcc:['دقة الجرد','Count accuracy'],
   lastCountLbl:['آخر جرد','last count'],
-  noCountYet:['لسه مفيش جرد','No count yet'],
+  noCountYet:['لا توجد جلسات جرد مسجلة','No count yet'],
   itemsAcc:['أصناف مطابقة','Matching items'],
   matchedWord:['مطابق','matched'],
   valAcc:['دقة بالقيمة','Value accuracy'],
-  valAccSub:['الفرق بالفلوس مقابل قيمة المتجرّد','Money gap vs counted value'],
+  valAccSub:['الفرق بالمالية مقابل قيمة المتجرّد','Money gap vs counted value'],
   coverage:['اللي اتجرد من المخزون','Share counted'],
   accNote:['الرقم ده دقة اللي اتجرد بس، مش المخزون كله — اقرأه مع نسبة اللي اتجرد.','This is accuracy of what was counted only — read it with the share counted.'],
   snapNote:['من السطور اتقارنت بلقطة وقت العدّ، والباقي برصيد وقت الحفظ','of lines compared to the count-time snapshot, the rest to save-time stock'],
   accTrend:['الجرود السابقة','Previous counts'],
   accByCat:['الخطأ حسب الفئة','Gap by category'],
   accByCatSub:['مرتبة بقيمة الفرق','Sorted by gap value'],
-  noNegative:['مفيش أرصدة سالبة','No negative stock'],
+  noNegative:['لا توجد أرصدة سالبة','No negative stock'],
   nearestFirst:['الأقرب انتهاءً','Expiring soonest'],
   nearestSub:['الأولوية للي وقته ضاق مش للأغلى','Priority is time left, not value'],
   expiredWord:['منتهي','Expired'],
@@ -812,13 +814,13 @@ var T = {
   inTransitSub:['متطلبهاش تاني','Do not re-order these'],
   ordPrep:['تحت التجهيز','Being prepared'],
   ordRecv:['تحت الاستلام','To be received'],
-  noTransit:['مفيش طلبيات في الطريق','No orders on the way'],
+  noTransit:['لا توجد طلبيات في الطريق','No orders on the way'],
   byCompany:['حسب الشركة','By company'],
   copyOrder:['انسخ الطلبية','Copy order'],
   orderTitle:['طلبية','Order'],
   needsDeploy:['السيرفر لسه بالنسخة القديمة — اعمل Deploy للـCode.js','Server is on the old version — deploy Code.js'],
   moreInExport:['الباقي في التصدير','The rest is in the export'],
-  followSub:['غايب أكتر من مدة تنبيهه — الأقدم فوق','Away longer than their alert window — oldest first'],
+  followSub:['غايب أكثر من مدة تنبيهه — الأقدم فوق','Away longer than their alert window — oldest first'],
   followNote:['الأرقام بالأيام من آخر زيارة. الأحمر = عدّى مدة تنبيه العميل نفسه.','Days since last visit. Red = past that customer’s own alert window.'],
   recoverSec:['استرجاع','Win-back'],
   inRecovery:['في مرحلة الاسترجاع','In win-back'],
@@ -848,11 +850,11 @@ var T = {
   blockBtn:['احظر العميل','Block customer'],
   unblockBtn:['فك الحظر','Unblock'],
   confirmBlock:['اضغط تاني للتأكيد — الحظر بيوقف المتابعة','Tap again to confirm — blocking stops follow-ups'],
-  searchCust:['دوّر بالاسم أو التليفون','Search name or phone'],
+  searchCust:['ابحث بالاسم أو رقم الهاتف','Search name or phone'],
   allWord:['الكل','All'],
-  noHistory:['لسه مفيش تواصل مسجّل','No contact logged yet'],
-  saving:['بيحفظ…','Saving…'],
-  saved:['اتحفظ','Saved'],
+  noHistory:['لا يوجد تواصل مسجل','No contact logged yet'],
+  saving:['جارٍ الحفظ…','Saving…'],
+  saved:['تم الحفظ','Saved'],
   expLedgerNote:['فيه أيام إجماليها من النظام من غير تفاصيل بنود — مجموعها','Some days use the system daily total without line items — total'],
   expFillTitle:['أرشيف المصروفات','Expense archive'],
   expFillBtn:['استرجع النسخ القديمة','Recover old exports'],
@@ -885,13 +887,13 @@ var T = {
   sendTg:['ابعت على تليجرام','Send to Telegram'],
   sending:['بيبعت…','Sending…'],
   sentOk:['اتبعت للجروب','Sent to group'],
-  allMatched:['كل حاجة مطابقة — مفيش تصحيح مطلوب','All matched — nothing to fix'],
-  needsCount:['محتاج جرد','Needs counting'],
+  allMatched:['كل حاجة مطابقة — لا توجد تصحيح مطلوب','All matched — nothing to fix'],
+  needsCount:['يحتاج إلى جرد','Needs counting'],
   neverCounted:['عمره ما اتجرد','Never counted'],
   neverCountedWord:['عمره ما اتجرد','Never counted'],
   stockValue:['قيمة المخزون','Stock value'],
   unitsWord:['علبة','units'],
-  noCounts:['لسه مفيش جرد. الموظف بيجرد بالكاميرا من صفحة «الماسح» (الفريق ← الصفحات)، والنتيجة بتظهر هنا','No stocktake yet. Staff use scan.html'],
+  noCounts:['لا توجد جلسات جرد مسجلة. الموظف بيجرد بالكاميرا من صفحة «الماسح» (الفريق ← الصفحات)، والنتيجة بتظهر هنا','No stocktake yet. Staff use scan.html'],
   countSessions:['جلسات','Sessions'],
   lastCount:['آخر جرد','Last count'],
   gapValue:['قيمة الفروقات','Gap value'],
@@ -904,26 +906,26 @@ var T = {
   matchedItems:['المطابق','Matched items'],
   system:['السيستم','System'],
   counted:['اتعدّ','Counted'],
-  close:['إقفال','Close'], retry:['حاول تاني','Try again'], loading:['بيحمّل…','Loading…'],
-  failed:['مقدرتش أحمّل','Could not load'], empty:['مفيش بيانات','No data'],
+  close:['إغلاق','Close'], retry:['إعادة المحاولة','Try again'], loading:['جارٍ التحميل…','Loading…'],
+  failed:['تعذر تحميل البيانات','Could not load'], empty:['لا توجد بيانات','No data'],
   updated:['آخر تحديث','Updated'], egp:['جنيه','EGP'],
 
-  nav_home:['عامة','Overview'], nav_sales:['النهاردة','Today'], nav_money:['الفلوس','Finance'],
+  nav_home:['عامة','Overview'], nav_sales:['اليوم','Today'], nav_money:['المالية','Finance'],
   nav_hr:['الفريق','Team'], nav_stock:['المخزون','Stock'], nav_cust:['العملاء','Customers'],
 
   /* عامة */
-  today:['النهاردة','Today'],
+  today:['اليوم','Today'],
   rWeek:['الأسبوع','Week'],
   bucketFresh:['أقل من شهر','Under a month'], bucket1_3:['1-3 شهور','1-3 months'],
-  bucket3_6:['3-6 شهور','3-6 months'], bucket6:['أكتر من ٦ شهور','Over 6 months'],
+  bucket3_6:['3-6 شهور','3-6 months'], bucket6:['أكثر من ٦ شهور','Over 6 months'],
   sortBy:['ترتيب','Sort'], byAmount:['بالمبلغ','By amount'], byAge:['بالمدة','By age'],
   lastMove:['آخر حركة','Last activity'], lastPaid:['آخر سداد','Last payment'],
-  noPayRec:['مفيش سداد مسجّل','No payment on record'],
-  bucketNone:['مفيش سداد مسجّل','No payment on record'],
+  noPayRec:['لا توجد سداد مسجّل','No payment on record'],
+  bucketNone:['لا توجد سداد مسجّل','No payment on record'],
   yesterdayNums:['لسه مفتحناش · أرقام أمس','Not open yet · yesterday\u2019s numbers'],
-  notResetYet:['أول فاتورة النهاردة هتصفّر العداد وتظهر أرقام اليوم','The first sale today will reset the counter'], lastPaid:['آخر سداد','Last payment'],
-  noPayRec:['مفيش سداد مسجّل','No payment on record'],
-  bucketNone:['مفيش سداد مسجّل في آخر سنة','No payment recorded in the past year'],
+  notResetYet:['أول فاتورة اليوم هتصفّر العداد وتظهر أرقام اليوم','The first sale today will reset the counter'], lastPaid:['آخر سداد','Last payment'],
+  noPayRec:['لا توجد سداد مسجّل','No payment on record'],
+  bucketNone:['لا توجد سداد مسجّل في آخر سنة','No payment recorded in the past year'],
   soldBy:['البايع','Sold by'],
   typeAll:['الكل','All'], typeInvoice:['فواتير','Invoices'], typeCoupon:['كوبونات','Coupons'],
   typeDebt:['تذكير ديون','Debt reminders'], onlyFailed:['اللي فشلت','Failed only'],
@@ -932,38 +934,38 @@ var T = {
   expiry:['صلاحية الكوبون','Coupon expiry'], selectAll:['اختار الكل','Select all'],
   clearSel:['إلغاء','Clear'], selected:['متحدد','selected'], sendToSel:['ابعت للمحددين','Send to selected'],
   sending:['بيبعت…','Sending…'], sentCount:['اتبعت','Sent'],
-  couponDefault:['صيدلية السوسي: خصم خاص ليك على طلبك الجاي - اطلب دلوقتي 01143404023',
+  couponDefault:['صيدلية السوسي: خصم خاص لك على طلبك الجاي - اطلب دلوقتي 01143404023',
                  'El Sousy Pharmacy: a special discount on your next order - order now 01143404023'], checkFirst:['راجع حسابه في نظام البيع قبل ما تكلمه','Check their account in the POS first'], noteLastMove:['«آخر حركة» = آخر شراء أو سداد','"Last activity" = last purchase or payment'], rToday:['اليوم','Today'], rYesterday:['أمس','Yesterday'], rMonth:['الشهر','Month'],
-  rLastMonth:['الشهر اللي فات','Last month'], rCustom:['فترة','Custom'],
+  rLastMonth:['الشهر السابق','Last month'], rCustom:['فترة','Custom'],
   from:['من','From'], to:['إلى','To'], apply:['طبّق','Apply'],
   days7:['7 أيام','7 days'], days14:['14 يوم','14 days'], days30:['30 يوم','30 days'],
   beforeDisc:['قبل الخصم','Before discount'], afterDisc:['بعد الخصم','After discount'],
   needed:['المطلوب','Needed'], markOrdered:['اتطلب','Ordered'], markDiscont:['مقطوع','Discontinued'],
-  supplier:['مورّد','suppliers'], byEmployee:['كل موظف طلّع دين','Debt raised per employee'],
-  agingTitle:['حسب آخر بيع','By last sale'], never:['ما اتباعش','Never sold'],
+  supplier:['مورّد','suppliers'], byEmployee:['البيع الآجل حسب الموظف','Debt raised per employee'],
+  agingTitle:['حسب آخر بيع','By last sale'], never:['دون مبيعات مسجلة','Never sold'],
   d0_30:['أقل من شهر','Under 30d'], d31_60:['1-2 شهر','1-2 months'], d61_90:['2-3 شهور','2-3 months'],
-  d91_180:['3-6 شهور','3-6 months'], d181_365:['6-12 شهر','6-12 months'], d365:['أكتر من سنة','Over a year'],
+  d91_180:['3-6 شهور','3-6 months'], d181_365:['6-12 شهر','6-12 months'], d365:['أكثر من سنة','Over a year'],
   skus:['صنف','SKUs'], health:['صحة المخزون','Stock health'],
   expByMonth:['الصلاحية شهر بشهر','Expiry by month'], deadList:['الأصناف الراكدة','Dead stock items'],
   allCats:['كل الفئات','All categories'], shelfLife:['مدة الصلاحية','Shelf life'],
-  under3:['أقل من ٣ شهور','Under 3 months'], m3_6:['3-6 شهور','3-6 months'],
-  over6:['أكتر من ٦ شهور','Over 6 months'], noExp:['بدون تاريخ','No date'],
+  under3:['أقل من 3 أشهر','Under 3 months'], m3_6:['3-6 شهور','3-6 months'],
+  over6:['أكثر من ٦ شهور','Over 6 months'], noExp:['بدون تاريخ','No date'],
   qty:['رصيد','Qty'], daysIdle:['ساكن','Idle'], expiresOn:['ينتهي','Expires'],
   healthGood:['كويسة','Good'], healthMid:['متوسطة','Fair'], healthBad:['محتاجة تدخّل','Needs work'],
   retailValue:['بسعر الجمهور','At retail'], exportX:['Excel','Excel'], exportP:['PDF','PDF'],
-  noExport:['مفيش بيانات للتصدير','Nothing to export'],
+  noExport:['لا توجد بيانات للتصدير','Nothing to export'],
   more:['المزيد','More'], category:['الفئة','Category'], topItems:['أعلى الأصناف قيمة','Highest value'],
-  viewDetails:['شوف الكل','View all'], ofTotal:['من الإجمالي','of total'],
+  viewDetails:['عرض الكل','View all'], ofTotal:['من الإجمالي','of total'],
   negStock:['أرصدة سالبة','Negative stock'],
   nearExpSec:['قرب الصلاحية','Near expiry'],
   within6:['خلال ٦ شهور','Within 6 months'],
-  deadSection:['راكد وما اتباعش','Slow & never sold'],
+  deadSection:['راكد ودون مبيعات مسجلة','Slow & never sold'],
   deadSub:['مش بيتحرك — فلوس واقفة','Not moving — money parked'],
   allStock:['كل المخزون','All stock'],
   inStockSub:['فيها رصيد','in stock'],
   negSub:['رصيد أقل من صفر — خطأ جرد أو بيع من غير إدخال','Below zero — stock error or sale without entry'],
   fixThese:['محتاجة تصحيح جرد','Need a stock correction'],
-  qtyShort:['ناقص','Short'], noNeg:['مفيش أرصدة سالبة','No negative stock'], filters:['فلاتر','Filters'], actions:['إجراءات','Actions'],
+  qtyShort:['ناقص','Short'], noNeg:['لا توجد أرصدة سالبة','No negative stock'], filters:['فلاتر','Filters'], actions:['إجراءات','Actions'],
   testSMS:['رسالة تجريبية','Test message'], testSMSSub:['اتأكد إن الإرسال شغال','Check sending works'],
   send:['ابعت','Send'], exportXSub:['ملف تقدر تفتحه وتفلتره','A file you can open and filter'],
   exportPSub:['نسخة جاهزة للطباعة','Ready to print'],
@@ -989,7 +991,7 @@ var T = {
   whatChanged:['اللي اتغيّر','What changed'], last7vs:['آخر ٧ أيام مقابل اللي قبلهم','Last 7 days vs previous 7'],
   trendUp:['صاعد','Rising'], trendDown:['نازل','Falling'], trendFlat:['ثابت','Steady'],
   noTrend:['لسه البيانات مش كفاية للمقارنة','Not enough data to compare yet'],
-  avgDaily:['متوسط يومي','Daily average'], tapToOpen:['دوس عشان تفتح','Tap to open'], noSalesYet:['لسه مفيش مبيعات النهاردة','No sales yet today'], needsAction:['محتاج تصرّف','Needs action'],
+  avgDaily:['متوسط يومي','Daily average'], tapToOpen:['اضغط لعرض التفاصيل','Tap to open'], noSalesYet:['لا توجد حاليًا مبيعات اليوم','No sales yet today'], needsAction:['محتاج تصرّف','Needs action'],
   allGood:['كل حاجة تمام','All clear'], sections:['الأقسام','Sections'],
   salesToday:['مبيعات اليوم','Sales today'], profitToday:['ربح اليوم','Profit today'],
   debtToday:['دين اليوم','Debt today'], vsYesterday:['عن أمس','vs yesterday'],
@@ -1000,7 +1002,7 @@ var T = {
 
   /* مبيعات */
   salesPerf:['المبيعات','Sales'], orderPerf:['كفاءة الطلبات','Order quality'],
-  thisMonth:['الشهر ده','This month'], lastMonth:['الشهر اللي فات','Last month'],
+  thisMonth:['هذا الشهر','This month'], lastMonth:['الشهر السابق','Last month'],
   invoices:['فواتير','Invoices'], avgTicket:['متوسط الفاتورة','Avg ticket'],
   discount:['خصم','Discount'], returns:['مرتجعات','Returns'], netSales:['صافي','Net'],
   byDay:['يوم بيوم','By day'], profit:['ربح','Profit'],
@@ -1025,11 +1027,11 @@ var T = {
   stockValue:['قيمة المخزون','Stock value'], deadStock:['راكد','Dead stock'],
   nearExpiry:['قرب الانتهاء','Near expiry'], atCost:['بالتكلفة','at cost'],
   items:['صنف','items'], expiredNow:['منتهي بالفعل','Already expired'],
-  outOfStock:['خلص خالص','Out of stock'], lowStock:['قرب يخلص','Running low'],
+  outOfStock:['نفد المخزون','Out of stock'], lowStock:['قارب على النفاد','Running low'],
   copyName:['انسخ','Copy'], copied:['اتنسخ ✓','Copied ✓'],
 
   /* عملاء */
-  customers:['العملاء','Customers'], messages:['الرسايل','Messages'],
+  customers:['العملاء','Customers'], messages:['الرسائل','Messages'],
   agents:['المندوبين','Referrers'],
   doctors:['دكاترة','Doctors'],
   effTitle:['كفاءة الطلبيات','Ordering efficiency'], effAvg:['متوسط مدة النقص','Avg shortage time'],
@@ -1040,24 +1042,24 @@ var T = {
   effTrend:['اتجاه النواقص','Shortage trend'],
   effLost:['مبيعات ضايعة (تقدير)','Lost sales (est.)'], effLostT:['أكتر أصناف ضيّعت مبيعات','Top lost-sales items'],
   effLostNote:['تقدير: أيام ما كان الصنف خالص × متوسط بيعه اليومي (آخر 28 يوم) × سعر البيع. الأصناف اللي معندهاش مبيعات أو اسمها مختلف مش محسوبة.','Estimate: days out × avg daily sales (28d) × price. Items with no matching sales are excluded.'],
-  effPerDay:['في اليوم','/day'], effDaysOut:['يوم خالص','days out'], effNone:['مفيش بيانات كفاية لسه','Not enough data yet'],
+  effPerDay:['في اليوم','/day'], effDaysOut:['يوم خالص','days out'], effNone:['لا توجد بيانات كفاية لسه','Not enough data yet'],
   effSub:['من أول ظهور في قايمة النواقص لحد ما اتطلب أو اتوفّر','From first appearing on the list until ordered/restocked'], docAdd:['إضافة دكتور','Add doctor'], docName:['اسم الدكتور','Doctor name'],
   docSpec:['التخصص (اختياري)','Specialty (optional)'], docCode:['الكود','Code'],
-  docOrders:['طلبات الدكاترة','Doctor requests'], docMisses:['بيدوّروا عليه ومش عندنا','Searched, not in stock'],
+  docOrders:['طلبات الدكاترة','Doctor requests'], docMisses:['أصناف مطلوبة غير متوفرة','Searched, not in stock'],
   docCopy:['نسخ رسالة الدعوة','Copy invite'], docOn:['فعّال','Active'], docOff:['موقوف','Stopped'],
-  docDone:['تم','Done'], docNone:['لسه مفيش دكاترة','No doctors yet'], docLast:['آخر دخول','Last login'],
+  docDone:['تم','Done'], docNone:['لا يوجد أطباء مسجلون','No doctors yet'], docLast:['آخر دخول','Last login'],
   docSave:['حفظ','Save'], docNew:['جديد','New'], docAuto:['سيبه فاضي = كود تلقائي','Empty = auto code'],
-  docTimes:['مرة','times'], docNoOrders:['مفيش طلبات','No requests'], docNoMiss:['مفيش حاجة ناقصة','Nothing missing'], sent:['اتبعتت','Sent'], msgFailed:['فشلت','Failed'],
+  docTimes:['مرة','times'], docNoOrders:['لا توجد طلبات','No requests'], docNoMiss:['لا توجد حاجة ناقصة','Nothing missing'], sent:['اتبعتت','Sent'], msgFailed:['فشلت','Failed'],
   ignored:['متجاهلة','Ignored'], resend:['إعادة إرسال','Resend'], ignore:['تجاهل','Ignore'],
   active:['مفعّل','active'], pending:['معلّق','pending'], due:['مستحق','Due'],
   needFollow:['محتاجين متابعة','Need follow-up'],
 
   /* إعدادات */
   settings:['إعدادات','Settings'], errorLog:['سجل الأخطاء','Error log'],
-  noErrors:['مفيش أخطاء — كل حاجة شغالة','No errors — all good'],
+  noErrors:['لا توجد أخطاء — كل حاجة شغالة','No errors — all good'],
   autoUpdate:['التحديث التلقائي','Auto refresh'],
   autoOn:['بيحدّث نفسه كل ساعة','Refreshes hourly'], autoOff:['مقفول','Off'],
-  refreshNow:['حدّث دلوقتي','Refresh now'], enableAuto:['شغّل التلقائي','Enable'],
+  refreshNow:['تحديث البيانات','Refresh now'], enableAuto:['شغّل التلقائي','Enable'],
   running:['شغّال ✓','On ✓'], diagnose:['فحص شامل','Full check'],
   startCheck:['ابدأ الفحص','Start check'], liveTrigger:['تريجر الفواتير','Live invoice trigger'],
   resumeLive:['شغّله','Start it']
@@ -1127,7 +1129,7 @@ function cairoDate(addDays){
 function markSync(){
   var el = document.getElementById('sync');
   if (el) el.classList.remove('old');
-  if (el) el.textContent = new Date().toLocaleTimeString(LANG === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US', {hour:'2-digit',minute:'2-digit'});
+  if (el) el.textContent = 'آخر اتصال ' + new Date().toLocaleTimeString(LANG === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US', {hour:'2-digit',minute:'2-digit'});
 }
 
 /* سجل الأخطاء — أي فشل بيتسجّل بدل ما يضيع في صمت */
@@ -1209,7 +1211,7 @@ function oops(box, again){
     ' <button class="retry" onclick="' + again + '">' + tr('retry') + '</button></div>';
 }
 
-/* لبنات جاهزة — كل الصفحات بتستخدمها فمفيش شكلين لنفس الحاجة */
+/* لبنات جاهزة — كل الصفحات بتستخدمها فلا توجد شكلين لنفس الحاجة */
 /* بداية كل صفحة: عنوان صغير + مربعات أرقام متساوية ومضغوطة */
 function vitals(title, sub, list, foot){
   var n = Math.min(list.length, 3);
@@ -1256,13 +1258,13 @@ function task(tone, title, sub, count, jump){
     '<span class="task-a">' + (document.documentElement.dir === 'rtl' ? '‹' : '›') + '</span></div>';
 }
 /* رسم آخر 14 يوم: عمود لكل يوم + خط الهدف */
-/* ═══ سلايد «الشهر ده» جنب النهاردة ═══ */
+/* ═══ سلايد «هذا الشهر» جنب اليوم ═══ */
 var HOME_MONTH = (function(){
   /* النسخة المحفوظة تتعرض بس لو لنفس الفترة (أول الشهر لحد امبارح) */
-  try { var h = JSON.parse(localStorage.getItem('homeMonth') || 'null'); var y = isoAdd(cairoNow().date, -1);
+  try { if(!storedPin())return null;var h = JSON.parse(localStorage.getItem('homeMonth') || 'null'); var y = isoAdd(cairoNow().date, -1);
     return h && h.r && h.r.to === y && h.m && h.m.to === y ? h : null; } catch (e) { return null; }
 })();
-/* فترة السلايد: لحد امبارح دايمًا (النهاردة لسه مكملش فبيبوّظ المتوسط) */
+/* فترة السلايد: لحد امبارح دايمًا (اليوم لسه مكملش فبيبوّظ المتوسط) */
 var HOME_MR = { key: 'month' };
 var HOME_PERIOD_CACHE = {}, HOME_PERIOD_REQUESTS = {};
 function homeMonthName(month){
@@ -1306,9 +1308,9 @@ function homePeriodExpenses(pl,from,to){
   return valid?total:null;
 }
 function homeExpenseHtml(pl,from,to,loading){
-  var amount=homePeriodExpenses(pl,from,to),warning=!!(pl && pl.exp_stale);
-  return '<div class="h-expense"><div><small>المصروفات المسجلة</small><span>لنفس الفترة'+(warning?' · البيانات متأخرة':'')+'</span></div><b'+(warning?' class="expense-stale"':'')+'>'+(amount===null?(loading?'بجـيبها…':'غير متاح'):ltr(num(amount))+' <small>جنيه</small>')+'</b></div>'+
-    (warning?'<p class="h-expense-note">آخر تسجيل '+esc(pl.exp_last_entry || 'غير معروف')+'؛ الإجمالي قد يكون ناقص.</p>':'');
+  var amount=homePeriodExpenses(pl,from,to),warning=!!(pl && (pl.financial_schema!=='finance-review-v1' || pl.exp_stale || pl.expense_source_error || pl.pending_expenses>0 || pl.salary_conflict));
+  return '<div class="h-expense"><div><small>المصروفات المسجلة</small><span>لنفس الفترة'+(warning?' · تحتاج إلى مراجعة':'')+'</span></div><b'+(warning?' class="expense-stale"':'')+'>'+(amount===null?(loading?'جارٍ التحميل…':'غير متاح'):ltr(num(amount))+' <small>جنيه</small>')+'</b></div>'+
+    (warning?'<p class="h-expense-note">آخر تسجيل '+esc(pl.exp_last_entry || 'غير معروف')+'؛ الإجمالي قد يتضمن بنودًا غير مطابقة؛ لا يمثل مصروفًا مؤكدًا.</p>':'');
 }
 function loadHomeDayExpenses(day){
   var box=document.getElementById('homeDayExpenses');if(!box)return;
@@ -1324,19 +1326,20 @@ function loadHomeDayExpenses(day){
 function monthSlide(M){
   var m=M.m || {},R=M.r || homeRange(),pl=M.pl || {},g=goalOf('daily_sales',10000),net=Number(m.net_sales || 0),gp=Number(m.profit_total || 0),inv=Number(m.invoices_total || 0),np=null;
   var days=R.month?new Date(Date.UTC(+R.month.slice(0,4),+R.month.slice(5,7),0)).getUTCDate():1,target=g*(R.key==='yesterday'?1:days),left=Math.max(0,target-net);
-  if(pl.ok && Array.isArray(pl.days)){var rangeDays=pl.days.filter(function(x){return x.date>=R.from && x.date<=R.to;});if(homePeriodExpenses(pl,R.from,R.to)!==null)np=rangeDays.reduce(function(t,x){return t+(Number(x.net)||0);},0);}
+  if(pl.ok && pl.financial_schema==='finance-review-v1' && !pl.expense_source_error && !pl.salary_conflict && Array.isArray(pl.days)){var rangeDays=pl.days.filter(function(x){return x.date>=R.from && x.date<=R.to;});if(homePeriodExpenses(pl,R.from,R.to)!==null && rangeDays.every(function(x){return x.net!=null;}))np=rangeDays.reduce(function(t,x){return t+Number(x.net);},0);}
+  var expected=g*Number(R.to.slice(8,10));
   var label=R.key==='yesterday'?'أمس':homeMonthName(R.month),dateLabel=R.from===R.to?R.to:R.from+' — '+R.to;
   function mini(label,value,sub){return '<div class="h-mini"><small>'+label+'</small><b>'+value+'</b><u>'+sub+'</u></div>';}
-  return '<div class="period-card">'+homePeriodTabs()+'<div class="h-top"><h2>'+esc(label)+'</h2><span>'+esc(dateLabel)+'</span></div>'+
+  return '<div class="period-card">'+homePeriodTabs()+'<div class="h-top"><h2>'+esc(label)+(R.key==='month'?' · حتى نهاية أمس':'')+'</h2><span>'+esc(dateLabel)+'</span></div>'+
     '<div class="h-main">'+homeGoalRing(net,target)+'<div class="h-num"><small>صافي المبيعات</small><b>'+ltr(num(net))+'</b><u>'+(net>=target?'الهدف اتحقق · '+ltr(num(target)):'فاضل '+ltr(num(left))+' على '+ltr(num(target)))+'</u></div></div>'+
     '<div class="h-minis" style="grid-template-columns:repeat(2,minmax(0,1fr))">'+mini('عدد الفواتير',ltr(num(inv)),'في الفترة المختارة')+mini('ربح البيع',ltr(num(gp)),'قبل المصروفات')+mini('متوسط الفاتورة',inv?ltr(num(Math.round(Number(m.sales_total || 0)/inv))):'—','قبل المرتجعات')+mini('المرتجعات',ltr(num(m.returns_value_total || 0)),'جنيه')+'</div>'+
-    homeExpenseHtml(pl,R.from,R.to,false)+
-    '<details class="period-details"><summary>تفاصيل '+esc(label)+'</summary><div><span>الخصومات</span><b>'+ltr(num(m.discount_total || 0))+' جنيه</b></div><div><span>متوسط صافي اليوم</span><b>'+ltr(num(m.avg_daily_net || 0))+' جنيه</b></div><div><span>الربح بعد المصاريف ومخصص المرتبات</span><b>'+(np===null?'غير متاح':ltr(num(np))+' جنيه')+'</b></div></details></div>';
+    (R.key==='month'?'<p class="camera-meta">المستهدف حتى نهاية أمس '+ltr(num(expected))+' جنيه · '+(net>=expected?'متقدم':'متأخر')+' بمقدار '+ltr(num(Math.abs(net-expected)))+' جنيه</p>':'')+homeExpenseHtml(pl,R.from,R.to,false)+
+    '<details class="period-details"><summary>تفاصيل '+esc(label)+'</summary><div><span>الخصومات</span><b>'+ltr(num(m.discount_total || 0))+' جنيه</b></div><div><span>متوسط صافي اليوم</span><b>'+ltr(num(m.avg_daily_net || 0))+' جنيه</b></div><div><span>الربح بعد المصاريف ومخصص المرتبات</span><b>'+(np===null?'قيد المراجعة':ltr(num(np))+' جنيه')+'</b></div></details></div>';
 }
 function loadHomeMonth(){
   var R=homeRange(),key=R.key+':'+R.from+':'+R.to,el=document.getElementById('heroMonth'),old=HOME_PERIOD_CACHE[key];
   function active(){var q=homeRange();return q.key+':'+q.from+':'+q.to===key;}
-  if(R.empty){if(el)el.innerHTML='<div class="period-card">'+homePeriodTabs()+'<div class="state">لسه مفيش يوم مكتمل في الشهر ده</div></div>';return;}
+  if(R.empty){if(el)el.innerHTML='<div class="period-card">'+homePeriodTabs()+'<div class="state">لا يوجد يوم مكتمل في هذا الشهر</div></div>';return;}
   if(!old && HOME_MONTH && HOME_MONTH.r && HOME_MONTH.r.from===R.from && HOME_MONTH.r.to===R.to){old={at:0,data:Object.assign({},HOME_MONTH,{r:R})};HOME_PERIOD_CACHE[key]=old;}
   if(el)el.innerHTML=old?monthSlide(old.data):'<div class="period-card">'+homePeriodTabs()+'<div class="state"><div class="spin"></div>بجيب ملخص الفترة…</div></div>';
   if(old && Date.now()-old.at<300000)return;
@@ -1348,7 +1351,7 @@ function loadHomeMonth(){
     HOME_PERIOD_CACHE[key]={at:Date.now(),data:data};
     if(R.key==='month'){HOME_MONTH=data;try{localStorage.setItem('homeMonth',JSON.stringify(data));}catch(e){}}
     if(active()){var box=document.getElementById('heroMonth');if(box)box.innerHTML=monthSlide(data);}
-  }).catch(function(e){logErr(e);if(active() && !old){var box=document.getElementById('heroMonth');if(box)box.innerHTML='<div class="period-card">'+homePeriodTabs()+'<div class="state err">ملخص الفترة ماتحمّلش</div><button class="btn btn-quiet" onclick="loadHomeMonth()">حاول تاني</button></div>';}}).finally(function(){delete HOME_PERIOD_REQUESTS[key];});
+  }).catch(function(e){logErr(e);if(active() && !old){var box=document.getElementById('heroMonth');if(box)box.innerHTML='<div class="period-card">'+homePeriodTabs()+'<div class="state err">ملخص الفترة ماتحمّلش</div><button class="btn btn-quiet" onclick="loadHomeMonth()">إعادة المحاولة</button></div>';}}).finally(function(){delete HOME_PERIOD_REQUESTS[key];});
 }
 function heroSelect(i){var s=document.getElementById('heroSlides');if(s && s.children[i])s.children[i].scrollIntoView({behavior:window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest',inline:'center'});}
 function heroDots(){
@@ -1358,11 +1361,11 @@ function heroDots(){
   try { sessionStorage.setItem('heroSlide', String(i)); } catch (e) {}
 }
 var HOME_DAYS = null, HOME_YK = null, HOME_LIST = [], HOME_SEL = 13;
-/* لما تدوس على عمود: تفاصيل اليوم ده تحت الرسم */
+/* لما تدوس على عمود: تفاصيل هذا اليوم تحت الرسم */
 function homeDayHtml(i){
   var x = HOME_LIST[i]; if (!x) return '';
   var dl = new Date(x.date + 'T12:00:00Z').toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
-  if (!x.sales) return '<b>' + esc(dl) + '</b><span>مفيش مبيعات متسجلة</span>';
+  if (!x.sales) return '<b>' + esc(dl) + '</b><span>لا توجد مبيعات متسجلة</span>';
   var g = goalOf('daily_sales', 10000);
   return '<b>' + esc(dl) + (x.live ? ' · لحد دلوقتي' : '') + '</b><span>صافي <b>' + ltr(num(x.sales)) + '</b>' +
     (x.invoices ? ' · ' + ltr(num(x.invoices)) + ' فاتورة' : '') + (x.profit ? ' · ربح ' + ltr(num(x.profit)) : '') +
@@ -1409,7 +1412,7 @@ function homeChart(days, salesT, isStale, g){
     bars + '</svg>' + '<div id="homeDayInfo" class="h-day">' + homeDayHtml(HOME_SEL) + '</div>' +
     '<div class="h-stats"><span>المتوسط <b>' + ltr(num(avg)) + '</b></span><span>أحسن يوم <b>' + ltr(num(best ? best.sales : 0)) + '</b></span><span>وصلنا الهدف <b>' + ltr(hits + '/' + done.length) + '</b></span></div>';
 }
-/* بيجيب آخر 14 يوم بعد ما الشاشة تظهر، ويملا المقارنة بنفس اليوم الأسبوع اللي فات */
+/* بيجيب آخر 14 يوم بعد ما الشاشة تظهر، ويملا المقارنة بنفس اليوم الأسبوع السابق */
 function loadHomeDays(salesT, isStale, g, gV){
   var today = cairoNow().date, p = { from: isoAdd(today, -14), to: isoAdd(today, -1) };
   var apply = function(k){
@@ -1422,10 +1425,10 @@ function loadHomeDays(salesT, isStale, g, gV){
     var el = document.getElementById('homeCmp');
     if (el && prev && prev.sales){
       var wd = new Date(isoAdd(base, -7) + 'T12:00:00Z').toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', timeZone: 'UTC' });
-      if (isStale || cairoNow().hour >= 18){
+      if (isStale){
         var dl = Math.round((salesT - prev.sales) / prev.sales * 100);
-        el.innerHTML = '<span style="color:var(--' + (dl >= 0 ? 'ok' : 'bad') + ')">' + (dl >= 0 ? '▲' : '▼') + ' ' + ltr(Math.abs(dl) + '%') + '</span> عن ' + esc(wd) + ' اللي فات';
-      } else el.innerHTML = esc(wd) + ' اللي فات قفل على ' + ltr(num(prev.sales));
+        el.innerHTML = '<span style="color:var(--' + (dl >= 0 ? 'ok' : 'bad') + ')">' + (dl >= 0 ? '▲' : '▼') + ' ' + ltr(Math.abs(dl) + '%') + '</span> عن ' + esc(wd) + ' السابق';
+      } else el.innerHTML = esc(wd) + ' السابق، إجمالي يوم كامل: ' + ltr(num(prev.sales));
     }
     if (isStale){
       var y = map[isoAdd(today, -1)], v = y ? y.total_cust : null;
@@ -1434,7 +1437,7 @@ function loadHomeDays(salesT, isStale, g, gV){
     }
   };
   apply(cacheGet('home14r', {}));
-  /* الأيام اللي فاتت من ملفات نظام البيع الكاملة (أدق من شيت الموظفين) */
+  /* الأيام السابقت من ملفات نظام البيع الكاملة (أدق من شيت الموظفين) */
   api('getDailyRaw', p).then(function(r){
     if (!r || !r.days) throw new Error('raw');
     var k = { daily: r.days.filter(function(x){ return x.has; }).map(function(x){
@@ -1469,6 +1472,7 @@ function emptyState(){ return '<div class="state">' + tr('empty') + '</div>'; }
    بنحفظ آخر رد ناجح، فأول ما تفتح بيظهر على طول والتحديث بيحصل ورا. */
 function cacheKey(a, p){ return 'c:' + a + ':' + JSON.stringify(p || {}); }
 function cacheGet(a, p){
+  if(!storedPin())return null;
   try{
     var raw = localStorage.getItem(cacheKey(a, p)); if (!raw) return null;
     var o = JSON.parse(raw);
@@ -1477,6 +1481,7 @@ function cacheGet(a, p){
   }catch(e){ return null; }
 }
 function cacheSet(a, p, d){
+  if(!storedPin() || !d || d.lockError || d.pinError)return;
   try{ localStorage.setItem(cacheKey(a, p), JSON.stringify({ t: Date.now(), d: d })); }
   catch(e){ /* المساحة اتملت — مش مشكلة */ }
 }
@@ -1500,11 +1505,14 @@ function paint2(key, a1, p1, a2, p2, box, draw){
   try{ draw(old.m, old.k, box); return true; }catch(e){ logErr(e); return false; }
 }
 function apiCached(action, params, box, draw){
+  var section=CUR,tab=TAB;
   var seed = paint1(action, params, box, draw);
   if (!seed) busy(box);
   return apiFresh(action, params).then(function(d){
+    if(CUR!==section || TAB!==tab)return d;
+    if(d && (d.lockError || d.pinError)){box.innerHTML='<div class="state err">سجّل الدخول لعرض البيانات</div>';return d;}
     markSync(); draw(d, box); return d;
-  }).catch(function(e){ logErr(e); if (!seed) oops(box, ''); });
+  }).catch(function(e){ logErr(e); if (!seed) oops(box, ''); else box.insertAdjacentHTML('afterbegin','<div class="state err" role="status">تعذر التحديث؛ المعروض نسخة محفوظة وقديمة.</div>'); });
 }
 
 /* ═══ الأهداف ═══
@@ -1527,12 +1535,12 @@ document.addEventListener('visibilitychange', function(){
 });
 
 /* ═══ منتقي الفترة — نفس الشكل في كل الصفحات ═══ */
-/* الافتتاح على "اليوم" — ده اللي بتدوّر عليه أول ما تفتح.
+/* الافتتاح على "اليوم" — ده اللي بتابحث عليه أول ما تفتح.
    الفترات الأطول باختيارك. */
 var RANGE = { sales:'today', exp:'month', att:'today', perf:'today', debt:'month', short:'7', close:'month' };
-/* قبل 10 الصبح (بتوقيت مصر) النهاردة لسه فاضي: الأداء والفريق يفتحوا على أمس */
+/* قبل 10 الصبح (بتوقيت مصر) اليوم لسه فاضي: الأداء والفريق يفتحوا على أمس */
 try {
-  var _hs = JSON.parse(localStorage.getItem('c:home:{}') || 'null'), _d = _hs && _hs.d && _hs.d.b && _hs.d.b.daily;
+  var _hs = storedPin() && JSON.parse(localStorage.getItem('c:home:{}') || 'null'), _d = _hs && _hs.d && _hs.d.b && _hs.d.b.daily;
   var _upd = _d ? (String(_d.updated_at || '').match(/\d{4}-\d{2}-\d{2}/) || [''])[0] : '';
   if (cairoNow().hour < 10 || (_upd && _upd < cairoNow().date)){ RANGE.sales = 'yesterday'; RANGE.perf = 'yesterday'; }
 } catch (e) {}
@@ -1702,9 +1710,9 @@ function expExpiry(k){
 /* حسب آخر بيع — كل الشرايح */
 function expAging(k){
   var d = INV.data || {}, rows = [];
-  var LBL = { never:'ما اتباعش', b0_30:'أقل من شهر', b31_60:'1-2 شهر',
+  var LBL = { never:'دون مبيعات مسجلة', b0_30:'أقل من شهر', b31_60:'1-2 شهر',
               b61_90:'2-3 شهور', b91_180:'3-6 شهور',
-              b181_365:'6-12 شهر', b365plus:'أكتر من سنة' };
+              b181_365:'6-12 شهر', b365plus:'أكثر من سنة' };
   Object.keys(LBL).forEach(function(k2){
     ((d.aging_items || {})[k2] || []).forEach(function(it){
       rows.push({ 'الشريحة': LBL[k2], 'الصنف': it.name, 'الرصيد': it.stock,
@@ -1799,7 +1807,7 @@ var SECTIONS = {
   /* المخزون: الملخص الأول (قرارات)، وبعدين كل قرار في تبويبه */
   stock: [['aging', function(){ return 'الملخص'; }], ['short', function(){ return tr('shortages'); }], ['expTab', function(){ return 'الصلاحية'; }], ['deadTab', function(){ return 'الراكد'; }],
           ['count', function(){ return tr('counts'); }]],
-  money: [['month', function(){ return 'الأداء'; }], ['close', function(){ return 'التقفيل'; }], ['exp', function(){ return tr('expenses'); }],
+  money: [['month', function(){ return 'الأداء'; }], ['close', function(){ return 'الإغلاق اليومي'; }], ['exp', function(){ return tr('expenses'); }],
           ['debt',  function(){ return tr('debts'); }], ['bal', function(){ return 'الميزانية'; }]],
   /* الإدارة: مش في الشريط — بتتفتح من ⚙️ */
   admin: [['agents',function(){ return tr('agents'); }], ['docs', function(){ return tr('doctors'); }]]
@@ -1868,7 +1876,7 @@ function drawChats(){
       { value: num(pend), label: 'محتاجة ردك', tone: pend ? 'bad' : 'ok' },
       { value: num(all.filter(function(c){ return c.hold; }).length), label: 'ماسكها بنفسك', tone: 'warn' }
     ]) +
-    '<input class="chat-search" placeholder="🔍 دوّر بالاسم أو الرقم أو الكلام" value="' + esc(CHAT_Q) + '" oninput="CHAT_Q=this.value;drawChatList()">' +
+    '<input class="chat-search" placeholder="🔍 ابحث بالاسم أو الرقم أو الكلام" value="' + esc(CHAT_Q) + '" oninput="CHAT_Q=this.value;drawChatList()">' +
     '<div id="chatlist"></div>';
   drawChatList();
 }
@@ -1876,7 +1884,7 @@ function drawChatList(){
   var el = document.getElementById('chatlist'); if (!el) return;
   var q = CHAT_Q.trim().toLowerCase();
   var list = (CHATS || []).filter(function(c){ return !q || (chatName(c) + ' ' + c.phone + ' ' + c.lastText).toLowerCase().indexOf(q) !== -1; });
-  if (!list.length){ el.innerHTML = '<div class="state">' + ((CHATS || []).length ? 'مفيش نتايج' : 'لسه مفيش محادثات متسجلة — أول ما عميل يكلّم البوت هتظهر هنا') + '</div>'; return; }
+  if (!list.length){ el.innerHTML = '<div class="state">' + ((CHATS || []).length ? 'لا توجد نتائج' : 'لا توجد حاليًا محادثات متسجلة — أول ما عميل يكلّم البوت هتظهر هنا') + '</div>'; return; }
   var icon = { user: '👤', bot: '🤖', pharm: '👨‍⚕️', sys: '⚕️' };
   el.innerHTML = card('المحادثات', 'الأحدث فوق — اللي محتاجة ردك الأول', list.slice(0, 150).map(function(c){
     var id = String(c.id).replace(/[^\w-]/g, '');
@@ -1918,7 +1926,7 @@ function drawChat(d){
       return fid ? '<img class="chat-img" data-pid="' + fid + '" alt="" onclick="chatZoom(\'' + fid + '\')"' + (PHOTO_CACHE[fid] ? ' src="' + PHOTO_CACHE[fid] + '"' : '') + '>' : '';
     }).join('');
     return '<div class="bub ' + k + '">' + imgs + txt + '<small>' + (k === 'u' ? '' : who[k] + ' · ') + ltr(esc(chatWhen(m.t))) + '</small></div>';
-  }).join('') : '<div class="state">مفيش رسايل متسجلة</div>') + '</div>';
+  }).join('') : '<div class="state">لا توجد رسايل متسجلة</div>') + '</div>';
   h += '<div class="chat-send"><textarea id="chatInput" rows="2" placeholder="اكتب ردك — هيوصل للعميل من البوت باسم الصيدلي"></textarea>' +
     '<button class="btn btn-primary" id="chatSendBtn" onclick="chatSend(\'' + id + '\')">إرسال</button></div>' +
     '<div class="state" style="font-size:12px">بتتحدّث لوحدها كل ٢٠ ثانية وإنت فاتحها</div>';
@@ -1935,7 +1943,7 @@ function loadChatImgs(){
     var fid = im.getAttribute('data-pid');
     api('botPhoto', { id: fid }).then(function(d){
       if (d && d.ok){ PHOTO_CACHE[fid] = d.data; im.src = d.data; }
-      else { im.alt = (d && d.error) || 'الصورة مش متاحة'; im.style.minHeight = '0'; }
+      else { im.alt = (d && d.error) || 'الصورة غير متاحة'; im.style.minHeight = '0'; }
       next();
     }).catch(function(){ next(); });
   })();
@@ -1982,7 +1990,7 @@ function chatPoll(){
 }
 setTimeout(chatPoll, 3000); setInterval(chatPoll, 60000);
 
-/* ─────── الدكاترة: أكواد + طلبات + اللي بيدوّروا عليه ─────── */
+/* ─────── الدكاترة: أكواد + طلبات + اللي بيابحثوا عليه ─────── */
 var DOC_URL = 'https://elsousypharmacy-create.github.io/pharmacy/doctors.html';
 var DOC_DATA = null;
 function pgDoctors(){
@@ -1996,12 +2004,14 @@ function pgDoctors(){
 function drawDoctors(d){
   var box = document.getElementById('p-admin');
   var docs = d.doctors || [], ords = d.orders || [], mis = d.misses || [];
+  var duplicateCodes={},duplicateCount=0;docs=docs.filter(function(x){var key=String(x.code||'').trim().toUpperCase();if(!key)return true;if(duplicateCodes[key]){duplicateCount++;return false;}duplicateCodes[key]=true;return true;});
   var newOrd = ords.filter(function(o){ return o.status !== 'تم'; });
   var h = vitals(tr('doctors'), null, [
     { value: num(docs.filter(function(x){ return x.active; }).length), label: tr('docOn'), tone: 'ok' },
     { value: num(newOrd.length), label: tr('docOrders'), tone: newOrd.length ? 'warn' : 'brand' },
     { value: num(mis.length), label: tr('docMisses'), tone: 'brand' }
   ]);
+  if(duplicateCount)h+='<div class="state err">توجد '+duplicateCount+' سجلات دكاترة مكررة في المصدر. تم تجميع العرض فقط، دون حذف أي سجل.</div>';
   h += card(tr('doctors'), null, docs.length ? docs.map(function(x, i){
     return '<div class="row"><div class="row-main"><b>' + esc(x.name) + (x.spec ? ' · ' + esc(x.spec) : '') + '</b>' +
       '<small>' + tr('docCode') + ': <span dir="ltr">' + esc(x.code) + '</span>' +
@@ -2076,8 +2086,9 @@ function pgHome(){
   if (seed) drawHome(seed.b, seed.kpi, true); else busy(box);
 
   var loadHome = function(again){
-    return Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }) ])
+    return Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }), api('getMonthTotalsRaw',{range:'today'}) ])
     .then(function(res){
+      if(res[1])res[1]._salesSummary=res[2];
       cacheSet('home', {}, { b: res[0], kpi: res[1] });
       markSync();
       drawHome(res[0], res[1], false);
@@ -2108,8 +2119,9 @@ function startAutoRefresh(){
   AUTO_TIMER = setInterval(function(){
     if (document.hidden) return;          // الشاشة مقفولة أو تبويب تاني
     if (CUR !== 'sales' || TAB !== 0) { stopAutoRefresh(); return; }
-    Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }) ])
+    Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }), api('getMonthTotalsRaw',{range:'today'}) ])
     .then(function(res){
+      if(res[1])res[1]._salesSummary=res[2];
       cacheSet('home', {}, { b: res[0], kpi: res[1] });
       markSync();
       drawHome(res[0], res[1], false);
@@ -2169,7 +2181,7 @@ function drawHome(b, kpi, isOld){
 
     /* ── ١) المؤشرات ──
        نظام البيع بيصفّر عداد اليوم عند فتح الصيدلية، مش نص الليل.
-       فلو آخر تحديث ليه من يوم فات، الأرقام دي بتاعت أمس مش النهاردة. */
+       فلو آخر تحديث ليه من يوم فات، الأرقام دي بتاعت أمس مش اليوم. */
     /* نظام البيع بيصفّر عداده عند فتح الصيدلية مش نص الليل.
        الفواتير بتيجي من ملف اليوم (بيتصفّر فعلاً)، فلو الفواتير صفر
        والمبيعات مش صفر → الرقم ده بتاع يوم فات. */
@@ -2178,6 +2190,7 @@ function drawHome(b, kpi, isOld){
     var todayStr = cairoNow().date;
     var isStaleDay = !!kpi._yesterday || (updDay && updDay < todayStr) || (tot.inv === 0 && salesT > 0);
 
+    if(kpi._salesSummary && kpi._salesSummary.source==='pos-invoices-v1' && kpi._salesSummary.daily && kpi._salesSummary.daily.some(function(x){return x.date===todayStr;}))isStaleDay=false;
     /* قبل أول فاتورة: نعرض أمس كامل من شيت الموظفين (نفس مصدر صفحة الفريق والأداء) */
     if (isStaleDay && !kpi._yesterday){
       var yk = HOME_YK && HOME_YK.day === todayStr ? HOME_YK.k : null;
@@ -2204,13 +2217,15 @@ function drawHome(b, kpi, isOld){
     avgInv = tot.inv ? Math.round((grossSum || salesT) / tot.inv) : 0;
     var retCnt = emps.reduce(function(s, e){ return s + (e.returns || 0); }, 0), retVal = emps.reduce(function(s, e){ return s + (e.returns_val || 0); }, 0);
 
+    var canonical=kpi._salesSummary,canonicalReady=canonical && canonical.ok && canonical.source==='pos-invoices-v1';
+    if(!isStaleDay && canonicalReady){salesT=canonical.net_sales;profitT=canonical.profit_total;avgInv=canonical.avg_invoice;retVal=canonical.returns_value_total;retCnt=canonical.returns_total;tot.inv=canonical.invoices_total;}
     /* ═══ الرئيسية الجديدة: هدف فوق، مهام، آخر 14 يوم، الفريق ═══ */
     var gS = goalOf('daily_sales', 10000), gV = goalOf('daily_visits', 150);
     var pS = gS ? Math.round(salesT / gS * 100) : 0;
     var hit = salesT >= gS;
     var ring = homeGoalRing(salesT,gS);
     var left = Math.max(0, gS - salesT);
-    var dayWord = isStaleDay ? 'أمس' : 'النهاردة';
+    var dayWord = isStaleDay ? 'أمس' : 'اليوم';
     var homeDay=isStaleDay?isoAdd(todayStr,-1):todayStr;
     var visits = (isStaleDay && !kpi._yesterday) ? null : totCust;
     var mini = function(label, val, sub, tone){
@@ -2228,7 +2243,7 @@ function drawHome(b, kpi, isOld){
       var f = (hrs - OPEN) / (CLOSE - OPEN), leftH = Math.max(0.5, CLOSE - hrs);
       if (f > 0.12 && f < 0.97){
         var proj = Math.round(salesT / f / 50) * 50;
-        paceLine = '<div class="h-pace"><span>على المعدل ده هنقفل على حوالي <b>' + ltr(num(proj)) + '</b></span>' +
+        paceLine = '<div class="h-pace"><span>تقدير مبدئي للإغلاق، بافتراض معدل ثابت: <b>' + ltr(num(proj)) + '</b></span>' +
           '<span>محتاجين <b>' + ltr(num(Math.ceil(left / leftH / 10) * 10)) + '</b> في الساعة للهدف</span></div>';
       }
     }
@@ -2236,7 +2251,7 @@ function drawHome(b, kpi, isOld){
     html += '<div class="h-slides" id="heroSlides" onscroll="heroDots()"><div class="card h-hero h-slide">' +
       '<div class="h-top"><h2>' + dayWord + (isStaleDay ? ' <span class="h-tag">لسه مفتحناش</span>' : '') + '</h2>' +
         '<span>' + esc(new Date(Date.now() - (isStaleDay ? 86400000 : 0)).toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Africa/Cairo' })) + '</span></div>' +
-      '<div class="h-main">' + ring + '<div class="h-num"><small>صافي المبيعات</small><b>' + ltr(num(salesT)) + '</b>' +
+      (!isStaleDay&&!canonicalReady?'<div class="state err">مصدر المبيعات الموحد غير متاح؛ الأرقام التالية مؤقتة حتى تحديث السيرفر والبيانات.</div>':'')+'<div class="h-main">' + ring + '<div class="h-num"><small>صافي المبيعات</small><b>' + ltr(num(salesT)) + '</b>' +
         '<u>' + (hit ? '🎯 عدّينا الهدف ' + ltr(num(gS)) : 'فاضل ' + ltr(num(left)) + ' على ' + ltr(num(gS))) + '</u>' +
         '<div id="homeCmp" class="h-cmp"></div></div></div>' + paceLine +
       '<div class="h-minis" style="grid-template-columns:repeat(2,1fr)">' +
@@ -2246,15 +2261,15 @@ function drawHome(b, kpi, isOld){
         mini('المرتجع', ltr(num(retVal)) + ' ' + tr('egp'), ltr(num(retCnt)) + ' مرتجع' + (salesT > 0 && retVal > 0 ? ' · ' + ltr(pct(retVal, salesT + retVal) + '%') : '')) +
       '</div><div id="homeDayExpenses" data-day="'+homeDay+'">'+homeExpenseHtml((HOME_PL_CACHE[homeDay.slice(0,7)] || {}).data,homeDay,homeDay,true)+'</div><div class="home-camera" id="homeAppearance" aria-live="polite">'+(storedPin() && CAMR.list?appearanceHomeHtml(CAMR.list,CAMR.at===0):'<div class="camera-wait">'+(storedPin()?'بجيب آخر تقييم بالكاميرات…':'افتح التقارير بالرقم السري لعرض التقييم')+'</div>')+'</div></div>' +
       '<div class="card h-hero h-slide" id="heroMonth">' + (HOME_MONTH ? monthSlide(HOME_MONTH) : '<div class="state"><div class="spin"></div></div>') + '</div>' +
-      '</div><div class="h-dots" id="heroDots" aria-label="فترة الأداء"><i class="on"></i><i></i></div>';
+      '</div><div class="h-dots" id="heroDots" aria-label="فترة الأداء"><button type="button" class="on" onclick="heroSelect(0)">اليوم</button><button type="button" onclick="heroSelect(1)">الفترات السابقة</button></div>';
 
-    /* ── مطلوب النهاردة ── */
+    /* ── مطلوب اليوم ── */
     var acts = [];
     var overdue = (dt.debtors || []).filter(function(c){
       return (new Date() - new Date(c.lastActivity)) / 86400000 > 30 && c.net > 0;
     });
     if (overdue.length) acts.push(task('bad', 'ديون متأخرة', ltr(num(overdue.reduce(function(a,c){return a+c.net;},0))) + ' ' + tr('egp'), overdue.length, "go('money',3)"));
-    if (ex.expired && ex.expired.count) acts.push(task('bad', 'أصناف منتهية', 'شيلها من الرف', ex.expired.count, "go('stock',2)"));
+    if (ex.expired && ex.expired.count) acts.push(task('bad', 'أصناف منتهية', 'إزالة من الرف', ex.expired.count, "go('stock',2)"));
     var months = ex.months || [], soon = months.length ? months[0] : null;
     if (soon && soon.count) acts.push(task('warn', 'هتنتهي قريب', ltr(num(soon.totalCost)) + ' ' + tr('egp'), soon.count, "go('stock',2)"));
     var weak = emps.filter(function(e){ return e.invoices >= 3; }).sort(function(a,b){ return a.reg_pct - b.reg_pct; })[0];
@@ -2262,13 +2277,13 @@ function drawHome(b, kpi, isOld){
     var dueAgents = (ag.agents || []).filter(function(a){ return a.balance > 0; });
     if (dueAgents.length) acts.push(task('warn', 'مستحقات مندوبين', ltr(num(dueAgents.reduce(function(s,a){return s+a.balance;},0))) + ' ' + tr('egp'), dueAgents.length, "go('admin',0)"));
     var snapAt = String((dt.snapshot_at || ex.snapshot_at || '')).slice(-8);
-    html += '<div class="card home-actions"><div class="card-head"><div><small class="section-eyebrow">الأولوية ليك</small><h3>محتاج تدخّلك</h3></div></div>' +
+    html += '<div class="card home-actions"><div class="card-head"><div><small class="section-eyebrow">الأولويات</small><h3>يحتاج إلى إجراء</h3></div></div>' +
       '<div id="homeMore">' + (HOME_MORE || '') + '</div>' + acts.slice(0,2).join('') + (acts.length>2?'<details class="home-more"><summary>باقي التنبيهات ('+(acts.length-2)+')</summary>'+acts.slice(2).join('')+'</details>':'') +
       (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>') + '</div>';
     setTimeout(homeCamLatest,600);
     html += '</div><div class="home-col">';
 
-    /* ── الفريق النهاردة ── */
+    /* ── الفريق اليوم ── */
     var live = at.live || [], onNow = {};
     live.forEach(function(p, i){ onNow[i] = p; });
     var hm = function(m){ m = Math.max(0, Math.round(m || 0)); return ltr(Math.floor(m / 60) + ':' + ('0' + (m % 60)).slice(-2)) + ' ساعة'; };
@@ -2286,9 +2301,9 @@ function drawHome(b, kpi, isOld){
       teamRows.push('<div class="h-team"><span class="h-dot on"></span><div class="h-tn"><b>' + esc(p.name) + '</b><small>حاضر ' + hm(p.elapsedMinutes) + ' · لسه مباعش</small></div><b class="h-tv">—</b></div>');
     });
     var liveN = live.length;
-    html += '<div class="card"><div class="card-head"><div><h3>' + (isStaleDay ? 'الفريق أمس' : 'الفريق النهاردة') + '</h3><p>' +
-      (liveN ? ltr(liveN) + ' حاضرين دلوقتي' : 'محدش مسجّل حضور دلوقتي') + '</p></div></div>' +
-      (teamRows.length ? teamRows.join('') : '<div class="state">لسه محدش باع النهاردة</div>') + '</div>';
+    html += '<div class="card"><div class="card-head"><div><h3>' + (isStaleDay ? 'الفريق أمس' : 'الفريق اليوم') + '</h3><p>' +
+      (liveN ? ltr(liveN) + ' حاضرين دلوقتي' : 'لا يوجد حضور مسجل الآن') + '</p></div></div>' +
+      (teamRows.length ? teamRows.join('') : '<div class="state">لسه محدش باع اليوم</div>') + '</div>';
     /* ── آخر 14 يوم ── */
     html += '<div class="card"><div class="card-head"><div><h3>آخر 14 يوم</h3><p id="homeChartSub">صافي كل يوم · الأخضر عدّى الهدف</p></div></div>' +
       '<div id="homeChart">' + (HOME_DAYS ? homeChart(HOME_DAYS, salesT, isStaleDay, gS) : '<div class="state">…</div>') + '</div></div>';
@@ -2309,7 +2324,7 @@ function drawHome(b, kpi, isOld){
 var HOME_MORE = '', HOME_MORE_AT = 0;
 /* كل مهمة بتتحمّل لوحدها وتظهر أول ما توصل (مش بتستنى أبطأ واحدة)،
    وآخر نتيجة محفوظة على الموبايل فبتظهر فورًا وانت فاتح */
-var HOME_SLOTS = (function(){ try { return JSON.parse(localStorage.getItem('homeSlots') || '{}'); } catch (e) { return {}; } })();
+var HOME_SLOTS = (function(){ try { if(!storedPin())return {};return JSON.parse(localStorage.getItem('homeSlots') || '{}'); } catch (e) { return {}; } })();
 var HOME_ORDER = ['bot', 'calls', 'short', 'docs', 'exp'];
 function homeMoreHtml(){var rows=HOME_ORDER.map(function(k){return HOME_SLOTS[k] || '';}).filter(Boolean);return rows.slice(0,2).join('')+(rows.length>2?'<details class="home-more"><summary>مهام إضافية ('+(rows.length-2)+')</summary>'+rows.slice(2).join('')+'</details>':'');}
 HOME_MORE = homeMoreHtml();
@@ -2329,7 +2344,7 @@ function loadHomeMore(){
     if (!cr || !cr.ok) return;
     CUST.calls = cr;
     var t0 = cr.today || {}, doneT = (t0.done || 0) + (t0.noanswer || 0) + (t0.later || 0) + (t0.wrong || 0);
-    setHomeSlot('calls', cr.left ? task(doneT ? 'brand' : 'warn', 'مكالمات المتابعة', 'اتعمل النهاردة ' + ltr(num(doneT)), cr.left, "CUST_NEXT='calls';go('cust',0)") : '');
+    setHomeSlot('calls', cr.left ? task(doneT ? 'brand' : 'warn', 'مكالمات المتابعة', 'اتعمل اليوم ' + ltr(num(doneT)), cr.left, "CUST_NEXT='calls';go('cust',0)") : '');
   }).catch(logErr);
   api('getShortages', { days: RANGE.short }, SHORTAGE_URL).then(function(r){
     var z = r && r.zero && r.zero.summary ? (r.zero.summary.total || 0) : 0;
@@ -2341,7 +2356,7 @@ function loadHomeMore(){
   }).catch(logErr);
   api('getExpensesData', rangeParams('exp')).then(function(e){
     var bad = e && (e.stale || (e.itemizedStaleDays != null && e.itemizedStaleDays > 2));
-    setHomeSlot('exp', bad ? task('bad', 'المصروفات واقفة', 'سجّلها عشان الصافي يبقى صح', (e.stale ? e.staleDays : e.itemizedStaleDays) + ' يوم', "go('money',2)") : '');
+    setHomeSlot('exp', bad ? task('bad', 'بيانات المصروفات متأخرة', 'سجّلها عشان الصافي يبقى صح', (e.stale ? e.staleDays : e.itemizedStaleDays) + ' يوم', "go('money',2)") : '');
   }).catch(logErr);
 }
 
@@ -2410,7 +2425,9 @@ function loadTrends(){
 
 /* ─────── مبيعات ─────── */
 function setSalesRange(v){ setRange('sales', v, pgSales); }
+var SALES_REQUEST=0;
 function pgSales(){
+  var request=++SALES_REQUEST;
   var box = document.getElementById('p-money');
   var p = rangeParams('sales');
 
@@ -2422,6 +2439,7 @@ function pgSales(){
 
   Promise.all([ apiFresh('getMonthTotalsRaw', p), apiFresh('getStaffKPI', p) ])
   .then(function(r){
+    if(request!==SALES_REQUEST || CUR!=='money' || TAB!==0)return;
     if (!r[0] || !r[0].ok) throw new Error('sales');
     cacheSet('sales', p, { m: r[0], k: r[1] });
     markSync();
@@ -2456,8 +2474,11 @@ function drawSales(m, k, box){
     { value: num(m.invoices_total), label: tr('invoices'), tone: 'brand' }
   ]);
 
+  if(m.source!=='pos-invoices-v1')html='<div class="state err">أرقام مؤقتة من النسخة السابقة؛ يلزم تحديث السيرفر لتوحيد مصدر المبيعات.</div>'+html;
+  else html='<div class="state">المصدر: فواتير نظام البيع'+(m.provisional?' · اليوم جارٍ والأرقام قابلة للتحديث':'')+'</div>'+html;
+  if((m.missing_days||[]).length)html+='<div class="state">لم تتوفر فواتير مسجلة في '+m.missing_days.length+' يوم؛ غياب الملف لا يثبت عدم وجود مبيعات.</div>';
   /* 🆕 كارت المتوسطات — كان ناقص تمامًا.
-     مفيد أكتر من الإجمالي لما تقارن فترات مختلفة الطول. */
+     مفيد أكثر من الإجمالي لما تقارن فترات مختلفة الطول. */
   if (days > 1) {
     var BE = goalOf('breakeven', 7800), adn = m.avg_daily_net || 0;
     html += card(tr('dailyAvg'), label,
@@ -2473,24 +2494,48 @@ function drawSales(m, k, box){
     row(tr('discount'), null, ltr(num(m.discount_total))) +
     row(tr('returns'), ltr(num(m.returns_value_total)) + ' ' + tr('egp'), ltr(num(m.returns_total))));
 
-  var daily = (k.daily || []).slice(-14).reverse();
+  var daily = (m.daily || k.daily || []).slice(-14).reverse();
   html += card(tr('byDay'), null, daily.length ? daily.map(function(d){
     var be = goalOf('breakeven', 7800);
-    return row(d.date, ltr(d.new_c) + ' ' + tr('newCust'),
+    return row(d.date, d.new_c==null?'من فواتير نظام البيع':ltr(d.new_c) + ' ' + tr('newCust'),
       '<span style="color:var(--' + (d.sales >= be ? 'ok' : 'bad') + ')">' + ltr(num(d.sales)) + '</span>');
   }).join('') + '<div class="state" style="padding:8px 0 0;text-align:start">الأخضر فوق نقطة التعادل ' + ltr(num(goalOf('breakeven', 7800))) + '، والأحمر تحتها</div>' : emptyState());
   html += '<div id="trends"></div><div id="plBox"></div>';
   box.innerHTML = html;
   loadTrends();
-  api('getProfitLoss').then(function(d){
-    var pb = document.getElementById('plBox'); if (!pb || !d || !d.ok) return;
-    pb.innerHTML = (d.exp_stale ? '<div class="state err" style="margin-bottom:10px">' + tr('plStale') + ' ' + ltr(d.exp_stale_days) + ' ' + tr('daysWord') + '</div>' : '') +
-      card(tr('pl'), d.month,
-        row(tr('totalProfit'), null, ltr(num(d.total_profit))) +
-        row(tr('totalExpenses'), null, ltr(num(d.total_expenses))) +
-        row(tr('salaries'), null, ltr(num(d.total_salaries_so_far))) +
-        row(tr('netProfit'), null, '<b style="color:var(--' + (d.net_profit >= 0 ? 'ok' : 'bad') + ')">' + ltr(num(d.net_profit)) + '</b>'));
-  }).catch(function(e){ logErr(e); });
+  loadPeriodPL(pRangeForSales(),box);
+
+}
+
+function pRangeForSales(){return rangeParams('sales');}
+function loadPeriodPL(params,box){
+  var slot=document.getElementById('plBox'),r=params;
+  var bounds=r.from&&r.to?{from:r.from,to:r.to}:clientDateRange(r.range||'today');
+  if(!slot || !bounds)return;
+  var months=[],cursor=bounds.from.slice(0,7);
+  while(cursor<=bounds.to.slice(0,7)&&months.length<13){months.push(cursor);var date=new Date(cursor+'-01T12:00:00Z');date.setUTCMonth(date.getUTCMonth()+1);cursor=date.toISOString().slice(0,7);}
+  slot.innerHTML='<div class="state">جارٍ تحميل الربح والخسارة لنفس الفترة…</div>';
+  Promise.all(months.map(function(month){return api('getProfitLoss',{month:month});})).then(function(parts){
+    if(document.getElementById('plBox')!==slot)return;
+    if(parts.some(function(x){return !x || !x.ok || !Array.isArray(x.days);}))throw Error('pl');
+    var days=[].concat.apply([],parts.map(function(x){return x.days;})).filter(function(x){return x.date>=bounds.from&&x.date<=bounds.to;});
+    var incomplete=parts.some(function(x){return x.financial_schema!=='finance-review-v1'||x.expense_source_error||x.exp_stale||x.salary_conflict;})||days.some(function(x){return x.pending_expenses>0||x.net==null;});
+    var sum=function(key){return days.reduce(function(t,x){return t+(Number(x[key])||0);},0);};
+    slot.innerHTML=card(tr('pl'),esc(bounds.from+' — '+bounds.to),
+      (incomplete?'<div class="state err">النتيجة قيد المراجعة: توجد مصروفات غير مطابقة أو بيانات غير مكتملة.</div>':'')+
+      row(tr('totalProfit'),'',ltr(num(sum('profit'))))+row('المصروفات المسجلة','قد تشمل بنودًا تحت المراجعة',ltr(num(sum('expenses'))))+
+      row('مخصص الرواتب','يُراجع مع الرواتب المدفوعة',ltr(num(sum('salary_share'))))+
+      row(tr('netProfit'),'',incomplete?'قيد المراجعة':ltr(num(sum('net')))));
+  }).catch(function(){if(document.getElementById('plBox')===slot)slot.innerHTML='<div class="state err">تعذر تحميل الربح والخسارة لنفس الفترة</div>';});
+}
+function clientDateRange(range){
+  var today=cairoNow().date,y=isoAdd(today,-1),first=today.slice(0,8)+'01';
+  if(range==='today')return {from:today,to:today};
+  if(range==='yesterday')return {from:y,to:y};
+  if(range==='week')return {from:isoAdd(today,-6),to:today};
+  if(range==='month')return {from:first,to:today};
+  if(range==='lastMonth'){var end=isoAdd(first,-1);return {from:end.slice(0,8)+'01',to:end};}
+  return null;
 }
 
 /* ─────── مالية: الربح والخسارة ─────── */
@@ -2510,7 +2555,7 @@ function drawPL(d, box){
     var html = vitals(tr('pl'), d.month, [
       { value: num(d.total_profit), label: tr('totalProfit'), tone: 'ok' },
       { value: num(d.total_expenses), label: tr('totalExpenses'), tone: 'warn' },
-      { value: num(d.net_profit), label: tr('netProfit'), tone: d.net_profit >= 0 ? 'ok' : 'bad' }
+      { value: (d.net_profit==null?'قيد المراجعة':num(d.net_profit)), label: tr('netProfit'), tone: d.net_profit >= 0 ? 'ok' : 'bad' }
     ]);
     html += card(tr('pl'), d.month,
       row(tr('salesPerf'), null, ltr(num(d.total_sales))) +
@@ -2518,7 +2563,7 @@ function drawPL(d, box){
     var days = (d.days || []).slice().reverse();
     html += card(tr('byDay'), null, days.length ? days.map(function(x){
       return row(x.date, tr('profit') + ' ' + ltr(num(x.profit)),
-        '<span style="color:var(--' + (x.net >= 0 ? 'ok' : 'bad') + ')">' + ltr(num(x.net)) + '</span>');
+        '<span style="color:var(--' + (x.net >= 0 ? 'ok' : 'bad') + ')">' + (x.net==null?'قيد المراجعة':ltr(num(x.net))) + '</span>');
     }).join('') : emptyState());
     box.innerHTML = warn + html;
   }
@@ -2543,7 +2588,7 @@ function drawExpenses(d, box){
         '<br><span style="opacity:.8;font-size:13px">' +
         tr('expStaleHint') + ' ' + esc(d.lastEntry || '') + '</span></div>';
     } else if (d.itemizedStaleDays != null && d.itemizedStaleDays > 2){
-      warn = '<div class="state err" style="margin-bottom:10px">⚠️ تفاصيل المصروفات واقفة من ' +
+      warn = '<div class="state err" style="margin-bottom:10px">⚠️ تفاصيل تأخر تسجيل المصروفات لمدة ' +
         ltr(d.itemizedStaleDays) + ' ' + tr('daysWord') +
         '<br><span style="opacity:.8;font-size:13px">الإجمالي بيتكمّل من النظام، لكن التفاصيل ناقصة — اتأكد من تصدير Pharmaclick</span></div>';
     } else if (d.sourceError){
@@ -2551,10 +2596,10 @@ function drawExpenses(d, box){
         esc(d.sourceError) + '</div>';
     }
     /* أيام فيها مصروفات متنوعة من إجمالي النظام من غير تفاصيل — الرقم صح بس
-       مفيش بنود. بنقولها صراحة عشان محدش يدوّر على بند مش موجود. */
+       لا توجد بنود. بنقولها صراحة عشان محدش يابحث على بند مش موجود. */
     if (d.ledger_count){
       warn += '<div class="state" style="padding:0 0 10px;text-align:start">' +
-        tr('expLedgerNote') + ' ' + ltr(num(d.ledger_total)) + ' ' + tr('egp') + '</div>';
+        'بنود غير مفصّلة تحتاج إلى مطابقة قبل اعتماد صافي الربح: ' + ' ' + ltr(num(d.ledger_total)) + ' ' + tr('egp') + '</div>';
     }
     var top = (d.byCategory || [])[0];
     var html = ctlBar(
@@ -2564,7 +2609,7 @@ function drawExpenses(d, box){
       'expMenu()',
       RANGE.exp === 'custom' || RANGE.exp === 'lastMonth') +
       vitals(tr('expenses'), d.label, [
-      { value: num(d.total), label: tr('totalExpenses'), tone: 'warn',
+      { value: num(d.total), label: 'إجمالي المدفوعات', tone: 'warn',
         note: ltr(num(d.count)), sub: tr('entries') },
       { value: num(top ? top.total : 0), label: top ? top.category : '—', tone: 'bad',
         note: d.total ? (pct(top ? top.total : 0, d.total) + '%') : null },
@@ -2572,6 +2617,7 @@ function drawExpenses(d, box){
         note: ltr(num(d.income_count || 0)), sub: tr('entries') }
     ]);
 
+    if(d.operating_total!=null)html+=card('تفصيل المدفوعات','',row('مصروفات التشغيل المسجلة','تشمل الرواتب والبنود تحت المراجعة',ltr(num(d.operating_total)))+row('شراء مخزون','لا يُخصم مرة أخرى كمصروف تشغيل',ltr(num(d.purchases_total)))+row('تحت المراجعة','ضمن الإجمالي، وليست إضافة إليه',ltr(num(d.pending_review_total))));
     /* الفئات بقت قابلة للفتح — كانت أرقام صمّاء */
     html += card(tr('byCategory'), null, (d.byCategory || []).length
       ? d.byCategory.map(function(c){
@@ -2593,7 +2639,7 @@ function drawExpenses(d, box){
         '<div class="row-main"><b>' + esc(i.name || i.category) + '</b>' +
         '<small>' + ltr(i.date) + (i.time ? ' · ' + ltr(i.time) : '') +
         (i.company ? ' · ' + esc(i.company) : '') + '</small></div>' +
-        '<span class="v">' + ltr(num(i.amount)) + '</span></div>';
+        '<span class="v">' + ltr(num(i.amount)) + (i.fromLedger?' · تحت المراجعة':'') + '</span></div>';
     }).join(''));
     box.innerHTML = warn + html;
   }
@@ -2632,7 +2678,7 @@ function refreshMark(ok){
   b.textContent = ok ? '✓' : '⚠';
   b.style.color = ok ? 'var(--ok)' : 'var(--warn)';
   b.title = ok ? tr('refreshOk') : tr('refreshFail');
-  b._t = setTimeout(function(){ b.textContent = '⟳'; b.style.color = ''; b.title = 'حدّث دلوقتي'; }, 2000);
+  b._t = setTimeout(function(){ b.textContent = '⟳'; b.style.color = ''; b.title = 'تحديث البيانات'; }, 2000);
 }
 
 function pgDebts(){
@@ -2653,11 +2699,11 @@ var DEBT_BUCKETS = [
   { key:'b1_3',  max:90,   label:'bucket1_3',   tone:'warn'  },
   { key:'b3_6',  max:180,  label:'bucket3_6',   tone:'bad'   },
   { key:'b6',    max:1e9,  label:'bucket6',     tone:'bad'   },
-  /* مفيش تاريخ سداد أصلاً — رمادي، لأن دي معلومة ناقصة مش حكم على العميل */
+  /* لا توجد تاريخ سداد أصلاً — رمادي، لأن دي معلومة ناقصة مش حكم على العميل */
   { key:'none',  max:null, label:'bucketNone',  tone:'slate' }
 ];
 
-/* ═══════════ 🧾 الميزانية: اللي ليك واللي عليك ═══════════
+/* ═══════════ 🧾 الميزانية: الأصول والالتزامات ═══════════
    الأرقام التلقائية من تقرير نظام البيع اليومي، والكاش والبنك والمرتبات بتدخلهم إنت. */
 var BAL = { data: null };
 function pgBalance(){
@@ -2669,38 +2715,38 @@ function pgBalance(){
   }).catch(function(e){ logErr(e); if (!BAL.data) oops(box, "pgBalance()"); });
 }
 function balVal(x){
-  if (x.amount === null || x.amount === undefined) return badge(x.optional ? '—' : 'أدخله', x.optional ? 'slate' : 'warn');
+  if (x.amount === null || x.amount === undefined) return badge(x.optional ? '—' : 'إدخال القيمة', x.optional ? 'slate' : 'warn');
   return ltr(num(x.amount));
 }
 function drawBalance(){
   var box = document.getElementById('p-money'), d = BAL.data; if (!d) return;
   var html = vitals('الميزانية', d.as_of ? 'نظام البيع · ' + d.as_of : '', [
-    { value: num(d.net), label: 'الصافي', tone: d.net >= 0 ? 'ok' : 'bad',
-      note: d.missing.length ? 'ناقص أرقام' : '', sub: '' },
-    { value: num(d.assets_total), label: 'ليك', tone: 'ok' },
-    { value: num(d.liabs_total), label: 'عليك', tone: 'warn' }
+    { value: num(d.net), label: d.missing.length?'صافي مبدئي':'صافي الأصول', tone: d.missing.length?'warn':(d.net >= 0 ? 'ok' : 'bad'),
+      note: d.missing.length ? 'بيانات غير مكتملة' : '', sub: '' },
+    { value: num(d.assets_total), label: 'الأصول', tone: 'ok' },
+    { value: num(d.liabs_total), label: 'الالتزامات', tone: 'warn' }
   ]);
   if (d.missing.length)
-    html += alertBox('warn', 'ناقص أرقام: ' + d.missing.join('، '), 'الصافي مش كامل لحد ما تدخلها (تحت)', "document.getElementById('balForm').scrollIntoView({behavior:'smooth'})");
+    html += alertBox('warn', 'بيانات غير مكتملة: ' + d.missing.join('، '), 'الصافي مبدئي حتى استكمال البيانات أدناه', "document.getElementById('balForm').scrollIntoView({behavior:'smooth'})");
   if (d.base){
     var dl = d.delta, up = dl >= 0;
     html += '<div class="state" style="text-align:start;padding:6px 0 10px">منذ «' + esc(d.base.label) + '» (' + ltr(d.base.date) + '): ' +
       '<b style="color:var(--' + (up ? 'ok' : 'bad') + ')">' + (up ? '+' : '−') + ltr(num(Math.abs(dl))) + '</b>' +
       (d.base.missing && d.base.missing.length ? ' <small>(النقطة دي كانت ناقصة: ' + esc(d.base.missing.join('، ')) + ')</small>' : '') + '</div>';
   }
-  html += card('ليك', ltr(num(d.assets_total)), d.assets.map(function(x){ return row(x.label, x.sub ? esc(x.sub) : '', balVal(x)); }).join(''));
-  html += card('عليك', ltr(num(d.liabs_total)), d.liabs.map(function(x){ return row(x.label, x.sub ? esc(x.sub) : '', balVal(x)); }).join(''));
+  html += card('الأصول', ltr(num(d.assets_total)), d.assets.map(function(x){ return row(x.label, x.sub ? esc(x.sub) : '', balVal(x)); }).join(''));
+  html += card('الالتزامات', ltr(num(d.liabs_total)), d.liabs.map(function(x){ return row(x.label, x.sub ? esc(x.sub) : '', balVal(x)); }).join(''));
   if ((d.claims || []).length)
     html += card('مطالبات الشركات', ltr(num(d.claims.reduce(function(a,c){ return a + c.amount; }, 0))),
       d.claims.map(function(c){ return row(c.name, '', ltr(num(c.amount))); }).join(''));
-  if (d.debt_gap > 0) html += '<div class="state" style="text-align:start;font-size:12px">«كل الدين» في النظام ' + ltr(num(d.debt_gross)) + ' و«صافي الدين» ' + ltr(num(d.debt_net)) + ' — الفرق ' + ltr(num(d.debt_gap)) + ' النظام بيطرحه. شوف صفحة الديون تعرف مين.</div>';
+  if (d.debt_gap > 0) html += '<div class="state" style="text-align:start;font-size:12px">«إجمالي الدين» في النظام ' + ltr(num(d.debt_gross)) + ' و«صافي الدين» ' + ltr(num(d.debt_net)) + ' — الفرق ' + ltr(num(d.debt_gap)) + ' النظام بيطرحه. راجع تفاصيل الديون لتفسير الفرق.</div>';
   if (d.incoming_cost) html += '<div class="state" style="text-align:start;font-size:12px">بضاعة جاية (طلبيات تحت الاستلام) بتكلفة ' + ltr(num(d.incoming_cost)) + ' — مش محسوبة فوق عشان ماتتعدّش مرتين.</div>';
   var f = function(id, lab, val){
     return '<label style="display:block;margin:8px 0 4px;font-size:13px;color:var(--ink-2)">' + lab + '</label>' +
       '<input id="bal_' + id + '" inputmode="decimal" autocomplete="off" value="' + (val === null || val === undefined ? '' : esc(val)) + '" ' +
       'style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-family:inherit;font-size:14px">';
   };
-  html += '<div class="card" id="balForm"><div class="card-head"><div><h3>أرقامك</h3><p>' +
+  html += '<div class="card" id="balForm"><div class="card-head"><div><h3>البيانات المالية</h3><p>' +
     (d.inputs.at ? 'آخر تعديل ' + ltr(d.inputs.at) : 'لسه ماتدخلتش') + '</p></div></div>' +
     f('cash', 'الكاش (خزنة + درج)', d.inputs.cash) + f('bank', 'البنك / الكروت', d.inputs.bank) +
     f('salaries', 'مرتبات مستحقة', d.inputs.salaries) + f('other_assets', 'أصول تانية (اختياري)', d.inputs.other_assets) +
@@ -2709,26 +2755,26 @@ function drawBalance(){
     '<div class="group-title" style="margin-top:14px">نقطة بداية</div>' +
     '<input id="bal_label" value="' + esc('بداية ' + new Date().toLocaleDateString('ar-EG', { month: 'long' })) + '" ' +
     'style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-family:inherit;font-size:14px">' +
-    '<button class="btn btn-quiet ic" style="margin-top:8px" onclick="balBase()">' + IC.flag + ' اعتبر ميزانية النهارده نقطة بداية</button></div>';
-  html += '<div class="state" style="padding:4px 0 12px;font-size:11px">الصافي = ليك − عليك. «مطالبات الشركات» من تقرير النظام اليومي.</div>';
+    '<button class="btn btn-quiet ic" style="margin-top:8px" onclick="balBase()">' + IC.flag + ' اعتبر ميزانية اليوم نقطة بداية</button></div>';
+  html += '<div class="state" style="padding:4px 0 12px;font-size:11px">الصافي = الأصول − الالتزامات. «مطالبات الشركات» من تقرير النظام اليومي.</div>';
   box.innerHTML = html;
 }
 function balSave(){
   var p = {};
   ['cash', 'bank', 'salaries', 'other_assets', 'other_liabs'].forEach(function(k){ p[k] = document.getElementById('bal_' + k).value; });
   api('setBalanceInputs', p).then(function(d){
-    if (d && d.ok){ BAL.data = d; drawBalance(); toast('✓ اتحفظ'); } else if (!(d && d.pinError)) toast((d && d.error) || tr('failed'));
+    if (d && d.ok){ BAL.data = d; drawBalance(); toast('✓ تم الحفظ'); } else if (!(d && d.pinError)) toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });
 }
 function balBase(){
   var lab = document.getElementById('bal_label').value;
   if (BAL.data && BAL.data.missing.length && !confirm('لسه ناقص: ' + BAL.data.missing.join('، ') + '\nتحفظها كنقطة بداية كده؟')) return;
   api('setBalanceBase', { label: lab }).then(function(d){
-    if (d && d.ok){ BAL.data = d; drawBalance(); toast('✓ اتحفظت نقطة البداية'); } else if (!(d && d.pinError)) toast((d && d.error) || tr('failed'));
+    if (d && d.ok){ BAL.data = d; drawBalance(); toast('✓ تم الحفظت نقطة البداية'); } else if (!(d && d.pinError)) toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });
 }
 
-/* ═══════════ 🧮 التقفيل يوم بيومه ووسائل الدفع (من ملفات نظام البيع) ═══════════ */
+/* ═══════════ 🧮 الإغلاق اليومي يوم بيومه ووسائل الدفع (من ملفات نظام البيع) ═══════════ */
 var IC = {
   share: '<svg viewBox="0 0 24 24"><path d="M12 15V3.5"/><path d="M7.5 8 12 3.5 16.5 8"/><path d="M5 12v6.5A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V12"/></svg>',
   checkAll: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M8.5 12.5 11 15l4.5-5"/></svg>',
@@ -2800,6 +2846,11 @@ function clsProblem(x){
   var R = x.close && x.close.rows; if (!R) return false;
   return !!((R.bank_card && Math.abs(R.bank_card.diff) > 1) || (R.drawer && Math.abs(R.drawer.diff) > 5));
 }
+function closingDifferenceLabel(x){
+  var rows=x.close && x.close.rows,out=[];
+  if(rows){[['drawer','الدرج'],['bank_card','الكارت']].forEach(function(v){var z=rows[v[0]];if(z && Math.abs(z.diff)>(v[0]==='drawer'?5:1))out.push(v[1]+' '+(z.diff>0?'+':'−')+n2(Math.abs(z.diff)));});}
+  return badge(out.length?out.join(' · '):'فرق مطابقة الفواتير','bad');
+}
 function clsLabel(x){
   return new Date(x.date + 'T12:00:00').toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' });
 }
@@ -2811,7 +2862,7 @@ function clsDayBody(x){
           row('تحصيل ديون', 'سداد عملاء', ltr(num(x.collected))) +
           row('المفروض في الدرج', 'كاش − مرتجعات + تحصيل (من غير العهدة)', '<b>' + ltr(num(x.expected_cash)) + '</b>');
   if (x.checks){
-    rows += '<div class="group-title">مطابقة الفواتير بتقفيل النظام</div>' + x.checks.map(function(c){
+    rows += '<div class="group-title">مطابقة الفواتير بإغلاق النظام</div>' + x.checks.map(function(c){
       var ok = Math.abs(c.diff) <= 0.5;
       return row(c.label, 'PDF ' + ltr(n2(c.pdf)) + ' · فواتير ' + ltr(n2(c.mine)),
         ok ? badge('✓ مطابق', 'ok') : badge('فرق ' + ltr((c.diff > 0 ? '+' : '−') + n2(Math.abs(c.diff))), 'bad'));
@@ -2819,7 +2870,7 @@ function clsDayBody(x){
   }
   if (x.close){
     var R = x.close.rows;
-    rows += '<div class="group-title">العدّ الفعلي (من تقفيل النظام)</div>';
+    rows += '<div class="group-title">العدّ الفعلي (من إغلاق النظام)</div>';
     [['drawer', 'كاش الدرج'], ['bank_card', 'كارت بنكي'], ['companies', 'شركات']].forEach(function(q){
       var r = R[q[0]]; if (!r || (q[0] === 'companies' && !r.sys && !r.user)) return;
       rows += row(q[1], 'النظام ' + ltr(n2(r.sys)) + ' · اتكتب ' + ltr(n2(r.user)), diffBadge(r.diff, q[0] === 'drawer' ? 5 : 1));
@@ -2830,9 +2881,9 @@ function clsDayBody(x){
         (b1 && Math.abs(b1.diff) > 1) || (d1 && Math.abs(d1.diff) > 5) ? badge('فرق', 'bad') : badge('✓', 'ok'));
     });
   } else if (x.date < cairoNow().date) {
-    rows += '<div class="state" style="text-align:start;font-size:12px">مفيش PDF تقفيل لليوم ده على الدرايف.</div>';
+    rows += '<div class="state" style="text-align:start;font-size:12px">لم يتوفر ملف إغلاق لهذا اليوم.</div>';
   }
-  var pdf = x.pdf ? '<a class="btn btn-quiet ic" style="margin-top:10px" target="_blank" rel="noopener" href="' + esc(x.pdf) + '">' + IC.doc + ' تقفيل النظام (PDF)</a>' : '';
+  var pdf = x.pdf ? '<a class="btn btn-quiet ic" style="margin-top:10px" target="_blank" rel="noopener" href="' + esc(x.pdf) + '">' + IC.doc + ' إغلاق النظام (PDF)</a>' : '';
   return rows + pdf;
 }
 /* الأيام: مقفولة، وبتفتح بالضغط. خانة الاختيار للمشاركة */
@@ -2843,9 +2894,9 @@ function clsListHtml(){
     return '<div class="card" style="padding:0;overflow:hidden' + (clsProblem(x) ? ';border-inline-start:3px solid var(--bad)' : '') + '">' +
       '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer" onclick="clsToggle(\'' + x.date + '\')">' +
         '<input type="checkbox" ' + (on ? 'checked ' : '') + 'aria-label="اختار اليوم للمشاركة" onclick="clsPick(\'' + x.date + '\',event)" style="width:22px;height:22px;accent-color:var(--brand);flex:none">' +
-        '<div style="flex:1;min-width:0"><b style="font-size:var(--t-title);font-weight:650">' + esc(clsLabel(x)) + '</b>' +
+        '<div style="flex:1;min-width:0"><b style="font-size:var(--t-title);font-weight:650">' + esc(clsLabel(x)) + (x.date===cairoNow().date?' · يوم جارٍ':'') + '</b>' +
           '<small style="display:block;font-size:var(--t-small);color:var(--ink-2);margin-top:2px">' + ltr(x.invoices) + ' فاتورة · صافي ' + ltr(num(x.net)) + '</small></div>' +
-        (clsProblem(x) ? badge('فرق', 'bad') : '') +
+        (clsProblem(x) ? closingDifferenceLabel(x) : '') +
         '<span style="color:var(--ink-3);font-size:15px">' + (open ? '⌄' : '›') + '</span></div>' +
       (open ? '<div style="padding:0 16px 14px">' + clsDayBody(x) + '</div>' : '') + '</div>';
   }).join('');
@@ -2886,7 +2937,7 @@ function clsDrawDay(x, logo){
   row2('تحصيل ديون', f0(x.collected));
   row2('المفروض في الدرج', f0(x.expected_cash), true);
   if (x.checks){
-    sec('مطابقة الفواتير بتقفيل النظام');
+    sec('مطابقة الفواتير بإغلاق النظام');
     x.checks.forEach(function(c){
       var ok = Math.abs(c.diff) <= 0.5;
       pill(c.label, 'فواتير ' + bn(c.mine) + '  ·  PDF ' + bn(c.pdf), ok ? '✓ مطابق' : 'فرق ' + (c.diff > 0 ? '+' : '-') + f0(Math.abs(c.diff)), ok ? 'ok' : 'bad');
@@ -2894,7 +2945,7 @@ function clsDrawDay(x, logo){
   }
   if (x.close){
     var R = x.close.rows;
-    sec('العدّ الفعلي (من تقفيل النظام)');
+    sec('العدّ الفعلي (من إغلاق النظام)');
     [['drawer', 'كاش الدرج', 5], ['bank_card', 'كارت بنكي', 1], ['companies', 'شركات', 1]].forEach(function(q){
       var r = R[q[0]]; if (!r || (q[0] === 'companies' && !r.sys && !r.user)) return;
       var z = Math.abs(r.diff) < 0.005;
@@ -2908,7 +2959,7 @@ function clsDrawDay(x, logo){
   var H = HH + 24 + items.reduce(function(a, it){ return a + (it.t === 'sec' ? SH : RH); }, 0) + 24 + FH;
   var cv = document.createElement('canvas'); cv.width = W; cv.height = H; var c = cv.getContext('2d');
   c.fillStyle = '#fff'; c.fillRect(0, 0, W, H);
-  camrHead(c, W, logo, 'تقفيل يومي  |  ' + x.invoices + ' فاتورة  ·  صافي ' + f0(x.net), { label: clsLabel(x), date: x.date });
+  camrHead(c, W, logo, 'إغلاق يومي  |  ' + x.invoices + ' فاتورة  ·  صافي ' + f0(x.net), { label: clsLabel(x), date: x.date });
   var y = HH + 24, i = 0;
   items.forEach(function(it){
     if (it.t === 'sec'){
@@ -2944,10 +2995,10 @@ function clsShare(){
         if (!doc) doc = new J({ unit: 'pt', format: [w, h], orientation: w > h ? 'l' : 'p' }); else doc.addPage([w, h], w > h ? 'l' : 'p');
         doc.addImage(cv.toDataURL('image/jpeg', .9), 'JPEG', 0, 0, w, h);
       });
-      var name = 'تقفيل_' + days[0].date + (days.length > 1 ? '_' + days[days.length - 1].date : '') + '.pdf', blob = doc.output('blob');
+      var name = 'إغلاق_' + days[0].date + (days.length > 1 ? '_' + days[days.length - 1].date : '') + '.pdf', blob = doc.output('blob');
       var file = window.File ? new File([blob], name, { type: 'application/pdf' }) : null;
       if (file && navigator.canShare && navigator.canShare({ files: [file] }))
-        navigator.share({ files: [file], title: 'تقفيل الصيدلية' }).catch(function(e){ if (e && e.name !== 'AbortError') doc.save(name); });
+        navigator.share({ files: [file], title: 'إغلاق الصيدلية' }).catch(function(e){ if (e && e.name !== 'AbortError') doc.save(name); });
       else doc.save(name);
     }).catch(function(){ toast(tr('failed')); });
   });
@@ -2963,12 +3014,12 @@ function drawClosing(){
     { value: num(t.card), label: 'كارت بنكي', tone: 'brand', note: pct(t.card, sum) + '%', sub: 'من المبيعات' }
   ]);
   if (!d.days.length){ box.innerHTML = html + (d.loading ? '<div class="state"><div class="spin"></div>' + tr('loading') + '</div>' :
-      '<div class="state">مفيش مبيعات في الفترة دي</div>' + (RANGE.close === 'month' ? '<button class="btn btn-quiet" onclick="setClsRange(\'lastMonth\')">اعرض الشهر اللي فات</button>' : '')); return; }
+      '<div class="state">لا توجد مبيعات في الفترة دي</div>' + (RANGE.close === 'month' ? '<button class="btn btn-quiet" onclick="setClsRange(\'lastMonth\')">اعرض الشهر السابق</button>' : '')); return; }
   var bad = d.days.filter(clsProblem);
-  if (bad.length) html += alertBox('warn', bad.length + ' يوم فيه فرق في التقفيل', 'اضغط على اليوم وشوف الفرق بالظبط', '');
+  if (bad.length) html += alertBox('warn', bad.length + ' يوم فيه فرق في الإغلاق اليومي', 'اضغط على اليوم وشوف الفرق بالظبط', '');
   html += '<div id="clsBar">' + clsBarHtml() + '</div><div id="clsList">' + clsListHtml() + '</div>';
   if (d.loading) html += '<div class="state"><div class="spin"></div>بحمّل باقي الأيام…</div>';
-  html += '<div class="state" style="padding:4px 0 12px;font-size:11px">الأرقام من ملفات نظام البيع وبتطابق تقفيل النظام. قارن «المفروض في الدرج» بالكاش اللي عديته فعلًا.</div>';
+  html += '<div class="state" style="padding:4px 0 12px;font-size:11px">الأرقام من ملفات نظام البيع وبتطابق إغلاق النظام. قارن «المفروض في الدرج» بالكاش اللي عديته فعلًا.</div>';
   box.innerHTML = html;
 }
 
@@ -2995,7 +3046,7 @@ function debtListHtml(){
     return c;
   });
   var list = all.filter(function(c){ return debtMatch(c, q); });
-  if (q && !list.length) return '<div class="state">مفيش مدين بالاسم أو الرقم ده</div>';
+  if (q && !list.length) return '<div class="state">لا توجد مدين بالاسم أو الرقم ده</div>';
   var head = q ? '<div class="state" style="padding:0 0 8px;text-align:start">' + ltr(list.length) + ' من ' + ltr(all.length) +
     ' · ' + ltr(num(list.reduce(function(a,c){ return a + c.net; }, 0))) + ' ج</div>' : '';
   var groups = {};
@@ -3027,7 +3078,7 @@ function debtListHtml(){
         '<small>' + sub + '</small></div>' +
         '<div style="display:flex;align-items:center;gap:8px">' +
         '<span class="row-val" style="color:var(--' + b.tone + ')">' + ltr(num(c.net)) + '</span></div></div>';
-    }).join('') + (g.length > lim ? '<div class="state" style="padding:8px 0;font-size:12px">+' + ltr(g.length - lim) + ' كمان — دوّر بالاسم فوق</div>' : '') : '';
+    }).join('') + (g.length > lim ? '<div class="state" style="padding:8px 0;font-size:12px">+' + ltr(g.length - lim) + ' كمان — ابحث بالاسم فوق</div>' : '') : '';
 
     return '<div class="card" style="padding:0;overflow:hidden;border-inline-start:3px solid var(--' + b.tone + ')">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;' +
@@ -3083,10 +3134,10 @@ function drawDebts(isOld){
 
   /* تنبيه المطابقة: لو التفاصيل بعيدة عن الرقم الرسمي، يبقى فيه
      مدينين آخر حركة ليهم أقدم من سنة (بره نطاق القراءة). */
-  /* تفصيل الأرقام: نظام البيع قصاد ملفات الديون (عشان مفيش حاجة تتفترض) */
+  /* تفصيل الأرقام: نظام البيع قصاد ملفات الديون (عشان لا توجد حاجة تتفترض) */
   if (d.total_official_gross){
     html += '<div class="state" style="text-align:start;padding:4px 0 8px;font-size:12.5px">' +
-      'نظام البيع: كل الدين ' + ltr(num(d.total_official_gross)) + ' · صافي ' + ltr(num(d.total_official)) +
+      'نظام البيع: إجمالي الدين ' + ltr(num(d.total_official_gross)) + ' · صافي ' + ltr(num(d.total_official)) +
       ' (فرق ' + ltr(num(d.total_official_gross - d.total_official)) + ')<br>' +
       'الملفات: مدينين ' + ltr(num(d.total_detail)) + ' · ليهم عندك ' + ltr(num(d.credits_total || 0)) +
       ' (' + ltr(d.credits_count || 0) + ' عميل)</div>';
@@ -3115,7 +3166,7 @@ function drawDebts(isOld){
   html += '<div id="debtList">' + debtListHtml() + '</div>';
 
   html += '<div class="state" style="padding:4px 0 12px;font-size:11px">' + tr('noteLastMove') + '</div>';
-  /* البايع الحقيقي — جاي مع نفس النداء، مفيش طلب زيادة */
+  /* البايع الحقيقي — جاي مع نفس النداء، لا توجد طلب زيادة */
   if ((d.by_seller || []).length) html += card(tr('byEmployee'), null,
     d.by_seller.map(function(e){
       return row(e.employee, null, ltr(num(e.total)));
@@ -3248,12 +3299,12 @@ function drawStaffHub(isOld){
         '<span class="staff-sales">' + LRI + num(e.net || e.sales) + PDI +
           '<u>' + esc(tr('sales')) + '</u></span>' +
         '<span class="staff-score" style="--tone:var(--' + tone + ')">' +
-          LRI + e.care_score + PDI + '</span>' +
+          (e.invoices<20?'عينة محدودة':LRI + e.care_score + PDI) + '</span>' +
       '</div></div>';
   }).join('') + '</div>' : '<div class="card">' + emptyState() + '</div>';
 
   /* موجودين دلوقتي — بس لو فيه حد مش متطابق مع القائمة فوق */
-  html += '<div class="state" style="text-align:start;font-size:12px">الدرجة من 100 = عملاء جداد 35% + تسجيل 30% + تكرار 20% + مرتجعات قليلة 15%، مقارنة بباقي الفريق. أخضر 70+، برتقالي 50+، أحمر أقل.</div>';
+  html += '<div class="state" style="text-align:start;font-size:12px">تقييم إرشادي؛ لا يكفي وحده للحكم على الموظف. تُحجب الدرجة عند أقل من 20 فاتورة. الدرجة من 100 = عملاء جداد 35% + تسجيل 30% + تكرار 20% + مرتجعات قليلة 15%، مقارنة بباقي الفريق. أخضر 70+، برتقالي 50+، أحمر أقل.</div>';
   if (HR.live.ok === false) html += card(tr('onShiftNow'), null,
     '<div class="state err">' + esc(HR.live.error) + '</div>');
 
@@ -3475,7 +3526,7 @@ function invOrderHtml(){
     Object.keys(comps).forEach(function(co){
       by[co] = by[co] || [];
       comps[co].forEach(function(it){
-        /* كمية الطلب: تقريب لفوق (مفيش نص علبة) — ولو صفر/سالب/مش رقم نعرضها 1 كحد أدنى */
+        /* كمية الطلب: تقريب لفوق (لا توجد نص علبة) — ولو صفر/سالب/مش رقم نعرضها 1 كحد أدنى */
         var q_ = Math.ceil(Number(it.shortage) - 1e-9);
         if (!isFinite(q_) || q_ < 1) q_ = 1;
         by[co].push({ code: it.code, name: it.name, qty: q_, cat: cat });
@@ -3677,7 +3728,7 @@ function drawAging(isOld){
 
   /* ═══ الشاشة الأولى ═══
      كل قسم قرار مختلف: صلّح · مرتجع · اطلب · اعرض/خصّم · راجع الشراء.
-     مفيش دمج بين الراكد وقرب الصلاحية لأن قرارهم مختلف. */
+     لا توجد دمج بين الراكد وقرب الصلاحية لأن قرارهم مختلف. */
   if (INV_SEC === 'home'){
     var A = (INV_ACC && INV_ACC.ok && INV_ACC.last) ? INV_ACC.last : null;
     html += vitals(tr('invAging'), d.snapshot_at || d.generated_date, [
@@ -3721,7 +3772,7 @@ function drawAging(isOld){
                  dead: tr('deadOnly'), never: tr('neverSec'), all: tr('allStock') };
   var EXPFN  = { fix: 'negMenu()', exp: 'expiryMenu()', order: 'orderMenu()',
                  dead: 'agingMenu()', never: 'neverSoldMenu()', all: 'catAllMenu()' };
-  /* لما القسم مفتوح كتبويب لوحده (الصلاحية/الراكد) عنوانه في الكارت اللي تحت، فمفيش داعي لرأس تاني */
+  /* لما القسم مفتوح كتبويب لوحده (الصلاحية/الراكد) عنوانه في الكارت اللي تحت، فلا توجد داعي لرأس تاني */
   if (TAB === 0) html += secHead(TITLES[INV_SEC] || '', EXPFN[INV_SEC]);
 
   if (INV_SEC === 'fix')   html += invFixHtml(d);
@@ -3780,8 +3831,8 @@ function drawAging(isOld){
     });
     EXP_GROUPS = groups;
     html += vitals('الصلاحية', '@@F@@', [
-      { value: num(Math.round(sumX.c)), label: 'منتهي', tone: sumX.n ? 'bad' : '', note: ltr(sumX.n), sub: 'شيله من الرف' },
-      { value: num(Math.round(sum3.c)), label: 'خلال 3 شهور', tone: sum3.n ? 'bad' : '', note: ltr(sum3.n), sub: 'رجّعه دلوقتي' },
+      { value: num(Math.round(sumX.c)), label: 'منتهي', tone: sumX.n ? 'bad' : '', note: ltr(sumX.n), sub: 'إزالة من الرف' },
+      { value: num(Math.round(sum3.c)), label: 'خلال 3 شهور', tone: sum3.n ? 'bad' : '', note: ltr(sum3.n), sub: 'مراجعة الإرجاع للمورّد' },
       { value: num(Math.round(sum6.c)), label: 'من 3 لـ 6 شهور', tone: sum6.n ? 'warn' : '', note: ltr(sum6.n), sub: 'اعرضه أو رجّعه' }
     ]);
     var keys = Object.keys(groups).sort(function(a, b){ return a === 'x' ? -1 : b === 'x' ? 1 : a < b ? -1 : 1; });
@@ -3795,7 +3846,7 @@ function drawAging(isOld){
     keys.forEach(function(k){
       var g = groups[k], tone = k === 'x' || g.dte <= 90 ? 'bad' : g.dte <= 180 ? 'warn' : 'brand';
       if (g.empty){
-        html += '<div class="card exp-m exp-empty"><div class="exp-h"><span class="dot" style="background:var(--line)"></span><div><b>' + esc(g.title) + '</b><small>مفيش أصناف بتنتهي الشهر ده</small></div></div></div>';
+        html += '<div class="card exp-m exp-empty"><div class="exp-h"><span class="dot" style="background:var(--line)"></span><div><b>' + esc(g.title) + '</b><small>لا توجد أصناف بتنتهي هذا الشهر</small></div></div></div>';
         return;
       }
       var open = !!EXP_OPEN[k], rows = open ? g.rows : [], sel = !!EXP_SEL[k];
@@ -3847,7 +3898,7 @@ function drawAging(isOld){
       }).join('') : emptyState());
   }
 
-  /* ═══ ما اتباعش ═══ */
+  /* ═══ دون مبيعات مسجلة ═══ */
   if (INV_SEC === 'never'){
     var nl = d.never_sold_list || [];
     html += card(tr('neverSold'), tr('neverSoldSub'),
@@ -4148,8 +4199,8 @@ function shortAct(btn, action, code, name){
   btn.textContent = '✓';
 }
 
-/* ─────── عملاء: الرسايل ─────── */
-var MSG = { data: null, type: 'all', failedOnly: true };
+/* ─────── عملاء: الرسائل ─────── */
+var MSG = { data: null, type: 'all', failedOnly: false };
 
 function setMsgType(v){ MSG.type = v; drawMessages(); }
 function toggleFailed(){ MSG.failedOnly = !MSG.failedOnly; drawMessages(); }
@@ -4179,7 +4230,7 @@ function drawMessages(isOld){
 
   var html = (isOld ? '<div class="state" style="padding:0 0 8px">' + tr('cached') + '</div>' : '');
 
-  html += vitals(tr('messages'), ltr('30') + ' ' + (LANG === 'ar' ? 'يوم' : 'days'), [
+  html += vitals(tr('messages'), '30' + ' ' + (LANG === 'ar' ? 'يوم' : 'days'), [
     { value: num(all.length - bad.length), label: tr('sent'), tone: 'ok' },
     { value: num(bad.length), label: tr('msgFailed'), tone: bad.length ? 'bad' : 'ok' },
     { value: num(all.length), label: tr('messages'), tone: 'brand' }
@@ -4214,15 +4265,15 @@ function drawMessages(isOld){
           '<small>' + ltr(m.phone) + ' · ' + ltr(m.date) + ' · ' + tr(TYPE_LBL[m.type] || 'typeAll') +
           '</small></div><div style="display:flex;gap:6px">' + actions + '</div></div>';
       }).join('')
-    : emptyState());
-
+    : '<div class="state">'+(MSG.failedOnly?'لا توجد رسائل فاشلة ضمن الفلتر الحالي':'لا توجد رسائل ضمن الفلتر الحالي')+'</div>');
+  if(MSG.failedOnly)html='<div class="state">الفلتر الحالي: الرسائل الفاشلة فقط <button class="btn btn-quiet" onclick="toggleFailed()">عرض جميع الرسائل</button></div>'+html;
   box.innerHTML = html;
 }
 
 function smsAction(btn, action, id){
   btn.disabled = true; btn.textContent = '…';
   post({ action: action, invoiceid: id })
-    .then(function(){ btn.textContent = '✓'; })
+    .then(function(d){ if(!d || !d.ok)throw new Error((d && d.error)||'تعذر تنفيذ العملية'); btn.textContent = '✓'; })
     .catch(function(e){ logErr(e); btn.textContent = '✗'; });
 }
 
@@ -4399,7 +4450,7 @@ var CUST_PERS = [[30, 'شهر'], [60, 'شهرين'], [90, '3 شهور'], [180, '
 var CUST_PER = 30;
 try { CUST_PER = parseInt(localStorage.getItem('custPer'), 10) || 30; } catch (e) {}
 var CUST_VIS = null, CUST_VIS_LOADING = false;
-/* «غابوا من شهر لـ 3 شهور»: محتاجين آخر زيارة في 90 يوم، منفصلة عن فترة «نشطين» */
+/* «غابوا من شهر إلى 3 أشهر»: محتاجين آخر زيارة في 90 يوم، منفصلة عن فترة «نشطين» */
 var CUST_V90 = (function(){ try { var s = JSON.parse(localStorage.getItem('custV90') || 'null'); return s && s.day === cairoNow().date ? s.d : null; } catch (e) { return null; } })();
 function loadCustV90(tries){
   tries = tries || 0;
@@ -4554,7 +4605,7 @@ function custLast(c){
   if (ds === null) return 'آخر زيارة: —';
   var dt = '';
   if (ld){ try { dt = new Date(ld + 'T00:00:00').toLocaleDateString('ar-EG-u-nu-latn', { day: 'numeric', month: 'long' }) + ' · '; } catch (e) {} }
-  return 'آخر زيارة: ' + dt + (ds === 0 ? 'النهاردة' : ds === 1 ? 'إمبارح' : ('من ' + ltr(ds) + ' يوم'));
+  return 'آخر زيارة: ' + dt + (ds === 0 ? 'اليوم' : ds === 1 ? 'إمبارح' : ('من ' + ltr(ds) + ' يوم'));
 }
 function custRow(c, right){
   return '<div class="row" onclick="openCust(\'' + esc(String(c.phone)) + '\')" style="cursor:pointer">' +
@@ -4594,7 +4645,7 @@ function drawCustomers(res, box){
       { value: num(list.length), label: 'مسجلين' },
       { value: visReady ? num(G.active.length) : '…', label: 'اشتروا آخر ' + (CUST_PER === 30 ? 'شهر' : CUST_PER + ' يوم'),
         note: visReady ? pct(G.active.length, list.length) + '%' : null, sub: visReady ? 'من المسجلين' : null },
-      { value: visReady ? num(repeat) : '…', label: 'رجعوا تاني', note: visReady ? pct(repeat, G.active.length) + '%' : null, sub: visReady ? 'جم مرتين+' : null }
+      { value: visReady ? num(repeat) : '…', label: 'اشتروا مجددًا', note: visReady ? pct(repeat, G.active.length) + '%' : null, sub: visReady ? 'جم مرتين+' : null }
     ], visReady ? (function(){
       /* الهدف: 40% في الشهر، 65% في 3 شهور (المزمن + المكالمات + التسجيل) */
       var tgt = CUST_PER <= 30 ? goalOf('active_30', 40) : CUST_PER <= 90 ? goalOf('active_90', 65) : 75;
@@ -4613,7 +4664,7 @@ function drawCustomers(res, box){
       (actAvg !== null ? ' · متوسط ' + ltr(actAvg) + ' زيارة/شهر' : ''),
       visReady ? ltr(num(G.active.length)) : '…', tr('customers'), 'setCustSec');
     var LP = lapsedList(list);
-    html += secBtn('lapsed', 'warn', 'غابوا من شهر لـ 3 شهور', 'كانوا بيشتروا ووقفوا — أسهل ناس ترجع',
+    html += secBtn('lapsed', 'warn', 'غابوا من شهر إلى 3 أشهر', 'كانوا بيشتروا ووقفوا — أسهل ناس ترجع',
       LP ? ltr(num(LP.length)) : '…', tr('customers'), 'setCustSec');
     html += secBtn('new', 'ok', tr('newSec'), tr('newSub'),
       dash && dash.new_customers !== undefined ? ltr(num(dash.new_customers)) : '…', tr('customers'), 'setCustSec');
@@ -4627,7 +4678,7 @@ function drawCustomers(res, box){
   }
 
   /* ── الأقسام ── */
-  var TITLES = { lapsed: 'غابوا من شهر لـ 3 شهور', active: 'نشطين', follow: tr('needFollow'), recover: tr('recoverSec'), new: tr('newSec'),
+  var TITLES = { lapsed: 'غابوا من شهر إلى 3 أشهر', active: 'نشطين', follow: tr('needFollow'), recover: tr('recoverSec'), new: tr('newSec'),
                  blocked: tr('blockedSec'), all: tr('allCust'), calls: 'متابعة المكالمات' };
   html = secHead(TITLES[CUST.sec] || '', 'custMenu()', 'setCustSec(\'home\')') + html;
 
@@ -4639,9 +4690,9 @@ function drawCustomers(res, box){
 
   if (CUST.sec === 'lapsed'){
     var LP2 = lapsedList(list) || [];
-    CUST.cur = LP2.map(function(x){ return x.c; }); CUST.curTitle = 'غابوا من شهر لـ 3 شهور';
+    CUST.cur = LP2.map(function(x){ return x.c; }); CUST.curTitle = 'غابوا من شهر إلى 3 أشهر';
     html += '<div class="state" style="padding:0 0 10px;text-align:start">مترتبين بالأكتر صرفًا في آخر 3 شهور. اتصل بيهم من «متابعة المكالمات» أو دوس على العميل.</div>';
-    html += card('غابوا من شهر لـ 3 شهور', ltr(num(LP2.length)) + ' ' + tr('customers'),
+    html += card('غابوا من شهر إلى 3 أشهر', ltr(num(LP2.length)) + ' ' + tr('customers'),
       !CUST_V90 ? '<div class="state"><div class="spin"></div></div>' :
       LP2.length ? LP2.map(function(x){
         return custRow(x.c, '<span style="text-align:end"><b style="display:block;font-size:13px">' + ltr(num(x.v.s)) + ' ج</b>' +
@@ -4797,7 +4848,7 @@ function custAdvice(c, p){
   var debt = (p && p.debt && p.debt.net) || 0, dp = p && p.debt ? p.debt.daysSincePaid : null;
   var last = p && p.purchases && p.purchases[0];
   var top = last ? last.items.slice(0, 2).map(function(i){ return i.name; }).join(' و') : '';
-  if (c.is_blocked) return { tone: 'slate', text: 'العميل محظور — مفيش إجراء.' };
+  if (c.is_blocked) return { tone: 'slate', text: 'العميل محظور — لا توجد إجراء.' };
   if (debt > 0 && (dp === null || dp > 30))
     return { tone: 'bad', text: 'عليه دين ' + num(debt) + ' ج' + (dp !== null ? ' وآخر حركة من ' + dp + ' يوم' : '') +
       ' — كلّمه للسداد الأول قبل أي عرض.',
@@ -4807,7 +4858,7 @@ function custAdvice(c, p){
       (debt > 0 ? ' · عليه دين ' + num(debt) + ' ج (ذكّره بلطف)' : '') + '.',
       msg: 'أهلاً ' + (c.name || '') + '، صيدلية السوسي 🌿 وحشتنا!' + (top ? ' لو محتاج ' + top + ' أو أي حاجة تانية إحنا موجودين.' : ' لو محتاج أي حاجة إحنا موجودين.') };
   if (debt > 0) return { tone: 'warn', text: 'عميل منتظم وعليه دين ' + num(debt) + ' ج — ذكّره عند الزيارة الجاية.' };
-  return { tone: 'ok', text: 'عميل منتظم — مفيش إجراء.' };
+  return { tone: 'ok', text: 'عميل منتظم — لا توجد إجراء.' };
 }
 
 function custProfHtml(c, p){
@@ -4829,7 +4880,7 @@ function custProfHtml(c, p){
         (x.items.length > 6 ? ' …' : '') + '</small></div>' + badge(ltr(num(Math.round(x.total))) + ' ج', 'brand') + '</div>';
     }).join('');
   } else {
-    h += '<div class="state" style="text-align:start">مفيش مشتريات بالرقم ده في آخر ' + p.scannedDays + ' يوم.</div>';
+    h += '<div class="state" style="text-align:start">لا توجد مشتريات بالرقم ده في آخر ' + p.scannedDays + ' يوم.</div>';
   }
   return h;
 }
@@ -4925,7 +4976,7 @@ function callsHtml(d){
     : '<div class="state"><div class="spin"></div></div>';
   var ST = { done:'اتكلمنا', noanswer:'مردش', later:'موعد تاني', wrong:'رقم غلط', blocked:'محظور' };
   var TONE = { done:'ok', noanswer:'warn', later:'brand', wrong:'bad', blocked:'bad' };
-  var html = vitals('متابعة المكالمات', 'النهاردة', [
+  var html = vitals('متابعة المكالمات', 'اليوم', [
     { value: num(d.today.done), label: 'اتكلمنا', tone: 'ok' },
     { value: num(d.today.noanswer), label: 'مردش', tone: 'warn' },
     { value: num(d.today.later), label: 'موعد تاني', tone: 'brand' }
@@ -4936,7 +4987,7 @@ function callsHtml(d){
     row('باقي الغايبين', null, ltr(num(d.tiers[2] || 0))) +
     row('ايفنت المعاشات', null, ltr(num(d.tiers[3] || 0))) +
     row('إجمالي القايمة', null, ltr(num(d.total))));
-  if ((d.staff || []).length) html += card('مكالمات النهاردة حسب الموظفة', null,
+  if ((d.staff || []).length) html += card('مكالمات اليوم حسب الموظفة', null,
     d.staff.map(function(s){ return row(s.name, 'اتكلمنا ' + ltr(num(s.done)), ltr(num(s.n))); }).join(''));
   html += card('الإجمالي', 'من أول ما بدأت المتابعة',
     Object.keys(ST).map(function(k){ return rowLite(ST[k], null, ltr(num(d.all[k] || 0))); }).join(''));
@@ -4958,7 +5009,7 @@ function pgTeamPages(){
   box.innerHTML =
     card('صفحات الموظفين', 'بتتفتح في صفحة جديدة', '<div class="tiles">' +
       link('📞', 'متابعة العملاء', '', 'calls.html') +
-      link('🩺', 'تسجيل الإيفنت', '', 'event.html') +
+      link('🩺', 'تسجيل الفعالية', '', 'event.html') +
       link('🏷️', 'الملصقات', '', 'labels.html') +
       link('🛵', 'الطلبات', '', 'orders.html') +
       link('📷', 'الماسح', '', 'scan.html') +
@@ -5002,7 +5053,7 @@ function settingsIcon(key){
 }
 function settingsMenuHtml(){
   var groups=[['التشغيل اليومي',['bot','camera']],['التفضيلات والحماية',['appearance','security']],['الخدمات والربط',['ai','delivery']],['إدارة النظام',['server','advanced']]];
-  return '<div class="settings-intro"><small class="section-eyebrow">لوحة التحكم</small><h2>إعدادات الصيدلية</h2><p>التشغيل، الربط وحماية اللوحة</p></div><div class="settings-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" placeholder="دوّر على إعداد…" aria-label="البحث في الإعدادات" oninput="settingsFilter(this.value)"></div>'+groups.map(function(g){return '<div class="settings-category"><h4>'+g[0]+'</h4><div class="settings-group">'+g[1].map(function(key){var x=SETTINGS_ITEMS.filter(function(i){return i[0]===key;})[0];return '<button class="settings-link" data-settings-search="'+esc(x[1]+' '+x[2])+'" onclick="settingsSelect(\''+key+'\')"><i>'+settingsIcon(key)+'</i><span><b>'+x[1]+'</b><small>'+x[2]+'</small></span><em aria-hidden="true">‹</em></button>';}).join('')+'</div></div>';}).join('')+'<p id="settingsNoMatch" class="state" hidden>مفيش إعداد بالاسم ده</p>';
+  return '<div class="settings-intro"><small class="section-eyebrow">لوحة التحكم</small><h2>إعدادات الصيدلية</h2><p>التشغيل، الربط وحماية اللوحة</p></div><div class="settings-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" placeholder="ابحث عن إعداد…" aria-label="البحث في الإعدادات" oninput="settingsFilter(this.value)"></div>'+groups.map(function(g){return '<div class="settings-category"><h4>'+g[0]+'</h4><div class="settings-group">'+g[1].map(function(key){var x=SETTINGS_ITEMS.filter(function(i){return i[0]===key;})[0];return '<button class="settings-link" data-settings-search="'+esc(x[1]+' '+x[2])+'" onclick="settingsSelect(\''+key+'\')"><i>'+settingsIcon(key)+'</i><span><b>'+x[1]+'</b><small>'+x[2]+'</small></span><em aria-hidden="true">‹</em></button>';}).join('')+'</div></div>';}).join('')+'<p id="settingsNoMatch" class="state" hidden>لا توجد إعداد بالاسم ده</p>';
 }
 function settingsFilter(value){
   var q=String(value || '').trim().toLowerCase(),n=0;
@@ -5050,7 +5101,7 @@ function settingsSelect(key,restoring){
   settingsDraftHint();try{sessionStorage.setItem('settingsPosition',JSON.stringify({key:key,scroll:SETTINGS.scroll}));}catch(e){}
   settingsLoad(key);
 }
-function settingsDraftHint(){var el=document.getElementById('settingsDraft');if(el)el.textContent=SETTINGS.dirty[SETTINGS.key]?'عندك مدخلات لسه ما اتحفظتش':'';}
+function settingsDraftHint(){var el=document.getElementById('settingsDraft');if(el)el.textContent=SETTINGS.dirty[SETTINGS.key]?'عندك مدخلات لسه ما تم الحفظتش':'';}
 function settingsSaved(keys){String(keys).split(',').forEach(function(k){delete SETTINGS.dirty[k];});settingsDraftHint();}
 function settingsLoad(key,force){
   function once(name,fn){if(SETTINGS.loaded[name] && !force)return;SETTINGS.loaded[name]=true;fn();}
@@ -5087,7 +5138,7 @@ function openSheet(kind){
       '</div><div class="group-title">صفحات الموظفين</div><div class="tiles">' +
         link('🏷️', 'الملصقات', 'labels.html') +
         link('📞', 'متابعة العملاء', 'calls.html') +
-        link('🩺', 'تسجيل الإيفنت', 'event.html') +
+        link('🩺', 'تسجيل الفعالية', 'event.html') +
         link('💸', 'مراجعة المصروفات', 'expenses.html') +
         link('🛵', 'الطلبات', 'orders.html') +
         link('📷', 'الماسح', 'scan.html') +
@@ -5188,7 +5239,7 @@ function snap(action){
   api(action).then(function(){ snapStatus(); toast('✓'); }).catch(function(e){ logErr(e); snapStatus(); });
 }
 /* 📷 فحص جاهزية الجرد بالكاميرا.
-   أهم رقم فيه: "أصناف بأكتر من صلاحية" — دول اللي الشاشة هتوقف
+   أهم رقم فيه: "أصناف بأكثر من صلاحية" — دول اللي الشاشة هتوقف
    عندهم وتطلب من الموظف يوزّع الكمية. لو نسبتهم عالية، تصميم
    شاشة الجرد نفسه لازم يتغيّر. */
 /* بيقيس اللقطة جزء جزء. ممكن ياخد كذا دقيقة — ده طبيعي، لأنه
@@ -5222,7 +5273,7 @@ function drawCounts(){
 
   /* مين شغال دلوقتي + جرد كل موظف.
      ⚠️ الترتيب بالأصناف مش بالعلب عن قصد — لو قسنا بالعلبة الموظف
-     هيدوّر على الرفوف اللي فيها كميات كبيرة ويسيب الصعبة. */
+     هيابحث على الرفوف اللي فيها كميات كبيرة ويسيب الصعبة. */
   var actHtml = '';
   if (A && A.ok){
     if ((A.live||[]).length){
@@ -5328,7 +5379,7 @@ function askDeleteCount(id, title, lines){
   b.innerHTML =
     '<div class="state">' + esc(title || '') + '<br>' +
     ltr(num(lines)) + ' ' + tr('items') + ' هيتمسحوا نهائيًا.<br>' +
-    '<b style="color:var(--bad)">مفيش رجوع.</b></div>' +
+    '<b style="color:var(--bad)">لا توجد رجوع.</b></div>' +
     '<div class="group-title">' + tr('typeToConfirm') + '</div>' +
     '<input id="delWord" class="fld" placeholder="مسح" autocomplete="off" ' +
       'style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);' +
@@ -5408,7 +5459,7 @@ function openExpCat(cat){
       return '<div class="row" onclick="openExpItem(\'' + esc(i.id) + '\')" style="cursor:pointer">' +
         '<div class="row-main"><b>' + esc(i.name || '—') + '</b>' +
         '<small>' + ltr(i.date) + (i.time ? ' · ' + ltr(i.time) : '') + '</small></div>' +
-        '<span class="v">' + ltr(num(i.amount)) + '</span></div>';
+        '<span class="v">' + ltr(num(i.amount)) + (i.fromLedger?' · تحت المراجعة':'') + '</span></div>';
     }).join('');
 
   b.innerHTML = h;
@@ -5436,7 +5487,7 @@ function openExpItem(id){
 
 /* ═══ أمر تصحيح الأرصدة ═══
    ناتج الجرد بيتحوّل لليستة تنفيذية للمدير. الكود بييجي الأول لأن
-   المدير بيدوّر بيه في نظام البيع مباشرة مش بالاسم. */
+   المدير بيابحث بيه في نظام البيع مباشرة مش بالاسم. */
 var FIX = null;
 
 function openFix(id){
@@ -5576,7 +5627,7 @@ function runSnapTime(){
 }
 
 /* بيقرا كل النسخ القديمة من ملف المصروفات ويحفظ حركاتها في أرشيف دائم.
-   الملف بيشيل اللي اتقفل، فاللي مفيش نسخة منه مش ممكن يتجاب. */
+   الملف بيشيل اللي اتقفل، فاللي لا توجد نسخة منه مش ممكن يتجاب. */
 function runExpBackfill(){
   var box = document.getElementById('expfill');
   box.innerHTML = '<div class="state"><div class="spin"></div>' + tr('measuring') + '</div>';
@@ -5595,7 +5646,7 @@ function aiInp(id, ph, type, val){
   return '<input id="' + id + '" type="' + (type || 'text') + '" dir="ltr" placeholder="' + esc(ph) + '" value="' + esc(val || '') + '" autocomplete="off" ' +
     'style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);margin-bottom:8px;font-family:inherit">';
 }
-/* استهلاك الذكاء الاصطناعي — الشهر ده والنهارده والشهر اللي فات */
+/* استهلاك الذكاء الاصطناعي — هذا الشهر واليوم والشهر السابق */
 function usd(x){ return x == null ? '—' : ('$' + (x < 0.01 && x > 0 ? x.toFixed(4) : x.toFixed(2))); }
 function tok(n){ n = n || 0; return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'K' : String(n); }
 function loadAiUsage(){
@@ -5605,13 +5656,13 @@ function loadAiUsage(){
     var KN = { bot: 'ردود البوت', dose: 'جرعات الملصقات', test: 'اختبارات', voice: 'رسايل صوتية', photo: 'قراية الصور' };
     var pct = d.budget ? Math.min(100, Math.round((t.cost || 0) / d.budget * 100)) : null;
     box.innerHTML = '<div class="card" style="margin:0 0 10px">' +
-      row('استهلاك الشهر ده', ltr(num(t.calls || 0)) + ' طلب · ' + ltr(tok((t.in || 0) + (t.out || 0))) + ' توكن',
+      row('استهلاك هذا الشهر', ltr(num(t.calls || 0)) + ' طلب · ' + ltr(tok((t.in || 0) + (t.out || 0))) + ' توكن',
           badge(ltr(usd(t.cost || 0)) + (t.unpriced ? '+' : ''), pct !== null && pct >= 80 ? 'bad' : 'brand')) +
       (pct !== null ? '<div class="bar" style="margin:0 0 8px"><i style="display:block;height:100%;width:' + pct + '%;background:var(--' + (pct >= 80 ? 'bad' : 'brand') + ')"></i></div>' +
         '<div class="state" style="padding:0 0 6px;font-size:12px">' + pct + '% من الحد الأقصى ' + ltr(usd(d.budget)) + (pct >= 100 ? ' — الموديل المدفوع واقف لحد أول الشهر' : '') + '</div>' : '') +
       Object.keys(k).map(function(x){ return row(KN[x] || x, ltr(num(k[x].calls || 0)) + ' طلب', ltr(usd(k[x].cost))); }).join('') +
-      row('النهارده', ltr(num(td.calls || 0)) + ' طلب', ltr(usd(td.cost || 0))) +
-      row('الشهر اللي فات', null, ltr(usd((d.lastMonth.total || {}).cost || 0))) +
+      row('اليوم', ltr(num(td.calls || 0)) + ' طلب', ltr(usd(td.cost || 0))) +
+      row('الشهر السابق', null, ltr(usd((d.lastMonth.total || {}).cost || 0))) +
       '<div class="state" style="font-size:11px">التكلفة تقديرية من أسعار الموديل الرسمية. الرصيد الحقيقي في صفحة Billing عند المزوّد. ' +
       (t.unpriced ? '(+) فيه موديلات مش معروف سعرها، محسوب توكنز بس.' : '') + '</div></div>';
   }).catch(function(){});
@@ -5639,7 +5690,7 @@ function saveAiCfg(pr){
   var v = function(id){ return (document.getElementById(id) || {}).value || ''; };
   post({ action: 'setAiConfig', provider: pr, key: v('aiKey'), bot: v('aiBot'), dose: v('aiDose'), budget: v('aiBudget'), pin: v('aiPin') }).then(function(d){
     if (d && d.ok){ try { localStorage.setItem('adminPin', v('aiPin')); } catch (e) {}
-      settingsSaved('ai'); AI_CFG = d; drawAiCfg(d.provider); loadAiUsage(); toast('✓ اتحفظ — شغال على ' + d.provider); }
+      settingsSaved('ai'); AI_CFG = d; drawAiCfg(d.provider); loadAiUsage(); toast('✓ تم الحفظ — شغال على ' + d.provider); }
     else toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });
 }
@@ -5686,7 +5737,7 @@ function camRecordStart(channel){
   post({ action: 'camRecordSample', channel: channel, pin: pin }).then(function(d){
     if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch(e) {}
     if (d && d.ok && d.stage === 'saved') {
-      box.textContent = 'اتحفظت عينة كاميرا ' + channel + ' · ' + Math.round(d.seconds) + ' ثانية · ' + (d.bytes / 1048576).toFixed(2) + ' MB. لسه محتاجة تحويل ومراجعة؛ مفيش عدّ تلقائي اتنفّذ.';
+      box.textContent = 'تم الحفظت عينة كاميرا ' + channel + ' · ' + Math.round(d.seconds) + ' ثانية · ' + (d.bytes / 1048576).toFixed(2) + ' MB. لسه محتاجة تحويل ومراجعة؛ لا توجد عدّ تلقائي اتنفّذ.';
     } else box.textContent = d && d.stage ? (d.error || 'التسجيل ماكملش') + (d.code ? ' · كود: ' + d.code : '') : 'حدّث السيرفر الأول وبعدين جرّب التسجيل';
   }).catch(function(){ box.textContent = 'رد السيرفر ماوصلش؛ ممكن التسجيل كمل. راجع فولدر عينات فيديو الكاميرات — خاص قبل إعادة المحاولة.';
   }).finally(function(){ CAM_RECORD_BUSY = false; buttons.forEach(function(b){ b.disabled = false; }); });
@@ -5721,7 +5772,7 @@ function camVideoProbe(channel){
       b.innerHTML = '<div class="state">' + esc(d.message) + '</div>'; return;
     }
     if (d.mode !== 'hls' || !/^https:\/\//i.test(d.url || '')){
-      b.textContent = 'رد الفيديو غير مكتمل؛ مفيش تشغيل اتأكد'; return;
+      b.textContent = 'رد الفيديو غير مكتمل؛ لا توجد تشغيل اتأكد'; return;
     }
     var v = document.createElement('video');
     if (!v.canPlayType('application/vnd.apple.mpegurl')){
@@ -5737,14 +5788,14 @@ function camVideoProbe(channel){
     b.appendChild(v); b.appendChild(status); b.appendChild(stop);
     CAM_VIDEO.video = v; CAM_VIDEO.status = status;
     v.onplaying = function(){ if (seq === CAM_VIDEO.seq) status.textContent = 'الفيديو اتفتح في المتصفح؛ ثبات الاتصال ودقة التحليل لسه محتاجين قياس'; };
-    v.onerror = function(){ if (seq === CAM_VIDEO.seq) camVideoStop('عنوان البث اتولد لكن الفيديو ماشتغلش؛ ممكن صلاحية أو تشفير أو مشكلة اتصال. مفيش بث اتأكد.'); };
+    v.onerror = function(){ if (seq === CAM_VIDEO.seq) camVideoStop('عنوان البث اتولد لكن الفيديو ماشتغلش؛ ممكن صلاحية أو تشفير أو مشكلة اتصال. لا توجد بث اتأكد.'); };
     CAM_VIDEO.timer = setTimeout(function(){ camVideoStop('انتهت دقيقة الاختبار واتقفل البث'); }, 60000);
     CAM_VIDEO.observer = new MutationObserver(function(){ if (!v.isConnected) camVideoStop(); });
     CAM_VIDEO.observer.observe(document.body, { childList: true, subtree: true });
     v.src = d.url;
     var play = v.play();
     if (play && play.catch) play.catch(function(){ if (seq === CAM_VIDEO.seq) status.textContent = 'اضغط تشغيل داخل الفيديو؛ الاختبار هيقف تلقائيًا خلال دقيقة'; });
-  }).catch(function(){ if (seq === CAM_VIDEO.seq && b.isConnected) b.textContent = 'الاتصال بالسيرفر ماكملش؛ جرّب تاني'; });
+  }).catch(function(){ if (seq === CAM_VIDEO.seq && b.isConnected) b.textContent = 'الاتصال بالسيرفر ماكملش؛ إعادة المحاولة'; });
 }
 window.addEventListener('pagehide', function(){ camVideoStop(); });
 document.addEventListener('visibilitychange', function(){ if (document.hidden) camVideoStop('الاختبار اتوقف لما خرجت من الصفحة'); });
@@ -5779,9 +5830,9 @@ function loadCam(){
 function saveCam(){
   var g = function(id){ return (document.getElementById(id).value || '').trim(); };
   var p = { action: 'setCamConfig', type: g('camType'), url: g('camUrl'), key: g('camKey'), secret: g('camSec'), note: g('camNote'), pin: adminPin() };
-  if (!p.key && !p.secret && !p.url && !p.type && !p.note){ toast('مفيش حاجة تتحفظ'); return; }
+  if (!p.key && !p.secret && !p.url && !p.type && !p.note){ toast('لا توجد حاجة تتحفظ'); return; }
   post(p).then(function(d){
-    if (d && d.ok){settingsSaved('camera');toast('✓ اتحفظ');loadCam();}
+    if (d && d.ok){settingsSaved('camera');toast('✓ تم الحفظ');loadCam();}
     else { if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} toast((d && d.error) || tr('failed')); }
   }).catch(function(){ toast(tr('failed')); });
 }
@@ -5822,11 +5873,11 @@ function camrDisplayPages(r){
 }
 function camrReportOverview(r){
   var entry=CameraAssessment.assessReports(CAMR.list).filter(function(x){return x.report===r || (r.id && x.report.id===r.id);})[0], a=entry && entry.result;
-  return '<section class="report-overview"><div class="report-score">'+(a && a.ready?'<strong>'+a.score+'</strong><span>من 100</span>':'<b>غير مقيّم</b>')+'</div><div><b>تقييم شكل الصيدلية</b><p>'+(a && a.ready?'تغطية '+a.coverage+'% · '+a.assessedZones+' من 10 مناطق':'مفيش درجة بدون دليل واضح وحديث')+'</p><small>'+camrNotes(r)+' ملاحظات · '+(r.reviewedFrames || []).length+' صور مفحوصة</small></div></section>';
+  return '<section class="report-overview"><div class="report-score">'+(a && a.ready?'<strong>'+a.score+'</strong><span>من 100</span>':'<b>غير مقيّم</b>')+'</div><div><b>تقييم شكل الصيدلية</b><p>'+(a && a.ready?'تغطية '+a.coverage+'% · '+a.assessedZones+' من 10 مناطق':'لا توجد درجة بدون دليل واضح وحديث')+'</p><small>'+camrNotes(r)+' ملاحظات · '+(r.reviewedFrames || []).length+' صور مفحوصة</small></div></section>';
 }
 function camrReportFindings(r){
   var rows=(r.summary || []).slice().sort(function(a,b){return (a.sev==='r'?0:1)-(b.sev==='r'?0:1);});
-  return '<section class="report-findings"><h3>ملاحظات الفترة <span>'+rows.length+'</span></h3>'+rows.map(function(q,i){return '<div class="report-finding '+(q.sev==='r'?'urgent':'')+'"><span class="report-num">'+(i+1)+'</span><div><b>'+esc(q.text)+'</b><small>'+esc(q.where || '')+' · '+esc((q.times || []).join('، '))+'</small></div></div>';}).join('')+(rows.length?'':'<p class="appearance-muted">مفيش ملاحظات مؤكدة مسجلة في العينات.</p>')+'</section>';
+  return '<section class="report-findings"><h3>ملاحظات الفترة <span>'+rows.length+'</span></h3>'+rows.map(function(q,i){return '<div class="report-finding '+(q.sev==='r'?'urgent':'')+'"><span class="report-num">'+(i+1)+'</span><div><b>'+esc(q.text)+'</b><small>'+esc(q.where || '')+' · '+esc((q.times || []).join('، '))+'</small></div></div>';}).join('')+(rows.length?'':'<p class="appearance-muted">لا توجد ملاحظات مؤكدة مسجلة في العينات.</p>')+'</section>';
 }
 var CAMR_C = { navy: '#0e2240', navy2: '#163e6c', blue: '#2484c4', red: '#cd303e', grn: '#188c60', ink: '#1a2434', muted: '#6e7a8c', bg: '#f4f6fa' };
 var CAMR_ORDER = [2, 3, 4, 1, 6];
@@ -5852,7 +5903,7 @@ function camReportsOpen(){
     if (!d || !d.ok){ b.innerHTML = '<div class="state err">' + esc((d && d.error) || 'السيرفر لسه نسخة قديمة — دوس «حدّث السيرفر» من الرئيسية') + '</div>'; return; }
     CAMR.list = CameraAssessment.sortReports(d.reports || []);
     var homeBox=document.getElementById('homeAppearance');if(homeBox)homeBox.innerHTML=appearanceHomeHtml(CAMR.list,CAMR.at===0);
-    if (!CAMR.list.length){ b.innerHTML = '<div class="state">لسه مفيش تقارير؛ اطلب تحليل من الشات أو استنى التقرير المجدول</div>'; return; }
+    if (!CAMR.list.length){ b.innerHTML = '<div class="state">لا توجد حاليًا تقارير؛ اتجهيز طلب تحليل عبر المحادثة أو استنى التقرير المجدول</div>'; return; }
     b.innerHTML = '<div class="camr-list">' + CAMR.list.map(function(r, i){
       var n = camrNotes(r);
       var chips = camrCoverage(r).map(function(c){return '<span class="cam-chip '+(c.notes?'warn':c.frames.length?'reviewed':'')+'">ك'+c.ch+' · '+(c.frames.length?'اتراجعت':c.notes?'دليل':'غير مسجلة')+'</span>';}).join('');
@@ -6058,7 +6109,7 @@ function camReportView(i){
 }
 function camrZoom(src){
   var z = document.createElement('div'); z.className = 'camr-zoom';
-  z.innerHTML = '<button aria-label="إقفال">✕</button><img alt="">'; z.querySelector('img').src = src;
+  z.innerHTML = '<button aria-label="إغلاق">✕</button><img alt="">'; z.querySelector('img').src = src;
   z.querySelector('button').onclick = function(){ z.remove(); };
   z.querySelector('img').ondblclick = function(){ z.classList.toggle('fit'); };
   document.body.appendChild(z);
@@ -6156,10 +6207,10 @@ function homeCamLatest(force){
     if(el && CAMR.list && CAMR.list.length){var r=CAMR.list[0],n=camrNotes(r);el.textContent=CameraAssessment.title(r)+(n?' · '+n+' ملاحظات':' · راجع التغطية');el.className='';}
   }
   if(CAMR.list)paint();
-  var waiting=setTimeout(function(){var box=document.getElementById('homeAppearance');if(box && !CAMR.list)box.innerHTML='<div class="camera-wait" role="status">السيرفر متأخر؛ مفيش تقييم محفوظ لسه.</div>';},12000);
+  var waiting=setTimeout(function(){var box=document.getElementById('homeAppearance');if(box && !CAMR.list)box.innerHTML='<div class="camera-wait" role="status">السيرفر متأخر؛ لا توجد تقييم محفوظ لسه.</div>';},12000);
   camrReportsFetch(force===true).then(paint).catch(function(){
     var box=document.getElementById('homeAppearance');if(!box)return;
-    if(CAMR.list){paint();box.insertAdjacentHTML('beforeend','<div class="cam-note" role="status">التحديث ماكملش؛ ده آخر تقرير محمّل. <button class="btn btn-quiet" onclick="homeCamLatest(true)">حاول تاني</button></div>');}
+    if(CAMR.list){paint();box.insertAdjacentHTML('beforeend','<div class="cam-note" role="status">التحديث ماكملش؛ ده آخر تقرير محمّل. <button class="btn btn-quiet" onclick="homeCamLatest(true)">إعادة المحاولة</button></div>');}
     else box.innerHTML='<div class="camera-wait">تعذر تحميل تقييم الكاميرات</div><button class="btn btn-quiet" onclick="homeCamLatest(true)">إعادة المحاولة</button>';
   }).finally(function(){clearTimeout(waiting);});
 }
@@ -6171,17 +6222,17 @@ function appearanceOpenLatestReport(){
 }
 function appearanceHomeHtml(reports,isCached){
   var latest=CameraAssessment.assessReports(reports)[0];
-  if(!latest)return '<div class="camera-wait">لسه مفيش تقرير؛ أول تقرير جديد هيظهر هنا</div><button class="camera-link" onclick="camReportsOpen()">كل التقارير ←</button>';
+  if(!latest)return '<div class="camera-wait">لا يوجد تقرير متاح؛ أول تقرير جديد هيظهر هنا</div><button class="camera-link" onclick="camReportsOpen()">كل التقارير ←</button>';
   var r=latest.report,a=latest.result,stamp=CameraAssessment.timestamp(r.generatedAt),notes=(r.summary || []).slice(),opened=typeof HOME_APPEARANCE_OPEN!=='undefined' && HOME_APPEARANCE_OPEN;
   if(!notes.length && a.ready)notes=(a.issues || []).filter(function(q){return q.status==='new' || q.status==='ongoing';}).map(function(q){return {text:q.title,where:(q.frames || []).map(function(f){return 'ك'+f.ch;}).join('، '),times:(q.frames || []).map(function(f){return CameraAssessment.clock(f.at);})};});
   var score=a.ready?'<span class="camera-score" style="--score:'+a.score+'%"><b>'+a.score+'</b></span>':'<span class="camera-score unknown"><b>—</b></span>';
-  var h='<details class="camera-inline"'+(opened?' open':'')+' ontoggle="homeAppearanceToggle(this)"><summary>'+score+'<span class="camera-label"><b>آخر تقييم بالكاميرات</b><small>'+esc(CameraAssessment.title(r))+' · '+notes.length+' ملاحظات</small><small>'+esc(r.dayLabel || r.date || '')+(a.ready?' · '+a.score+'/100 · تغطية '+a.coverage+'%':' · مفيش درجة افتراضية')+'</small></span><span class="camera-chevron" aria-hidden="true">⌄</span></summary><div class="camera-notes">';
+  var h='<details class="camera-inline"'+(opened?' open':'')+' ontoggle="homeAppearanceToggle(this)"><summary>'+score+'<span class="camera-label"><b>آخر تقييم بالكاميرات</b><small>'+esc(CameraAssessment.title(r))+' · '+notes.length+' ملاحظات</small><small>'+esc(r.dayLabel || r.date || '')+(a.ready?' · '+a.score+'/100 · تغطية '+a.coverage+'%':' · لا يتم عرض درجة افتراضية')+'</small></span><span class="camera-chevron" aria-hidden="true">⌄</span></summary><div class="camera-notes">';
   h+='<p class="camera-meta">'+(isCached?'محفوظ · بنتحقق من الجديد. ':'')+(stamp?'إعداد '+esc(stamp):'وقت الإعداد غير مسجل')+'</p>';
   if(a.ready)h+='<p class="camera-meta">'+a.assessedZones+' من 10 مناطق مقيمة'+(a.coverage<100?' · تقييم جزئي للمناطق الواضحة':'')+'</p>';
   if(notes.length)h+=notes.map(function(q,i){return '<div class="camera-finding"><span>'+(i+1)+'</span><div><b>'+esc(q.text || '')+'</b><small>'+esc(q.where || '')+((q.times || []).length?' · '+esc(q.times.join('، ')):'')+'</small></div></div>';}).join('');
-  else h+='<p class="camera-meta">مفيش ملاحظات مؤكدة مسجلة في العينات؛ راجع التغطية.</p>';
+  else h+='<p class="camera-meta">لا توجد ملاحظات مؤكدة مسجلة في العينات؛ راجع التغطية.</p>';
   if(a.ready && a.issues && a.issues.length)h+='<p class="camera-meta">'+a.counts.new+' جديدة · '+a.counts.ongoing+' مستمرة · '+a.counts.unverified+' غير محسومة</p>';
-  h+='<button class="btn btn-primary camera-details" onclick="appearanceOpenLatestReport()">تفاصيل التقرير والصور ←</button><div class="camera-tools"><button onclick="camReportsOpen()">كل التقارير</button><button onclick="appearanceAnalysisRequest()">طلب تحليل</button><button onclick="homeCamLatest(true)">تحديث التقييم</button><button id="camSnapBtn" onclick="camSnapNow()">صوّر دلوقتي</button></div><div id="homeCamSnap"></div></div></details>';
+  h+='<button class="btn btn-primary camera-details" onclick="appearanceOpenLatestReport()">تفاصيل التقرير والصور ←</button><div class="camera-tools"><button onclick="camReportsOpen()">كل التقارير</button><button onclick="appearanceAnalysisRequest()">طلب تحليل</button><button onclick="homeCamLatest(true)">تحديث التقييم</button><button id="camSnapBtn" onclick="camSnapNow()">التقاط صور الآن</button></div><div id="homeCamSnap"></div></div></details>';
   return h;
 }
 function appearanceReportDetails(r){
@@ -6196,11 +6247,11 @@ function appearanceIssueHtml(i){
   return '<div class="appearance-issue status-'+i.status+'"><div><b>'+esc(i.title)+'</b><span class="appearance-state">'+labels[i.status]+'</span></div><p>'+esc(refs || i.reason || 'افتح التقرير لمراجعة الدليل')+'</p></div>';
 }
 function appearanceOpenReport(i){ if(CAMR.list[i])camReportView(i); }
-function appearanceRequestButton(){return '<button class="btn btn-quiet" style="margin-top:10px;width:100%" onclick="appearanceAnalysisRequest()">طلب تحليل من الشات</button>';}
+function appearanceRequestButton(){return '<button class="btn btn-quiet" style="margin-top:10px;width:100%" onclick="appearanceAnalysisRequest()">تجهيز طلب تحليل عبر المحادثة</button>';}
 function appearanceAnalysisRequest(){
-  var b=camrSheet('طلب تحليل من الشات');
+  var b=camrSheet('تجهيز طلب تحليل عبر المحادثة');
   var promptText='جهّز أحدث تقرير كاميرات لصيدلية السوسي للفترة المكتملة اللي لسه ماتراجعتش، حسب tools/camera-day-report.md وtools/camera-appearance-kpi.md في مستودع elsousypharmacy-create/pharmacy. العنوان هو الفترة، وقارن بالتقرير السابق وحدّث التقييم في ملف التقرير. حافظ على الليمت والسحب كل 10 دقايق.';
-  b.innerHTML='<div class="state">الزر بيجهّز الطلب؛ التحليل هيبدأ لما تبعته في الشات. مفيش خدمة AI مدفوعة بتشتغل تلقائيًا.</div><textarea id="appearancePrompt" readonly style="width:100%;min-height:150px;font:inherit;padding:12px" aria-label="طلب التحليل"></textarea><button class="btn btn-primary" id="appearanceCopy">انسخ طلب التحليل</button><a class="btn btn-quiet" style="display:block;text-align:center;margin-top:10px" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">افتح ChatGPT وابعت الطلب</a><div id="appearanceCopyState" class="state" aria-live="polite"></div>';
+  b.innerHTML='<div class="state">الزر بيجهّز الطلب؛ التحليل هيبدأ لما تبعته في الشات. لا توجد خدمة AI مدفوعة بتشتغل تلقائيًا.</div><textarea id="appearancePrompt" readonly style="width:100%;min-height:150px;font:inherit;padding:12px" aria-label="طلب التحليل"></textarea><button class="btn btn-primary" id="appearanceCopy">انسخ طلب التحليل</button><a class="btn btn-quiet" style="display:block;text-align:center;margin-top:10px" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">افتح ChatGPT وابعت الطلب</a><div id="appearanceCopyState" class="state" aria-live="polite"></div>';
   var field=document.getElementById('appearancePrompt');field.value=promptText;
   document.getElementById('appearanceCopy').onclick=function(){
     if(navigator.clipboard && navigator.clipboard.writeText)navigator.clipboard.writeText(promptText).then(function(){document.getElementById('appearanceCopyState').textContent='اتنسخ؛ ابعته في محادثة الصيدلية';}).catch(function(){field.focus();field.select();document.getElementById('appearanceCopyState').textContent='حدد النص وانسخه يدويًا';});
@@ -6217,9 +6268,9 @@ function camSnapNow(){
     if (d && d.pinError) { try { localStorage.removeItem('adminPin'); } catch (e) {} }
     if (d && d.ok){
       var fl = d.failed || [], chips = [1, 2, 3, 4, 6].map(function(c){ var bad = fl.indexOf(c) >= 0 || fl.indexOf(String(c)) >= 0; return '<div class="cam-chip ' + (bad ? 'bad' : 'ok') + '">' + c + (bad ? ' ✕' : ' ✓') + '</div>'; }).join('');
-      b.innerHTML = '<div class="cam-chips">' + chips + '</div><div class="cam-note">اتحفظ ' + d.saved + '/5 الساعة ' + esc(d.time) + (d.small != null ? ' · الصغيرة ' + d.small + '/' + d.saved : '') + ' · اكتبلي «جهّز التقرير» في الشات</div>';
+      b.innerHTML = '<div class="cam-chips">' + chips + '</div><div class="cam-note">تم الحفظ ' + d.saved + '/5 الساعة ' + esc(d.time) + (d.small != null ? ' · الصغيرة ' + d.small + '/' + d.saved : '') + ' · اكتبلي «جهّز التقرير» في الشات</div>';
     } else b.innerHTML = '<div class="state err" style="font-size:13px">❌ ' + esc((d && d.error) || 'فشل') + '</div>';
-  }).catch(function(){ done(); b.innerHTML = '<div class="cam-note">السيرفر محتاج تحديث الأول</div><button class="btn btn-primary" style="margin-top:8px" onclick="camHomeUpdate()">🔄 حدّث السيرفر وجرّب تاني</button>'; });
+  }).catch(function(){ done(); b.innerHTML = '<div class="cam-note">السيرفر محتاج تحديث الأول</div><button class="btn btn-primary" style="margin-top:8px" onclick="camHomeUpdate()">🔄 حدّث السيرفر وإعادة المحاولة</button>'; });
 }
 function homeSrvUp(){
   var b = document.getElementById('homeCamSnap'); if (!b) return;
@@ -6279,9 +6330,9 @@ function waSub(){
 }
 function saveWa(){
   var tok = (document.getElementById('waTok').value || '').trim(), pid = (document.getElementById('waPid').value || '').trim();
-  if (!tok && !pid){ toast('مفيش حاجة تتحفظ'); return; }
+  if (!tok && !pid){ toast('لا توجد حاجة تتحفظ'); return; }
   post({ action: 'setWaConfig', token: tok, phoneId: pid, pin: adminPin() }).then(function(d){
-    if (d && d.ok){ toast('✓ اتحفظ'); loadWa(); }
+    if (d && d.ok){ toast('✓ تم الحفظ'); loadWa(); }
     else { if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} toast((d && d.error) || tr('failed')); }
   }).catch(function(){ toast(tr('failed')); });
 }
@@ -6310,7 +6361,7 @@ function runSrvUp(){
   b.innerHTML = '<div class="state"><div class="spin"></div>بيحدّث… (حوالي نص دقيقة)</div>';
   api('serverUpdate').then(function(d){
     if (d && d.ok){ SRV_NEWER = false; srvBadge(false); toast('✓ السيرفر اتحدث — نسخة ' + d.version); loadSrvUp(); }
-    else b.innerHTML = '<div class="state err" style="font-size:13px">' + esc((d && d.error) || tr('failed')) + '</div><button class="btn btn-quiet" onclick="runSrvUp()">جرّب تاني</button>';
+    else b.innerHTML = '<div class="state err" style="font-size:13px">' + esc((d && d.error) || tr('failed')) + '</div><button class="btn btn-quiet" onclick="runSrvUp()">إعادة المحاولة</button>';
   }).catch(function(e){ b.innerHTML = '<div class="state err">' + esc(String(e)) + '</div>'; });
 }
 /* إعدادات البوت: رسوم التوصيل، المواعيد، أقصى مسافة، قفل اللوحة */
@@ -6350,13 +6401,13 @@ function drawBotSet(){
   var d = BOT_SET, box = document.getElementById('botset'); if (!box || !d) return;
   var pb = document.getElementById('botpause');
   if (pb) pb.innerHTML = '<div class="set-line"><span><b>البوت ' + (d.paused ? 'واقف' : 'شغّال') + '</b><small>' +
-      (d.paused ? 'الرسايل بتوصل للصيدلي بس' : 'بيرد على العملاء لوحده') + '</small></span>' +
+      (d.paused ? 'الرسائل بتوصل للصيدلي بس' : 'بيرد على العملاء لوحده') + '</small></span>' +
     '<button class="btn ' + (d.paused ? 'btn-primary' : 'btn-danger') + '" style="width:auto;margin:0;padding:10px 16px" onclick="toggleBotPause(' + (d.paused ? '0' : '1') + ')">' +
       (d.paused ? '▶️ شغّله' : '⛔ وقّفه') + '</button></div>';
   var ss = document.getElementById('setStatus');
   if (ss) ss.innerHTML = badge('🤖 البوت ' + (d.paused ? 'واقف' : 'شغّال'), d.paused ? 'warn' : 'ok') + ' ' +
-    badge(d.lock ? '🔒 اللوحة مقفولة' : '🔓 اللوحة مفتوحة', d.lock ? 'ok' : 'warn') + ' ' +
-    badge(d.freeDelivery ? '🛵 توصيل مجاني' : '🛵 توصيل بفلوس', 'brand');
+    badge(d.ownerProtection==='required-v1'?'🔒 بيانات الإدارة محمية':'⚠️ يلزم تحديث السيرفر لتفعيل حماية الإدارة',d.ownerProtection==='required-v1'?'ok':'warn') + ' ' +
+    badge(d.freeDelivery ? '🛵 توصيل مجاني' : '🛵 توصيل برسوم', 'brand');
   box.innerHTML =
     '<small style="color:var(--ink-2)">رسوم التوصيل بالجنيه (فاضي = هتتأكد، و0 = مجاني)</small>' + aiInp('bsFee', 'مثلًا 10', 'number', d.fee) +
     '<label style="display:flex;gap:8px;align-items:center;margin:6px 0 10px"><input type="checkbox" id="bsFree"' + (d.freeDelivery ? ' checked' : '') + '> ' +
@@ -6369,7 +6420,7 @@ function drawBotSet(){
     '<button class="btn btn-primary" onclick="saveBotSet()"' + (d.pinSet ? '' : ' disabled') + '>احفظ التوصيل</button>';
   var lb = document.getElementById('botlock'); if (lb) lb.innerHTML =
     '<label style="display:flex;gap:8px;align-items:center;margin:6px 0 10px"><input type="checkbox" id="bsLock"' + (d.lock ? ' checked' : '') + '> ' +
-      '🔒 اقفل اللوحة بالرقم السري (المبيعات والعملاء والديون وطلب النواقص مش هتفتح من غيره)</label>' +
+      '🔒 قفل إضافي لصفحات التشغيل؛ حماية بيانات الإدارة إلزامية بعد تحديث السيرفر</label>' +
     aiInp('bsPin', d.pinSet ? 'الرقم السري' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي فوق', 'password') +
     '<button class="btn btn-primary" onclick="saveBotSet()"' + (d.pinSet ? '' : ' disabled') + '>احفظ</button>' +
     '<div class="state" style="font-size:12px">' + (d.lock ? '🔒 اللوحة مقفولة دلوقتي.' : 'اللوحة مفتوحة لأي حد معاه الرابط.') +
@@ -6382,7 +6433,7 @@ function saveBotSet(){
   var lock = document.getElementById('bsLock').checked ? '1' : '0', pin = v('bsPin') || storedPin();
   var free = document.getElementById('bsFree').checked ? '1' : '0';
   post({ action: 'setBotSettings', fee: v('bsFee'), hours: v('bsHours'), maxKm: v('bsKm'), lock: lock, pin: pin, free: free, areas: v('bsAreas') }).then(function(d){
-    if (d && d.ok){ try { localStorage.setItem('adminPin', pin); } catch (e) {} settingsSaved('delivery,security');BOT_SET = d; drawBotSet(); toast('✓ اتحفظ'); }
+    if (d && d.ok){ try { localStorage.setItem('adminPin', pin); } catch (e) {} settingsSaved('delivery,security');BOT_SET = d; drawBotSet(); toast('✓ تم الحفظ'); }
     else toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });
 }
@@ -6578,6 +6629,7 @@ try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 </script>
 </body>
 </html>
+
 
 
 

@@ -66,6 +66,12 @@ async function refresh(env, k, qs, now) {
 }
 
 async function read(u, env, ctx, action) {
+  if(action!=='callsGet' && action!=='callsList' && action!=='getShortages'){
+    var pin=u.searchParams.get('pin')||'';
+    if(!pin)return out(JSON.stringify({ok:false,lockError:true,error:'سجّل الدخول لعرض البيانات'}));
+    var auth=JSON.parse(await gas('action=dashboardAuth&pin='+encodeURIComponent(pin)));
+    if(!auth.ok)return out(JSON.stringify(auth));
+  }
   const qs = gasQs(u);
   const k = await cacheKey(u), now = Date.now();
   const row = await sGet(env, k);
@@ -127,3 +133,4 @@ export default {
     return new Response('ok');
   }
 };
+

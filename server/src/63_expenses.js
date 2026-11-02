@@ -521,7 +521,7 @@ function getExpensesData(params) {
         date: e.date, time: e.time || '',
         company: e.company || '', staff: e.staff || '',
         name: e.name || '', detail: e.detail || '',
-        isIncome: !!e.isIncome, fromLedger: !!e.fromLedger,
+        isIncome: !!e.isIncome, fromLedger: !!e.fromLedger, needsReview: !!e.fromLedger,
         desc: [e.name, e.detail].filter(function (x) { return x; }).join(' — ') || '—'
       };
       items.push(row);
@@ -544,6 +544,9 @@ function getExpensesData(params) {
       income: income, income_count: incomeCount,
       ledger_total: Math.round(ledgerTotal * 100) / 100, ledger_count: ledgerCount,
       byCategory: list, items: items,
+      operating_total:items.filter(function(e){return !e.isIncome && expKind_(e.category)!=='purch';}).reduce(function(t,e){return t+e.amount;},0),
+      purchases_total:items.filter(function(e){return !e.isIncome && expKind_(e.category)==='purch';}).reduce(function(t,e){return t+e.amount;},0),
+      pending_review_total:ledgerTotal,
       /* التنبيه: لو آخر مصروف بقاله كتير يبقى التصدير واقف */
       lastEntry: all.latestEntry,
       staleDays: all.staleDays,

@@ -161,16 +161,34 @@ body.home-flash-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}.h
 #p-home .home-flash-today>.h-main{padding-inline-start:0!important}
 
 
-/* Monthly period: same readable two-column metrics and hierarchy as Today. */
-.home-flash-page[data-flash-key="period"]>.period-card{justify-content:flex-start!important;gap:12px!important;overflow:visible!important}
-.home-flash-page[data-flash-key="period"] .period-card>.h-minis{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-rows:auto!important;flex:none!important;gap:10px!important;margin:8px 0!important}
-.home-flash-page[data-flash-key="period"] .period-card>.h-minis .h-mini{padding:12px!important;min-height:88px!important;justify-content:center}
-.home-flash-page[data-flash-key="period"] .period-card>.h-minis .h-mini>small{font-size:14px!important;line-height:1.6!important}
-.home-flash-page[data-flash-key="period"] .period-card>.h-minis .h-mini>b{font-size:24px!important;line-height:1.4!important;overflow-wrap:anywhere;white-space:normal!important}
-.home-flash-page[data-flash-key="period"] .period-card>.h-minis .h-mini>u{font-size:12px!important}
-.home-flash-page[data-flash-key="period"] .period-card>.h-main{min-height:95px!important}
-.home-flash-page[data-flash-key="period"] .period-card .h-num>b{font-size:36px!important}
-.home-flash-page[data-flash-key="period"] .period-tabs button{font-size:15px!important;min-height:46px}
-.home-flash-page[data-flash-key="period"] .period-card-footer{margin-top:8px;flex-wrap:wrap}
-.home-flash-page[data-flash-key="period"] .period-card-footer>.btn{min-height:44px}
-@media(max-width:380px){.home-flash-page[data-flash-key="period"] .period-card>.h-minis .h-mini>b{font-size:21px!important}.home-flash-page[data-flash-key="period"] .period-card>.h-minis .h-mini>small{font-size:13px!important}}
+/* Periods share Today's intrinsic metric sizes; only the outer face fills the viewport. */
+#p-home #heroMonth.home-flash-page{padding:14px!important}
+#p-home #heroMonth.home-flash-page>.period-card{display:flex!important;flex-direction:column!important;height:100%!important;min-height:0!important;min-width:0!important;gap:9px!important;justify-content:flex-start!important;overflow:hidden!important}
+#p-home #heroMonth .period-card>*{min-width:0;max-width:100%;flex-shrink:0}
+#p-home #heroMonth .period-card>.h-main{margin:0!important;min-height:72px!important}
+#p-home #heroMonth .h-num{min-width:0;flex:1}
+#p-home #heroMonth .h-num>b{font-size:40px!important;line-height:1.3!important;white-space:nowrap!important;overflow-wrap:normal!important}
+#p-home #heroMonth .h-num>small{font-size:14px!important;line-height:1.5!important}
+#p-home #heroMonth .period-card>.h-minis{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:auto auto!important;grid-auto-rows:auto!important;align-content:start!important;flex:0 0 auto!important;gap:6px!important;margin:0!important}
+#p-home #heroMonth .period-card>.h-minis .h-mini{height:auto!important;min-height:0!important;min-width:0!important;padding:7px 9px!important;gap:2px!important;justify-content:center!important}
+#p-home #heroMonth .h-mini>small{font-size:13px!important;line-height:1.5!important}
+#p-home #heroMonth .h-mini>b{font-size:24px!important;line-height:1.4!important;white-space:nowrap!important;overflow-wrap:normal!important;word-break:normal!important}
+#p-home #heroMonth .h-mini>b>*{white-space:nowrap!important;overflow-wrap:normal!important;word-break:normal!important}
+#p-home #heroMonth .period-tabs button{font-size:14px!important;min-height:42px!important;padding:5px 3px!important}
+#p-home #heroMonth .period-card-footer{display:flex!important;flex-direction:column;align-items:stretch;gap:8px;margin-top:0!important}
+#p-home #heroMonth .period-expense-info{flex:none!important;width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:13px;background:var(--surface-2)}
+#p-home #heroMonth .period-expense-info .h-expense{display:flex;flex-wrap:wrap;margin:0!important;padding:0!important}
+#p-home #heroMonth .h-expense small{font-size:14px!important;line-height:1.5!important}
+#p-home #heroMonth .h-expense b{font-size:24px!important;line-height:1.4!important}
+#p-home #heroMonth .expense-updated{display:block;font-size:11px!important;line-height:1.5!important}
+#p-home #heroMonth .period-card-footer>.btn{align-self:flex-end;min-height:36px;margin:0!important}
+#p-home .home-flash-deck[data-compact=true] #heroMonth.home-flash-page{padding:12px!important}
+#p-home .home-flash-deck[data-compact=true] #heroMonth .period-card{gap:7px!important}
+#p-home .home-flash-deck[data-compact=true] #heroMonth .h-num>b{font-size:34px!important}
+#p-home .home-flash-deck[data-compact=true] #heroMonth .h-mini>small{font-size:12px!important}
+#p-home .home-flash-deck[data-compact=true] #heroMonth .h-mini>b{font-size:19px!important}
+#p-home .home-flash-deck[data-tight=true] #heroMonth.home-flash-page{padding:10px!important}
+#p-home .home-flash-deck[data-tight=true] #heroMonth .period-card{gap:4px!important}
+#p-home .home-flash-deck[data-tight=true] #heroMonth .period-card>.h-main{min-height:56px!important}
+#p-home .home-flash-deck[data-tight=true] #heroMonth .h-num>b{font-size:32px!important}
+#p-home .home-flash-deck[data-tight=true] #heroMonth .h-ring{width:56px!important;height:56px!important}

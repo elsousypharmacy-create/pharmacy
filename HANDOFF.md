@@ -262,3 +262,8 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 
 ## Daily grid width correction — 2026-11-03
 - Owner screenshot IMG_9759 exposed a left blank strip on the real daily card. Explicit single minmax(0,1fr) track, full-width children and zero min-width prevent intrinsic content shrinking/overflowing the daily grid. Comparison text wraps within the amount column. Font sizes retained. Fixture now includes real-shaped comparison text to cover this missed case.
+
+## Period layout corrected after IMG_9765 — 2026-11-03
+- Removed the final inline monthly stretch grid and replaced conflicting period rules with ID-scoped intrinsic 2×2 KPIs. The old four-column selector had more specificity than the attempted fixes; it caused narrow tall boxes and split 10,020 across lines.
+- Period amount/KPI fonts now match Today's normal/compact/tight sizes; values never wrap. Expenses appear in a compact bordered block directly under the metrics with the details button next to the content, rather than at the bottom of a stretched layout. Updated CSS cache key. Outer viewport/swipe and all financial calculations unchanged.
+- Synthetic fixture now reflects the actual chart-free period content and 10,020/107/4,075/54 values. Browser geometry verified 375×667, 390×720, 430×844, 375×600: two columns, intrinsic rows, complete values, identical daily/period KPI fonts, zero inner vertical overflow. Native owner session untested. Home viewport/expense-loading checks and inline syntax passed. Server bundle --check already fails on unchanged main source; no backend files changed or deployed here.

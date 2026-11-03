@@ -88,3 +88,5 @@ body.home-flash-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}.h
 #p-home .home-flash-deck[data-compact=true] .home-priorities-strip{padding-top:4px;margin-top:0}
 #p-home .home-flash-deck[data-compact=true] .home-priorities-strip .card-head{margin-bottom:2px}
 #p-home .home-flash-deck[data-compact=true] .home-priorities-strip .task{padding:5px!important;min-height:44px}
+
+#p-home .home-presence-heading,#p-home .home-presence-line{line-height:1.5}#p-home .home-presence-line>b,#p-home .home-presence-line>small,#p-home .home-presence-line>span{line-height:1.5}

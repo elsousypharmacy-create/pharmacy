@@ -220,3 +220,5 @@ body.team-fit-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}
 #p-hr[data-tight=true] .staff-hero-heading{min-height:44px}#p-hr[data-tight=true] .staff-hero-card>summary{gap:5px}#p-hr[data-tight=true] .staff-hero-minis b{font-size:19px}
 /* Keep full metric labels visible, including the registration percentage. */
 #p-hr .staff-hero-minis small{white-space:normal;line-height:1.5}#p-hr .staff-hero-minis b{direction:ltr;unicode-bidi:isolate}#p-home #heroMonth .h-mini>small{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+/* Daily invoice average stays alongside the period's total invoice count. */
+#p-home #heroMonth .h-mini.invoice-summary>u{display:block!important;font-size:11px!important;line-height:1.5!important;white-space:normal!important;color:var(--ink-2);text-decoration:none}#p-home #heroMonth .invoice-summary>u strong{font-size:13px;font-weight:700;color:var(--ink);display:inline-block;direction:ltr;unicode-bidi:isolate}

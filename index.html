@@ -682,7 +682,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=20261103-period-match4">
+<link rel="stylesheet" href="dashboard-ui.css?v=team-fit-20261103-period-match4">
 
 </head>
 <body>
@@ -920,7 +920,7 @@ var T = {
   neverCountedWord:['عمره ما اتجرد','Never counted'],
   stockValue:['قيمة المخزون','Stock value'],
   unitsWord:['علبة','units'],
-  noCounts:['لا توجد جلسات جرد مسجلة. الموظف بيجرد بالكاميرا من صفحة «الماسح» (الفريق ← الصفحات)، والنتيجة بتظهر هنا','No stocktake yet. Staff use scan.html'],
+  noCounts:['لا توجد جلسات جرد مسجلة. الموظف بيجرد بالكاميرا من صفحة «الماسح» (الإعدادات ← الصفحات)، والنتيجة بتظهر هنا','No stocktake yet. Staff use scan.html'],
   countSessions:['جلسات','Sessions'],
   lastCount:['آخر جرد','Last count'],
   gapValue:['قيمة الفروقات','Gap value'],
@@ -1954,7 +1954,7 @@ function shortMenu(){
 /* ═══════════ ٤) الأقسام ═══════════ */
 var SECTIONS = {
   sales: [['home',  function(){ return tr('today'); }]],
-  team:  [['perf',  function(){ return tr('staffToday'); }], ['pages', function(){ return 'الصفحات'; }]],
+  team:  [['perf',  function(){ return tr('staffToday'); }]],
   cust:  [['list',  function(){ return tr('customers'); }], ['msgs', function(){ return tr('messages'); }]],
   bot:   [['chats', function(){ return '💬 المحادثات'; }]],
   /* المخزون: الملخص الأول (قرارات)، وبعدين كل قرار في تبويبه */
@@ -1968,6 +1968,7 @@ var SECTIONS = {
 var CUR = 'sales', TAB = 0;
 
 function go(sec, tab){
+  if(sec==='team' && tab===1){openSheet('settings');settingsSelect('pages');return;}
   if (sec !== CUR || (tab || 0) !== TAB){ try { sessionStorage.removeItem('subCust'); sessionStorage.removeItem('subInv'); } catch (e) {} }
   CUR = sec; TAB = tab || 0;
   try { sessionStorage.setItem('lastPage', JSON.stringify([CUR, TAB])); localStorage.setItem('lastPage', JSON.stringify([CUR, TAB])); } catch (e) {}   /* السحب لتحت يرجّعك لنفس الصفحة */
@@ -1992,6 +1993,7 @@ function renderTabs(sec, tab){
 }
 function render(sec, tab){
   document.body.classList.toggle('home-flash-mode',sec==='sales' && tab===0);
+  document.body.classList.toggle('team-fit-mode',sec==='team');
   var key = SECTIONS[sec][tab][0];
   /* كل تاب في المبيعات ليه صندوقه — عشان رد متأخر من تاب ميكتبش فوق تاب تاني */
   var BOXES = { team: ['p-hr', 'p-team'] };
@@ -1999,7 +2001,7 @@ function render(sec, tab){
     var el = document.getElementById(id); if (el) el.style.display = (i === tab) ? '' : 'none';
   });
   ({ count:pgCounts, home:pgHome, month:pgSales, pl:pgPL, exp:pgExpenses, debt:pgDebts, bal:pgBalance, close:pgClosing,
-     perf:pgStaffHub, pages:pgTeamPages, aging:pgAging, expTab:pgAging, deadTab:pgAging, short:pgShort,
+     perf:pgStaffHub, aging:pgAging, expTab:pgAging, deadTab:pgAging, short:pgShort,
      msgs:pgMessages, list:pgCustomers, agents:pgAgents, docs:pgDoctors, chats:pgChats })[key](key);
 }
 
@@ -3585,6 +3587,7 @@ function homeFlashViewportBounds(viewport,header,nav){
   return {top:top,height:Math.max(0,Math.floor(bottom-top))};
 }
 function staffFlashFit(){
+  teamViewportFit();
   if(typeof window==='undefined' || typeof document.querySelector!=='function')return;
   var deck=document.querySelector('.staff-flash-deck');if(!deck)return;
   var top=document.querySelector('header.top'),nav=document.getElementById('secnav'),height=(window.visualViewport && window.visualViewport.height)||window.innerHeight;
@@ -3603,12 +3606,12 @@ function staffCardsHtml(employees,live,history,context,attendanceError){
   var entries=staffCardEntries(employees,live,history);
   if(!entries.length)return '<div class="state">لا توجد بيانات فريق للفترة المختارة</div>';
   function value(n){return n===null || n===undefined || !Number.isFinite(Number(n))?'—':ltr(num(n));}
-  return '<div class="staff-hero-grid" role="region" aria-label="كروت الفريق؛ اسحب يمينًا أو يسارًا">'+entries.map(function(item){
+  return '<div class="staff-hero-grid" onscroll="teamCardRemember(this)" role="region" aria-label="كروت الفريق؛ اسحب يمينًا أو يسارًا">'+entries.map(function(item){
     var clockMinutes=function(r){var m=String(r.checkIn || '').match(/(\d{1,2}):(\d{2})\s*(AM|PM|ص|م)?/i);return m?(Number(m[1])%12+(/PM|م/i.test(m[3]||'')?12:0))*60+Number(m[2]):0;};
     var e=item.employee,p=item.live,shifts=item.shifts.slice().sort(function(a,b){return b.date.localeCompare(a.date)||clockMinutes(b)-clockMinutes(a);}),last=shifts[0],key=context+':'+staffKey(item.name),status=attendanceError?'الحضور غير متاح':p?'موجود الآن':last?(last.checkOut==='مفتوح'?'بصمة مفتوحة':'سجّل خروج'):'لا توجد بصمة حالية';
     var checkIn=p?staffCairoClock(p.checkInTimestamp):last?staffClockLabel(last.checkIn):'—',checkOut=p?'لم يسجل الخروج':last?(last.checkOut==='مفتوح'?'لم يسجل الخروج':staffClockLabel(last.checkOut)):'—';
     if(attendanceError){checkIn='—';checkOut='—';}
-    return '<details class="staff-hero-card" data-staff-card="'+esc(key)+'"'+(STAFF_CARD_OPEN[key]?' open':'')+' ontoggle="staffCardToggle(this)"><summary><span class="staff-hero-heading"><b>'+esc(item.name)+'</b><span class="badge" style="--tone:var(--'+(p&&!attendanceError?'ok':'ink-2')+')">'+status+'</span></span><span class="staff-hero-total"><small>صافي المبيعات</small><b>'+value(e && e.net)+' <small>جنيه</small></b></span><span class="staff-hero-minis"><span><small>الدخول</small><b>'+checkIn+'</b></span><span><small>الخروج</small><b>'+checkOut+'</b></span><span><small>الفواتير</small><b>'+value(e && e.invoices)+'</b></span><span><small>متوسط الفاتورة</small><b>'+value(e && e.avg_inv)+'</b></span></span><span class="staff-card-more">تفاصيل الأداء والحضور <span aria-hidden="true">⌄</span></span></summary><div class="staff-card-details">'+
+    return '<details class="staff-hero-card" data-staff-card="'+esc(key)+'"'+(context!=='team' && STAFF_CARD_OPEN[key]?' open':'')+' ontoggle="staffCardToggle(this)"><summary'+(context==='team'?' onclick="event.preventDefault()"':'')+'><span class="staff-hero-heading"><b>'+esc(item.name)+'</b><span class="badge" style="--tone:var(--'+(p&&!attendanceError?'ok':'ink-2')+')">'+status+'</span></span><span class="staff-hero-total"><small>صافي المبيعات</small><b>'+value(e && e.net)+' <small>جنيه</small></b></span><span class="staff-hero-minis"><span><small>الدخول</small><b>'+checkIn+'</b></span><span><small>الخروج</small><b>'+checkOut+'</b></span><span><small>الفواتير</small><b>'+value(e && e.invoices)+'</b></span><span><small>متوسط الفاتورة</small><b>'+value(e && e.avg_inv)+'</b></span></span>'+(context==='team'?'<button type="button" class="staff-card-more team-details" onclick="event.preventDefault();event.stopPropagation();teamCardDetails(this)">+ تفاصيل</button>':'<span class="staff-card-more">تفاصيل الأداء والحضور <span aria-hidden="true">⌄</span></span>')+'</summary><div class="staff-card-details">'+
       (attendanceError?'<p class="camera-meta">تعذر تحديث الحضور؛ الحالة غير مؤكدة.</p>':'')+
       (e?row('ربح البيع','قبل المصروفات',value(e.profit))+row('تسجيل العملاء','',value(e.reg_pct)+'%')+row('تقييم إرشادي',e.invoices<20?'عينة محدودة؛ الدرجة غير معروضة':'لا يكفي وحده للحكم على الموظف',e.invoices<20?'—':value(e.care_score)):'<p class="camera-meta">لا توجد مبيعات متاحة لهذا الموظف في الفترة.</p>')+
       (last?'<p class="camera-meta">آخر بصمة بالفترة: '+esc(last.date)+'</p>':'')+staffAttendanceRows(shifts)+
@@ -3616,38 +3619,44 @@ function staffCardsHtml(employees,live,history,context,attendanceError){
   }).join('')+'</div>';
 }
 
+var TEAM_CARD_POSITION='';
+try{TEAM_CARD_POSITION=sessionStorage.getItem('teamCardPosition') || '';}catch(e){}
+function teamCardRemember(deck){
+  var r=deck.getBoundingClientRect(),center=(r.left+r.right)/2,best=null,dist=Infinity;
+  deck.querySelectorAll('[data-staff-card]').forEach(function(card){var b=card.getBoundingClientRect(),d=Math.abs((b.left+b.right)/2-center);if(d<dist){best=card;dist=d;}});
+  if(best){TEAM_CARD_POSITION=best.getAttribute('data-staff-card');try{sessionStorage.setItem('teamCardPosition',TEAM_CARD_POSITION);}catch(e){}}
+}
+function teamCardRestore(){
+  var deck=document.querySelector('#p-hr .staff-hero-grid');if(!deck)return;
+  var cards=Array.from(deck.querySelectorAll('[data-staff-card]')),target=cards.filter(function(el){return el.getAttribute('data-staff-card')===TEAM_CARD_POSITION;})[0] || cards[0];
+  if(target && cards[0])deck.scrollLeft=target.offsetLeft-cards[0].offsetLeft;
+}
+function teamViewportFit(){
+  if(typeof document.querySelector!=='function' || typeof window==='undefined' || !document.body.classList.contains('team-fit-mode'))return;
+  var header=document.querySelector('header.top'),nav=document.getElementById('secnav'),vv=window.visualViewport,top=vv && vv.offsetTop || 0,height=vv && vv.height || window.innerHeight;
+  var b=homeFlashViewportBounds({top:top,bottom:top+height},header && header.getBoundingClientRect(),nav && nav.getBoundingClientRect());
+  document.documentElement.style.setProperty('--team-top',b.top+'px');document.documentElement.style.setProperty('--team-height',b.height+'px');
+  var host=document.getElementById('p-hr');if(host)host.setAttribute('data-tight',b.height<540?'true':'false');
+}
+function teamCardDetails(button){
+  var card=button.closest('[data-staff-card]');if(!card)return;
+  var name=card.querySelector('.staff-hero-heading>b'),details=card.querySelector('.staff-card-details');
+  if(details)openMenu(name?name.textContent:'تفاصيل الموظف','<p class="camera-meta">'+esc(HR.kpi.label || '')+'</p>'+details.innerHTML);
+}
+function teamSummaryDetails(){
+  var list=HR.kpi.employees || [],live=HR.live.live || [],reg=list.reduce(function(t,e){return t+(Number(e.registered)||0);},0),customers=list.reduce(function(t,e){return t+(Number(e.total_cust)||0);},0);
+  openMenu('ملخص الفريق',row('الفترة','',esc(HR.kpi.label || ''))+row('صافي المبيعات','',staffFlashValue(staffFlashSum(list,'net')))+row('الموجودون الآن','',HR.live.ok===false?'غير متاح':ltr(num(live.length)))+row(tr('regRate'),'',pct(reg,customers)+'%')+row(tr('newCust'),'',ltr(num(list.reduce(function(t,e){return t+(Number(e.new_c)||0);},0)))));
+}
+
 function drawStaffHub(isOld){
   var box = document.getElementById('p-hr');
   var list = (HR.kpi.employees || []);
   var live = HR.live.live || [];
 
-  var totReg  = list.reduce(function(a,x){ return a + x.registered; }, 0);
-  var totCust = list.reduce(function(a,x){ return a + x.total_cust; }, 0);
-  var totNew  = list.reduce(function(a,x){ return a + x.new_c; }, 0);
-
-  var html = (isOld ? '<div class="state" style="padding:0 0 8px">' + tr('cached') + '</div>' : '');
-  html += '<div class="ctl"><b>'+esc(HR.kpi.label || 'الفريق')+'</b><button class="ctl-more" onclick="hrMenu()" aria-label="تحديد مدة تقرير الفريق">⋯</button></div>';
-
-  var teamSales = list.reduce(function(s, e){ return s + (e.net || e.sales || 0); }, 0);
-
-  html += vitals(tr('staffToday'), HR.kpi.label || '', [
-    RANGE.perf === 'today'
-      ? { value: num(live.length), label: tr('onShiftNow'), tone: live.length ? 'ok' : 'warn', note: num(list.length), sub: 'باعوا' }
-      : { value: num(teamSales), label: 'مبيعات الفريق', note: num(list.length), sub: 'موظفين' },
-    { value: pct(totReg, totCust) + '%', label: tr('regRate'),
-      tone: pct(totReg, totCust) >= goalOf('registration', 75) ? 'ok' : 'warn',
-      note: goalOf('registration', 75) + '%', sub: tr('target') },
-    { value: num(totNew), label: tr('newCust'), tone: 'brand' }
-  ]);
-
+  var html = '<div class="team-toolbar"><div><b>الفريق</b><small>'+esc(HR.kpi.label || 'الفترة المختارة')+(isOld?' · '+tr('cached'):'')+'</small></div><button class="ctl-more" onclick="teamSummaryDetails()" aria-label="ملخص الفريق">ⓘ</button><button class="ctl-more" onclick="hrMenu()" aria-label="تحديد مدة تقرير الفريق">⋯</button></div>';
   html += staffCardsHtml(list,live,HR.hist.rows || [],'team',HR.live.ok===false);
-
-  /* موجودين دلوقتي — بس لو فيه حد مش متطابق مع القائمة فوق */
-
-  if (HR.live.ok === false) html += card(tr('onShiftNow'), null,
-    '<div class="state err">' + esc(HR.live.error) + '</div>');
-
   box.innerHTML = html;
+  teamViewportFit();teamCardRestore();
   if(!isOld)staffFocusPending();
 }
 
@@ -5342,12 +5351,10 @@ function callsHtml(d){
 
 /* ─────── الفريق: صفحات الموظفين والإدارة ─────── */
 function goBot(){ go('bot'); }
-function pgTeamPages(){
-  var box = document.getElementById('p-team');
+function settingsPagesHtml(){
   var link = function(icon, name, sub, url){ return '<a class="tile" href="' + url + '" target="_blank" rel="noopener"><i>' + icon + '</i>' + name + '</a>'; };
   var tile = function(icon, name, act){ return '<button class="tile" onclick="' + act + '"><i>' + icon + '</i>' + name + '</button>'; };
-  box.innerHTML =
-    card('صفحات الموظفين', 'بتتفتح في صفحة جديدة', '<div class="tiles">' +
+  return card('صفحات الموظفين', 'بتتفتح في صفحة جديدة', '<div class="tiles">' +
       link('📞', 'متابعة العملاء', '', 'calls.html') +
       link('🩺', 'تسجيل الفعالية', '', 'event.html') +
       link('🏷️', 'الملصقات', '', 'labels.html') +
@@ -5357,8 +5364,8 @@ function pgTeamPages(){
       link('🩺', 'صفحة الدكاترة', '', 'doctors.html') +
     '</div>') +
     card('الإدارة', null, '<div class="tiles">' +
-      tile('👥', tr('agents'), "go('admin',0)") +
-      tile('👨‍⚕️', tr('doctors'), "go('admin',1)") +
+      tile('👥', tr('agents'), "closeSheet();go('admin',0)") +
+      tile('👨‍⚕️', tr('doctors'), "closeSheet();go('admin',1)") +
     '</div>');
 }
 
@@ -5388,11 +5395,11 @@ function drawAgents(d, box){
 
 var SETTINGS={root:null,owner:null,key:'',scroll:{},loaded:{},dirty:{}};
 function settingsIcon(key){
-  var paths={bot:'<path d="M5 4h14v11H9l-4 4z"/><path d="M9 8h6M9 11h4"/>',camera:'<rect x="3" y="6" width="18" height="14" rx="3"/><path d="m8 6 2-3h4l2 3"/><circle cx="12" cy="13" r="3"/>',appearance:'<circle cx="12" cy="12" r="8"/><path d="M12 4v16M12 6a6 6 0 0 1 0 12"/>',ai:'<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>',delivery:'<path d="M3 6h11v12H3zM14 10h4l3 4v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>',security:'<path d="m12 3 8 3v6c0 5-8 9-8 9S4 17 4 12V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',server:'<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 17.5h.01M12 7.5h5M12 17.5h5"/>',advanced:'<path d="m14 5 5 5M3 21l3-7L17 3l4 4L10 18zM6 14l4 4"/>'};
+  var paths={pages:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',bot:'<path d="M5 4h14v11H9l-4 4z"/><path d="M9 8h6M9 11h4"/>',camera:'<rect x="3" y="6" width="18" height="14" rx="3"/><path d="m8 6 2-3h4l2 3"/><circle cx="12" cy="13" r="3"/>',appearance:'<circle cx="12" cy="12" r="8"/><path d="M12 4v16M12 6a6 6 0 0 1 0 12"/>',ai:'<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>',delivery:'<path d="M3 6h11v12H3zM14 10h4l3 4v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>',security:'<path d="m12 3 8 3v6c0 5-8 9-8 9S4 17 4 12V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',server:'<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 17.5h.01M12 7.5h5M12 17.5h5"/>',advanced:'<path d="m14 5 5 5M3 21l3-7L17 3l4 4L10 18zM6 14l4 4"/>'};
   return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(paths[key] || paths.advanced)+'</svg>';
 }
 function settingsMenuHtml(){
-  var groups=[['التشغيل اليومي',['bot','camera']],['التفضيلات والحماية',['appearance','security']],['الخدمات والربط',['ai','delivery']],['إدارة النظام',['server','advanced']]];
+  var groups=[['التشغيل اليومي',['pages','bot','camera']],['التفضيلات والحماية',['appearance','security']],['الخدمات والربط',['ai','delivery']],['إدارة النظام',['server','advanced']]];
   return '<div class="settings-intro"><small class="section-eyebrow">لوحة التحكم</small><h2>إعدادات الصيدلية</h2><p>التشغيل، الربط وحماية اللوحة</p></div><div class="settings-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" placeholder="ابحث عن إعداد…" aria-label="البحث في الإعدادات" oninput="settingsFilter(this.value)"></div>'+groups.map(function(g){return '<div class="settings-category"><h4>'+g[0]+'</h4><div class="settings-group">'+g[1].map(function(key){var x=SETTINGS_ITEMS.filter(function(i){return i[0]===key;})[0];return '<button class="settings-link" data-settings-search="'+esc(x[1]+' '+x[2])+'" onclick="settingsSelect(\''+key+'\')"><i>'+settingsIcon(key)+'</i><span><b>'+x[1]+'</b><small>'+x[2]+'</small></span><em aria-hidden="true">‹</em></button>';}).join('')+'</div></div>';}).join('')+'<p id="settingsNoMatch" class="state" hidden>لا توجد إعداد بالاسم ده</p>';
 }
 function settingsFilter(value){
@@ -5401,7 +5408,7 @@ function settingsFilter(value){
   SETTINGS.root.querySelectorAll('.settings-category').forEach(function(el){el.hidden=!Array.from(el.querySelectorAll('.settings-link')).some(function(row){return !row.hidden;});});
   SETTINGS.root.querySelector('#settingsNoMatch').hidden=!!n;
 }
-var SETTINGS_ITEMS=[['bot','الواتساب والردود','التشغيل والربط والمحادثات','💬'],['camera','الكاميرات','حالة الربط وإعدادات التصوير','📷'],['appearance','المظهر واللغة','الوضع الفاتح والغامق واللغة','◐'],['ai','الذكاء الاصطناعي','الموديل والاستهلاك والميزانية','✦'],['delivery','التوصيل','الرسوم والمناطق والمواعيد','🛵'],['security','الأمان وقفل اللوحة','الرقم السري وصلاحية الدخول','🔒'],['server','السيرفر والتحديثات','حالة التحديث والتنبيهات','↻'],['advanced','أدوات الصيانة','الفحص والنسخ الاحتياطي والتنظيف','⚙']];
+var SETTINGS_ITEMS=[['pages','الصفحات','صفحات الموظفين وروابط الإدارة','▦'],['bot','الواتساب والردود','التشغيل والربط والمحادثات','💬'],['camera','الكاميرات','حالة الربط وإعدادات التصوير','📷'],['appearance','المظهر واللغة','الوضع الفاتح والغامق واللغة','◐'],['ai','الذكاء الاصطناعي','الموديل والاستهلاك والميزانية','✦'],['delivery','التوصيل','الرسوم والمناطق والمواعيد','🛵'],['security','الأمان وقفل اللوحة','الرقم السري وصلاحية الدخول','🔒'],['server','السيرفر والتحديثات','حالة التحديث والتنبيهات','↻'],['advanced','أدوات الصيانة','الفحص والنسخ الاحتياطي والتنظيف','⚙']];
 function settingsScroller(){return document.querySelector('#sheet .sheet-in');}
 function settingsRemember(){
   var el=settingsScroller();if(el)SETTINGS.scroll[SETTINGS.key]=el.scrollTop;
@@ -5436,7 +5443,7 @@ function settingsSelect(key,restoring){
   SETTINGS.root.querySelectorAll('[data-setting]').forEach(function(panel){panel.hidden=panel.dataset.setting!==key;});
   var title=SETTINGS_ITEMS.filter(function(x){return x[0]===key;})[0];document.getElementById('sheet-title').textContent=title?title[1]:tr('settings');
   var sc=settingsScroller();if(sc)sc.scrollTop=+SETTINGS.scroll[key] || 0;
-  var refresh=document.getElementById('settingsRefresh');if(refresh)refresh.hidden=key==='appearance' || key==='advanced';
+  var refresh=document.getElementById('settingsRefresh');if(refresh)refresh.hidden=key==='pages' || key==='appearance' || key==='advanced';
   var status=document.getElementById('setStatus');if(status)status.hidden=!!key;
   settingsDraftHint();try{sessionStorage.setItem('settingsPosition',JSON.stringify({key:key,scroll:SETTINGS.scroll}));}catch(e){}
   settingsLoad(key);
@@ -5475,15 +5482,8 @@ function openSheet(kind){
         tile('💬', 'محادثات البوت', 'closeSheet();go(\'bot\')') +
         tile('👥', tr('agents'), 'closeSheet();go(\'admin\',0)') +
         tile('👨‍⚕️', tr('doctors'), 'closeSheet();go(\'admin\',1)') +
-      '</div><div class="group-title">صفحات الموظفين</div><div class="tiles">' +
-        link('🏷️', 'الملصقات', 'labels.html') +
-        link('📞', 'متابعة العملاء', 'calls.html') +
-        link('🩺', 'تسجيل الفعالية', 'event.html') +
-        link('💸', 'مراجعة المصروفات', 'expenses.html') +
-        link('🛵', 'الطلبات', 'orders.html') +
-        link('📷', 'الماسح', 'scan.html') +
-        link('🩺', 'صفحة الدكاترة', 'doctors.html') +
       '</div>' +
+      '<button class="btn btn-quiet" onclick="openSheet(\'settings\');settingsSelect(\'pages\')">▦ الصفحات</button>' +
       '<button class="btn btn-quiet" onclick="openSheet(\'settings\')">⚙️ ' + tr('settings') + '</button>';
     return;
   }
@@ -5496,6 +5496,7 @@ function openSheet(kind){
       var key=groupKeys[groupIndex++];return '<section class="settings-panel" data-setting="'+key+'" hidden><h3 class="settings-panel-title"><i>'+settingsIcon(key)+'</i>'+title+'</h3><p class="settings-sub">'+sub+'</p>'+body+'</section>';
     };
     b.innerHTML =
+      '<section class="settings-panel" data-setting="pages" hidden>'+settingsPagesHtml()+'</section>' +
       '<section class="settings-panel" data-setting="appearance" hidden><h3>المظهر واللغة</h3><div class="set-prefs"><button class="btn btn-quiet" onclick="toggleTheme()">◐ فاتح / غامق</button>' +
       '<button class="btn btn-quiet" id="langBtn" onclick="setLang(LANG===\'ar\'?\'en\':\'ar\')">' + (LANG === 'ar' ? 'English' : 'عربي') + '</button></div></section>' +
       '<div id="setStatus" class="set-status"></div>' +
@@ -6933,6 +6934,7 @@ try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 (function(){
   /* لو الصفحة اتعمل لها refresh (سحب لتحت) نرجع لنفس القسم والتبويب بدل الرئيسية */
   var last = null; try { last = JSON.parse(sessionStorage.getItem('lastPage') || localStorage.getItem('lastPage') || 'null'); HOME_STAFF_FLASH_POSITION=sessionStorage.getItem('homeFlashPosition') || HOME_STAFF_FLASH_POSITION; } catch (e) {}
+  if(last && last[0]==='team' && last[1]===1)last=['team',0];
   if (last && SECTIONS[last[0]] && SECTIONS[last[0]][last[1]]){
     var sc = null, si = null; try { sc = sessionStorage.getItem('subCust'); si = sessionStorage.getItem('subInv'); } catch (e) {}
     CUR = last[0]; TAB = last[1];            /* عشان go ما يمسحش القسم الفرعي */

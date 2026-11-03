@@ -144,3 +144,8 @@ body.home-flash-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}.h
 #p-home .home-flash-deck[data-tight=true] .home-flash-today .h-num>b{font-size:32px!important}
 #p-home .home-flash-deck[data-tight=true] .home-flash-today .home-insight-card{height:74px!important;min-height:74px!important;overflow:hidden}
 #p-home .home-flash-deck[data-tight=true] .home-flash-today .insight-value{font-size:22px!important;line-height:1.2!important}
+#p-home .home-flash-deck[data-compact=true] .home-presence-line:nth-child(n+2){display:none}
+#p-home .home-flash-deck[data-compact=true] .home-priorities-strip .task{min-height:40px!important}
+#p-home .home-flash-deck[data-tight=true] .home-flash-today{gap:2px!important}
+#p-home .home-flash-deck[data-tight=true] .home-flash-today .home-insight-card{height:78px!important;min-height:78px!important}
+#p-home .home-flash-deck[data-tight=true] .home-priorities-strip .task{min-height:28px!important;padding:0!important}

@@ -2253,7 +2253,7 @@ function docDone(row){
 
 /* ─────── عامة ─────── */
 function pgHome(){
-  if(storedPin())homeCamLatest(); // Start camera metadata independently of the sales bundle.
+  if(storedPin())homeCamLatest(true,true); // Fetch saved reports on entry/resume without notifications.
   var box = document.getElementById('p-home');
   var seed = cacheGet('home', {});
   if (seed) drawHome(seed.b, seed.kpi, true); else busy(box);
@@ -2292,6 +2292,7 @@ function startAutoRefresh(){
   AUTO_TIMER = setInterval(function(){
     if (document.hidden) return;          // الشاشة مقفولة أو تبويب تاني
     if (CUR !== 'sales' || TAB !== 0) { stopAutoRefresh(); return; }
+    if(storedPin())homeCamLatest(true,true); // Independent of sales success; metadata only, once per visible minute.
     Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }), api('getMonthTotalsRaw',{range:'today'}) ])
     .then(function(res){
       if(res[1])res[1]._salesSummary=res[2];
@@ -6267,9 +6268,12 @@ var CAMR = { list: null, cur: null, frames: {}, at: 0, request: null };
   if(saved && Array.isArray(saved.reports))CAMR.list=CameraAssessment.sortReports(saved.reports);
 })();
 function camrReportsFetch(force){
+  var owner=storedPin();
+  if(!owner)return Promise.reject(new Error('سجّل الدخول لتحديث التقارير'));
   if (CAMR.request) return CAMR.request;
   if (!force && CAMR.list && Date.now()-CAMR.at<300000) return Promise.resolve({ok:true,reports:CAMR.list});
   CAMR.request=api('camReports').then(function(d){
+    if(storedPin()!==owner)throw new Error('تغيّر تسجيل الدخول');
     if (!d || !d.ok) throw new Error((d && d.error) || 'تعذر تحميل التقارير');
     CAMR.list=CameraAssessment.sortReports(d.reports || []); CAMR.at=Date.now(); cacheSet('camReportsUI',{}, {reports:CAMR.list}); return d;
   }).catch(function(e){
@@ -6621,17 +6625,21 @@ function srvBadgeCheck(){
   }).catch(function(){});
 }
 var SRV_NEWER = false, SRV_FULL = false, SRV_VER = -1;
-function homeCamLatest(force){
-  if (!storedPin()){if(force===true)toast('سجّل الدخول لتحديث التقارير');return;}
+function homeCamLatest(force,quiet){
+  var owner=storedPin();
+  function active(){return storedPin()===owner && (!quiet || (!document.hidden && CUR==='sales' && TAB===0));}
+  if (!owner){if(force===true && !quiet)toast('سجّل الدخول لتحديث التقارير');return;}
   var previous=CameraAssessment.sortReports(CAMR.list || [])[0],previousKey=previous && JSON.stringify([previous.id,previous.generatedAt,previous.windowEnd]);
   function paint(){
+    if(!active())return;
     var el=document.getElementById('homeCamRep'),box=document.getElementById('homeAppearance');
     if(box){box.innerHTML=appearanceHomeHtml(CAMR.list || [],CAMR.at===0);if(HOME_FLASH_MODE)homeFlashPrepareInsights();}
     if(el && CAMR.list && CAMR.list.length){var r=CAMR.list[0],n=camrNotes(r);el.textContent=CameraAssessment.title(r)+(n?' · '+n+' ملاحظات':' · راجع التغطية');el.className='';}
   }
   if(CAMR.list)paint();
-  var waiting=setTimeout(function(){var box=document.getElementById('homeAppearance');if(box && !CAMR.list)box.innerHTML=homeCameraPlaceholder('السيرفر متأخر؛ لا يوجد تقييم محفوظ بعد.');},12000);
-  camrReportsFetch(force===true).then(function(){paint();if(force===true){var latest=CameraAssessment.sortReports(CAMR.list || [])[0],key=latest && JSON.stringify([latest.id,latest.generatedAt,latest.windowEnd]);toast(!latest?'لا يوجد تقرير محفوظ بعد':key===previousKey?'لا يوجد تقرير أحدث محفوظ':'تم تحميل التقرير الأحدث');}}).catch(function(){
+  var waiting=setTimeout(function(){var box=document.getElementById('homeAppearance');if(active() && box && !CAMR.list)box.innerHTML=homeCameraPlaceholder('السيرفر متأخر؛ لا يوجد تقييم محفوظ بعد.');},12000);
+  camrReportsFetch(force===true).then(function(){if(!active())return;paint();if(force===true && !quiet){var latest=CameraAssessment.sortReports(CAMR.list || [])[0],key=latest && JSON.stringify([latest.id,latest.generatedAt,latest.windowEnd]);toast(!latest?'لا يوجد تقرير محفوظ بعد':key===previousKey?'لا يوجد تقرير أحدث محفوظ':'تم تحميل التقرير الأحدث');}}).catch(function(){
+    if(!active() || (quiet && CAMR.list))return;
     var box=document.getElementById('homeAppearance');if(!box)return;
     if(CAMR.list){paint();box.insertAdjacentHTML('beforeend','<div class="cam-note" role="status">التحديث ماكملش؛ ده آخر تقرير محمّل. <button class="btn btn-quiet" onclick="homeCamLatest(true)">إعادة المحاولة</button></div>');}
     else box.innerHTML=homeCameraPlaceholder('تعذر تحميل تقييم الكاميرات')+'<button class="btn btn-quiet insight-retry" onclick="homeCamLatest(true)">إعادة المحاولة</button>';

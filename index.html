@@ -682,7 +682,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=team-fit-20261103-period-match4">
+<link rel="stylesheet" href="dashboard-ui.css?v=20261103-team-fingerprint1">
 
 </head>
 <body>
@@ -1923,6 +1923,7 @@ function debtMenu(){
 }
 function hrMenu(){
   openMenu(tr('more'),
+    menuRow('ⓘ','brand','ملخص الفريق',null,"teamSummaryDetails()") +
     '<div class="group-title">' + tr('rCustom') + '</div>' + rangeMenuRows('perf', 'setHrRange') +
     '<div class="group-title">' + tr('exportX') + ' / ' + tr('exportP') + '</div>' +
     menuRow('⤓', 'ok', tr('staffToday') + ' — Excel', null, "closeSheet();expStaff('x')") +
@@ -3611,12 +3612,43 @@ function staffCardsHtml(employees,live,history,context,attendanceError){
     var e=item.employee,p=item.live,shifts=item.shifts.slice().sort(function(a,b){return b.date.localeCompare(a.date)||clockMinutes(b)-clockMinutes(a);}),last=shifts[0],key=context+':'+staffKey(item.name),status=attendanceError?'الحضور غير متاح':p?'موجود الآن':last?(last.checkOut==='مفتوح'?'بصمة مفتوحة':'سجّل خروج'):'لا توجد بصمة حالية';
     var checkIn=p?staffCairoClock(p.checkInTimestamp):last?staffClockLabel(last.checkIn):'—',checkOut=p?'لم يسجل الخروج':last?(last.checkOut==='مفتوح'?'لم يسجل الخروج':staffClockLabel(last.checkOut)):'—';
     if(attendanceError){checkIn='—';checkOut='—';}
-    return '<details class="staff-hero-card" data-staff-card="'+esc(key)+'"'+(context!=='team' && STAFF_CARD_OPEN[key]?' open':'')+' ontoggle="staffCardToggle(this)"><summary'+(context==='team'?' onclick="event.preventDefault()"':'')+'><span class="staff-hero-heading"><b>'+esc(item.name)+'</b><span class="badge" style="--tone:var(--'+(p&&!attendanceError?'ok':'ink-2')+')">'+status+'</span></span><span class="staff-hero-total"><small>صافي المبيعات</small><b>'+value(e && e.net)+' <small>جنيه</small></b></span><span class="staff-hero-minis"><span><small>الدخول</small><b>'+checkIn+'</b></span><span><small>الخروج</small><b>'+checkOut+'</b></span><span><small>الفواتير</small><b>'+value(e && e.invoices)+'</b></span><span><small>متوسط الفاتورة</small><b>'+value(e && e.avg_inv)+'</b></span></span>'+(context==='team'?'<button type="button" class="staff-card-more team-details" onclick="event.preventDefault();event.stopPropagation();teamCardDetails(this)">+ تفاصيل</button>':'<span class="staff-card-more">تفاصيل الأداء والحضور <span aria-hidden="true">⌄</span></span>')+'</summary><div class="staff-card-details">'+
+    return '<details class="staff-hero-card" data-staff-card="'+esc(key)+'"'+(context!=='team' && STAFF_CARD_OPEN[key]?' open':'')+' ontoggle="staffCardToggle(this)"><summary'+(context==='team'?' onclick="event.preventDefault()"':'')+'><span class="staff-hero-heading"><b>'+esc(item.name)+'</b><button type="button" class="ctl-more team-card-menu" aria-label="خيارات كارت الموظف" onclick="event.preventDefault();event.stopPropagation();hrMenu()">⋯</button></span><span class="team-card-status"><span class="badge" style="--tone:var(--'+(p&&!attendanceError?'ok':'ink-2')+')">'+status+'</span><small>'+esc(typeof HR!=='undefined' && HR.kpi?HR.kpi.label || '':'')+'</small></span><span class="staff-hero-total"><small>صافي المبيعات</small><b>'+value(e && e.net)+' <small>جنيه</small></b></span><span class="staff-hero-minis"><span><small>الفواتير</small><b>'+value(e && e.invoices)+'</b></span><span><small>متوسط الفاتورة</small><b>'+value(e && e.avg_inv)+'</b></span><span><small>العملاء الجدد</small><b>'+value(e && e.new_c)+'</b></span><span><small>تسجيل العملاء</small><b>'+value(e && e.reg_pct)+(e && e.reg_pct!=null?'%':'')+'</b></span></span><span class="team-attendance"><button type="button" class="team-fingerprint" aria-label="سجل بصمات الشهر" onclick="event.preventDefault();event.stopPropagation();teamAttendanceOpen(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10a8 8 0 0 1 16 0M7 11a5 5 0 0 1 10 0v3c0 3-1 5-2 7M10 11a2 2 0 0 1 4 0v4c0 2-.5 4-1.5 6M4 13v1c0 2-.5 4-1 5M7 14c0 3-.6 5-1.5 7M10 14c0 3-.5 5-1.5 7M20 13v1c0 2-.3 4-1 6"/></svg></button><span class="team-attendance-times"><small>دخول '+checkIn+' · خروج '+checkOut+'</small><small>ساعات العمل <b'+(!attendanceError && p && teamClockStart(p.checkInTimestamp)?' data-team-clock="'+teamClockStart(p.checkInTimestamp)+'"':'')+'>'+(!attendanceError && p?teamClockText(p.checkInTimestamp):!attendanceError && last?teamDuration(last.durationMin):'—')+'</b></small></span></span>'+(context==='team'?'<button type="button" class="staff-card-more team-details" onclick="event.preventDefault();event.stopPropagation();teamCardDetails(this)">+ تفاصيل</button>':'<span class="staff-card-more">تفاصيل الأداء والحضور <span aria-hidden="true">⌄</span></span>')+'</summary><div class="staff-card-details">'+
       (attendanceError?'<p class="camera-meta">تعذر تحديث الحضور؛ الحالة غير مؤكدة.</p>':'')+
       (e?row('ربح البيع','قبل المصروفات',value(e.profit))+row('تسجيل العملاء','',value(e.reg_pct)+'%')+row('تقييم إرشادي',e.invoices<20?'عينة محدودة؛ الدرجة غير معروضة':'لا يكفي وحده للحكم على الموظف',e.invoices<20?'—':value(e.care_score)):'<p class="camera-meta">لا توجد مبيعات متاحة لهذا الموظف في الفترة.</p>')+
       (last?'<p class="camera-meta">آخر بصمة بالفترة: '+esc(last.date)+'</p>':'')+staffAttendanceRows(shifts)+
       (context==='home'?'<button class="btn btn-quiet" onclick="go(\'team\',0)">كل تفاصيل الفريق ←</button>':'')+'</div></details>';
   }).join('')+'</div>';
+}
+
+function teamClockStart(timestamp){
+  if(timestamp===null || timestamp===undefined || timestamp==='')return null;
+  var n=Number(timestamp),ms=Number.isFinite(n)?(n<1e12?n*1000:n):Date.parse(timestamp);
+  return Number.isFinite(ms) && ms>0 && ms<=Date.now()?ms:null;
+}
+function teamDuration(minutes){
+  if(minutes===null || minutes===undefined || !Number.isFinite(Number(minutes)) || Number(minutes)<0)return '—';
+  var n=Math.floor(Number(minutes));return Math.floor(n/60)+':'+String(n%60).padStart(2,'0');
+}
+function teamClockText(timestamp){var start=teamClockStart(timestamp);return start===null?'—':teamDuration((Date.now()-start)/60000);}
+function teamClockTick(){
+  if(typeof document.querySelectorAll!=='function' || typeof CUR==='undefined' || CUR!=='team')return;
+  document.querySelectorAll('#p-hr [data-team-clock]').forEach(function(el){el.textContent=teamClockText(el.getAttribute('data-team-clock'));});
+}
+if(typeof window!=='undefined' && window.setInterval)window.setInterval(teamClockTick,30000);
+var TEAM_ATTENDANCE_REQUESTS={},TEAM_ATTENDANCE_TOKEN=0;
+function teamAttendanceOpen(button){
+  var card=button.closest('[data-staff-card]'),nameEl=card && card.querySelector('.staff-hero-heading>b');if(!nameEl)return;
+  var name=nameEl.textContent,day=cairoNow().date,from=day.slice(0,7)+'-01',pin=storedPin(),token=++TEAM_ATTENDANCE_TOKEN;
+  openMenu('بصمات '+name+' · الشهر الحالي','<div id="teamMonthAttendance" class="state" role="status">جارٍ تحميل سجل الشهر…</div>');
+  var box=document.getElementById('teamMonthAttendance'),key=pin+':'+from+':'+day;
+  if(!TEAM_ATTENDANCE_REQUESTS[key])TEAM_ATTENDANCE_REQUESTS[key]=api('getAttendanceHistory',{from:from,to:day}).then(function(d){if(!d || !d.ok || !Array.isArray(d.rows))throw Error('attendance');return d;}).finally(function(){delete TEAM_ATTENDANCE_REQUESTS[key];});
+  function active(){return token===TEAM_ATTENDANCE_TOKEN && storedPin()===pin && document.getElementById('teamMonthAttendance')===box && document.getElementById('sheet').classList.contains('on');}
+  TEAM_ATTENDANCE_REQUESTS[key].then(function(d){
+    if(!active())return;
+    var entries=staffCardEntries(HR.kpi.employees || [],HR.live.live || [],d.rows.filter(function(r){return r.date>=from && r.date<=day;}));
+    var item=entries.filter(function(x){return staffKey(x.name)===staffKey(name);})[0],rows=item?item.shifts:[];
+    box.className='';box.innerHTML='<p class="camera-meta">'+esc(from)+' ← '+esc(day)+'</p>'+staffAttendanceRows(rows);
+  }).catch(function(){if(active())box.innerHTML='تعذر تحميل سجل الشهر. اقفل النافذة واضغط على البصمة للمحاولة تاني.';});
 }
 
 var TEAM_CARD_POSITION='';
@@ -3653,10 +3685,9 @@ function drawStaffHub(isOld){
   var list = (HR.kpi.employees || []);
   var live = HR.live.live || [];
 
-  var html = '<div class="team-toolbar"><div><b>الفريق</b><small>'+esc(HR.kpi.label || 'الفترة المختارة')+(isOld?' · '+tr('cached'):'')+'</small></div><button class="ctl-more" onclick="teamSummaryDetails()" aria-label="ملخص الفريق">ⓘ</button><button class="ctl-more" onclick="hrMenu()" aria-label="تحديد مدة تقرير الفريق">⋯</button></div>';
-  html += staffCardsHtml(list,live,HR.hist.rows || [],'team',HR.live.ok===false);
+  var html = staffCardsHtml(list,live,HR.hist.rows || [],'team',HR.live.ok===false);
   box.innerHTML = html;
-  teamViewportFit();teamCardRestore();
+  teamViewportFit();teamCardRestore();teamClockTick();
   if(!isOld)staffFocusPending();
 }
 

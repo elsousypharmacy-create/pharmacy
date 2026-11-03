@@ -657,7 +657,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=20261103-top-aligned">
+<link rel="stylesheet" href="dashboard-ui.css?v=20261103-inline-priorities">
 </head>
 <body>
 
@@ -3504,7 +3504,7 @@ function homeFlashLayout(html){
     root.appendChild(card);
   });
   var team=template.content.querySelector('#homeTeamCards'),overview=root.querySelector('[data-flash-key="overview"]');if(team && overview){team.style.display='block';overview.appendChild(team);}
-  var priorities=template.content.querySelector('.home-actions');if(priorities){priorities.classList.add('home-flash-page','home-flash-priorities');priorities.setAttribute('data-flash-key','priorities');var more=document.createElement('button');more.className='btn btn-quiet';more.textContent='كل الإجراءات';more.setAttribute('onclick','homeFlashActionsDetails()');priorities.appendChild(more);root.appendChild(priorities);}
+  var priorities=template.content.querySelector('.home-actions');if(priorities && overview){priorities.className='home-priorities-strip';priorities.setAttribute('aria-label','الأولويات');var head=priorities.querySelector('.card-head');if(head)head.innerHTML='<small>الأولويات</small><button type="button" onclick="homeFlashActionsDetails()">كل الإجراءات ←</button>';overview.appendChild(priorities);}
   homeFlashPrepareInsights(root);return root.outerHTML;
 }
 function staffFlashValue(value){return value===null || value===undefined || !Number.isFinite(Number(value))?'—':ltr(num(value));}

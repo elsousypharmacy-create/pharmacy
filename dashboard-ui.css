@@ -69,3 +69,22 @@ body.home-flash-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}.h
 
 /* Compact blocks start near the card top; never center the whole dashboard vertically. */
 #p-home .home-flash-today,#p-home .home-flash-page>.period-card{justify-content:flex-start!important}#p-home .home-flash-today>.h-main{margin-top:8px!important}#p-home .home-flash-page .h-minis{align-content:start!important;flex-grow:0!important}#p-home .home-flash-page .h-mini{justify-content:center}
+
+/* Priorities share the daily overview; actions remain available in the sheet. */
+#p-home .home-priorities-strip{flex:none;min-width:0;border-top:1px solid var(--line);padding-top:7px;margin-top:2px}
+#p-home .home-priorities-strip .card-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 5px;gap:8px}
+#p-home .home-priorities-strip .card-head>small{font-size:10px;color:var(--ink-2)}
+#p-home .home-priorities-strip .card-head>button{font:inherit;font-size:10px;color:var(--brand);background:none;border:0;min-height:28px;padding:2px 0;cursor:pointer}
+#p-home .home-priorities-strip #homeMore{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+#p-home .home-priorities-strip .task{display:grid;grid-template-columns:1fr auto;align-content:center;align-items:center;gap:3px;padding:7px!important;min-width:0;min-height:54px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px}
+#p-home .home-priorities-strip .task .dot,#p-home .home-priorities-strip .task-a,#p-home .home-priorities-strip .task-m small{display:none}
+#p-home .home-priorities-strip .task-m{min-width:0}
+#p-home .home-priorities-strip .task-m b{display:block;font-size:10px;line-height:1.6;overflow-wrap:anywhere}
+#p-home .home-priorities-strip .task-n{font-size:18px;line-height:1.4;color:var(--tone);font-weight:800}
+#p-home .home-priorities-strip .state{font-size:11px;padding:4px 0}
+#p-home .home-flash-deck[data-compact=true] .home-flash-today>.h-minis{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+#p-home .home-flash-deck[data-compact=true] .home-flash-today .h-mini>small{font-size:9px!important;line-height:1.5}
+#p-home .home-flash-deck[data-compact=true] .home-flash-today .h-mini>b{font-size:16px!important}
+#p-home .home-flash-deck[data-compact=true] .home-priorities-strip{padding-top:4px;margin-top:0}
+#p-home .home-flash-deck[data-compact=true] .home-priorities-strip .card-head{margin-bottom:2px}
+#p-home .home-flash-deck[data-compact=true] .home-priorities-strip .task{padding:5px!important;min-height:44px}

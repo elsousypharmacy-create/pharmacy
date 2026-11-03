@@ -248,3 +248,8 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 - Ahmed's IMG_9751 showed excessive top/bottom blank space because the whole fixed card used vertical centering. Home daily and period cards now explicitly start their compact blocks at the top, with fixed padding and unchanged intrinsic KPI sizes. The outer viewport size and horizontal navigation remain.
 - Daily main label now uses the actual displayed date rather than copying the informal «أمس لسه مفتحناش» title into the number label. Home camera timestamp omits the redundant Cairo-time phrase; conversion/source timestamp remains unchanged. No numeric, attendance or date-source calculation changes.
 - JS syntax, 15 camera assessment checks and Home presence checks passed. Existing four-size viewport fixtures regenerated for the new stylesheet version. Owner-private rendering not inspected; the supplied screenshot is the evidence for alignment changes.
+
+
+## Priorities inside daily overview — 2026-11-03
+- Ahmed requested merging the priorities page into the first Home card to use the empty area. The same live top-three actions now appear as compact clickable tiles below presence, with all actions in the existing sheet. No separate priorities swipe page. Async slot updates still target the original homeMore id and preserve sorting/counts/navigation.
+- Short-height mode puts daily KPIs in one intrinsic row to leave space for presence and priorities. Main totals, expenses, camera and presence remain in place. Rebuilt synthetic four-phone viewport fixture; syntax, Home presence/viewport and expense loading tests passed. Frontend only.

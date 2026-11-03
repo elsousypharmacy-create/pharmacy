@@ -14,7 +14,7 @@ assert(rendered.includes('موجود الآن'));assert(rendered.includes('صا�
 assert(!rendered.includes('99'));assert(rendered.includes('عينة محدودة'));assert(rendered.includes('الخروج'));assert(!rendered.includes('بتوقيت مصر'));
 rendered=c.staffCardsHtml([],[{name:'<No sales>',checkInTimestamp:1793610000}],[],'home',false);assert(rendered.includes('&lt;No sales>'));assert(rendered.includes('<b>— <small>جنيه'));
 const rows=[{name:'آخر',date:'2026-11-02',checkIn:'08:00 AM',checkOut:'02:00 PM'},{name:'آخر',date:'2026-11-02',checkIn:'04:00 PM',checkOut:'10:00 PM'}];
-rendered=c.staffCardsHtml(employees,[],rows,'team',false);assert(rendered.includes('سجّل خروج'));assert(rendered.includes('<b>04:00 م</b>'));
+rendered=c.staffCardsHtml(employees,[],rows,'team',false);assert(rendered.includes('سجّل خروج'));assert(rendered.includes('دخول 04:00 م'));
 c.STAFF_CARD_OPEN['team:اخر']=true;assert(!c.staffCardsHtml(employees,[],rows,'team',false).includes('data-staff-card="team:اخر" open'));assert(c.staffCardsHtml(employees,[],rows,'team',false).includes('+ تفاصيل'));
 rendered=c.staffCardsHtml(employees,live,rows,'team',true);assert(rendered.includes('الحضور غير متاح'));assert(!rendered.includes('موجود الآن'));
 entries=c.staffCardEntries([{name:'احمد واحد'},{name:'احمد اثنين'}],[{name:'احمد'}],[]);assert.equal(entries.length,3,'ambiguous first name must not be assigned to either colleague');

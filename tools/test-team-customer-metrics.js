@@ -1,0 +1,16 @@
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync(require('path').join(__dirname,'../index.html'),'utf8');
+const c={Date,Math,Number,Array,JSON,Promise};vm.createContext(c);
+vm.runInContext(html.slice(html.indexOf('var STAFF_ALIASES ='),html.indexOf('function drawStaffHub(')),c);
+vm.runInContext(html.slice(html.indexOf('function custPhone('),html.indexOf('function custLast(')),c);
+vm.runInContext(html.slice(html.indexOf('function homeVisitAverage('),html.indexOf('function monthSlideRegular(')),c);
+const rows=[{employee:'ahmed shaat',phone:'01000000001',date:'2026-10-31'},{employee:'احمد شعت',phone:'+20 1000000001',date:'2026-11-02'},{employee:'ahmed shaat',phone:'01000000002',date:'2026-11-02'},{employee:'احمد شعت',phone:'01000000002',date:'2026-11-02'},{employee:'آخر',phone:'01000000003',date:'2026-11-03'}];
+const emps=[{name:'احمد شعت',new_c:99,registered:3,not_reg:1,reg_pct:0},{name:'آخر',new_c:99}];
+let result=c.teamNewCustomerCounts(emps,rows,{from:'2026-11-01',to:'2026-11-02'});
+assert.equal(result[0].new_c,1,'unique first logged customer; old, duplicate and other period excluded');assert.equal(result[1].new_c,0);assert.equal(emps[0].new_c,99,'do not mutate the raw cached response');
+assert.equal(c.teamNewCustomerCounts(emps,null,{from:'2026-11-01',to:'2026-11-02'})[0].new_c,null);
+assert.equal(c.staffRegistrationPct(emps[0]),75);assert.equal(c.staffRegistrationPct({registered:0,not_reg:3}),0);assert.equal(c.staffRegistrationPct({registered:0,not_reg:0}),null);assert.equal(c.staffRegistrationPct({reg_pct:45}),45);
+let avg=c.homeVisitAverage([{date:'2026-11-01',has:true,visits:0,invoices:20},{date:'2026-11-02',has:true,visits:10,invoices:50},{date:'2026-11-03',has:false,visits:0},{date:'2026-10-31',has:true,visits:100}],{from:'2026-11-01',to:'2026-11-03'});
+assert.equal(avg.average,5);assert.equal(avg.days,2);assert.equal(c.homeVisitAverage([],{from:'2026-11-01',to:'2026-11-02'}).average,null);
+assert(html.includes("mini('صافي المتوسط اليومي'"));assert(html.includes("mini('متوسط عدد الزيارات'"));assert(html.includes('نسبة تسجيل العملاء'));
+console.log('Customer metrics: ledger deduplication/aliases/periods, unavailable distinct from zero, registration recomputed, actual visits average and honest missing days passed');

@@ -209,3 +209,12 @@ body.team-fit-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}
 #p-hr .team-details{margin-top:auto;flex:none;min-height:44px;width:100%;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--brand);font:inherit;font-size:14px;font-weight:700;cursor:pointer}
 #p-hr .staff-card-details{display:none}
 #p-hr[data-tight=true] .staff-hero-card>summary{padding:12px;gap:8px}#p-hr[data-tight=true] .staff-hero-total{margin:0}#p-hr[data-tight=true] .staff-hero-total>b{font-size:32px}#p-hr[data-tight=true] .staff-hero-minis{gap:8px}#p-hr[data-tight=true] .staff-hero-minis>span{padding:6px 8px;gap:3px}#p-hr[data-tight=true] .staff-hero-minis small{font-size:12px}#p-hr[data-tight=true] .staff-hero-minis b{font-size:19px}
+
+/* Fingerprint opens monthly attendance; the card keeps customer KPIs. */
+#p-hr .team-attendance{display:flex;align-items:center;gap:10px;width:100%;min-width:0;flex:none}
+#p-hr .team-fingerprint{display:grid;place-items:center;flex:none;width:48px;height:48px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--brand);cursor:pointer}
+#p-hr .team-fingerprint svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
+#p-hr .team-attendance-times{display:flex;flex-direction:column;gap:3px;min-width:0;color:var(--ink-2)}#p-hr .team-attendance-times small{font-size:11px;line-height:1.7;overflow-wrap:anywhere}#p-hr .team-attendance-times b{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;direction:ltr;display:inline-block}
+#p-hr[data-tight=true] .staff-hero-card>summary{gap:6px}#p-hr[data-tight=true] .staff-hero-minis>span{padding:5px 8px}#p-hr[data-tight=true] .staff-hero-heading{min-height:30px}
+#p-hr .team-card-menu{margin-inline-start:auto;min-width:44px;min-height:44px;flex:none}#p-hr .team-card-status{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;min-height:25px}#p-hr .team-card-status>small{color:var(--ink-2);font-size:11px;min-width:0;text-align:end}#p-hr .team-card-status .badge{font-size:11px;flex:none}
+#p-hr[data-tight=true] .staff-hero-heading{min-height:44px}#p-hr[data-tight=true] .staff-hero-card>summary{gap:5px}#p-hr[data-tight=true] .staff-hero-minis b{font-size:19px}

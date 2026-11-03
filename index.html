@@ -682,7 +682,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=20261103-team-metrics2">
+<link rel="stylesheet" href="dashboard-ui.css?v=20261103-invoice-daily-average1">
 
 </head>
 <body>
@@ -755,7 +755,7 @@ var T = {
   avgDailyNet:['متوسط الصافي','Avg net'],
   avgDailySales:['متوسط المبيعات','Avg sales'],
   avgDailyProfit:['متوسط الربح','Avg profit'],
-  avgDailyInv:['متوسط عدد الفواتير','Avg invoices'],
+  avgDailyInv:['متوسط عدد الفواتير اليومي','Daily average invoice count'],
   perDay:['في اليوم','per day'],
   daysWord:['يوم','days'],
   withData:['فيهم بيع','with sales'],
@@ -1481,18 +1481,24 @@ function homeRangeVisits(range){
   for(var from=range.from;from<=end;from=isoAdd(to,1)){var to=isoAdd(from,61);if(to>end)to=end;chunks.push({from:from,to:to});}
   return Promise.all(chunks.map(function(p){return api('getDailyRaw',p).then(function(d){if(!d || d.ok===false || !Array.isArray(d.days))throw Error('visits unavailable');return d.days;});})).then(function(results){return homeVisitAverage([].concat.apply([],results),range);});
 }
+function dailyInvoiceAverage(m){
+  var days=m.days_with_data,total=m.invoices_total;
+  if(days===null || days===undefined || total===null || total===undefined || !Number.isFinite(Number(days)) || !Number.isFinite(Number(total)) || Number(days)<=0 || Number(total)<0)return null;
+  return Math.round(Number(total)/Number(days)*10)/10;
+}
+function dailyInvoiceAverageText(m){var average=dailyInvoiceAverage(m);return average===null?'—':ltr(average.toLocaleString('en-US',{maximumFractionDigits:1}));}
 function monthSlideRegular(M){
   var m=M.m || {},R=M.r || homeRange(),pl=M.pl || {},g=goalOf('daily_sales',10000),net=Number(m.net_sales || 0),gp=Number(m.profit_total || 0),inv=Number(m.invoices_total || 0),np=null;
   var days=R.month?new Date(Date.UTC(+R.month.slice(0,4),+R.month.slice(5,7),0)).getUTCDate():1,target=g*(R.key==='yesterday'?1:R.key==='custom'?Math.round((Date.parse(R.to+'T12:00:00Z')-Date.parse(R.from+'T12:00:00Z'))/86400000)+1:days),left=Math.max(0,target-net);
   if(pl.ok && pl.financial_schema==='finance-review-v1' && !pl.expense_source_error && !pl.salary_conflict && Array.isArray(pl.days)){var rangeDays=pl.days.filter(function(x){return x.date>=R.from && x.date<=R.to;});if(homePeriodExpenses(pl,R.from,R.to)!==null && rangeDays.every(function(x){return x.net!=null;}))np=rangeDays.reduce(function(t,x){return t+Number(x.net);},0);}
   var expected=g*Number(R.to.slice(8,10));
   var label=R.key==='custom'?'فترة مخصصة':R.key==='yesterday'?'أمس':homeMonthName(R.month),dateLabel=R.from===R.to?R.to:R.from+' — '+R.to;
-  function mini(label,value,sub){return '<div class="h-mini"><small>'+label+'</small><b>'+value+'</b><u>'+sub+'</u></div>';}
+  function mini(label,value,sub,extraClass){return '<div class="h-mini '+(extraClass || '')+'"><small>'+label+'</small><b>'+value+'</b><u>'+sub+'</u></div>';}
   return '<div class="period-card">'+homePeriodTabs()+'<div class="h-top"><h2>'+esc(label)+(R.key==='month'?' · حتى نهاية أمس':'')+'</h2><span>'+esc(dateLabel)+'</span></div>'+
     '<div class="h-main">'+homeGoalRing(net,target)+'<div class="h-num"><small>صافي المبيعات</small><b>'+ltr(num(net))+'</b><u>'+(net>=target?'الهدف اتحقق · '+ltr(num(target)):'فاضل '+ltr(num(left))+' على '+ltr(num(target)))+'</u></div></div>'+
-    '<div class="h-minis" style="grid-template-columns:repeat(2,minmax(0,1fr))">'+mini('صافي المتوسط اليومي',m.avg_daily_net==null?'—':ltr(num(m.avg_daily_net)),'جنيه يوميًا')+mini('عدد الفواتير',ltr(num(inv)),'في الفترة المختارة')+mini('ربح البيع',ltr(num(gp)),'قبل المصروفات')+mini('متوسط عدد الزيارات',M.visits && M.visits.average!=null?ltr(Number(M.visits.average).toLocaleString('en-US',{maximumFractionDigits:1})):'—','زيارة يوميًا')+'</div>'+
+    '<div class="h-minis" style="grid-template-columns:repeat(2,minmax(0,1fr))">'+mini('صافي المتوسط اليومي',m.avg_daily_net==null?'—':ltr(num(m.avg_daily_net)),'جنيه يوميًا')+mini('عدد الفواتير',ltr(num(inv)),'متوسط الفواتير يوميًا <strong>'+dailyInvoiceAverageText(m)+'</strong>','invoice-summary')+mini('ربح البيع',ltr(num(gp)),'قبل المصروفات')+mini('متوسط عدد الزيارات',M.visits && M.visits.average!=null?ltr(Number(M.visits.average).toLocaleString('en-US',{maximumFractionDigits:1})):'—','زيارة يوميًا')+'</div>'+
     (R.key==='month'?'<p class="camera-meta">المستهدف حتى نهاية أمس '+ltr(num(expected))+' جنيه · '+(net>=expected?'متقدم':'متأخر')+' بمقدار '+ltr(num(Math.abs(net-expected)))+' جنيه</p>':'')+homeExpenseHtml(pl,R.from,R.to,false)+
-    '<details class="period-details"><summary>تفاصيل '+esc(label)+'</summary><div><span>الخصومات</span><b>'+ltr(num(m.discount_total || 0))+' جنيه</b></div><div><span>المرتجعات</span><b>'+ltr(num(m.returns_value_total || 0))+' جنيه</b></div><div><span>متوسط عدد الزيارات</span><b>'+(M.visits && M.visits.average!=null?ltr(Number(M.visits.average).toLocaleString('en-US',{maximumFractionDigits:1}))+' · '+M.visits.days+' يوم متاح':'غير متاح')+'</b></div><div><span>صافي المتوسط اليومي</span><b>'+ltr(num(m.avg_daily_net || 0))+' جنيه</b></div><div><span>الربح بعد المصاريف ومخصص المرتبات</span><b>'+(np===null?'قيد المراجعة':ltr(num(np))+' جنيه')+'</b></div></details></div>';
+    '<details class="period-details"><summary>تفاصيل '+esc(label)+'</summary><div><span>متوسط عدد الفواتير اليومي</span><b>'+dailyInvoiceAverageText(m)+' · '+ltr(num(m.days_with_data || 0))+' يوم متاح</b></div><div><span>الخصومات</span><b>'+ltr(num(m.discount_total || 0))+' جنيه</b></div><div><span>المرتجعات</span><b>'+ltr(num(m.returns_value_total || 0))+' جنيه</b></div><div><span>متوسط عدد الزيارات</span><b>'+(M.visits && M.visits.average!=null?ltr(Number(M.visits.average).toLocaleString('en-US',{maximumFractionDigits:1}))+' · '+M.visits.days+' يوم متاح':'غير متاح')+'</b></div><div><span>صافي المتوسط اليومي</span><b>'+ltr(num(m.avg_daily_net || 0))+' جنيه</b></div><div><span>الربح بعد المصاريف ومخصص المرتبات</span><b>'+(np===null?'قيد المراجعة':ltr(num(np))+' جنيه')+'</b></div></details></div>';
 }
 function loadHomeMonth(){
   var R=homeRange(),pin=storedPin(),key=R.key+':'+R.from+':'+R.to,el=document.getElementById('heroMonth'),old=HOME_PERIOD_CACHE[key];
@@ -2647,14 +2653,14 @@ function drawSales(m, k, box){
   if((m.missing_days||[]).length)html+='<div class="state">لم تتوفر فواتير مسجلة في '+m.missing_days.length+' يوم؛ غياب الملف لا يثبت عدم وجود مبيعات.</div>';
   /* 🆕 كارت المتوسطات — كان ناقص تمامًا.
      مفيد أكثر من الإجمالي لما تقارن فترات مختلفة الطول. */
-  if (days > 1) {
+  if (days > 0) {
     var BE = goalOf('breakeven', 7800), adn = m.avg_daily_net || 0;
     html += card(tr('dailyAvg'), label,
       row('نقطة التعادل', 'لازم صافي اليوم يعدّيها عشان تكسب', badge(ltr(num(BE)), adn >= BE ? 'ok' : 'bad')) +
       row(tr('avgDailyNet'),    tr('perDay'), ltr(num(m.avg_daily_net || 0))) +
       row(tr('avgDailySales'),  tr('perDay'), ltr(num(m.avg_daily_sales || 0))) +
       row(tr('avgDailyProfit'), tr('perDay'), ltr(num(m.avg_daily_profit || 0))) +
-      row(tr('avgDailyInv'),    tr('perDay'), ltr(num(m.avg_daily_invoices || 0))));
+      row(tr('avgDailyInv'),    ltr(num(days))+' '+tr('daysWord')+' '+tr('withData'), dailyInvoiceAverageText(m)));
   }
 
   html += card(tr('salesPerf'), label,

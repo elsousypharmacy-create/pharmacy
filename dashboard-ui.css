@@ -159,3 +159,18 @@ body.home-flash-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}.h
 
 #p-home .home-flash-today .h-cmp{display:none!important}
 #p-home .home-flash-today>.h-main{padding-inline-start:0!important}
+
+
+/* Monthly period: same readable two-column metrics and hierarchy as Today. */
+.home-flash-page[data-flash-key="period"]>.period-card{justify-content:flex-start!important;gap:12px!important;overflow:visible!important}
+.home-flash-page[data-flash-key="period"] .period-card>.h-minis{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-rows:auto!important;flex:none!important;gap:10px!important;margin:8px 0!important}
+.home-flash-page[data-flash-key="period"] .period-card>.h-minis .h-mini{padding:12px!important;min-height:88px!important;justify-content:center}
+.home-flash-page[data-flash-key="period"] .period-card>.h-minis .h-mini>small{font-size:14px!important;line-height:1.6!important}
+.home-flash-page[data-flash-key="period"] .period-card>.h-minis .h-mini>b{font-size:24px!important;line-height:1.4!important;overflow-wrap:anywhere;white-space:normal!important}
+.home-flash-page[data-flash-key="period"] .period-card>.h-minis .h-mini>u{font-size:12px!important}
+.home-flash-page[data-flash-key="period"] .period-card>.h-main{min-height:95px!important}
+.home-flash-page[data-flash-key="period"] .period-card .h-num>b{font-size:36px!important}
+.home-flash-page[data-flash-key="period"] .period-tabs button{font-size:15px!important;min-height:46px}
+.home-flash-page[data-flash-key="period"] .period-card-footer{margin-top:8px;flex-wrap:wrap}
+.home-flash-page[data-flash-key="period"] .period-card-footer>.btn{min-height:44px}
+@media(max-width:380px){.home-flash-page[data-flash-key="period"] .period-card>.h-minis .h-mini>b{font-size:21px!important}.home-flash-page[data-flash-key="period"] .period-card>.h-minis .h-mini>small{font-size:13px!important}}

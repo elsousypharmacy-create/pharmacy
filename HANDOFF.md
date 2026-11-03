@@ -258,3 +258,7 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 ## Approved readable phone fit — 2026-11-03
 - Ahmed approved mobile-fit-preview.html after requesting a preview before further changes. Daily Home now uses larger text (labels 12–14px, values 19–24px, main 34–40px), vertical clickable priority rows and a grid that assigns remaining height to priorities. Outer card uses actual measured viewport bounds; horizontal page navigation remains.
 - Tight heights below 450px show one present person plus full-Team count/access, preserving all top three actions and detail sheets. No financial/attendance/source changes. Fixtures regenerated; Home presence, viewport and inline JS syntax passed. Phone viewport visual QA follows publication; private owner session remains untested.
+
+
+## Daily grid width correction — 2026-11-03
+- Owner screenshot IMG_9759 exposed a left blank strip on the real daily card. Explicit single minmax(0,1fr) track, full-width children and zero min-width prevent intrinsic content shrinking/overflowing the daily grid. Comparison text wraps within the amount column. Font sizes retained. Fixture now includes real-shaped comparison text to cover this missed case.

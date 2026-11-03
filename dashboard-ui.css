@@ -149,3 +149,10 @@ body.home-flash-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}.h
 #p-home .home-flash-deck[data-tight=true] .home-flash-today{gap:2px!important}
 #p-home .home-flash-deck[data-tight=true] .home-flash-today .home-insight-card{height:78px!important;min-height:78px!important}
 #p-home .home-flash-deck[data-tight=true] .home-priorities-strip .task{min-height:28px!important;padding:0!important}
+
+/* Explicit single-column tracks prevent intrinsic content from narrowing the daily grid. */
+#p-home .home-flash-today{grid-template-columns:minmax(0,1fr)!important;justify-items:stretch!important}
+#p-home .home-flash-today>:not(.h-top){grid-column:1!important;min-width:0!important;width:100%!important;max-width:100%!important;justify-self:stretch!important}
+#p-home .home-flash-today .h-num{min-width:0;flex:1}
+#p-home .home-flash-today .h-cmp{white-space:normal!important;overflow-wrap:anywhere;line-height:1.5!important;font-size:12px!important}
+#p-home .home-flash-today>.h-main{padding-inline-end:0!important;padding-inline-start:40px}

@@ -1980,7 +1980,7 @@ var CUR = 'sales', TAB = 0;
 function go(sec, tab){
   if (sec !== CUR || (tab || 0) !== TAB){ try { sessionStorage.removeItem('subCust'); sessionStorage.removeItem('subInv'); } catch (e) {} }
   CUR = sec; TAB = tab || 0;
-  try { sessionStorage.setItem('lastPage', JSON.stringify([CUR, TAB])); } catch (e) {}   /* السحب لتحت يرجّعك لنفس الصفحة */
+  try { sessionStorage.setItem('lastPage', JSON.stringify([CUR, TAB])); localStorage.setItem('lastPage', JSON.stringify([CUR, TAB])); } catch (e) {}   /* السحب لتحت يرجّعك لنفس الصفحة */
   document.querySelectorAll('.secnav button').forEach(function(b){
     b.classList.toggle('on', b.dataset.sec === sec);
   });
@@ -3582,7 +3582,7 @@ function staffFlashDetails(index){
 function staffFlashRemember(deck){
   var rect=deck.getBoundingClientRect(),center=(rect.left+rect.right)/2,best=null,distance=Infinity;
   Array.prototype.forEach.call(typeof deck.querySelectorAll==='function'?deck.querySelectorAll('[data-flash-key]'):deck.children,function(card){var r=card.getBoundingClientRect(),d=Math.abs((r.left+r.right)/2-center);if(d<distance){best=card;distance=d;}});
-  if(best)HOME_STAFF_FLASH_POSITION=best.getAttribute('data-flash-key') || 'summary';
+  if(best){HOME_STAFF_FLASH_POSITION=best.getAttribute('data-flash-key') || 'summary';try{sessionStorage.setItem('homeFlashPosition',HOME_STAFF_FLASH_POSITION);}catch(e){}}
 }
 function staffFlashRestore(){
   if(typeof document.querySelector!=='function')return;var deck=document.querySelector('.staff-flash-deck');if(!deck)return;
@@ -6942,7 +6942,7 @@ try{
 try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 (function(){
   /* لو الصفحة اتعمل لها refresh (سحب لتحت) نرجع لنفس القسم والتبويب بدل الرئيسية */
-  var last = null; try { last = JSON.parse(sessionStorage.getItem('lastPage') || 'null'); } catch (e) {}
+  var last = null; try { last = JSON.parse(sessionStorage.getItem('lastPage') || localStorage.getItem('lastPage') || 'null'); HOME_STAFF_FLASH_POSITION=sessionStorage.getItem('homeFlashPosition') || HOME_STAFF_FLASH_POSITION; } catch (e) {}
   if (last && SECTIONS[last[0]] && SECTIONS[last[0]][last[1]]){
     var sc = null, si = null; try { sc = sessionStorage.getItem('subCust'); si = sessionStorage.getItem('subInv'); } catch (e) {}
     CUR = last[0]; TAB = last[1];            /* عشان go ما يمسحش القسم الفرعي */

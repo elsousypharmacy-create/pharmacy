@@ -90,3 +90,45 @@ body.home-flash-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}.h
 #p-home .home-flash-deck[data-compact=true] .home-priorities-strip .task{padding:5px!important;min-height:44px}
 
 #p-home .home-presence-heading,#p-home .home-presence-line{line-height:1.5}#p-home .home-presence-line>b,#p-home .home-presence-line>small,#p-home .home-presence-line>span{line-height:1.5}
+
+/* Approved phone preview: readable type and full-height priorities in the daily card. */
+#p-home .home-flash-today{display:grid!important;grid-template-rows:auto auto auto auto minmax(0,1fr);gap:9px!important;padding:14px!important}
+#p-home .home-flash-today>.h-main{margin:0!important;min-height:72px!important}
+#p-home .home-flash-today .h-num>b{font-size:40px!important;line-height:1.3!important}
+#p-home .home-flash-today .h-num>small{font-size:14px!important;line-height:1.5!important}
+#p-home .home-flash-today .h-mini>small{font-size:13px!important;line-height:1.5!important}
+#p-home .home-flash-today .h-mini>b{font-size:24px!important;line-height:1.4!important}
+#p-home .home-flash-today .home-insight-grid{margin:0!important}
+#p-home .home-flash-today .home-insight-card{min-height:80px!important;padding:7px 10px!important;gap:2px!important}
+#p-home .home-flash-today .insight-heading{font-size:14px!important;line-height:1.5!important}
+#p-home .home-flash-today .insight-value{font-size:24px!important;line-height:1.4!important}
+#p-home .home-flash-today .insight-updated{font-size:11px!important;line-height:1.5!important}
+#p-home .home-presence-heading>small{font-size:13px!important;line-height:1.5}
+#p-home .home-presence-heading>button{font-size:12px!important;line-height:1.5}
+#p-home .home-presence-line{padding:3px 0!important}
+#p-home .home-presence-line>b{font-size:14px!important}
+#p-home .home-presence-line>small{font-size:12px!important}
+#p-home .home-presence-line>span{font-size:14px!important}
+#p-home .home-priorities-strip{display:flex;flex-direction:column;min-height:0;padding-top:5px!important;margin:0!important;overflow:hidden}
+#p-home .home-priorities-strip .card-head{flex:none;margin:0!important;min-height:28px}
+#p-home .home-priorities-strip .card-head>small{font-size:14px!important}
+#p-home .home-priorities-strip .card-head>button{font-size:12px!important}
+#p-home .home-priorities-strip #homeMore{flex:1;min-height:0;display:flex!important;flex-direction:column;gap:0}
+#p-home .home-priorities-strip .task{flex:1;display:flex!important;align-items:center;justify-content:space-between;min-height:36px!important;background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:4px 0!important;gap:8px}
+#p-home .home-priorities-strip .task:last-child{border-bottom:0}
+#p-home .home-priorities-strip .task-m{flex:1}
+#p-home .home-priorities-strip .task-m b{font-size:14px!important;line-height:1.5!important}
+#p-home .home-priorities-strip .task-n{font-size:22px!important;line-height:1.5!important}
+#p-home .home-priorities-strip .task-a{display:block!important;font-size:17px;color:var(--ink-2)}
+#p-home .home-flash-deck[data-compact=true] .home-flash-today{gap:7px!important;padding:12px!important}
+#p-home .home-flash-deck[data-compact=true] .home-flash-today .h-mini>small{font-size:12px!important}
+#p-home .home-flash-deck[data-compact=true] .home-flash-today .h-mini>b{font-size:19px!important}
+#p-home .home-flash-deck[data-compact=true] .home-flash-today .h-num>b{font-size:34px!important}
+#p-home .home-flash-deck[data-tight=true] .home-flash-today{gap:4px!important;padding:10px!important}
+#p-home .home-flash-deck[data-tight=true] .home-flash-today>.h-main{min-height:56px!important}
+#p-home .home-flash-deck[data-tight=true] .home-flash-today .h-ring{width:56px!important;height:56px!important}
+#p-home .home-flash-deck[data-tight=true] .home-flash-today .home-insight-card{min-height:72px!important;padding:4px 7px!important}
+#p-home .home-flash-deck[data-tight=true] .home-presence-line:nth-child(n+2){display:none}
+#p-home .home-flash-deck[data-tight=true] .home-priorities-strip .task{min-height:32px!important;padding:2px 0!important}
+#p-home .home-flash-deck[data-tight=true] .home-priorities-strip .task-m b{font-size:13px!important}
+#p-home .home-flash-deck[data-tight=true] .home-priorities-strip .task-n{font-size:19px!important}

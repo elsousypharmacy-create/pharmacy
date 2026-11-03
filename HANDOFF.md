@@ -253,3 +253,8 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 ## Priorities inside daily overview — 2026-11-03
 - Ahmed requested merging the priorities page into the first Home card to use the empty area. The same live top-three actions now appear as compact clickable tiles below presence, with all actions in the existing sheet. No separate priorities swipe page. Async slot updates still target the original homeMore id and preserve sorting/counts/navigation.
 - Short-height mode puts daily KPIs in one intrinsic row to leave space for presence and priorities. Main totals, expenses, camera and presence remain in place. Rebuilt synthetic four-phone viewport fixture; syntax, Home presence/viewport and expense loading tests passed. Frontend only.
+
+
+## Approved readable phone fit — 2026-11-03
+- Ahmed approved mobile-fit-preview.html after requesting a preview before further changes. Daily Home now uses larger text (labels 12–14px, values 19–24px, main 34–40px), vertical clickable priority rows and a grid that assigns remaining height to priorities. Outer card uses actual measured viewport bounds; horizontal page navigation remains.
+- Tight heights below 450px show one present person plus full-Team count/access, preserving all top three actions and detail sheets. No financial/attendance/source changes. Fixtures regenerated; Home presence, viewport and inline JS syntax passed. Phone viewport visual QA follows publication; private owner session remains untested.

@@ -650,6 +650,10 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 </style>
 
 <style>
+/* Carousel slides must size to their own content, not stretch to the tallest slide. */
+#p-home #heroSlides{align-items:flex-start!important}
+#p-home #heroSlides>.h-slide{align-self:flex-start;height:auto!important;min-height:0!important}
+#p-home #heroMonth .period-card{height:auto!important;min-height:0!important}
 /* Match period summary typography and spacing to today's hero card. */
 #p-home #heroMonth{padding:18px!important}
 #p-home #heroMonth .period-card{gap:0}

@@ -12,7 +12,8 @@ var LOCKED_GET = { getHomeBundle: 1, getSMSLogFast: 1, getSMSLog: 1, getCustomer
   sendCoupon: 1, getStaffHub: 1, getExpiryByMonth: 1, getAttendanceLive: 1, getAttendanceHistory: 1, getAttendanceLiveV2: 1,
   getAttendanceHistoryV2: 1, diagnoseAll: 1, getBotSettings: 1, maintenanceStatus: 1, maintenanceStop: 1,
   maintenanceResumeLive: 1, maintenanceDedup: 1, maintenanceStartRebuild: 1, backfillExpenses: 1, getExpReviews: 1,
-  ordersPage: 1, orderEfficiency: 1, logShortages: 1, callsReport: 1, getDailyRaw: 1 };
+  ordersPage: 1, orderEfficiency: 1, logShortages: 1, callsReport: 1, getDailyRaw: 1,
+  snapshotRefresh: 1, snapshotEnable: 1, recordStats: 1, scanRefreshIndex: 1 };
 var LOCKED_POST = { log: 1, block: 1, unblock: 1, setSalaries: 1, retrySMS: 1, testSMS: 1, dismissSMS: 1, payAgent: 1,
   deleteAgentPending: 1, deleteCount: 1, expReview: 1 };
 function dashLocked_(pin) {
@@ -27,6 +28,14 @@ function ownerDashboardLocked_(pin){
   return !(saved && String(pin||'')===saved);
 }
 var LEGACY_OPERATIONAL_LOCK={ordersPage:1,orderEfficiency:1,logShortages:1};
+var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
+                      purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
+                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camVideoTest: 1, camRecordSample: 1, camReports: 1, camFrame: 1, camFrames: 1,
+                      setBalanceInputs: 1, setBalanceBase: 1 };
+var NATIVE_POST = { setBotSettings:1, camRecordSample:1, camVideoTest:1, camSnapNow:1, camSendTg:1, camTest:1,
+  setCamConfig:1, setWaConfig:1, expReview:1, log:1, block:1, unblock:1, setAiConfig:1, setSalaries:1,
+  retrySMS:1, smsAck:1, testSMS:1, dismissSMS:1, agentReferral:1, saveOpen:1, deleteCount:1, saveCount:1,
+  markOrdered:1, payAgent:1, deleteAgentPending:1 };
 function lockedResp_() { return jsonResponseStaff({ ok: false, lockError: true, error: 'اللوحة مقفولة — اكتب الرقم السري' }); }
 
 function doGet(e) {
@@ -103,10 +112,6 @@ function doGet(e) {
   if (action === 'getCustomerProfile') return jsonResponseStaff(getCustomerProfile(e.parameter.phone));
   if (action === 'getCustomerVisits') return jsonResponseStaff(getCustomerVisits(e.parameter.days));
   /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
-  var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
-                        purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camVideoTest: 1, camRecordSample: 1, camReports: 1, camFrame: 1, camFrames: 1,
-                        setBalanceInputs: 1, setBalanceBase: 1 };
   if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
     return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
   if (action === 'aiTest') return jsonResponseStaff(aiTest(e.parameter.q));
@@ -209,6 +214,9 @@ function doPost(e) {
       handleTelegramWebhook_(data);
       return ContentService.createTextOutput('ok');
     }
+
+    /* قراءات اللوحة المحمية تُقبل POST حتى لا يظهر PIN في عنوان URL أو سجلاته. */
+    if (data.action && !NATIVE_POST[data.action]) return doGet({ parameter: data });
 
     if (LOCKED_POST[data.action] && dashLocked_(data.pin)) return lockedResp_();
     if (data.action === 'setBotSettings') return jsonResponseStaff(setBotSettings(data));

@@ -2398,6 +2398,17 @@ function drawHome(b, kpi, isOld){
 
     var canonical=kpi._salesSummary,canonicalReady=canonical && canonical.ok && canonical.source==='pos-invoices-v1';
     if(!isStaleDay && canonicalReady){salesT=canonical.net_sales;profitT=canonical.profit_total;avgInv=canonical.avg_invoice;retVal=canonical.returns_value_total;retCnt=canonical.returns_total;tot.inv=canonical.invoices_total;}
+    // A partial POS bundle can report a lower provisional net and no invoice average.
+    // Do not replace an already displayed canonical total with this provisional snapshot.
+    // Wait for the complete invoice summary instead of showing a misleading dip/dash.
+    var visibleToday=box.querySelector('.home-flash-today');
+    var visibleDay=HOME_FLASH_DAY_STATS && HOME_FLASH_DAY_STATS.date;
+    if(!isOld && !isStaleDay && !canonicalReady && visibleToday && visibleDay===todayStr &&
+       HOME_FLASH_DAY_STATS && HOME_FLASH_DAY_STATS.canonical===true){
+      var syncNote=document.getElementById('sync');
+      if(syncNote){syncNote.textContent=tr('cached')+' · '+tr('refreshing');syncNote.classList.add('old');}
+      return;
+    }
     /* ═══ الرئيسية الجديدة: هدف فوق، مهام، آخر 14 يوم، الفريق ═══ */
     var gS = goalOf('daily_sales', 10000), gV = goalOf('daily_visits', 150);
     var pS = gS ? Math.round(salesT / gS * 100) : 0;
@@ -2479,7 +2490,7 @@ function drawHome(b, kpi, isOld){
 
     html += '</div></div>';
 
-    HOME_FLASH_DAY_STATS={date:homeDay,net:salesT,profit:profitT,invoices:tot.inv,returns:retVal,average:avgInv,pace:paceLine};
+    HOME_FLASH_DAY_STATS={date:homeDay,net:salesT,profit:profitT,invoices:tot.inv,returns:retVal,average:avgInv,pace:paceLine,canonical:!!canonicalReady};
     HOME_PRESENCE_SALES_DAY=homeDay;
     // Preserve the last rendered expense value across home redraws, even when storage is unavailable.
     var oldExpense=box.querySelector('#homeDayExpenses'),oldDay=oldExpense && oldExpense.getAttribute('data-day');

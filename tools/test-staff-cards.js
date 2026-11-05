@@ -10,9 +10,9 @@ const employees=[{name:'احمد شعت',net:0,sales:500,invoices:2,avg_inv:250,
 const live=[{name:'ahmed shaat',checkInTimestamp:1793610000}];
 let entries=c.staffCardEntries(employees,live,[]);assert.equal(entries.length,2);assert.equal(entries[0].name,'احمد شعت');
 let rendered=c.staffCardsHtml(employees,live,[],'team',false);
-assert(rendered.includes('موجود الآن'));assert(rendered.includes('صافي المبيعات'));assert(rendered.includes('<b>0 <small>جنيه'));
+assert(rendered.includes('موجود الآن'));assert(rendered.includes('صافي المبيعات'));assert(/صافي المبيعات<\/small><b>0<\/b>/.test(rendered));
 assert(!rendered.includes('99'));assert(rendered.includes('عينة محدودة'));assert(rendered.includes('الخروج'));assert(!rendered.includes('بتوقيت مصر'));
-rendered=c.staffCardsHtml([],[{name:'<No sales>',checkInTimestamp:1793610000}],[],'home',false);assert(rendered.includes('&lt;No sales>'));assert(rendered.includes('<b>— <small>جنيه'));
+rendered=c.staffCardsHtml([],[{name:'<No sales>',checkInTimestamp:1793610000}],[],'home',false);assert(rendered.includes('&lt;No sales>'));assert(rendered.includes('—'),'unknown sales remain unavailable');
 const rows=[{name:'آخر',date:'2026-11-02',checkIn:'08:00 AM',checkOut:'02:00 PM'},{name:'آخر',date:'2026-11-02',checkIn:'04:00 PM',checkOut:'10:00 PM'}];
 rendered=c.staffCardsHtml(employees,[],rows,'team',false);assert(rendered.includes('سجّل خروج'));assert(rendered.includes('دخول 04:00 م'));
 c.STAFF_CARD_OPEN['team:اخر']=true;assert(!c.staffCardsHtml(employees,[],rows,'team',false).includes('data-staff-card="team:اخر" open'));assert(c.staffCardsHtml(employees,[],rows,'team',false).includes('+ تفاصيل'));

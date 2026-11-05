@@ -79,6 +79,16 @@ If an area cannot be judged (dark/IR night image, blur), say so in `note` (e.g. 
 ## Appearance score and previous-report comparison
 Read and follow `tools/camera-appearance-kpi.md`. Before judging, read the previous period's report and evidence; preserve stable problem IDs. Add the ten evidence-backed checks and issue states there to JSON v2. Do not fabricate ratings for legacy reports. Never close a previous issue from an absent or obscured camera view. Keep actual image sampling bounded; this does not enable -next or change capture.
 
+
+## رصد الفتح والقفل — 2026-11-05
+- المواعيد الرسمية: الفتح 08:00 صباحًا والقفل 01:00 صباح اليوم التالي بتوقيت القاهرة. يوم التشغيل يمتد عبر منتصف الليل؛ اربط 00:00–01:00 بيوم التشغيل السابق.
+- الهدف تقدير الالتزام في حدود 10 دقائق تقريبًا. افحص لقطات الكاميرات المتاحة حول 08:00 وحول 01:00 (قبل وبعد الموعد قدر الإمكان)، وافتح الأصول المكبرة عند تغير الحالة. الصور المتباعدة ساعة لا تثبت دقة عشر دقائق.
+- دليل الفتح: مدخل متاح للعملاء مع نشاط استقبال ظاهر، أو دليل بصري قوي على بدء الخدمة. وجود موظف أو إضاءة فقط لا يكفي. دليل القفل: باب مغلق أو دليل بصري واضح على انتهاء استقبال العملاء. عدم ظهور عملاء وحده لا يكفي.
+- استخرج لكل يوم تشغيل opening وclosing، مع status (confirmed / approximate / unverified / pending)، وobservedAt وقت أقرب لقطة دالة، وrangeStart وrangeEnd عند وجود صورتين تحددان فترة الانتقال، وevidence معرفات الصور الحقيقية. لا تخترع أوقاتًا أو أدلة.
+- احسب تأخير الفتح والتبكير في القفل وساعات التشغيل فقط إذا سمحت الأدلة؛ استخدم «حوالي» أو نطاقًا عند عدم اليقين. غياب الصور ليس مخالفة. إذا لم تشمل النافذة وقت القفل، سجّل pending واستكمل في التقرير اللاحق.
+- أضف إلى JSON v2 الحقل الاختياري operatingHours بهذه البنية: {"businessDate":"YYYY-MM-DD","scheduledOpen":"08:00","scheduledClose":"01:00+1","opening":{"status":"unverified","observedAt":null,"rangeStart":null,"rangeEnd":null,"evidence":[]},"closing":{"status":"pending","observedAt":null,"rangeStart":null,"rangeEnd":null,"evidence":[]},"note":"في انتظار لقطات كافية"}. هذه بنية توضيحية وليست نتيجة فعلية.
+- اكتب ملخصًا عربيًا قصيرًا في note عن حالة الفتح والقفل عندما تتوافر أدلة، حتى قبل دعم الواجهة للحقل الجديد. لا تدخل هذا المؤشر في درجة النظافة والترتيب.
+
 ## 5. Group and build pages
 - Group the same problem across times (same thing, same place). Count it and list its times (HH:MM, 12-hour, Latin digits).
 - One page = one frame. Put on it every problem visible in that frame (max 8 numbered labels).

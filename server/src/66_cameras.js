@@ -133,7 +133,12 @@ function camSnapCore_() {
   try {
     var lim = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), 'Africa/Cairo', 'yyyy-MM-dd'), fs = root.getFolders();
     while (fs.hasNext()) { var f = fs.next(); if (/^\d{4}-\d{2}-\d{2}$/.test(f.getName()) && f.getName() < lim) f.setTrashed(true); }
-  } catch (e2) {}
+    PropertiesService.getScriptProperties().deleteProperty('CAM_CLEANUP_LAST_ERROR');
+  } catch (e2) {
+    var cleanupError = String(e2.message || e2).slice(0, 180);
+    Logger.log('Camera cleanup failed: ' + cleanupError);
+    PropertiesService.getScriptProperties().setProperty('CAM_CLEANUP_LAST_ERROR', new Date().toISOString() + ' — ' + cleanupError);
+  }
   return snapRes;
 }
 /* نسخة صغيرة (عرض 640، أقل من ~60KB) جنب كل لقطة: HHmm_chN_s.jpg — من thumbnail الدرايف نفسه

@@ -208,7 +208,8 @@ async function hashKey(p){
 /* ⚡ السيرفر السريع (Cloudflare): النتايج بتوصل لكل الموظفين في ثواني. لو وقع بنكلم Google على طول */
 const FAST = 'https://wispy-cloud-00a7.elsousypharmacy.workers.dev/';
 async function api(params){
-  const qs = '?'+new URLSearchParams(params);
+  /* Bypass intermediary read caches for live customer list and call outcomes. */
+  const qs = '?'+new URLSearchParams({...params, _ts:Date.now()});
   let j = null;
   if(FAST){
     try{ const r = await fetch(FAST+qs, {cache:'no-store'}); if(r.ok) j = await r.json(); if(j && j.proxyError) j = null; }catch(e){ j = null; }

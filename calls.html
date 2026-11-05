@@ -346,7 +346,7 @@ const stat = p => (S.calls[key(p)]||{}).status || '';
 function visible(){
   if(S.tab===5) return DATA.filter(r => stat(r.p)==='blocked');
   if(S.stat) return DATA.filter(r => (S.tab===0 || r.t===S.tab) && (S.stat==='none' ? !stat(r.p) : stat(r.p)===S.stat));
-  return DATA.filter(r => stat(r.p)!=='blocked' && (S.tab===0 || r.t===S.tab) && (!S.left || !CLOSED(stat(r.p))));
+  return DATA.filter(r => stat(r.p)!=='blocked' && (S.tab===0 || r.t===S.tab) && (!S.left || !stat(r.p)));
 }
 function curIndex(list){
   let i = list.findIndex(r=>r.p===S.cur);

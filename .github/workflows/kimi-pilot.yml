@@ -18,5 +18,31 @@ jobs:
           KIMI_MODEL_BASE_URL: https://api.kimi.ai/coding/v1
           KIMI_MODEL_PROVIDER_TYPE: kimi
         run: |
-          test -n "$KIMI_MODEL_API_KEY"
-          kimi -p 'Reply exactly KIMI_CONNECTED; do not inspect or modify files.' --output-format stream-json | grep KIMI_CONNECTED
+          python - <<'PY'
+          import os, subprocess, sys, re
+          key = os.getenv("KIMI_MODEL_API_KEY", "")
+          if not key:
+              print("DIAG: secret_missing")
+              sys.exit(1)
+          print("DIAG: secret_present")
+          try:
+              p = subprocess.run(["kimi", "-p", "Reply exactly KIMI_CONNECTED. Do not inspect or modify files."], capture_output=True, text=True, timeout=90)
+          except subprocess.TimeoutExpired:
+              print("DIAG: cli_timeout")
+              sys.exit(1)
+          except OSError as exc:
+              print("DIAG: cli_launch_failed", type(exc).__name__)
+              sys.exit(1)
+          out = p.stdout + "\n" + p.stderr
+          if "KIMI_CONNECTED" in p.stdout and p.returncode == 0:
+              print("DIAG: connected")
+              sys.exit(0)
+          print("DIAG: cli_exit", p.returncode)
+          # Redact key and avoid printing raw output or URLs from the model/CLI.
+          lower = out.lower()
+          for word in ("invalid api key", "unauthorized", "forbidden", "rate limit", "quota", "model not found", "unrecognized arguments", "no such option", "authentication", "connection error"):
+              if word in lower:
+                  print("DIAG: detected", word.replace(" ", "_"))
+          print("DIAG: stdout_bytes", len(p.stdout), "stderr_bytes", len(p.stderr))
+          sys.exit(1)
+          PY

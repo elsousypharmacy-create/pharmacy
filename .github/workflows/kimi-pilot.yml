@@ -44,5 +44,10 @@ jobs:
               if word in lower:
                   print("DIAG: detected", word.replace(" ", "_"))
           print("DIAG: stdout_bytes", len(p.stdout), "stderr_bytes", len(p.stderr))
+          sample = out.replace(key, "[REDACTED]")
+          sample = re.sub(r"https?://\\S+", "[URL]", sample)
+          sample = re.sub(r"(?i)(api[_ -]?key|token|authorization|password|secret)\\s*[:=]\\s*\\S+", r"\\1=[REDACTED]", sample)
+          sample = re.sub(r"sk-[A-Za-z0-9_-]+", "[REDACTED]", sample)
+          print("DIAG: output_excerpt", repr(sample[:300]))
           sys.exit(1)
           PY

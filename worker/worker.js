@@ -35,6 +35,26 @@ async function gas(qs) {
   const r = await fetch(GAS_URL + '?' + qs, { redirect: 'follow' });
   return await r.text();
 }
+async function gasPost(payload) {
+  const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload), redirect: 'follow' });
+  return await r.text();
+}
+function hex(buffer) {
+  return [...new Uint8Array(buffer)].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+async function webhookAllowed(request, env, body) {
+  let data = {}; try { data = JSON.parse(body); } catch (e) { return false; }
+  if (data.object === 'whatsapp_business_account' && env.WA_APP_SECRET) {
+    const supplied = request.headers.get('x-hub-signature-256') || '';
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.WA_APP_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const expected = 'sha256=' + hex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body)));
+    return supplied.length === expected.length && supplied === expected;
+  }
+  if (data.update_id !== undefined && env.TELEGRAM_WEBHOOK_SECRET)
+    return request.headers.get('x-telegram-bot-api-secret-token') === env.TELEGRAM_WEBHOOK_SECRET;
+  /* التوافق الحالي يظل قائمًا حتى يضبط المالك سر المزود؛ لا يوجد fallback داخل الكود. */
+  return true;
+}
 function goodBody(t) {
   if (!t || t.length > 1500000) return false;
   try { const j = JSON.parse(t); return !!j && j.ok !== false && !j.lockError && !j.pinError; } catch (e) { return false; }
@@ -69,7 +89,7 @@ async function read(u, env, ctx, action) {
   if(action!=='callsGet' && action!=='callsList' && action!=='getShortages'){
     var pin=u.searchParams.get('pin')||'';
     if(!pin)return out(JSON.stringify({ok:false,lockError:true,error:'سجّل الدخول لعرض البيانات'}));
-    var auth=JSON.parse(await gas('action=dashboardAuth&pin='+encodeURIComponent(pin)));
+    var auth=JSON.parse(await gasPost({action:'dashboardAuth',pin:pin}));
     if(!auth.ok)return out(JSON.stringify(auth));
   }
   const qs = gasQs(u);
@@ -114,8 +134,10 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     const u = new URL(request.url);
     if (request.method === 'GET') {
-      if (u.searchParams.get('hub.verify_token') === 'elsousy2026wa')
-        return new Response(u.searchParams.get('hub.challenge') || '');
+      if (u.searchParams.get('hub.mode') === 'subscribe') {
+        try { return new Response(await gas(gasQs(u))); }
+        catch (e) { return new Response('verification unavailable', { status: 502 }); }
+      }
       const action = u.searchParams.get('action');
       if (action === 'ping') return out(JSON.stringify({ ok: true, fast: true, db: !!env.DB, mem: MEM.size, v: 2 }));
       try {
@@ -129,6 +151,7 @@ export default {
     if (request.method !== 'POST') return new Response('ok');
     /* ويبهوك واتساب: زي ما هو */
     const body = await request.text();
+    if (!await webhookAllowed(request, env, body)) return new Response('unauthorized', { status: 401 });
     ctx.waitUntil(fetch(GAS_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: body, redirect: 'follow' }));
     return new Response('ok');
   }

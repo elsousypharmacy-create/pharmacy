@@ -25,6 +25,12 @@
 .settings-link{display:flex;align-items:center;gap:12px;width:100%;min-height:76px;padding:14px;margin:8px 0;background:var(--surface-2);color:var(--ink);border:1px solid var(--line);border-radius:var(--r2);font:inherit;text-align:start;cursor:pointer}.settings-link i{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:color-mix(in srgb,var(--brand) 10%,var(--surface));color:var(--brand);font-style:normal;font-size:21px;flex-shrink:0}.settings-link span{flex:1;min-width:0}.settings-link b,.settings-link small{display:block}.settings-link small,.settings-sub{font-size:13px;color:var(--ink-2);line-height:1.8}.settings-link em{font-style:normal;color:var(--ink-3);font-size:24px}.settings-link:active{background:var(--surface)}.settings-link:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 #settingsBar{display:flex;flex-wrap:wrap;gap:8px;position:sticky;top:-1px;z-index:2;background:var(--surface);padding:8px 0 12px;border-bottom:1px solid var(--line);margin-bottom:16px}#settingsBar .btn{flex:1;min-height:44px;margin:0;padding:9px}#settingsDraft{width:100%;color:var(--warn);font-size:12px}.settings-panel h3{margin:8px 0;font-size:18px}.settings-panel{padding-bottom:12px}.settings-panel .group-title{margin-top:20px}#settingsRoot .set-status:empty{display:none}
 
+/* Compact period card: preserve readable type and avoid unused lower space. */
+#p-home .home-flash-page[data-flash-key="period"]{justify-content:flex-start!important;align-content:start!important}
+#p-home .home-flash-page[data-flash-key="period"] .period-card{min-height:0!important;height:auto!important}
+#p-home .home-flash-page[data-flash-key="period"] .h-mini{min-height:76px!important;padding:10px!important}
+#p-home .home-flash-page[data-flash-key="period"] .h-minis{margin-top:9px!important;gap:8px!important}
+#p-home .home-flash-page[data-flash-key="period"] .period-card-footer{margin-top:10px!important}
 </style>
 <style>
 /* ══════════════════════════════════════════════════════════
@@ -1371,7 +1377,7 @@ function homeReadExpense(month){
 }
 /* المصروفات لا تحتاج تحميل مبيعات وأرباح الشهر. لا تحفظ أسماء أو تفاصيل البنود. */
 function homeNormalizeExpenses(d,month){
-  if(!d || d.ok!==true || !Array.isArray(d.items) || d.sourceError || (!d.lastEntry && d.staleDays==null))throw new Error('expenses unavailable');
+  if(!d || d.ok!==true || !Array.isArray(d.items) || d.sourceError)throw new Error('expenses unavailable');
   var days={},pending=0;
   d.items.forEach(function(e){
     if(e.isIncome || /مشتروات|مشتريات/.test(String(e.category)) || String(e.date).slice(0,7)!==month)return;
@@ -1418,7 +1424,7 @@ function homeProfitLoss(month){
   return HOME_PL_REQUESTS[month];
 }
 function homeExpenseTotals(pl,from,to){
-  if(!pl || pl.ok!==true || pl.financial_schema!=='finance-review-v1' || pl.month!==from.slice(0,7) || !Array.isArray(pl.days) || pl.expense_source_error || (!pl.exp_last_entry && pl.exp_stale_days==null))return null;
+  if(!pl || pl.ok!==true || pl.financial_schema!=='finance-review-v1' || pl.month!==from.slice(0,7) || !Array.isArray(pl.days) || pl.expense_source_error)return null;
   var total=0,pending=0,valid=true;
   pl.days.forEach(function(d){if(d.date>=from && d.date<=to){var amount=Number(d.expenses),p=d.pending_expenses==null?(pl.pending_expenses>0?NaN:0):Number(d.pending_expenses);if(d.expenses==null || !Number.isFinite(amount)||!Number.isFinite(p)||p<0||p>amount){valid=false;return;}total+=amount;pending+=p;}});
   return valid?{itemized:total-pending,pending:pending,total:total}:null;
@@ -1444,11 +1450,11 @@ function homeExpenseHtml(pl,from,to,loading,compact){
   if(compact){
     var opened=HOME_INSIGHT_OPEN==='expenses',cats={},pending=totals?totals.pending:0;
     if(pl && Array.isArray(pl.days))pl.days.forEach(function(d){if(d.date>=from && d.date<=to)Object.keys(d.categories||{}).forEach(function(k){cats[k]=(cats[k]||0)+d.categories[k];});});
-    var value=amount===null?(loading?'جارٍ التحميل…':'غير متاح'):ltr(num(amount))+'';
+    var value=amount===null?(loading?'جارٍ التحميل…':'تعذّر التحميل'):ltr(num(amount))+'';
     return '<button type="button" class="home-insight-card expense-card" data-insight-toggle="expenses" aria-controls="homeExpensePanel" aria-expanded="'+opened+'" onclick="homeInsightToggle(\'expenses\')"><span class="insight-heading">المصروفات <span aria-hidden="true">⌄</span></span><b class="insight-value">'+value+'</b><small class="insight-updated">آخر تحديث: '+esc(updated)+'</small></button>'+
       '<div id="homeExpensePanel" class="home-insight-panel" data-insight-panel="expenses"'+(opened?'':' hidden')+'><b>تفاصيل المصروفات · '+esc(from)+'</b>'+Object.keys(cats).map(function(k){return row(esc(k),'',ltr(num(cats[k]))+'');}).join('')+row('المصروفات المفصّلة','',amount===null?'غير متاح':ltr(num(amount))+'')+(pending>0?row('فرق غير مفصّل','يحتاج إلى مطابقة',ltr(num(pending))+''):'')+'<button class="btn btn-quiet" onclick="go(\'money\',2)">كل المصروفات ←</button></div>';
   }
-  return '<div class="h-expense"><div><small>المصروفات المفصّلة</small></div><b>'+(amount===null?(loading?'جارٍ التحميل…':'غير متاح'):ltr(num(amount))+'')+'</b></div><small class="expense-updated" style="display:block;margin:0 0 10px;font-size:11px;color:var(--ink-3)">آخر تحديث: '+esc(updated)+'</small>';
+  return '<div class="h-expense"><div><small>المصروفات المفصّلة</small></div><b>'+(amount===null?(loading?'جارٍ التحميل…':'تعذّر التحميل'):ltr(num(amount))+'')+'</b></div><small class="expense-updated" style="display:block;margin:0 0 10px;font-size:11px;color:var(--ink-3)">آخر تحديث: '+esc(updated)+'</small>';
 }
 function loadHomeDayExpenses(day,force){
   var box=document.getElementById('homeDayExpenses');if(!box)return;

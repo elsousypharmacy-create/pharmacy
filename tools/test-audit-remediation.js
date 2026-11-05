@@ -40,6 +40,12 @@ test('Home refresh rejects partial or failed financial snapshots',()=>{assert.eq
   let request;const front=vm.createContext({SCRIPT_URL:'https://origin.fixture/',FAST_URL:'',FAST_READ:{},fetch:async(url,options)=>{request={url,options};return {json:async()=>({ok:true})};},URLSearchParams});
   vm.runInContext(extract('api_','post'),front);await front.api_('getProfitLoss',{month:'2026-11',pin:'1234'});
   test('authenticated origin API uses POST and keeps PIN out of URL',()=>{assert.equal(request.url,'https://origin.fixture/');assert.equal(request.options.method,'POST');assert(!request.url.includes('1234'));assert.equal(JSON.parse(request.options.body).pin,'1234');});
+  front.fetch=async(url,options)=>{request={url,options};return {json:async()=>({status:'ok'})};};
+  await assert.rejects(front.api_('getHomeBundle',{pin:'1234'}),/BACKEND_POST_UNSUPPORTED/);
+  test('legacy Apps Script POST acknowledgement rejects instead of freezing dashboard',()=>{assert.equal(request.options.method,'POST');assert(!request.url.includes('1234'));assert.equal(JSON.parse(request.options.body).action,'getHomeBundle');});
+  front.fetch=async()=>({json:async()=>({ok:true,status:'ok'})});
+  assert.equal((await front.api_('getHomeBundle',{pin:'1234'})).ok,true);
+  test('valid read response carrying status remains accepted',()=>{});
 
   let reads=0,updated=1,text='';const cache={};
   const file={getId:()=> 'sales-file',getLastUpdated:()=>new RealDate(updated*1000),getSize:()=>text.length,getBlob:()=>({getDataAsString:()=>{reads++;return text;}})};

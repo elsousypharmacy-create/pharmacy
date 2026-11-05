@@ -216,13 +216,32 @@ async function api(params){
   if(!j){ const r = await fetch(API+qs); j = await r.json(); }
   if(!j.ok) throw new Error(j.error||'x'); return j;
 }
+/* Pending writes survive refresh and are retried without losing employee work. */
+let queuedWrites = {};
+try { queuedWrites = JSON.parse(localStorage.getItem('calls-pending-v1') || '{}'); } catch(e) {}
+function persistQueue(){ try { localStorage.setItem('calls-pending-v1', JSON.stringify(queuedWrites)); } catch(e) {} }
+let flushing = false;
+async function flushQueue(){
+  if(flushing || !Object.keys(queuedWrites).length) return;
+  flushing = true;
+  try {
+    for(const [p, rec] of Object.entries({...queuedWrites})){
+      try {
+        if(!HK[p]) HK[p] = await hashKey(p);
+        await api({action:'callsSet',key:HK[p],status:rec ? rec.status : '',note:rec ? (rec.note||'') : '',by:staffName()});
+        if(JSON.stringify(queuedWrites[p])===JSON.stringify(rec)){delete queuedWrites[p];persistQueue();}
+      } catch(e) { break; }
+    }
+  } finally { flushing = false; }
+}
+window.addEventListener('online', () => flushQueue());
 async function push(p, rec){
   pending++;
   try{
     if(!HK[p]) HK[p] = await hashKey(p);
     await api({action:'callsSet', key:HK[p], status:rec?rec.status:'', note:rec?(rec.note||''):'', by:staffName()}); showNotice('');
   }
-  catch(e){ showNotice('تعذر الحفظ على السيرفر. النتيجة محفوظة على الجهاز، جرّب تاني بعد لحظة.'); }
+  catch(e){ queuedWrites[p] = rec ? {...rec} : null; persistQueue(); showNotice('تعذر الحفظ على السيرفر. هنعيد المحاولة تلقائيًا عند رجوع الاتصال.'); }
   finally{ pending--; }
 }
 async function saveCall(p, rec){
@@ -281,9 +300,11 @@ async function pull(withList){
       if(v.status!=='blocked' && v.at && Date.now()-v.at > EXPIRE) continue;   /* النتيجة بتنتهي بعد 60 يوم */
       o[key(KH[h])] = v;
     }
+    for(const [p,rec] of Object.entries(queuedWrites)){ if(rec) o[key(p)] = rec; else delete o[key(p)]; }
     S.calls = o; lsSet(o); S.live = true; synced = true; if(listOk) showNotice('');
     if(typingNow()){ needsRender = true; scheduleTypingFlush(); }
     else render();
+    await flushQueue();
   }catch(e){ if(!synced) showNotice('مفيش اتصال بالسيرفر دلوقتي. النتايج المعروضة من الجهاز ده.'); }
 }
 function showNotice(t){ const n=$('notice'); n.textContent=t; n.hidden=!t; }
@@ -550,6 +571,7 @@ $('staffnow').textContent = staffName() || '—'; if(!staffName()) askStaff();
 (async () => {
   for(const r of DATA){ const h = await hashKey(r.p); HK[r.p] = h; KH[h] = r.p; }
   await pull(true);
+  await flushQueue();
   let n = 0;
   setInterval(() => pull(++n % (FAST?6:2) === 0), FAST ? 10000 : 30000);   /* السريع: كل 10 ثواني، القايمة كل دقيقة */
   document.addEventListener('visibilitychange', () => { if(!document.hidden) pull(true); });

@@ -210,6 +210,10 @@ function doPost(e) {
       return ContentService.createTextOutput('ok');
     }
 
+    // Protected dashboard reads may arrive as JSON POST to keep the PIN out of URLs.
+    // Delegate only known read/auth actions; preserve native POST handlers and webhooks.
+    if (LOCKED_GET[data.action] || data.action === 'dashboardAuth') return doGet({ parameter: data });
+
     if (LOCKED_POST[data.action] && dashLocked_(data.pin)) return lockedResp_();
     if (data.action === 'setBotSettings') return jsonResponseStaff(setBotSettings(data));
     if (data.action === 'camRecordSample') return jsonResponseStaff(adminPinOk_(data.pin) ? camRecordSample(data) : { ok: false, pinError: true, error: 'الرقم السري غلط' });

@@ -227,11 +227,12 @@ async function flushQueue(){
   flushing = true;
   try {
     for(const [p, rec] of Object.entries({...queuedWrites})){
-      try {
-        if(!HK[p]) HK[p] = await hashKey(p);
-        await api({action:'callsSet',key:HK[p],status:rec ? rec.status : '',note:rec ? (rec.note||'') : '',by:staffName()});
-        if(JSON.stringify(queuedWrites[p])===JSON.stringify(rec)){delete queuedWrites[p];persistQueue();}
-      } catch(e) { break; }
+      /* Use the same per-customer write lane as normal edits. */
+      if(writeChains[p]) { await writeChains[p]; continue; }
+      if(JSON.stringify(queuedWrites[p]) !== JSON.stringify(rec)) continue;
+      const current = S.calls[key(p)];
+      if(rec && current && (current.at||0) > (rec.at||0)) continue;
+      await push(p, rec);
     }
   } finally { flushing = false; }
 }

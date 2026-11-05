@@ -13,10 +13,11 @@ const TTL = {
   getCustomers: 300, getNewCustomersDetail: 300, getHistory: 300, getDebtsData: 300,
   getProfitLoss: 300, getInventoryAging: 600
 };
-const MAX_STALE = { callsGet: 600 };
+const MAX_STALE = { callsGet: 600 };          /* أقصى عمر للقديم قبل ما نستنى Google */
 const MAX_STALE_DEF = 6 * 3600;
 const CALL_ST = { done: 1, noanswer: 1, later: 1, wrong: 1, blocked: 1 };
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Max-Age': '86400' };
+
 function out(body, extra, status) {
   return new Response(body, { status: status || 200, headers: Object.assign({ 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }, CORS, extra || {}) });
 }
@@ -58,6 +59,7 @@ function goodBody(t) {
   if (!t || t.length > 1500000) return false;
   try { const j = JSON.parse(t); return !!j && j.ok !== false && !j.lockError && !j.pinError; } catch (e) { return false; }
 }
+/* التخزين: ذاكرة الـ Worker الأول (أسرع حاجة)، وD1 لو مربوطة (بتفضل بعد إعادة التشغيل) */
 const MEM = new Map();
 async function sGet(env, k) {
   const m = MEM.get(k); if (m) return m;
@@ -73,6 +75,7 @@ async function put(env, k, t, at) {
     .bind(k, t, v.at).run();
 }
 async function refresh(env, k, qs, now) {
+  /* واحد بس يحدّث في نفس الوقت */
   const m = MEM.get(k);
   if (m) { if (m.ref > now - 20000) return; m.ref = now; }
   if (env.DB) {
@@ -81,6 +84,7 @@ async function refresh(env, k, qs, now) {
   }
   try { const t = await gas(qs); if (goodBody(t)) await put(env, k, t); } catch (e) { if (m) m.ref = 0; }
 }
+
 async function read(u, env, ctx, action) {
   if(action!=='callsGet' && action!=='callsList' && action!=='getShortages'){
     var pin=u.searchParams.get('pin')||'';
@@ -104,6 +108,8 @@ async function read(u, env, ctx, action) {
   if (goodBody(t)) ctx.waitUntil(put(env, k, t).catch(() => {}));
   return out(t, { 'x-cache': 'miss' });
 }
+
+/* حفظ نتيجة مكالمة: بتتكتب في Google، وبعدين النسخة السريعة بتتعدّل فورًا عشان باقي الموظفين يشوفوها */
 async function callsSet(u, env) {
   const p = u.searchParams, key = p.get('key') || '', status = p.get('status') || '';
   if (!/^[0-9a-f]{16,64}$/.test(key) || (status && !CALL_ST[status])) return out(JSON.stringify({ ok: false, error: 'طلب غلط' }));
@@ -122,6 +128,7 @@ async function callsSet(u, env) {
   }
   return out(t);
 }
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -142,6 +149,7 @@ export default {
       return new Response('ok');
     }
     if (request.method !== 'POST') return new Response('ok');
+    /* ويبهوك واتساب: زي ما هو */
     const body = await request.text();
     if (!await webhookAllowed(request, env, body)) return new Response('unauthorized', { status: 401 });
     ctx.waitUntil(fetch(GAS_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: body, redirect: 'follow' }));

@@ -236,17 +236,31 @@ async function flushQueue(){
   } finally { flushing = false; }
 }
 window.addEventListener('online', () => flushQueue());
-async function push(p, rec){
-  pending++;
-  try{
-    if(!HK[p]) HK[p] = await hashKey(p);
-    await api({action:'callsSet', key:HK[p], status:rec?rec.status:'', note:rec?(rec.note||''):'', by:staffName()});
-    /* Only clear a queued operation if it is exactly the one just saved. */
-    if(Object.prototype.hasOwnProperty.call(queuedWrites,p) && JSON.stringify(queuedWrites[p])===JSON.stringify(rec)){ delete queuedWrites[p]; persistQueue(); }
-    showNotice('');
-  }
-  catch(e){ queuedWrites[p] = rec ? {...rec} : null; persistQueue(); showNotice('تعذر الحفظ على السيرفر. هنعيد المحاولة تلقائيًا عند رجوع الاتصال.'); }
-  finally{ pending--; }
+/* Serialize writes per customer: an older request must never overwrite a newer one. */
+const writeChains = {};
+function push(p, rec){
+  const snapshot = rec ? {...rec} : null;
+  const operation = async () => {
+    pending++;
+    try {
+      if(!HK[p]) HK[p] = await hashKey(p);
+      await api({action:'callsSet',key:HK[p],status:snapshot?snapshot.status:'',note:snapshot?(snapshot.note||''):'',by:staffName()});
+      if(Object.prototype.hasOwnProperty.call(queuedWrites,p) && JSON.stringify(queuedWrites[p])===JSON.stringify(snapshot)){
+        delete queuedWrites[p]; persistQueue();
+      }
+      if(!Object.keys(queuedWrites).length) showNotice('');
+    } catch(e) {
+      /* Do not replace a newer pending edit with this older failed request. */
+      if(!Object.prototype.hasOwnProperty.call(queuedWrites,p) || (snapshot && (queuedWrites[p]===null || (queuedWrites[p] && (queuedWrites[p].at||0) <= (snapshot.at||0))))){
+        queuedWrites[p] = snapshot; persistQueue();
+      }
+      showNotice('في تعديل مستني المزامنة؛ هنعيد المحاولة تلقائيًا.');
+    } finally { pending--; }
+  };
+  const next = (writeChains[p] || Promise.resolve()).catch(()=>{}).then(operation);
+  writeChains[p] = next;
+  next.finally(()=>{ if(writeChains[p]===next) delete writeChains[p]; });
+  return next;
 }
 async function saveCall(p, rec){
   rec.at = Date.now(); S.calls[key(p)] = rec; lsSet(S.calls); render(); await push(p, rec);

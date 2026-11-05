@@ -1990,6 +1990,7 @@ var SECTIONS = {
 };
 var CUR = 'sales', TAB = 0;
 
+function goCurrentPageRefresh_(){ go(CUR, TAB); }
 function go(sec, tab){
   if(sec==='team' && tab===1){openSheet('settings');settingsSelect('pages');return;}
   if (sec !== CUR || (tab || 0) !== TAB){ try { sessionStorage.removeItem('subCust'); sessionStorage.removeItem('subInv'); } catch (e) {} }
@@ -7107,7 +7108,7 @@ try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
   document.addEventListener('touchend', function(){
     if (y0 === null) return;
     var go = dy > LIMIT && window.scrollY <= 0; y0 = null;
-    if (go){ ind.classList.add('spin'); setTimeout(function(){ location.reload(); }, 150); }
+    if (go){ ind.classList.add('spin'); setTimeout(function(){ try { goCurrentPageRefresh_(); } finally { ind.classList.remove('spin'); ind.style.opacity = 0; ind.style.transform = 'translate(-50%,0)'; } }, 150); }
     else { ind.style.opacity = 0; ind.style.transform = 'translate(-50%,0)'; }
   }, { passive: true });
 })();

@@ -31,7 +31,7 @@
 #p-home .home-flash-page[data-flash-key="period"] .h-mini{min-height:76px!important;padding:10px!important}
 #p-home .home-flash-page[data-flash-key="period"] .h-minis{margin-top:9px!important;gap:8px!important}
 #p-home .home-flash-page[data-flash-key="period"] .period-card-footer{margin-top:10px!important}
-</style>
+.home-nova-shortcut{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;min-height:43px;margin-top:7px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--ink);text-decoration:none}.home-nova-shortcut b{font-size:12px}.home-nova-shortcut small{display:block;font-size:10px;color:var(--ink-2)}.home-nova-shortcut>span:last-child{font-size:22px;color:var(--brand)}</style>
 <style>
 /* ══════════════════════════════════════════════════════════
    نظام التصميم — المصدر الوحيد لكل شكل في التطبيق.
@@ -3618,7 +3618,7 @@ function homeFlashLayout(html){
   });
   var team=template.content.querySelector('#homeTeamCards'),overview=root.querySelector('[data-flash-key="overview"]');if(team && overview){team.style.display='block';overview.appendChild(team);}
   var priorities=template.content.querySelector('.home-actions');if(priorities && overview){priorities.className='home-priorities-strip';priorities.setAttribute('aria-label','الأولويات');var head=priorities.querySelector('.card-head');if(head)head.innerHTML='<small>الأولويات</small><button type="button" onclick="homeFlashActionsDetails()">كل الإجراءات ←</button>';overview.appendChild(priorities);}
-  homeFlashPrepareInsights(root);return root.outerHTML;
+  if(overview){var nova=document.createElement('a');nova.href='nova-monitor.html';nova.className='home-nova-shortcut';nova.setAttribute('aria-label','متابعة تطوير NOVA Rx');nova.innerHTML='<span><b>NOVA Rx</b><small>متابعة مراحل التطوير ودورات Kimi وGrok</small></span><span aria-hidden="true">‹</span>';overview.appendChild(nova);}homeFlashPrepareInsights(root);return root.outerHTML;
 }
 function staffFlashValue(value){return value===null || value===undefined || !Number.isFinite(Number(value))?'—':ltr(num(value));}
 function staffFlashSum(employees,field){
@@ -5538,7 +5538,7 @@ function settingsIcon(key){
 }
 function settingsMenuHtml(){
   var groups=[['التشغيل اليومي',['pages','bot','camera']],['التفضيلات والحماية',['appearance','security']],['الخدمات والربط',['ai','delivery']],['إدارة النظام',['server','advanced']]];
-  return '<div class="settings-intro"><small class="section-eyebrow">لوحة التحكم</small><h2>إعدادات الصيدلية</h2><p>التشغيل، الربط وحماية اللوحة</p></div><div class="settings-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" placeholder="ابحث عن إعداد…" aria-label="البحث في الإعدادات" oninput="settingsFilter(this.value)"></div>'+groups.map(function(g){return '<div class="settings-category"><h4>'+g[0]+'</h4><div class="settings-group">'+g[1].map(function(key){var x=SETTINGS_ITEMS.filter(function(i){return i[0]===key;})[0];return '<button class="settings-link" data-settings-search="'+esc(x[1]+' '+x[2])+'" onclick="settingsSelect(\''+key+'\')"><i>'+settingsIcon(key)+'</i><span><b>'+x[1]+'</b><small>'+x[2]+'</small></span><em aria-hidden="true">‹</em></button>';}).join('')+'</div></div>';}).join('')+'<p id="settingsNoMatch" class="state" hidden>لا توجد إعداد بالاسم ده</p>';
+  return '<div class="settings-intro"><small class="section-eyebrow">لوحة التحكم</small><h2>إعدادات الصيدلية</h2><p>التشغيل، الربط وحماية اللوحة</p></div><div class="settings-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" placeholder="ابحث عن إعداد…" aria-label="البحث في الإعدادات" oninput="settingsFilter(this.value)"></div>'+groups.map(function(g){return '<div class="settings-category"><h4>'+g[0]+'</h4><div class="settings-group">'+g[1].map(function(key){var x=SETTINGS_ITEMS.filter(function(i){return i[0]===key;})[0];return '<button class="settings-link" data-settings-search="'+esc(x[1]+' '+x[2])+'" onclick="settingsSelect(\''+key+'\')"><i>'+settingsIcon(key)+'</i><span><b>'+x[1]+'</b><small>'+x[2]+'</small></span><em aria-hidden="true">‹</em></button>';}).join('')+'</div></div>';}).join('')+'<div class="settings-category"><h4>متابعة التطوير</h4><div class="settings-group"><a class="settings-link" href="nova-monitor.html" data-settings-search="NOVA Rx متابعة التطوير"><i>◈</i><span><b>متابعة NOVA Rx</b><small>جاهزية المنتج ودورات Kimi وGrok</small></span><em aria-hidden="true">‹</em></a></div></div><p id="settingsNoMatch" class="state" hidden>لا توجد إعداد بالاسم ده</p>';
 }
 function settingsFilter(value){
   var q=String(value || '').trim().toLowerCase(),n=0;

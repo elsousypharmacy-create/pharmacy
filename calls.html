@@ -241,6 +241,9 @@ window.addEventListener('online', () => flushQueue());
 const writeChains = {};
 function push(p, rec){
   const snapshot = rec ? {...rec} : null;
+  /* Write-ahead: persist the edit before any network request or page refresh. */
+  queuedWrites[p] = snapshot;
+  persistQueue();
   const operation = async () => {
     pending++;
     try {

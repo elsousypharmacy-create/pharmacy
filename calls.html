@@ -328,7 +328,9 @@ async function pull(withList){
       o[key(KH[h])] = v;
     }
     for(const [p,rec] of Object.entries(queuedWrites)){ if(rec) o[key(p)] = rec; else delete o[key(p)]; }
-    S.calls = o; lsSet(o); S.live = true; synced = true; if(listOk) showNotice('');
+    S.calls = o; lsSet(o); S.live = true; synced = true;
+    if(Object.keys(queuedWrites).length) showNotice('في تعديلات محفوظة على الجهاز ومستنية المزامنة.');
+    else if(listOk) showNotice('');
     if(typingNow()){ needsRender = true; scheduleTypingFlush(); }
     else render();
     await flushQueue();

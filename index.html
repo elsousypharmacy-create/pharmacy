@@ -2261,8 +2261,9 @@ function pgHome(){
   if (!box.querySelector('.home-flash-deck')) {
     // A hard page reload must not paint a provisional home snapshot before the
     // authoritative invoice summary arrives: that causes net to dip and average to dash.
-    if (seed && seed.kpi && seed.kpi._salesSummary && seed.kpi._salesSummary.ok && seed.kpi._salesSummary.source==='pos-invoices-v1') drawHome(seed.b, seed.kpi, true);
-    else busy(box);
+    // On a browser pull-to-refresh, do not repaint an older cached financial snapshot.
+    // Wait for the complete live invoice result instead of flashing lower totals.
+    busy(box);
   }
 
   var loadHome = function(again){

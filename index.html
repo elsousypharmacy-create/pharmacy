@@ -6293,9 +6293,9 @@ function camrCoverageHtml(r){
   return '<details class="report-fold"><summary>تغطية الكاميرات</summary><div class="report-camera-list">'+camrCoverage(r).map(function(c){return '<div><b>كاميرا '+c.ch+'</b><span>'+ (c.frames.length?c.frames.length+' صور مفحوصة':'عدد العينات غير مسجل')+'</span></div>';}).join('')+'</div><p class="appearance-muted">العينات لا تغطي كل الدقائق، وغياب الملاحظة مش شهادة سلامة.</p></details>';
 }
 function camrDisplayPages(r){
-  var source=camrPages(r), originals=new Set(source.map(function(c){return c.file;})), seen=new Set(), out=[];
-  source.forEach(function(c){out.push(Object.assign({},c,{repeats:[]}));(c.repeats || []).forEach(function(q){if(!q.file || originals.has(q.file) || seen.has(q.file))return;seen.add(q.file);out.push({ch:c.ch,name:c.name,title:'دليل إضافي: '+(c.title || 'نفس الملاحظة'),file:q.file,label:q.label || q.time || '',items:[],repeats:[],repeatOf:c.title || ''});});});
-  return out;
+  // Keep each annotated source page together with its repeat evidence.
+  // camrDrawPage already draws repeats as a timed thumbnail grid.
+  return camrPages(r);
 }
 function camrReportOverview(r){
   var entry=CameraAssessment.assessReports(CAMR.list).filter(function(x){return x.report===r || (r.id && x.report.id===r.id);})[0], a=entry && entry.result;
@@ -6525,7 +6525,10 @@ function camReportView(i){
       if(!alive() || next>=cams.length)return Promise.resolve();var j=next++,c=cams[j],slot=slots[j];
       function draw(im){if(!alive())return;var cv=r.pages?camrDrawPage(im,logo,c,r):camrDrawCam(im,logo,c,r);cur.canvases[j]=cv;slot.innerHTML='';var img=new Image();img.src=cv.toDataURL('image/jpeg',.9);img.alt='كاميرا '+c.ch+' · '+(c.label || '');img.onclick=function(){camrZoom(img.src);};slot.appendChild(img);var caption=document.createElement('div');caption.className='report-image-caption';caption.innerHTML='<b>كاميرا '+c.ch+' · '+esc(c.label || 'التوقيت غير مسجل')+'</b><small>'+esc(c.repeatOf?'دليل إضافي: '+c.repeatOf:(c.items || []).map(function(q){return q.now;}).join(' · ') || c.title || 'صورة ضمن نطاق المراجعة')+'</small>';slot.appendChild(caption);}
       return camrFrame(c.file).then(function(im){
-        draw(im);
+        // Load repeat images before drawing: the canvas needs them in CAMR.frames.
+        return Promise.all((c.repeats || []).filter(function(q){return q.file && q.file!==c.file;}).map(function(q){
+          return camrFrame(q.file).catch(function(){return null;});
+        })).then(function(){draw(im);});
       }).catch(function(){failed++;if(alive())slot.innerHTML='<div class="state err">دليل كاميرا '+c.ch+' ما اتحملش</div><button class="btn btn-quiet" onclick="camReportView('+i+')">إعادة المحاولة</button>';}).then(function(){
         completed++;if(alive())document.getElementById('camrProgress').textContent='تحميل '+completed+' من '+cams.length+(failed?' · '+failed+' فشل':'');return worker();
       });

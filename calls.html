@@ -305,7 +305,15 @@ async function clearCall(p){
 async function pullList(){
   const j = await api({action:'callsList'});
   for(const r of j.list){ if(!HK[r.p]){ const h = await hashKey(r.p); HK[r.p] = h; KH[h] = r.p; } }
-  DATA = j.list; listOk = true;
+  /* One card per normalized phone; prefer higher-priority segment, then freshest visit. */
+  const unique = new Map();
+  for(const r of j.list){
+    const phone = l10(r.p);
+    if(phone.length !== 10) continue;
+    const prev = unique.get(phone);
+    if(!prev || Number(r.t||9)<Number(prev.t||9) || (Number(r.t||9)===Number(prev.t||9) && String(r.l||'')>String(prev.l||''))) unique.set(phone,r);
+  }
+  DATA = [...unique.values()]; listOk = true;
 }
 async function pull(withList){
   if(pending || document.hidden) return;

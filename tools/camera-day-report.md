@@ -89,7 +89,7 @@ Read and follow `tools/camera-appearance-kpi.md`. Before judging, read the previ
 
 - Label text `now` = the problem only, ≤ 4 words (no «المفروض»). Labels are drawn as white pills ≈ (11 px × characters + 60) wide, 42 px tall in 960 space.
   `to` = exact point of the problem. `lab` = pill centre on an empty area (floor, wall, ceiling), inside the image, not covering the problem or another pill.
-- Summary: `sev` "r" = money/people/customer problems, "y" = order/cleanliness/stock problems. Order: r first.
+- **Mandatory arrow QA:** `to`, `lab` and `crop` must use the ORIGINAL 960×576 image coordinates, not enlarged preview/screenshot coordinates. For each point require 0 ≤ x < 960 and 0 ≤ y < 576; each crop rectangle must stay entirely inside the image. Open the original frame and verify each arrow tip precisely touches the issue named in `now` (not merely somewhere in bounds). Recheck all arrows and labels visually before saving. If any point is out of bounds, incorrectly scaled, or does not touch the cited issue, correct it or omit that annotation. Never reuse coordinates from another camera/frame. Reject and repair any report with invalid coordinates before upload.\n- Summary: `sev` "r" = money/people/customer problems, "y" = order/cleanliness/stock problems. Order: r first.
 
 ## 6. JSON (one line)
 ```json

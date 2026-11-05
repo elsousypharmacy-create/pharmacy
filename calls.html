@@ -173,7 +173,7 @@ textarea{width:100%;min-height:38px;height:38px;resize:vertical;border:1.5px sol
       <button id="vSlide" aria-pressed="true">شريحة</button>
       <button id="vList" aria-pressed="false">قايمة</button>
     </div>
-    <label class="check"><input type="checkbox" id="onlyLeft" checked> المتبقي بس</label>
+    <label class="check"><input type="checkbox" id="onlyLeft" checked> مكالمات لسه مطلوبة</label>
   </div>
 
   <main id="main"></main>
@@ -208,7 +208,8 @@ async function hashKey(p){
 /* ⚡ السيرفر السريع (Cloudflare): النتايج بتوصل لكل الموظفين في ثواني. لو وقع بنكلم Google على طول */
 const FAST = 'https://wispy-cloud-00a7.elsousypharmacy.workers.dev/';
 async function api(params){
-  const qs = '?'+new URLSearchParams(params);
+  /* Bypass intermediary read caches for live customer list and call outcomes. */
+  const qs = '?'+new URLSearchParams({...params, _ts:Date.now()});
   let j = null;
   if(FAST){
     try{ const r = await fetch(FAST+qs, {cache:'no-store'}); if(r.ok) j = await r.json(); if(j && j.proxyError) j = null; }catch(e){ j = null; }
@@ -216,14 +217,54 @@ async function api(params){
   if(!j){ const r = await fetch(API+qs); j = await r.json(); }
   if(!j.ok) throw new Error(j.error||'x'); return j;
 }
-async function push(p, rec){
-  pending++;
-  try{
-    if(!HK[p]) HK[p] = await hashKey(p);
-    await api({action:'callsSet', key:HK[p], status:rec?rec.status:'', note:rec?(rec.note||''):'', by:staffName()}); showNotice('');
-  }
-  catch(e){ showNotice('تعذر الحفظ على السيرفر. النتيجة محفوظة على الجهاز، جرّب تاني بعد لحظة.'); }
-  finally{ pending--; }
+/* Pending writes survive refresh and are retried without losing employee work. */
+let queuedWrites = {};
+try { queuedWrites = JSON.parse(localStorage.getItem('calls-pending-v1') || '{}'); } catch(e) {}
+function persistQueue(){ try { localStorage.setItem('calls-pending-v1', JSON.stringify(queuedWrites)); } catch(e) {} }
+let flushing = false;
+async function flushQueue(){
+  if(flushing || !Object.keys(queuedWrites).length) return;
+  flushing = true;
+  try {
+    for(const [p, rec] of Object.entries({...queuedWrites})){
+      /* Use the same per-customer write lane as normal edits. */
+      if(writeChains[p]) { await writeChains[p]; continue; }
+      if(JSON.stringify(queuedWrites[p]) !== JSON.stringify(rec)) continue;
+      const current = S.calls[key(p)];
+      if(rec && current && (current.at||0) > (rec.at||0)) continue;
+      await push(p, rec);
+    }
+  } finally { flushing = false; }
+}
+window.addEventListener('online', () => flushQueue());
+/* Serialize writes per customer: an older request must never overwrite a newer one. */
+const writeChains = {};
+function push(p, rec){
+  const snapshot = rec ? {...rec} : null;
+  /* Write-ahead: persist the edit before any network request or page refresh. */
+  queuedWrites[p] = snapshot;
+  persistQueue();
+  const operation = async () => {
+    pending++;
+    try {
+      if(!HK[p]) HK[p] = await hashKey(p);
+      await api({action:'callsSet',key:HK[p],status:snapshot?snapshot.status:'',note:snapshot?(snapshot.note||''):'',by:staffName()});
+      if(Object.prototype.hasOwnProperty.call(queuedWrites,p) && JSON.stringify(queuedWrites[p])===JSON.stringify(snapshot)){
+        delete queuedWrites[p]; persistQueue();
+      }
+      if(!Object.keys(queuedWrites).length) showNotice('');
+    } catch(e) {
+      /* Do not replace a newer pending edit with this older failed request. */
+      if(!Object.prototype.hasOwnProperty.call(queuedWrites,p) || (snapshot && (queuedWrites[p]===null || (queuedWrites[p] && (queuedWrites[p].at||0) <= (snapshot.at||0))))){
+        queuedWrites[p] = snapshot; persistQueue();
+      }
+      showNotice('في تعديل مستني المزامنة؛ هنعيد المحاولة تلقائيًا.');
+    } finally { pending--; }
+  };
+  const next = (writeChains[p] || Promise.resolve()).catch(()=>{}).then(operation);
+  writeChains[p] = next;
+  next.finally(()=>{ if(writeChains[p]===next) delete writeChains[p]; });
+  return next;
 }
 async function saveCall(p, rec){
   rec.at = Date.now(); S.calls[key(p)] = rec; lsSet(S.calls); render(); await push(p, rec);
@@ -267,7 +308,15 @@ async function clearCall(p){
 async function pullList(){
   const j = await api({action:'callsList'});
   for(const r of j.list){ if(!HK[r.p]){ const h = await hashKey(r.p); HK[r.p] = h; KH[h] = r.p; } }
-  DATA = j.list; listOk = true;
+  /* One card per normalized phone; prefer higher-priority segment, then freshest visit. */
+  const unique = new Map();
+  for(const r of j.list){
+    const phone = l10(r.p);
+    if(phone.length !== 10) continue;
+    const prev = unique.get(phone);
+    if(!prev || Number(r.t||9)<Number(prev.t||9) || (Number(r.t||9)===Number(prev.t||9) && String(r.l||'')>String(prev.l||''))) unique.set(phone,r);
+  }
+  DATA = [...unique.values()]; listOk = true;
 }
 async function pull(withList){
   if(pending || document.hidden) return;
@@ -281,9 +330,13 @@ async function pull(withList){
       if(v.status!=='blocked' && v.at && Date.now()-v.at > EXPIRE) continue;   /* النتيجة بتنتهي بعد 60 يوم */
       o[key(KH[h])] = v;
     }
-    S.calls = o; lsSet(o); S.live = true; synced = true; if(listOk) showNotice('');
+    for(const [p,rec] of Object.entries(queuedWrites)){ if(rec) o[key(p)] = rec; else delete o[key(p)]; }
+    S.calls = o; lsSet(o); S.live = true; synced = true;
+    if(Object.keys(queuedWrites).length) showNotice('في تعديلات محفوظة على الجهاز ومستنية المزامنة.');
+    else if(listOk) showNotice('');
     if(typingNow()){ needsRender = true; scheduleTypingFlush(); }
     else render();
+    await flushQueue();
   }catch(e){ if(!synced) showNotice('مفيش اتصال بالسيرفر دلوقتي. النتايج المعروضة من الجهاز ده.'); }
 }
 function showNotice(t){ const n=$('notice'); n.textContent=t; n.hidden=!t; }
@@ -550,6 +603,7 @@ $('staffnow').textContent = staffName() || '—'; if(!staffName()) askStaff();
 (async () => {
   for(const r of DATA){ const h = await hashKey(r.p); HK[r.p] = h; KH[h] = r.p; }
   await pull(true);
+  await flushQueue();
   let n = 0;
   setInterval(() => pull(++n % (FAST?6:2) === 0), FAST ? 10000 : 30000);   /* السريع: كل 10 ثواني، القايمة كل دقيقة */
   document.addEventListener('visibilitychange', () => { if(!document.hidden) pull(true); });

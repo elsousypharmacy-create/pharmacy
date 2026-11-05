@@ -1222,7 +1222,13 @@ function api(action, params, base){
 function api_(action, params, base){
   var qs = '?action=' + action;
   for (var k in (params || {})) if (params[k] != null) qs += '&' + k + '=' + encodeURIComponent(params[k]);
-  var slow = function(){ return fetch((base || SCRIPT_URL) + qs + '&_ts=' + Date.now(), { cache: 'no-store' }).then(function(r){ return r.json(); }); };
+  var slow = function(){
+    if (!base && params && params.pin) return fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(Object.assign({ action: action }, params)), cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
+      if (d && d.status && d.ok === undefined) throw new Error('BACKEND_POST_UNSUPPORTED');
+      return d;
+    });
+    return fetch((base || SCRIPT_URL) + qs + '&_ts=' + Date.now(), { cache: 'no-store' }).then(function(r){ return r.json(); });
+  };
   if (base || !FAST_URL || !FAST_READ[action]) return slow();
   var ctl = window.AbortController ? new AbortController() : null, tm = ctl && setTimeout(function(){ ctl.abort(); }, 30000);
   return fetch(FAST_URL + qs, { cache: 'no-store', signal: ctl ? ctl.signal : undefined })

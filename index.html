@@ -2269,6 +2269,15 @@ function pgHome(){
     return Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }), api('getMonthTotalsRaw',{range:'today'}) ])
     .then(function(res){
       if(res[1])res[1]._salesSummary=res[2];
+      // Only today's complete invoice summary may replace visible financial KPIs.
+      var summary=res[2], today=cairoNow().date;
+      var complete=summary && summary.ok && summary.source==='pos-invoices-v1' &&
+        Array.isArray(summary.daily) && summary.daily.some(function(x){return x.date===today;});
+      if(!complete){
+        var sync=document.getElementById('sync');
+        if(sync){sync.textContent=tr('cached')+' · '+tr('refreshing');sync.classList.add('old');}
+        return;
+      }
       // Never persist a partial snapshot over the last authoritative home cache.
       if(res[1] && res[1]._salesSummary && res[1]._salesSummary.ok && res[1]._salesSummary.source==='pos-invoices-v1') cacheSet('home', {}, { b: res[0], kpi: res[1] });
       markSync();

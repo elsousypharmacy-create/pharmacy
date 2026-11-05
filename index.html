@@ -2845,8 +2845,10 @@ function refreshNow(){
     ['debts','sales','getShortages','getProfitLoss','getExpensesData'].forEach(function(k){
       try{ localStorage.removeItem(cacheKey(k, {})); }catch(e){}
     });
+    // Keep the last successful home expense snapshot visible while fresh data loads.
+    // Expire its freshness timestamp, not the stored value; never delete it on reload.
     Object.keys(HOME_EXP_CACHE).forEach(function(k){HOME_EXP_CACHE[k].at=0;});HOME_EXP_FAILURES={};Object.keys(HOME_PL_CACHE).forEach(function(k){HOME_PL_CACHE[k].at=0;});Object.keys(HOME_PERIOD_CACHE).forEach(function(k){HOME_PERIOD_CACHE[k].at=0;});
-    try{for(var i=localStorage.length-1;i>=0;i--){var key=localStorage.key(i);if(/^c:(homeExpense\.v1|homePL\.v2|homePeriod\.v[23]|getExpensesData):/.test(key))localStorage.removeItem(key);}}catch(e){}
+    try{for(var i=localStorage.length-1;i>=0;i--){var key=localStorage.key(i);if(/^c:(homePL\.v2|homePeriod\.v[23]|getExpensesData):/.test(key))localStorage.removeItem(key);}}catch(e){}
     refreshMark(true);
     render(CUR, TAB);
   }).catch(function(e){

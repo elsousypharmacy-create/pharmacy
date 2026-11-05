@@ -2256,7 +2256,11 @@ function pgHome(){
   if(storedPin())homeCamLatest(true,true); // Fetch saved reports on entry/resume without notifications.
   var box = document.getElementById('p-home');
   var seed = cacheGet('home', {});
-  if (seed) drawHome(seed.b, seed.kpi, true); else if (!box.querySelector('.home-flash-deck')) busy(box);
+  // Keep the currently displayed net sales visible until fresh data arrives.
+  // Repainting the cached snapshot on every reload causes a visible flash.
+  if (!box.querySelector('.home-flash-deck')) {
+    if (seed) drawHome(seed.b, seed.kpi, true); else busy(box);
+  }
 
   var loadHome = function(again){
     return Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }), api('getMonthTotalsRaw',{range:'today'}) ])

@@ -2256,7 +2256,7 @@ function pgHome(){
   if(storedPin())homeCamLatest(true,true); // Fetch saved reports on entry/resume without notifications.
   var box = document.getElementById('p-home');
   var seed = cacheGet('home', {});
-  if (seed) drawHome(seed.b, seed.kpi, true); else busy(box);
+  if (seed) drawHome(seed.b, seed.kpi, true); else if (!box.querySelector('.home-flash-deck')) busy(box);
 
   var loadHome = function(again){
     return Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }), api('getMonthTotalsRaw',{range:'today'}) ])
@@ -2271,7 +2271,7 @@ function pgHome(){
   };
   loadHome(true).catch(function(e){
     logErr(e);
-    if (!seed) oops(box, "pgHome()");
+    if (!seed && !box.querySelector('.home-flash-deck')) oops(box, "pgHome()");
     else { var el = document.getElementById('sync'); if (el){ el.textContent = tr('cached'); el.classList.add('old'); } }
   });
 
@@ -2477,7 +2477,11 @@ function drawHome(b, kpi, isOld){
 
     HOME_FLASH_DAY_STATS={date:homeDay,net:salesT,profit:profitT,invoices:tot.inv,returns:retVal,average:avgInv,pace:paceLine};
     HOME_PRESENCE_SALES_DAY=homeDay;
+    // Preserve the last rendered expense value across home redraws, even when storage is unavailable.
+    var oldExpense=box.querySelector('#homeDayExpenses'),oldDay=oldExpense && oldExpense.getAttribute('data-day');
+    var oldExpenseMarkup=oldDay===homeDay && oldExpense.querySelector('.expense-card .insight-value') && !/جارٍ التحميل|غير متاح/.test(oldExpense.querySelector('.expense-card .insight-value').textContent) ? oldExpense.innerHTML : null;
     box.innerHTML = homeFlashLayout(html);
+    if(oldExpenseMarkup){var expenseSlot=box.querySelector('#homeDayExpenses');if(expenseSlot)expenseSlot.innerHTML=oldExpenseMarkup;}
     loadHomeDayExpenses(homeDay);
     staffFlashRestore();
     if(!HOME_FLASH_MODE){if(HOME_TEAM_PERIOD_SELECTED)loadHomeStaffPeriod();else loadHomeTeamCards(homeDay,teamList,live,at.ok===false);}

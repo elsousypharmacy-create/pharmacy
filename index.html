@@ -684,6 +684,12 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
 <link rel="stylesheet" href="dashboard-ui.css?v=20261103-invoice-daily-average1">
 
+<style>
+.sync-loader{display:inline-block;width:11px;height:11px;border:1.5px solid var(--line);border-top-color:var(--brand);border-radius:50%;vertical-align:middle;animation:sync-rotate .8s linear infinite}
+.refresh-spinning svg{animation:sync-rotate .8s linear infinite}
+@keyframes sync-rotate{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.sync-loader,.refresh-spinning svg{animation:none}}
+</style>
 </head>
 <body>
 
@@ -2261,9 +2267,9 @@ function pgHome(){
   if (!box.querySelector('.home-flash-deck')) {
     // A hard page reload must not paint a provisional home snapshot before the
     // authoritative invoice summary arrives: that causes net to dip and average to dash.
-    // On a browser pull-to-refresh, do not repaint an older cached financial snapshot.
-    // Wait for the complete live invoice result instead of flashing lower totals.
-    busy(box);
+    // Show only the last verified invoice-backed snapshot immediately; refresh silently.
+    if (seed && seed.b && seed.kpi && seed.kpi._salesSummary && seed.kpi._salesSummary.ok && seed.kpi._salesSummary.source==='pos-invoices-v1' && [seed.kpi._salesSummary.net_sales,seed.kpi._salesSummary.profit_total,seed.kpi._salesSummary.avg_invoice].every(function(v){return typeof v==='number' && isFinite(v);})) drawHome(seed.b,seed.kpi,true);
+    else busy(box);
   }
 
   var loadHome = function(again){
@@ -2875,7 +2881,9 @@ function toggleBucket(k){ DEBT.open[k] = !DEBT.open[k]; drawDebts(); }
 function refreshNow(){
   TEAM_NEW_LOG=null;TEAM_NEW_LOG_PENDING=null;
   var el = document.getElementById('sync');
-  if (el) el.textContent = '⏳';
+  if (el) { el.innerHTML = '<span class="sync-loader" aria-label="جاري التحديث"></span>'; el.classList.remove('old'); }
+  var refreshButton=document.getElementById('refreshBtn');
+  if(refreshButton)refreshButton.classList.add('refresh-spinning');
   apiFresh('refreshNow', {}).then(function(d){
     if (!d || d.ok === false || d.error) throw new Error((d && d.error) || 'refreshNow');
     ['debts','sales','getShortages','getProfitLoss','getExpensesData'].forEach(function(k){
@@ -2899,6 +2907,7 @@ function refreshMark(ok){
   var b = document.getElementById('refreshBtn');
   if (!b) return;
   clearTimeout(b._t);
+  b.classList.remove('refresh-spinning');
   b.textContent = ok ? '✓' : '⚠';
   b.style.color = ok ? 'var(--ok)' : 'var(--warn)';
   b.title = ok ? tr('refreshOk') : tr('refreshFail');

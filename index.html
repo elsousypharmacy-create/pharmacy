@@ -1448,8 +1448,8 @@ function loadHomeDayExpenses(day,force){
   var box=document.getElementById('homeDayExpenses');if(!box)return;
   function active(){return document.getElementById('homeDayExpenses')===box && box.getAttribute('data-day')===day;}
   var cached=homeReadExpense(day.slice(0,7));
-  if(cached){box.innerHTML=homeExpenseHtml(cached.data,day,day,false,true);if(HOME_FLASH_MODE)homeFlashPrepareInsights();}
-  homeExpenseMonth(day.slice(0,7),force).then(function(pl){if(active()){box.innerHTML=homeExpenseHtml(pl,day,day,false,true);if(HOME_FLASH_MODE)homeFlashPrepareInsights();}}).catch(function(){
+  if(cached){var existing=box.querySelector('.expense-card .insight-value');var next=homeExpenseTotals(cached.data,day,day);if(!existing || !next || existing.textContent.trim()!==num(next.itemized).toString()){box.innerHTML=homeExpenseHtml(cached.data,day,day,false,true);if(HOME_FLASH_MODE)homeFlashPrepareInsights();}}
+  homeExpenseMonth(day.slice(0,7),force).then(function(pl){if(active()){var current=box.querySelector('.expense-card .insight-value'),next=homeExpenseTotals(pl,day,day);if(!current || !next || current.textContent.replace(/[^\d.-]/g,'')!==num(next.itemized).toString().replace(/[^\d.-]/g,'')){box.innerHTML=homeExpenseHtml(pl,day,day,false,true);if(HOME_FLASH_MODE)homeFlashPrepareInsights();}else{var stamp=box.querySelector('.insight-updated');if(stamp)stamp.textContent='آخر تحديث: '+new Date(pl._uiAt).toLocaleString('ar-EG',{timeZone:'Africa/Cairo',day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});}}}).catch(function(){
     if(!active())return;
     if(!cached)box.innerHTML=homeExpenseHtml(null,day,day,false,true);
     if(HOME_FLASH_MODE){homeFlashPrepareInsights();HOME_FLASH_DETAILS.expenses=(HOME_FLASH_DETAILS.expenses || '')+'<button class="btn btn-quiet" onclick="closeSheet();loadHomeDayExpenses(\''+day+'\',true)">إعادة المحاولة</button>';return;}

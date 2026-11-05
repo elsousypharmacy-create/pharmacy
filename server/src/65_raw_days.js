@@ -2,13 +2,33 @@
 // شيت الموظفين بيتحدّث لحظيًا بس بيفوّته فواتير (اتأكدنا: أوائل أكتوبر الربح أقل بـ 10–25%).
 // الأيام اللي خلصت بتتحسب من الملف الكامل، وبتتحفظ 6 ساعات.
 
+function normalizeVisitPhone_(value) {
+  var ph = String(value || '').trim()
+    .replace(/[\u0660-\u0669]/g, function(d){ return String(d.charCodeAt(0) - 0x0660); })
+    .replace(/[\u06F0-\u06F9]/g, function(d){ return String(d.charCodeAt(0) - 0x06F0); })
+    .replace(/\D/g, '');
+  if (ph.indexOf('0020') === 0) ph = '0' + ph.slice(4);
+  else if (ph.indexOf('20') === 0 && ph.length === 12) ph = '0' + ph.slice(2);
+  return ph;
+}
+function rawFileVersion_(file) {
+  if (!file) return 'missing';
+  var id = '', modified = '', size = '';
+  try { id = file.getId(); } catch (e) {}
+  try { modified = String(file.getLastUpdated().getTime()); } catch (e) {}
+  try { size = String(file.getSize()); } catch (e) {}
+  return id + ':' + modified + ':' + size;
+}
 function rawDay_(dateStr) {
   var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
-  var ck = 'rawday3_' + dateStr, cache = CacheService.getScriptCache();
+  var cache = CacheService.getScriptCache(), folder = DriveApp.getFolderById(SALES_FOLDER);
+  var pick = function(name){ var it = folder.getFilesByName(name); return it.hasNext() ? it.next() : null; };
+  var salesFile = pick('sales' + dateStr + '.txt'), returnsFile = pick('Returnsales' + dateStr + '.txt');
+  var version = rawFileVersion_(salesFile) + '|' + rawFileVersion_(returnsFile);
+  var ck = 'rawday4_' + dateStr + '_' + Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, version).map(function(b){ return ('0' + ((b + 256) % 256).toString(16)).slice(-2); }).join('');
   if (dateStr < today) { var c = cache.get(ck); if (c) return JSON.parse(c); }
-  var folder = DriveApp.getFolderById(SALES_FOLDER);
-  var read = function (name) { var it = folder.getFilesByName(name); return it.hasNext() ? it.next().getBlob().getDataAsString('UTF-8') : ''; };
-  var content = read('sales' + dateStr + '.txt') + '\n' + read('Returnsales' + dateStr + '.txt');
+  var read = function(file){ return file ? file.getBlob().getDataAsString('UTF-8') : ''; };
+  var content = read(salesFile) + '\n' + read(returnsFile);
   var out = { date: dateStr, gross: 0, ret: 0, net: 0, profit: 0, invoices: 0, returns: 0, disc: 0, visits: 0, has: false };
   if (content.length < 20) return out;
   var seen = {}, phones = {}, noPhone = 0;
@@ -25,7 +45,7 @@ function rawDay_(dateStr) {
       var paid = (parseFloat(v[35]) || 0) + (parseFloat(v[39]) || 0);
       if (type === 'sale') {
         out.invoices++; out.gross += paid; out.disc += parseFloat(v[27]) || 0;
-        var ph = String(v[45] || '').trim();
+        var ph = normalizeVisitPhone_(v[45]);
         if (ph.length > 3) phones[ph] = 1; else noPhone++;
       } else { out.returns++; out.ret += paid; }
     }

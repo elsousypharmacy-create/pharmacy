@@ -23,7 +23,6 @@ const CONNECTEAM_API_KEY = secret_('CONNECTEAM_API_KEY');
 const CONNECTEAM_TIME_CLOCK_ID = '4828050';
 const CONNECTEAM_USER_MAP = {};
 const STAFF_GROUP = '-5150806315';
-
 // ==== MODULE 05_routing (split from server/Code.js; load order = file name order) ====
 
 
@@ -38,7 +37,8 @@ var LOCKED_GET = { getHomeBundle: 1, getSMSLogFast: 1, getSMSLog: 1, getCustomer
   sendCoupon: 1, getStaffHub: 1, getExpiryByMonth: 1, getAttendanceLive: 1, getAttendanceHistory: 1, getAttendanceLiveV2: 1,
   getAttendanceHistoryV2: 1, diagnoseAll: 1, getBotSettings: 1, maintenanceStatus: 1, maintenanceStop: 1,
   maintenanceResumeLive: 1, maintenanceDedup: 1, maintenanceStartRebuild: 1, backfillExpenses: 1, getExpReviews: 1,
-  ordersPage: 1, orderEfficiency: 1, logShortages: 1, callsReport: 1, getDailyRaw: 1 };
+  ordersPage: 1, orderEfficiency: 1, logShortages: 1, callsReport: 1, getDailyRaw: 1,
+  snapshotRefresh: 1, snapshotEnable: 1, recordStats: 1, scanRefreshIndex: 1 };
 var LOCKED_POST = { log: 1, block: 1, unblock: 1, setSalaries: 1, retrySMS: 1, testSMS: 1, dismissSMS: 1, payAgent: 1,
   deleteAgentPending: 1, deleteCount: 1, expReview: 1 };
 function dashLocked_(pin) {
@@ -53,6 +53,14 @@ function ownerDashboardLocked_(pin){
   return !(saved && String(pin||'')===saved);
 }
 var LEGACY_OPERATIONAL_LOCK={ordersPage:1,orderEfficiency:1,logShortages:1};
+var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
+                      purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
+                      getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camVideoTest: 1, camRecordSample: 1, camReports: 1, camFrame: 1, camFrames: 1,
+                      setBalanceInputs: 1, setBalanceBase: 1 };
+var NATIVE_POST = { setBotSettings:1, camRecordSample:1, camVideoTest:1, camSnapNow:1, camSendTg:1, camTest:1,
+  setCamConfig:1, setWaConfig:1, expReview:1, log:1, block:1, unblock:1, setAiConfig:1, setSalaries:1,
+  retrySMS:1, smsAck:1, testSMS:1, dismissSMS:1, agentReferral:1, saveOpen:1, deleteCount:1, saveCount:1,
+  markOrdered:1, payAgent:1, deleteAgentPending:1 };
 function lockedResp_() { return jsonResponseStaff({ ok: false, lockError: true, error: 'اللوحة مقفولة — اكتب الرقم السري' }); }
 
 function doGet(e) {
@@ -129,10 +137,6 @@ function doGet(e) {
   if (action === 'getCustomerProfile') return jsonResponseStaff(getCustomerProfile(e.parameter.phone));
   if (action === 'getCustomerVisits') return jsonResponseStaff(getCustomerVisits(e.parameter.days));
   /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
-  var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
-                        purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camVideoTest: 1, camRecordSample: 1, camReports: 1, camFrame: 1, camFrames: 1,
-                        setBalanceInputs: 1, setBalanceBase: 1 };
   if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
     return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
   if (action === 'aiTest') return jsonResponseStaff(aiTest(e.parameter.q));
@@ -235,6 +239,9 @@ function doPost(e) {
       handleTelegramWebhook_(data);
       return ContentService.createTextOutput('ok');
     }
+
+    /* قراءات اللوحة المحمية تُقبل POST حتى لا يظهر PIN في عنوان URL أو سجلاته. */
+    if (data.action && !NATIVE_POST[data.action]) return doGet({ parameter: data });
 
     if (LOCKED_POST[data.action] && dashLocked_(data.pin)) return lockedResp_();
     if (data.action === 'setBotSettings') return jsonResponseStaff(setBotSettings(data));
@@ -1504,7 +1511,6 @@ function sendOrderSuggestion(chatId) {
     sendTelegramStaff('⚠️ خطأ في تجهيز القائمة: ' + e.message, chatId);
   }
 }
-
 // ==== MODULE 15_tests_misc (split from server/Code.js; load order = file name order) ====
 
 
@@ -1599,7 +1605,6 @@ function connecteamReady_() {
   if (!CONNECTEAM_TIME_CLOCK_ID || CONNECTEAM_TIME_CLOCK_ID.indexOf('ضع_') === 0) return 'لسه محطتش Time Clock ID';
   return null;
 }
-
 // ==== MODULE 20_bot_config (split from server/Code.js; load order = file name order) ====
 
 
@@ -1638,7 +1643,6 @@ const ESCALATE_KEYWORDS = [
   'مضاد حيوي','مضاد حيوى','حقن','امبول','أمبول','روشتة','روشته','وصفة',
   'جرعة','جرعه','كام مرة','اخده ازاي','آخده','يضر','تفاعل','بديل ل'
 ];
-
 // ==== MODULE 21_messaging (split from server/Code.js; load order = file name order) ====
 
 
@@ -2119,7 +2123,6 @@ function handleStaffCommand_(chatId, text) {
   return false;
 }
 
-
 // ==== MODULE 22_handoff (split from server/Code.js; load order = file name order) ====
 
 
@@ -2193,7 +2196,6 @@ function relayDoctorReply_(msg) {
     return false;
   }
 }
-
 // ==== MODULE 23_ai (split from server/Code.js; load order = file name order) ====
 
 
@@ -2355,12 +2357,20 @@ function getAiConfig() {
 }
 /* التحقق من الرقم السري — مع تأخير بعد محاولات غلط كتير */
 function adminPinOk_(pin) {
-  var P = PropertiesService.getScriptProperties(), saved = P.getProperty('ADMIN_PIN');
+  var P = PropertiesService.getScriptProperties(), saved = P.getProperty('ADMIN_PIN'), now = Date.now();
   if (!saved) return false;
-  if (String(pin || '') === saved) { P.deleteProperty('ADMIN_PIN_BAD'); return true; }
+  var until = parseInt(P.getProperty('ADMIN_PIN_BAD_UNTIL') || '0', 10);
+  if (until > now) return false;
+  if (String(pin || '') === saved) {
+    P.deleteProperty('ADMIN_PIN_BAD'); P.deleteProperty('ADMIN_PIN_BAD_UNTIL');
+    return true;
+  }
   var bad = parseInt(P.getProperty('ADMIN_PIN_BAD') || '0', 10) + 1;
   P.setProperty('ADMIN_PIN_BAD', String(bad));
-  if (bad >= 10) Utilities.sleep(3000);
+  if (bad >= 10) {
+    P.setProperty('ADMIN_PIN_BAD_UNTIL', String(now + 300000));
+    P.setProperty('ADMIN_PIN_BAD', '0');
+  }
   return false;
 }
 function setAiConfig(d) {
@@ -2369,13 +2379,11 @@ function setAiConfig(d) {
   if (!saved) {
     if (!/^\d{4,8}$/.test(pin)) return { ok: false, error: 'اختار رقم سري من 4 لـ 8 أرقام' };
     P.setProperty('ADMIN_PIN', pin);
-  } else if (pin !== saved) {
-    var bad = parseInt(P.getProperty('ADMIN_PIN_BAD') || '0', 10) + 1;
-    P.setProperty('ADMIN_PIN_BAD', String(bad));
-    if (bad >= 10) Utilities.sleep(3000);
+  } else if (!adminPinOk_(pin)) {
     return { ok: false, error: 'الرقم السري غلط' };
   }
   P.deleteProperty('ADMIN_PIN_BAD');
+  P.deleteProperty('ADMIN_PIN_BAD_UNTIL');
   if (d.provider && AI_DEFAULTS[d.provider]) P.setProperty('AI_PROVIDER', d.provider);
   if (d.key && AI_KEYS[d.provider]) P.setProperty(AI_KEYS[d.provider], String(d.key).trim());
   if (d.budget !== undefined && d.budget !== '') P.setProperty('AI_BUDGET', String(parseFloat(d.budget) || 0));
@@ -2966,7 +2974,6 @@ function pausedAck_(chatId) {
   } catch (e) { Logger.log('pausedAck_: ' + e.message); }
 }
 
-
 // ==== MODULE 25_bot_history_ui (split from server/Code.js; load order = file name order) ====
 
 
@@ -3410,7 +3417,6 @@ function saveOrder_(chatId, itemsText, phone, address, confirmed) {
     return false;
   }
 }
-
 // ==== MODULE 26_bot_local_classify (split from server/Code.js; load order = file name order) ====
 
 
@@ -3535,7 +3541,6 @@ function classifyCustomerMessage(text, history) {
     return { type: 'OTHER', product: '' };
   }
 }
-
 // ==== MODULE 27_bot_brain (split from server/Code.js; load order = file name order) ====
 
 
@@ -4085,7 +4090,6 @@ function humanPause_(t0) {
   } catch (e) {}
 }
 
-
 // ==== MODULE 28_bot_handler (split from server/Code.js; load order = file name order) ====
 
 
@@ -4624,7 +4628,6 @@ function handleOrderIntent_(chatId, text, history, arrivalUnix) {
   }
   saveConversationTurn(chatId, text, sum, 'bot', arrivalUnix);
 }
-
 // ==== MODULE 29_telegram_webhook (split from server/Code.js; load order = file name order) ====
 
 
@@ -4788,7 +4791,6 @@ function deleteTelegramWebhook() {
   PropertiesService.getScriptProperties().deleteProperty('telegramWebhookOn');
   Logger.log('🛑 الويبهوك اتقفل — رجعنا للـ polling كل دقيقة');
 }
-
 // ==== MODULE 30_stock (split from server/Code.js; load order = file name order) ====
 
 
@@ -5193,7 +5195,6 @@ function buildProductAnswer_(results, askedFor) {
   }
   return { available: true, text: text, prices: prices, items: show };
 }
-
 // ==== MODULE 40_customers_dashboard (split from server/Code.js; load order = file name order) ====
 
 
@@ -5619,7 +5620,6 @@ function getDashboard(params) {
     }
   };
 }
-
 // ==== MODULE 41_bot_chat_admin (split from server/Code.js; load order = file name order) ====
 
 
@@ -5976,7 +5976,6 @@ function waitingDigest_() {
     return '• ' + (c.name || maskPhone_(c.phone) || ('عميل ' + String(c.id).slice(-4))) + ' — من ' + c.hrs + ' ساعة: "' + maskPhonesInText_(c.text) + '"';
   }).join('\n') + '\n\nافتح صفحة "البوت" في اللوحة وردّ عليهم.', PERSONAL_CHAT);
 }
-
 
 // ==== MODULE 50_sms_points (split from server/Code.js; load order = file name order) ====
 
@@ -6360,7 +6359,6 @@ function getCustomerPointsData(phone) {
     return { ok: false, error: e.message };
   }
 }
-
 // ==== MODULE 60_debts_reminders (split from server/Code.js; load order = file name order) ====
 
 
@@ -6468,7 +6466,6 @@ function sendWeeklyDebtReminders() {
     Logger.log('خطأ sendWeeklyDebtReminders: ' + e.message);
   }
 }
-
 // ==== MODULE 61_finance (split from server/Code.js; load order = file name order) ====
 
 
@@ -6794,6 +6791,12 @@ function getProfitLossData(params) {
     const dailySalary = monthlySalaries / lastDayOfMonth;
 
     const allDates = {};
+    /* استحقاق الراتب تقويمي: يوم الإغلاق أو غياب transactions لا يلغي نصيب اليوم. */
+    var calendarDay = new Date(cutoff + 'T12:00:00Z'), calendarEnd = new Date(end + 'T12:00:00Z');
+    while (calendarDay <= calendarEnd) {
+      allDates[calendarDay.toISOString().slice(0, 10)] = 1;
+      calendarDay.setUTCDate(calendarDay.getUTCDate() + 1);
+    }
     Object.keys(dailySales).forEach(function(d){ allDates[d] = 1; });
     Object.keys(dailyExpenses).forEach(function(d){ allDates[d] = 1; });
 
@@ -8165,18 +8168,37 @@ function eventRows_() {
   } catch (e) { return []; }
 }
 
-
 // ==== MODULE 65_raw_days: أرقام كل يوم من ملفات نظام البيع الخام (المصدر الأدق) ====
 // شيت الموظفين بيتحدّث لحظيًا بس بيفوّته فواتير (اتأكدنا: أوائل أكتوبر الربح أقل بـ 10–25%).
 // الأيام اللي خلصت بتتحسب من الملف الكامل، وبتتحفظ 6 ساعات.
 
+function normalizeVisitPhone_(value) {
+  var ph = String(value || '').trim()
+    .replace(/[\u0660-\u0669]/g, function(d){ return String(d.charCodeAt(0) - 0x0660); })
+    .replace(/[\u06F0-\u06F9]/g, function(d){ return String(d.charCodeAt(0) - 0x06F0); })
+    .replace(/\D/g, '');
+  if (ph.indexOf('0020') === 0) ph = '0' + ph.slice(4);
+  else if (ph.indexOf('20') === 0 && ph.length === 12) ph = '0' + ph.slice(2);
+  return ph;
+}
+function rawFileVersion_(file) {
+  if (!file) return 'missing';
+  var id = '', modified = '', size = '';
+  try { id = file.getId(); } catch (e) {}
+  try { modified = String(file.getLastUpdated().getTime()); } catch (e) {}
+  try { size = String(file.getSize()); } catch (e) {}
+  return id + ':' + modified + ':' + size;
+}
 function rawDay_(dateStr) {
   var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
-  var ck = 'rawday3_' + dateStr, cache = CacheService.getScriptCache();
+  var cache = CacheService.getScriptCache(), folder = DriveApp.getFolderById(SALES_FOLDER);
+  var pick = function(name){ var it = folder.getFilesByName(name); return it.hasNext() ? it.next() : null; };
+  var salesFile = pick('sales' + dateStr + '.txt'), returnsFile = pick('Returnsales' + dateStr + '.txt');
+  var version = rawFileVersion_(salesFile) + '|' + rawFileVersion_(returnsFile);
+  var ck = 'rawday4_' + dateStr + '_' + Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, version).map(function(b){ return ('0' + ((b + 256) % 256).toString(16)).slice(-2); }).join('');
   if (dateStr < today) { var c = cache.get(ck); if (c) return JSON.parse(c); }
-  var folder = DriveApp.getFolderById(SALES_FOLDER);
-  var read = function (name) { var it = folder.getFilesByName(name); return it.hasNext() ? it.next().getBlob().getDataAsString('UTF-8') : ''; };
-  var content = read('sales' + dateStr + '.txt') + '\n' + read('Returnsales' + dateStr + '.txt');
+  var read = function(file){ return file ? file.getBlob().getDataAsString('UTF-8') : ''; };
+  var content = read(salesFile) + '\n' + read(returnsFile);
   var out = { date: dateStr, gross: 0, ret: 0, net: 0, profit: 0, invoices: 0, returns: 0, disc: 0, visits: 0, has: false };
   if (content.length < 20) return out;
   var seen = {}, phones = {}, noPhone = 0;
@@ -8193,7 +8215,7 @@ function rawDay_(dateStr) {
       var paid = (parseFloat(v[35]) || 0) + (parseFloat(v[39]) || 0);
       if (type === 'sale') {
         out.invoices++; out.gross += paid; out.disc += parseFloat(v[27]) || 0;
-        var ph = String(v[45] || '').trim();
+        var ph = normalizeVisitPhone_(v[45]);
         if (ph.length > 3) phones[ph] = 1; else noPhone++;
       } else { out.returns++; out.ret += paid; }
     }
@@ -8218,7 +8240,6 @@ function getDailyRaw(p) {
   }
   return { ok: true, from: from, to: to, days: days };
 }
-
 
 // ==== MODULE 66_cameras — ربط الكاميرات (المفاتيح بتتحفظ في Script Properties بس، وعمرها ما بترجع للوحة) ====
 var CAM_TYPES_ = { hik: 'Hik-Connect / Hik-Partner OpenAPI', grok: 'API بتاع Grok', dvr: 'جهاز التسجيل مباشرة (IP)', other: 'تاني' };
@@ -8355,7 +8376,12 @@ function camSnapCore_() {
   try {
     var lim = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), 'Africa/Cairo', 'yyyy-MM-dd'), fs = root.getFolders();
     while (fs.hasNext()) { var f = fs.next(); if (/^\d{4}-\d{2}-\d{2}$/.test(f.getName()) && f.getName() < lim) f.setTrashed(true); }
-  } catch (e2) {}
+    PropertiesService.getScriptProperties().deleteProperty('CAM_CLEANUP_LAST_ERROR');
+  } catch (e2) {
+    var cleanupError = String(e2.message || e2).slice(0, 180);
+    Logger.log('Camera cleanup failed: ' + cleanupError);
+    PropertiesService.getScriptProperties().setProperty('CAM_CLEANUP_LAST_ERROR', new Date().toISOString() + ' — ' + cleanupError);
+  }
   return snapRes;
 }
 /* نسخة صغيرة (عرض 640، أقل من ~60KB) جنب كل لقطة: HHmm_chN_s.jpg — من thumbnail الدرايف نفسه
@@ -8389,7 +8415,6 @@ function camAutoOn() {
     return { ok: true, message: 'السحب التلقائي شغال كل 10 دقايق (8 الصبح → 1 بالليل)' };
   } catch (e) { return { ok: false, error: 'مقدرتش أشغّله: ' + String(e.message || e).slice(0, 160) }; }
 }
-
 
 // Manual, PIN-protected capability probe for entrance 4 or counter 3 only.
 // API keys and SDK stream tokens never leave Script Properties / server memory.
@@ -8474,7 +8499,6 @@ function camVideoTest(request) {
     return camVideoFail_(stage, 'تعذر إكمال اختبار الفيديو؛ جرّب تاني أو راجع ربط Hikvision', null, channel);
   }
 }
-
 
 // One manual sample, bounded to 20-30 media seconds / 8 MiB / 45s polling.
 // Archive contains local media names ONLY: never provider URLs, tokens or keys.
@@ -8648,7 +8672,6 @@ function camRecordPilot() {
   [4, 3].forEach(function(channel) { console.log(JSON.stringify(camRecordSample({ channel: channel }))); });
 }
 
-
 // ==== MODULE 67_cam_reports — تقارير الكاميرات (Claude بيكتب ملف JSON صغير، واللوحة بترسم الأسهم على اللقطة الأصلية) ====
 // المكان: «كاميرات الصيدلية» / «تقارير» / report_yyyy-MM-dd_HHmm.json
 function camReportsFolder_() {
@@ -8692,7 +8715,6 @@ function camFrames(ids) {
   String(ids || '').split(',').slice(0, 8).forEach(function(id){ id = id.trim(); if (id) out[id] = camFrame(id); });
   return { ok: true, frames: out };
 }
-
 
 // ==== MODULE 68_balance — الميزانية: اللي ليك واللي عليك (أرقام نظام البيع + أرقام بتدخلها إنت) ====
 /* الأرقام التلقائية بتيجي من تقرير النظام اليومي (Daily_Mini_Statics) — نفس الملف اللي بتقراه باقي اللوحة:
@@ -8791,7 +8813,6 @@ function setBalanceBase(p) {
     return getBalanceSheet();
   } catch (e) { return { ok: false, error: String(e.message || e) }; }
 }
-
 
 // ==== MODULE 69_closing — التقفيل يوم بيومه ووسائل الدفع (من ملفات نظام البيع الخام) ====
 /* كل فاتورة في ملف المبيعات فيها وسيلة الدفع (cashway1/cashway2) والمبلغ (paid1/paid2):
@@ -9624,7 +9645,6 @@ function invCat_(row, COL) {
   return INV_POS_MAP_[pos] || (pos || 'غير مصنّف');
 }
 
-
 // ==== MODULE 71_agents (split from server/Code.js; load order = file name order) ====
 
 
@@ -10123,7 +10143,6 @@ function retryLastAgentReply(phone, message) {
   var r = sendSMSViaAutoRemote(phone, message);
   Logger.log('النتيجة: كود=' + r.code + ' | رد=' + r.response);
 }
-
 // ==== MODULE 72_scan (split from server/Code.js; load order = file name order) ====
 
 
@@ -10255,7 +10274,6 @@ function scanSearch(q) {
     return { ok: false, error: e.message };
   }
 }
-
 // ==== MODULE 73_doctors (split from server/Code.js; load order = file name order) ====
 
 
@@ -10570,7 +10588,6 @@ function doctorAdmin(p) {
     return { ok: false, msg: e.message };
   }
 }
-
 // ==== MODULE 74_orders (split from server/Code.js; load order = file name order) ====
 
 
@@ -10969,7 +10986,6 @@ function ordersPage(code, days, fresh) {
     return { ok: false, msg: e.message + ' @ ' + String(e.stack || '').split('\n').slice(0, 2).join(' | ') };
   }
 }
-
 // ==== MODULE 75_count_shortage (split from server/Code.js; load order = file name order) ====
 
 
@@ -12147,7 +12163,6 @@ function getCountAccuracy(params) {
     return { ok: false, error: e.message };
   }
 }
-
 // ==== MODULE 76_labels (split from server/Code.js; load order = file name order) ====
 
 
@@ -12311,7 +12326,6 @@ function labelsSave(payload) {
     return { ok: false, error: e.message };
   }
 }
-
 // ==== MODULE 77_dose_ai (split from server/Code.js; load order = file name order) ====
 
 
@@ -12384,7 +12398,6 @@ function aiDose(payload) {
     return { ok: false, error: e.message };
   }
 }
-
 
 // ==== MODULE 80_cache_home (split from server/Code.js; load order = file name order) ====
 
@@ -12603,7 +12616,6 @@ function fxDebtsCached_() {
   if (d && d.ok) fxCachePut_('fx_debts', d, 600); // ١٠ دقايق
   return d;
 }
-
 // ==== MODULE 81_connecteam (split from server/Code.js; load order = file name order) ====
 
 
@@ -12958,7 +12970,6 @@ function diagnoseConnecteam() {
   Logger.log('كود الرد: ' + r.code);
   Logger.log('الرد كامل: ' + (r.ok ? JSON.stringify(r.json).substring(0, 3000) : r.error));
 }
-
 // ==== MODULE 82_snapshot_staffhub (split from server/Code.js; load order = file name order) ====
 
 
@@ -13254,7 +13265,10 @@ function getHomeBundleFast() {
    10 دقايق زيادة على تأخير نظام البيع نفسه. */
 function cacheTTL_(params) {
   var r = (params && params.range) || 'month';
-  if (params && params.from && params.to) return 1800;  // فترة مخصصة = تاريخ ثابت
+  if (params && params.from && params.to) {
+    var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+    return params.to >= today ? 45 : 1800;
+  }
   if (r === 'today')      return 45;      // أقل حاجة — البيانات حية
   if (r === 'yesterday')  return 900;     // خلصت، بس ممكن مرتجع متأخر
   if (r === 'week')       return 300;
@@ -13262,9 +13276,15 @@ function cacheTTL_(params) {
   if (r === 'lastMonth')  return 3600;    // مقفول خلاص
   return 600;
 }
-
+function cacheParams_(params) {
+  var clean = {};
+  Object.keys(params || {}).sort().forEach(function(k){
+    if (k !== '_ts' && k !== 'pin') clean[k] = params[k];
+  });
+  return clean;
+}
 function cachedCall_(name, params, fn, seconds) {
-  var key = 'fx_c_' + name + '_' + JSON.stringify(params || {});
+  var key = 'fx_c_' + name + '_' + JSON.stringify(cacheParams_(params));
   var hit = fxCacheGet_(key);
   if (hit) { hit.cached = true; return hit; }
   var out = fn();
@@ -13352,7 +13372,6 @@ function getStaffHub(params) {
     return { ok: false, error: e.message };
   }
 }
-
 // ==== MODULE 95_server_update (split from server/Code.js; load order = file name order) ====
 
 
@@ -13502,4 +13521,3 @@ function serverUpdate() {
   try { maybeEnsureTriggers_(); } catch (eT) {}
   return { ok: true, version: ver, at: stamp };
 }
-

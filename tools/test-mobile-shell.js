@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const html=fs.readFileSync(require('path').join(__dirname,'../index.html'),'utf8');
+const sw=fs.readFileSync(require('path').join(__dirname,'../sw.js'),'utf8');
+assert(html.includes('rel="apple-touch-icon" href="icon-192.png'));
+const icon=fs.readFileSync(require('path').join(__dirname,'../icon-192.png'));
+assert.equal(icon.readUInt32BE(16),192);assert.equal(icon.readUInt32BE(20),192);
+assert(html.includes('font-display:swap'));
+assert(!html.includes('font-display:block'));
+assert(html.includes("navigator.serviceWorker.register('sw.js')"));
+for(const asset of ['./index.html','./dashboard-ui.css','./camera-assessment.js','./fonts/cairo.woff','./icon-192.png'])assert(sw.includes("'"+asset+"'"));
+assert(sw.includes("url.origin !== location.origin"),'private cross-origin API responses must not enter shell cache');
+new vm.Script(sw);
+console.log('Mobile shell: Apple icon, readable font loading, static offline assets and API cache exclusion passed');

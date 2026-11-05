@@ -3,7 +3,7 @@ import re,html
 root=Path(__file__).resolve().parent.parent
 source=(root/'index.html').read_text()
 style_href=re.search(r'href="(dashboard-ui\.css[^"]*)"',source).group(1)
-legacy=''.join(re.findall(r'<style>([\s\S]*?)</style>',source))
+legacy='\n'.join(line.rstrip() for line in ''.join(re.findall(r'<style>([\s\S]*?)</style>',source)).splitlines())+'\n'
 fit=source[source.index('function homeFlashViewportBounds('):source.index("if(typeof window!=='undefined' && window.addEventListener){window.addEventListener('resize',staffFlashFit)")]
 (root/'tools/fixtures/home-legacy.css').write_text(legacy)
 font=''.join(re.findall(r'<link[^>]+fonts.googleapis.com[^>]*>',source))

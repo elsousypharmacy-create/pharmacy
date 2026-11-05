@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0A0B0D">
 <title>صيدلية السوسي</title>
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
+<link rel="apple-touch-icon" href="icon-192.png?v=2">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2">
 <link rel="manifest" href="manifest-index.json">
 <meta name="apple-mobile-web-app-title" content="صيدلية السوسي">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preload" href="fonts/cairo.woff" as="font" type="font/woff" crossorigin>
-<style>@font-face{font-family:'Cairo';src:url(fonts/cairo.woff) format('woff');font-weight:400 800;font-style:normal;font-display:block}
+<style>@font-face{font-family:'Cairo';src:url(fonts/cairo.woff) format('woff');font-weight:400 800;font-style:normal;font-display:swap}
 /* Camera coverage is distinct from pages of findings. */
 .cam-chips{flex-wrap:wrap}.cam-chip.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,var(--surface))}.cam-chip.reviewed{color:var(--brand);background:color-mix(in srgb,var(--brand) 12%,var(--surface))}
 .camr-coverage{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0}.camr-camera{padding:12px;border:1px solid var(--line);border-radius:var(--r2);border-inline-start:3px solid var(--ink-3);background:var(--surface-2)}.camr-camera b,.camr-camera small{display:block}.camr-camera small{font-size:12px;color:var(--ink-2);margin-top:4px;line-height:1.7}.camr-camera.reviewed{border-inline-start-color:var(--brand)}.camr-camera.has-notes{border-inline-start-color:var(--warn)}.camr-camera .btn{margin-top:8px;min-height:44px;width:100%}
@@ -1181,19 +1181,32 @@ function logErr(e){
 var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1, purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
                       getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camVideoTest: 1, camRecordSample: 1, camReports: 1, camFrame: 1, camFrames: 1,
                       setBalanceInputs: 1, setBalanceBase: 1 };
+function savePin(p){
+  try { sessionStorage.setItem('adminPin', p); localStorage.removeItem('adminPin'); } catch (e) {}
+}
+function clearPin(){
+  try { sessionStorage.removeItem('adminPin'); localStorage.removeItem('adminPin'); } catch (e) {}
+}
 function adminPin(){
-  var p = ''; try { p = localStorage.getItem('adminPin') || ''; } catch (e) {}
-  if (!p){ p = (prompt('الرقم السري') || '').trim(); if (p) try { localStorage.setItem('adminPin', p); } catch (e) {} }
+  var p = storedPin();
+  if (!p){ p = (prompt('الرقم السري') || '').trim(); if (p) savePin(p); }
   return p;
 }
-/* 🔒 لو اللوحة مقفولة: الرقم السري بيتطلب مرة واحدة على الجهاز ده ويتبعت مع كل طلب */
-function storedPin(){ try { return localStorage.getItem('adminPin') || ''; } catch (e) { return ''; } }
+/* 🔒 PIN لجلسة التبويب فقط؛ تُنقل النسخة القديمة ثم تُحذف من التخزين الدائم. */
+function storedPin(){
+  try {
+    var p = sessionStorage.getItem('adminPin') || '', legacy = localStorage.getItem('adminPin') || '';
+    if (!p && legacy){ sessionStorage.setItem('adminPin', legacy); p = legacy; }
+    if (legacy) localStorage.removeItem('adminPin');
+    return p;
+  } catch (e) { return ''; }
+}
 var PIN_ASK = null, AUTH_REQUIRED=false;
 function askPinOnce(){
   if (!PIN_ASK) PIN_ASK = new Promise(function(res){
     setTimeout(function(){
       var p = (prompt('🔒 اللوحة مقفولة — اكتب الرقم السري') || '').trim();
-      try { if (p) localStorage.setItem('adminPin', p); } catch (e) {}
+      try { if (p) sessionStorage.setItem('adminPin', p); } catch (e) {}
       setTimeout(function(){ PIN_ASK = null; }, 2000);
       res(p);
     }, 0);
@@ -1206,14 +1219,14 @@ function api(action, params, base){
     return api_(action, pin0 ? Object.assign({}, params || {}, { pin: pin0 }) : params, base).then(function(d){
       if (!(d && d.lockError)) return d;
       AUTH_REQUIRED=true;
-      try { localStorage.removeItem('adminPin'); } catch (e) {}
+      try { sessionStorage.removeItem('adminPin'); } catch (e) {}
       return askPinOnce().then(function(p){ return p ? api_(action, Object.assign({}, params || {}, { pin: p }), base) : d; });
     });
   }
   if (ADMIN_ACTIONS[action] && !base){
     params = Object.assign({}, params || {}, { pin: adminPin() });
     return api_(action, params, base).then(function(d){
-      if (d && d.pinError){ try { localStorage.removeItem('adminPin'); } catch (e) {} toast(d.error); }
+      if (d && d.pinError){ try { sessionStorage.removeItem('adminPin'); } catch (e) {} toast(d.error); }
       return d;
     });
   }
@@ -1222,7 +1235,14 @@ function api(action, params, base){
 function api_(action, params, base){
   var qs = '?action=' + action;
   for (var k in (params || {})) if (params[k] != null) qs += '&' + k + '=' + encodeURIComponent(params[k]);
-  var slow = function(){ return fetch((base || SCRIPT_URL) + qs + '&_ts=' + Date.now(), { cache: 'no-store' }).then(function(r){ return r.json(); }); };
+  var slow = function(){
+    if (!base && params && params.pin) return fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(Object.assign({ action: action }, params)), cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
+      /* نسخة Apps Script القديمة كانت بترد status فقط على قراءات POST؛ لا نترك اللوحة في تحميل دائم. */
+      if (d && d.status && d.ok === undefined) throw new Error('BACKEND_POST_UNSUPPORTED');
+      return d;
+    });
+    return fetch((base || SCRIPT_URL) + qs + '&_ts=' + Date.now(), { cache: 'no-store' }).then(function(r){ return r.json(); });
+  };
   if (base || !FAST_URL || !FAST_READ[action]) return slow();
   var ctl = window.AbortController ? new AbortController() : null, tm = ctl && setTimeout(function(){ ctl.abort(); }, 30000);
   return fetch(FAST_URL + qs, { cache: 'no-store', signal: ctl ? ctl.signal : undefined })
@@ -1236,7 +1256,7 @@ function post(body){
   return send(b0).then(function(d){
     if (!(d && d.lockError)) return d;
     AUTH_REQUIRED=true;
-    try { localStorage.removeItem('adminPin'); } catch (e) {}
+    try { sessionStorage.removeItem('adminPin'); } catch (e) {}
     return askPinOnce().then(function(p){ return p ? send(Object.assign({}, body, { pin: p })) : d; });
   });
 }
@@ -2258,6 +2278,13 @@ function docDone(row){
 }
 
 /* ─────── عامة ─────── */
+function homeRefreshValid(res){
+  var summary=res && res[2], today=cairoNow().date;
+  return !!(res[0] && res[0].ok && res[1] && res[1].ok !== false && summary && summary.ok &&
+    summary.source==='pos-invoices-v1' && Array.isArray(summary.daily) &&
+    summary.daily.some(function(x){return x.date===today;}) &&
+    [summary.net_sales,summary.profit_total,summary.avg_invoice].every(function(v){return typeof v==='number' && isFinite(v);}));
+}
 function pgHome(){
   if(storedPin())homeCamLatest(true,true); // Fetch saved reports on entry/resume without notifications.
   var box = document.getElementById('p-home');
@@ -2277,10 +2304,7 @@ function pgHome(){
     .then(function(res){
       if(res[1])res[1]._salesSummary=res[2];
       // Only today's complete invoice summary may replace visible financial KPIs.
-      var summary=res[2], today=cairoNow().date;
-      var complete=summary && summary.ok && summary.source==='pos-invoices-v1' &&
-        Array.isArray(summary.daily) && summary.daily.some(function(x){return x.date===today;});
-      if(!complete){
+      if(!homeRefreshValid(res)){
         var sync=document.getElementById('sync');
         if(sync){sync.textContent=tr('cached')+' · '+tr('refreshing');sync.classList.add('old');}
         return;
@@ -2319,6 +2343,7 @@ function startAutoRefresh(){
     if(storedPin())homeCamLatest(true,true); // Independent of sales success; metadata only, once per visible minute.
     Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }), api('getMonthTotalsRaw',{range:'today'}) ])
     .then(function(res){
+      if(!homeRefreshValid(res)){var sync=document.getElementById('sync');if(sync){sync.textContent=tr('cached')+' · '+tr('refreshing');sync.classList.add('old');}return;}
       if(res[1])res[1]._salesSummary=res[2];
       cacheSet('home', {}, { b: res[0], kpi: res[1] });
       markSync();
@@ -6159,7 +6184,7 @@ function drawAiCfg(pr){
 function saveAiCfg(pr){
   var v = function(id){ return (document.getElementById(id) || {}).value || ''; };
   post({ action: 'setAiConfig', provider: pr, key: v('aiKey'), bot: v('aiBot'), dose: v('aiDose'), budget: v('aiBudget'), pin: v('aiPin') }).then(function(d){
-    if (d && d.ok){ try { localStorage.setItem('adminPin', v('aiPin')); } catch (e) {}
+    if (d && d.ok){ try { sessionStorage.setItem('adminPin', v('aiPin')); } catch (e) {}
       settingsSaved('ai'); AI_CFG = d; drawAiCfg(d.provider); loadAiUsage(); toast('✓ تم الحفظ — شغال على ' + d.provider); }
     else toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });
@@ -6205,7 +6230,7 @@ function camRecordStart(channel){
   buttons.forEach(function(b){ b.disabled = true; });
   box.textContent = 'بيسجّل عينة خاصة حوالي 20 ثانية؛ العملية ممكن تاخد دقيقة. لو قفلت الصفحة التسجيل على السيرفر ممكن يكمّل.';
   post({ action: 'camRecordSample', channel: channel, pin: pin }).then(function(d){
-    if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch(e) {}
+    if (d && d.pinError) try { sessionStorage.removeItem('adminPin'); } catch(e) {}
     if (d && d.ok && d.stage === 'saved') {
       box.textContent = 'تم الحفظت عينة كاميرا ' + channel + ' · ' + Math.round(d.seconds) + ' ثانية · ' + (d.bytes / 1048576).toFixed(2) + ' MB. لسه محتاجة تحويل ومراجعة؛ لا توجد عدّ تلقائي اتنفّذ.';
     } else box.textContent = d && d.stage ? (d.error || 'التسجيل ماكملش') + (d.code ? ' · كود: ' + d.code : '') : 'حدّث السيرفر الأول وبعدين جرّب التسجيل';
@@ -6231,7 +6256,7 @@ function camVideoProbe(channel){
   b.innerHTML = '<div class="state"><div class="spin"></div>بفحص فيديو كاميرا ' + name + '…</div>';
   post({ action: 'camVideoTest', pin: pin, channel: channel }).then(function(d){
     if (seq !== CAM_VIDEO.seq || !b.isConnected || document.hidden) return;
-    if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {}
+    if (d && d.pinError) try { sessionStorage.removeItem('adminPin'); } catch (e) {}
     if (!d || !d.stage){ b.innerHTML = '<div class="state err">حدّث السيرفر الأول من زر «حدّث السيرفر»، وبعدها جرّب الاختبار تاني</div>'; return; }
     if (d.ok && Number(d.channel) !== channel){ b.textContent = 'حدّث السيرفر الأول عشان اختبار كاميرا الكاشير؛ السيرفر رجّع كاميرا مختلفة'; return; }
     if (!d.ok){
@@ -6273,7 +6298,7 @@ function loadCam(){
   var b = document.getElementById('cambox'); b.innerHTML = '<div class="state"><div class="spin"></div></div>';
   api('camInfo').then(function(d){
     if(SETTINGS.dirty.camera)return;
-    if (!d || !d.ok){ if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} b.innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + '</div>'; return; }
+    if (!d || !d.ok){ if (d && d.pinError) try { sessionStorage.removeItem('adminPin'); } catch (e) {} b.innerHTML = '<div class="state err">' + esc((d && d.error) || tr('failed')) + '</div>'; return; }
     var opt = function(v, t){ return '<option value="' + v + '"' + (d.type === v ? ' selected' : '') + '>' + t + '</option>'; };
     b.innerHTML = row('المفتاح', d.hasKey ? '✅ متحط' + (d.savedAt ? ' — ' + esc(d.savedAt) : '') : '❌ لسه') +
       (d.hasSecret ? row('الـ Secret', '✅ متحط') : '') +
@@ -6303,7 +6328,7 @@ function saveCam(){
   if (!p.key && !p.secret && !p.url && !p.type && !p.note){ toast('لا توجد حاجة تتحفظ'); return; }
   post(p).then(function(d){
     if (d && d.ok){settingsSaved('camera');toast('✓ تم الحفظ');loadCam();}
-    else { if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} toast((d && d.error) || tr('failed')); }
+    else { if (d && d.pinError) try { sessionStorage.removeItem('adminPin'); } catch (e) {} toast((d && d.error) || tr('failed')); }
   }).catch(function(){ toast(tr('failed')); });
 }
 /* ═══ 📋 تقارير الكاميرات — Claude بيكتب الملاحظات، واللوحة بترسم الأسهم على اللقطة الأصلية ═══ */
@@ -6749,7 +6774,7 @@ function camSnapNow(){
   var done = function(){ if (btn) btn.classList.remove('busy'); };
   post({ action: 'camSnapNow', pin: adminPin() }).then(function(d){
     done();
-    if (d && d.pinError) { try { localStorage.removeItem('adminPin'); } catch (e) {} }
+    if (d && d.pinError) { try { sessionStorage.removeItem('adminPin'); } catch (e) {} }
     if (d && d.ok){
       var fl = d.failed || [], chips = [1, 2, 3, 4, 6].map(function(c){ var bad = fl.indexOf(c) >= 0 || fl.indexOf(String(c)) >= 0; return '<div class="cam-chip ' + (bad ? 'bad' : 'ok') + '">' + c + (bad ? ' ✕' : ' ✓') + '</div>'; }).join('');
       b.innerHTML = '<div class="cam-chips">' + chips + '</div><div class="cam-note">تم الحفظ ' + d.saved + '/5 الساعة ' + esc(d.time) + (d.small != null ? ' · الصغيرة ' + d.small + '/' + d.saved : '') + ' · اكتبلي «جهّز التقرير» في الشات</div>';
@@ -6775,7 +6800,7 @@ function camHomeUpdate(){
 function camSendTg(){
   var b = document.getElementById('camtg'); b.innerHTML = '<div class="state"><div class="spin"></div> بسحب اللقطات… (حوالي نص دقيقة)</div>';
   post({ action: 'camSendTg', pin: adminPin() }).then(function(d){
-    if (d && d.pinError) { try { localStorage.removeItem('adminPin'); } catch (e) {} }
+    if (d && d.pinError) { try { sessionStorage.removeItem('adminPin'); } catch (e) {} }
     b.innerHTML = d && d.ok ? '<div class="state" style="color:var(--ok)">✅ اتبعت ' + d.sent + ' لقطات على تليجرام' + (d.failed && d.failed.length ? ' — فشل: ' + esc(d.failed.join('، ')) : '') + '</div>'
                             : '<div class="state err" style="font-size:13px">❌ ' + esc((d && d.error) || tr('failed')) + '</div>';
   }).catch(function(){ b.innerHTML = '<div class="state err">' + tr('failed') + '</div>'; });
@@ -6797,7 +6822,7 @@ function camSrvUp(){
 function testCam(){
   var b = document.getElementById('camtest'); b.innerHTML = '<div class="state"><div class="spin"></div> بجرّب… ممكن ياخد دقيقة</div>';
   post({ action: 'camTest', pin: adminPin() }).then(function(d){
-    if (!d || !d.ok){ if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} b.innerHTML = '<div class="state err">❌ ' + esc((d && d.error) || tr('failed')) + '</div>'; return; }
+    if (!d || !d.ok){ if (d && d.pinError) try { sessionStorage.removeItem('adminPin'); } catch (e) {} b.innerHTML = '<div class="state err">❌ ' + esc((d && d.error) || tr('failed')) + '</div>'; return; }
     var h = '<div class="state" style="color:var(--ok)">✅ الربط شغال</div>';
     if (d.note) h += '<div class="state" style="font-size:12px">' + esc(d.note) + '</div>';
     (d.devices || []).forEach(function(x){ h += row(esc(x.name || 'جهاز'), '<span dir="ltr">' + esc(x.serial) + ' · ' + esc(String(x.online)) + '</span>'); });
@@ -6817,7 +6842,7 @@ function saveWa(){
   if (!tok && !pid){ toast('لا توجد حاجة تتحفظ'); return; }
   post({ action: 'setWaConfig', token: tok, phoneId: pid, pin: adminPin() }).then(function(d){
     if (d && d.ok){ toast('✓ تم الحفظ'); loadWa(); }
-    else { if (d && d.pinError) try { localStorage.removeItem('adminPin'); } catch (e) {} toast((d && d.error) || tr('failed')); }
+    else { if (d && d.pinError) try { sessionStorage.removeItem('adminPin'); } catch (e) {} toast((d && d.error) || tr('failed')); }
   }).catch(function(){ toast(tr('failed')); });
 }
 function setAutoUp(on){
@@ -6860,7 +6885,7 @@ function showBotPauseBanner(on){
   b.className = 'bot-pause'; b.textContent = '';   /* أحمد طلب يتشال: حالة البوت ظاهرة في إعدادات البوت بس */
 }
 function loadBotPauseBanner(){
-  var pin0 = ''; try { pin0 = localStorage.getItem('adminPin') || ''; } catch (e) {}
+  var pin0 = storedPin();
   api_('getBotSettings', pin0 ? { pin: pin0 } : {}).then(function(d){
     if (d && d.ok) showBotPauseBanner(!!d.paused);
   }).catch(function(){});
@@ -6871,11 +6896,11 @@ function toggleBotPause(paused){
   if (!pin){ toast('محتاج الرقم السري'); return; }
   post({ action: 'setBotSettings', paused: paused ? '1' : '0', pin: pin }).then(function(d){
     if (d && d.ok){
-      try { localStorage.setItem('adminPin', pin); } catch (e) {}
+      try { sessionStorage.setItem('adminPin', pin); } catch (e) {}
       BOT_SET = d; drawBotSet(); showBotPauseBanner(!!d.paused);
       toast(d.paused ? '⛔ بوت الواتساب واقف' : '▶️ بوت الواتساب رجع يرد');
     } else {
-      if (d && d.pinError){ try { localStorage.removeItem('adminPin'); } catch (e2) {} }
+      if (d && d.pinError){ try { sessionStorage.removeItem('adminPin'); } catch (e2) {} }
       toast((d && d.error) || tr('failed'));
     }
   }).catch(function(){ toast(tr('failed')); });
@@ -6917,7 +6942,7 @@ function saveBotSet(){
   var lock = document.getElementById('bsLock').checked ? '1' : '0', pin = v('bsPin') || storedPin();
   var free = document.getElementById('bsFree').checked ? '1' : '0';
   post({ action: 'setBotSettings', fee: v('bsFee'), hours: v('bsHours'), maxKm: v('bsKm'), lock: lock, pin: pin, free: free, areas: v('bsAreas') }).then(function(d){
-    if (d && d.ok){ try { localStorage.setItem('adminPin', pin); } catch (e) {} settingsSaved('delivery,security');BOT_SET = d; drawBotSet(); toast('✓ تم الحفظ'); }
+    if (d && d.ok){ try { sessionStorage.setItem('adminPin', pin); } catch (e) {} settingsSaved('delivery,security');BOT_SET = d; drawBotSet(); toast('✓ تم الحفظ'); }
     else toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });
 }
@@ -7035,7 +7060,7 @@ function showOrdersBotKey(regen){
   api_('ordersBotKey', { pin: pin, regen: regen ? '1' : '0' }).then(function(d){
     if (!box) return;
     if (d && d.pinError){
-      try { localStorage.removeItem('adminPin'); } catch (e) {}
+      try { sessionStorage.removeItem('adminPin'); } catch (e) {}
       box.innerHTML = '<div class="state err">' + esc(d.error || 'الرقم السري غلط') + '</div>';
       return;
     }
@@ -7112,6 +7137,7 @@ try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
   }, { passive: true });
 })();
 </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 </body>
 </html>
 

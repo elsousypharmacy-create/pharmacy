@@ -293,7 +293,10 @@ function getHomeBundleFast() {
    10 دقايق زيادة على تأخير نظام البيع نفسه. */
 function cacheTTL_(params) {
   var r = (params && params.range) || 'month';
-  if (params && params.from && params.to) return 1800;  // فترة مخصصة = تاريخ ثابت
+  if (params && params.from && params.to) {
+    var today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
+    return params.to >= today ? 45 : 1800;
+  }
   if (r === 'today')      return 45;      // أقل حاجة — البيانات حية
   if (r === 'yesterday')  return 900;     // خلصت، بس ممكن مرتجع متأخر
   if (r === 'week')       return 300;
@@ -301,9 +304,15 @@ function cacheTTL_(params) {
   if (r === 'lastMonth')  return 3600;    // مقفول خلاص
   return 600;
 }
-
+function cacheParams_(params) {
+  var clean = {};
+  Object.keys(params || {}).sort().forEach(function(k){
+    if (k !== '_ts' && k !== 'pin') clean[k] = params[k];
+  });
+  return clean;
+}
 function cachedCall_(name, params, fn, seconds) {
-  var key = 'fx_c_' + name + '_' + JSON.stringify(params || {});
+  var key = 'fx_c_' + name + '_' + JSON.stringify(cacheParams_(params));
   var hit = fxCacheGet_(key);
   if (hit) { hit.cached = true; return hit; }
   var out = fn();

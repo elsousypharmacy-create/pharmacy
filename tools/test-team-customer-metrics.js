@@ -12,5 +12,5 @@ assert.equal(c.teamNewCustomerCounts(emps,null,{from:'2026-11-01',to:'2026-11-02
 assert.equal(c.staffRegistrationPct(emps[0]),75);assert.equal(c.staffRegistrationPct({registered:0,not_reg:3}),0);assert.equal(c.staffRegistrationPct({registered:0,not_reg:0}),null);assert.equal(c.staffRegistrationPct({reg_pct:45}),45);
 let avg=c.homeVisitAverage([{date:'2026-11-01',has:true,visits:0,invoices:20},{date:'2026-11-02',has:true,visits:10,invoices:50},{date:'2026-11-03',has:false,visits:0},{date:'2026-10-31',has:true,visits:100}],{from:'2026-11-01',to:'2026-11-03'});
 assert.equal(avg.average,5);assert.equal(avg.days,2);assert.equal(c.homeVisitAverage([],{from:'2026-11-01',to:'2026-11-02'}).average,null);
-assert(html.includes("mini('صافي المتوسط اليومي'"));assert(html.includes("mini('متوسط عدد الزيارات'"));assert(html.includes('نسبة تسجيل العملاء'));
+assert(html.includes("mini('صافي المتوسط اليومي'"));assert(html.includes("mini('متوسط الزيارات اليومي'"));assert(html.includes('نسبة تسجيل العملاء'));
 console.log('Customer metrics: ledger deduplication/aliases/periods, unavailable distinct from zero, registration recomputed, actual visits average and honest missing days passed');

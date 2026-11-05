@@ -84,6 +84,9 @@ Read and follow `tools/camera-appearance-kpi.md`. Before judging, read the previ
 - One page = one frame. Put on it every problem visible in that frame (max 8 numbered labels).
   Choose frames so that EVERY problem in the summary appears on at least one page.
 - `repeats` on a page = other frames where the page's main problem also shows: `crop` = [x, y, w, h] around it in 960×576, keep 4:3 (e.g. 320×240).
+- **Evidence density (owner request 2026-11-05):** For each confirmed distinct issue, aim to display **3–4 strong, non-duplicate supporting frames** from different times or viewpoints when available. Select the clearest original as the main `page` and put the other verified frames in `repeats` with precise crops and actual timestamps. Do not artificially pad to 3–4: if only 1–2 genuinely distinct frames verify the issue, show only those and explicitly note limited evidence. Do not repeat near-identical frames or invent duration/continuity between observations. Keep all issue labels tied to the correct frame and location.
+- **Audit counts separately:** `reviewedFrames`/the review note must reflect frames actually inspected, while displayed evidence frames count only the selected main frame plus valid `repeats`. Do not claim every sampled frame proves the issue. Preserve the existing one-main-page-per-issue grouping; do not create duplicate summary issues or duplicate pages just to increase evidence count.
+
 - Label text `now` = the problem only, ≤ 4 words (no «المفروض»). Labels are drawn as white pills ≈ (11 px × characters + 60) wide, 42 px tall in 960 space.
   `to` = exact point of the problem. `lab` = pill centre on an empty area (floor, wall, ceiling), inside the image, not covering the problem or another pill.
 - Summary: `sev` "r" = money/people/customer problems, "y" = order/cleanliness/stock problems. Order: r first.

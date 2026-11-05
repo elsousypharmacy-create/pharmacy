@@ -323,6 +323,12 @@ function getProfitLossData(params) {
     const dailySalary = monthlySalaries / lastDayOfMonth;
 
     const allDates = {};
+    /* استحقاق الراتب تقويمي: يوم الإغلاق أو غياب transactions لا يلغي نصيب اليوم. */
+    var calendarDay = new Date(cutoff + 'T12:00:00Z'), calendarEnd = new Date(end + 'T12:00:00Z');
+    while (calendarDay <= calendarEnd) {
+      allDates[calendarDay.toISOString().slice(0, 10)] = 1;
+      calendarDay.setUTCDate(calendarDay.getUTCDate() + 1);
+    }
     Object.keys(dailySales).forEach(function(d){ allDates[d] = 1; });
     Object.keys(dailyExpenses).forEach(function(d){ allDates[d] = 1; });
 

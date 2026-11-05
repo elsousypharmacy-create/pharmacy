@@ -159,12 +159,20 @@ function getAiConfig() {
 }
 /* التحقق من الرقم السري — مع تأخير بعد محاولات غلط كتير */
 function adminPinOk_(pin) {
-  var P = PropertiesService.getScriptProperties(), saved = P.getProperty('ADMIN_PIN');
+  var P = PropertiesService.getScriptProperties(), saved = P.getProperty('ADMIN_PIN'), now = Date.now();
   if (!saved) return false;
-  if (String(pin || '') === saved) { P.deleteProperty('ADMIN_PIN_BAD'); return true; }
+  var until = parseInt(P.getProperty('ADMIN_PIN_BAD_UNTIL') || '0', 10);
+  if (until > now) return false;
+  if (String(pin || '') === saved) {
+    P.deleteProperty('ADMIN_PIN_BAD'); P.deleteProperty('ADMIN_PIN_BAD_UNTIL');
+    return true;
+  }
   var bad = parseInt(P.getProperty('ADMIN_PIN_BAD') || '0', 10) + 1;
   P.setProperty('ADMIN_PIN_BAD', String(bad));
-  if (bad >= 10) Utilities.sleep(3000);
+  if (bad >= 10) {
+    P.setProperty('ADMIN_PIN_BAD_UNTIL', String(now + 300000));
+    P.setProperty('ADMIN_PIN_BAD', '0');
+  }
   return false;
 }
 function setAiConfig(d) {
@@ -173,13 +181,11 @@ function setAiConfig(d) {
   if (!saved) {
     if (!/^\d{4,8}$/.test(pin)) return { ok: false, error: 'اختار رقم سري من 4 لـ 8 أرقام' };
     P.setProperty('ADMIN_PIN', pin);
-  } else if (pin !== saved) {
-    var bad = parseInt(P.getProperty('ADMIN_PIN_BAD') || '0', 10) + 1;
-    P.setProperty('ADMIN_PIN_BAD', String(bad));
-    if (bad >= 10) Utilities.sleep(3000);
+  } else if (!adminPinOk_(pin)) {
     return { ok: false, error: 'الرقم السري غلط' };
   }
   P.deleteProperty('ADMIN_PIN_BAD');
+  P.deleteProperty('ADMIN_PIN_BAD_UNTIL');
   if (d.provider && AI_DEFAULTS[d.provider]) P.setProperty('AI_PROVIDER', d.provider);
   if (d.key && AI_KEYS[d.provider]) P.setProperty(AI_KEYS[d.provider], String(d.key).trim());
   if (d.budget !== undefined && d.budget !== '') P.setProperty('AI_BUDGET', String(parseFloat(d.budget) || 0));

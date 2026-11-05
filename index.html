@@ -2259,14 +2259,18 @@ function pgHome(){
   // Keep the currently displayed net sales visible until fresh data arrives.
   // Repainting the cached snapshot on every reload causes a visible flash.
   if (!box.querySelector('.home-flash-deck')) {
-    if (seed) drawHome(seed.b, seed.kpi, true); else busy(box);
+    // A hard page reload must not paint a provisional home snapshot before the
+    // authoritative invoice summary arrives: that causes net to dip and average to dash.
+    if (seed && seed.kpi && seed.kpi._salesSummary && seed.kpi._salesSummary.ok && seed.kpi._salesSummary.source==='pos-invoices-v1') drawHome(seed.b, seed.kpi, true);
+    else busy(box);
   }
 
   var loadHome = function(again){
     return Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }), api('getMonthTotalsRaw',{range:'today'}) ])
     .then(function(res){
       if(res[1])res[1]._salesSummary=res[2];
-      cacheSet('home', {}, { b: res[0], kpi: res[1] });
+      // Never persist a partial snapshot over the last authoritative home cache.
+      if(res[1] && res[1]._salesSummary && res[1]._salesSummary.ok && res[1]._salesSummary.source==='pos-invoices-v1') cacheSet('home', {}, { b: res[0], kpi: res[1] });
       markSync();
       drawHome(res[0], res[1], false);
       /* الرقم كان قديم شوية والسيرفر السريع بيجيب الجديد دلوقتي: نسأل تاني بعد ثواني */
@@ -2409,6 +2413,9 @@ function drawHome(b, kpi, isOld){
       if(syncNote){syncNote.textContent=tr('cached')+' · '+tr('refreshing');syncNote.classList.add('old');}
       return;
     }
+    // On a full reload, the visible seed may not have been painted yet.
+    // Do not draw provisional numbers while waiting for the authoritative POS result.
+    if(!isOld && !isStaleDay && !canonicalReady && !visibleToday) return;
     /* ═══ الرئيسية الجديدة: هدف فوق، مهام، آخر 14 يوم، الفريق ═══ */
     var gS = goalOf('daily_sales', 10000), gV = goalOf('daily_visits', 150);
     var pS = gS ? Math.round(salesT / gS * 100) : 0;

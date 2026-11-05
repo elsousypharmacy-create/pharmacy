@@ -10,7 +10,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install CLI
-        run: pip install kimi-cli
+        run: |
+          curl -fsSL https://code.kimi.com/kimi-code/install.sh -o /tmp/kimi-install.sh
+          bash /tmp/kimi-install.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Check connection
         env:
           KIMI_MODEL_NAME: k3-256k

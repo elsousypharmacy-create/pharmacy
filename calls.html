@@ -239,7 +239,9 @@ async function push(p, rec){
   pending++;
   try{
     if(!HK[p]) HK[p] = await hashKey(p);
-    await api({action:'callsSet', key:HK[p], status:rec?rec.status:'', note:rec?(rec.note||''):'', by:staffName()}); showNotice('');
+    await api({action:'callsSet', key:HK[p], status:rec?rec.status:'', note:rec?(rec.note||''):'', by:staffName()});
+    if(Object.prototype.hasOwnProperty.call(queuedWrites,p)){ delete queuedWrites[p]; persistQueue(); }
+    showNotice('');
   }
   catch(e){ queuedWrites[p] = rec ? {...rec} : null; persistQueue(); showNotice('تعذر الحفظ على السيرفر. هنعيد المحاولة تلقائيًا عند رجوع الاتصال.'); }
   finally{ pending--; }

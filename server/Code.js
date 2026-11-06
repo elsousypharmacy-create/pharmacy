@@ -225,6 +225,7 @@ function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
 
+    if (data.action === 'novaWhatsAppBridge') return jsonResponseStaff(novaWaBridge_(data));
     /* 🟢 واتساب */
     if (data.object === 'whatsapp_business_account') {
       handleWhatsAppWebhook_(data);
@@ -5981,6 +5982,39 @@ function waitingDigest_() {
   }).join('\n') + '\n\nافتح صفحة "البوت" في اللوحة وردّ عليهم.', PERSONAL_CHAT);
 }
 
+
+/* NOVA Rx WhatsApp adapter. Inactive unless NOVA_WA_BRIDGE_TOKEN is configured. */
+function novaWaAuthorized_(token) {
+  var expected = PropertiesService.getScriptProperties().getProperty('NOVA_WA_BRIDGE_TOKEN') || '';
+  token = String(token || '');
+  if (expected.length < 32 || token.length !== expected.length) return false;
+  var mismatch = 0;
+  for (var i = 0; i < expected.length; i++) mismatch |= expected.charCodeAt(i) ^ token.charCodeAt(i);
+  return mismatch === 0;
+}
+function novaWaBridge_(d) {
+  if (!novaWaAuthorized_(d.bridgeToken)) return { ok: false, error: 'unauthorized' };
+  var op = String(d.operation || '');
+  var id = String(d.chatId || '');
+  if (op === 'list') {
+    var r = getBotChats();
+    return { ok: true, chats: (r.chats || []).filter(function(c) { return /^wa_[A-Za-z0-9_.-]{1,100}$/.test(c.id); }) };
+  }
+  if (!/^wa_[A-Za-z0-9_.-]{1,100}$/.test(id)) return { ok: false, error: 'invalid chat' };
+  if (op === 'get') return getBotChat(id);
+  if (op === 'reply') {
+    var message = String(d.text || '').trim();
+    if (!message || message.length > 4000) return { ok: false, error: 'invalid message' };
+    // Send through the existing WhatsApp-aware Telegram adapter, preserving Meta's response.
+    // The existing botReply() saves the conversation only after confirmed delivery.
+    return botReply(id, message);
+  }
+  if (op === 'hold') {
+    if (typeof d.hold !== 'boolean') return { ok: false, error: 'invalid hold' };
+    return botHold(id, d.hold);
+  }
+  return { ok: false, error: 'unsupported operation' };
+}
 
 // ==== MODULE 50_sms_points (split from server/Code.js; load order = file name order) ====
 

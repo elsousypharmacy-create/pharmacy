@@ -1,0 +1,60 @@
+{
+  "updatedAt": "2026-11-07T01:36:00+03:00",
+  "phase": "المرحلة الأولى — واجهة البيع والاستيكرات",
+  "goal": "نظام بيع سريع وراقي لصيدلية السوسي، والاستيكرات داخل شاشة البيع",
+  "readinessPercent": null,
+  "readinessNote": "لا تُحسب الجاهزية بعدد الـ commits؛ تُحدد بعد قبول المهام واختبارها.",
+  "currentCycle": {
+    "title": "تأمين Kimi ثم تطوير استيكرات البيع",
+    "agent": "Kimi — بعد الموافقة",
+    "status": "بانتظار مراجعة صلاحيات GitHub وفتح PR",
+    "nextOwnerAction": "راجع PR تأمين Kimi، أو امنح Cursor صلاحيات Pull requests وIssues اللازمة"
+  },
+  "tasks": [
+    {
+      "id": "NRX-10",
+      "title": "مراجعة إصلاح أمان Kimi workflow",
+      "status": "for_review"
+    },
+    {
+      "id": "NRX-11",
+      "title": "تجهيز Issue استيكرات شاشة البيع",
+      "status": "for_review"
+    },
+    {
+      "id": "NRX-6",
+      "title": "تطوير الاستيكرات داخل شاشة البيع /#sale",
+      "status": "queued"
+    },
+    {
+      "id": "NRX-7",
+      "title": "تشغيل Kimi مرة واحدة بعد الموافقة",
+      "status": "queued"
+    },
+    {
+      "id": "NRX-2",
+      "title": "نسخة احتياطية من Worker قبل النشر",
+      "status": "queued"
+    }
+  ],
+  "links": [
+    {
+      "label": "مستودع NOVA Rx",
+      "url": "https://github.com/elsousypharmacy-create/nova-rx"
+    },
+    {
+      "label": "فرع أمان Kimi",
+      "url": "https://github.com/elsousypharmacy-create/nova-rx/tree/chore/kimi-workflow-safety"
+    },
+    {
+      "label": "المعاينة",
+      "url": "https://nova-rx-preview.elsousypharmacy.workers.dev/"
+    }
+  ],
+  "prs": [],
+  "blockers": [
+    "المستودع خاص؛ لا يمكن قراءة GitHub Actions مباشرة من المتصفح",
+    "صلاحيات Cursor لفتح PR/Issue تحتاج تأكيد"
+  ],
+  "sourceNote": "تحديث يدوي من Cursor أو ChatGPT عبر تعديل هذا الملف في مستودع pharmacy. لا توجد مزامنة مباشرة مع GitHub الخاص."
+}

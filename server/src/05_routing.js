@@ -199,6 +199,7 @@ function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
 
+    if (data.action === 'novaWhatsAppBridge') return jsonResponseStaff(novaWaBridge_(data));
     /* 🟢 واتساب */
     if (data.object === 'whatsapp_business_account') {
       handleWhatsAppWebhook_(data);

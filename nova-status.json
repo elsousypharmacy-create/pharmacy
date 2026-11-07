@@ -1,13 +1,13 @@
 {
-  "updatedAt": "2026-11-07T11:30:00+03:00",
+  "updatedAt": "2026-11-07T12:10:00+03:00",
   "phase": "المرحلة الأولى — واجهة البيع والاستيكرات",
   "goal": "نظام بيع سريع وراقي لصيدلية السوسي، والاستيكرات داخل شاشة البيع",
   "readinessPercent": null,
   "readinessNote": "لا تُحسب الجاهزية بعدد الـ commits؛ تُحدد بعد قبول المهام وتجربتك على اللينك الحي.",
   "currentCycle": {
     "title": "نشر الدفعتين 1 و2 من تحسين واجهة البيع على اللينك الحي",
-    "agent": "Claude Code جهّز الكود، وCursor ينشر",
-    "status": "النسخة الجاهزة والنسخة الاحتياطية في PR #34 و#35، وبانتظار نشر Cursor",
+    "agent": "ChatGPT ينشر (نشر فقط)، وCursor يختبر اللينك الحي، وClaude Code كتب الكود",
+    "status": "النسخة جاهزة والتعليمات مكتوبة لكل واحد في لوحة التنسيق على GitHub، وبانتظار نشر ChatGPT",
     "nextOwnerAction": "بعد ما Cursor ينشر: جرّب اللينك من التليفون (الفواتير المعلقة، English، تنبيه الخصم، البحث الفاضي) وقولي رأيك"
   },
   "tasks": [
@@ -18,7 +18,12 @@
     },
     {
       "id": "DEP-1",
-      "title": "نشر دفعتي UX على اللينك الحي (Cursor)",
+      "title": "نشر دفعتي UX على اللينك الحي (ChatGPT)",
+      "status": "queued"
+    },
+    {
+      "id": "QA-1",
+      "title": "اختبار اللينك الحي بعد النشر (Cursor)",
       "status": "queued"
     },
     {
@@ -54,6 +59,10 @@
     {
       "label": "المعاينة",
       "url": "https://nova-rx-preview.elsousypharmacy.workers.dev/"
+    },
+    {
+      "label": "لوحة التنسيق بين الوكلاء (Issue #36)",
+      "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/36"
     }
   ],
   "prs": [
@@ -79,7 +88,7 @@
     "النشر على Cloudflare بيتم عن طريق Cursor فقط؛ Claude Code ما عندوش أداة نشر",
     "تكلفة وصلاحيات Kimi غير مؤكدة، فلا تشغيل له الآن"
   ],
-  "sourceNote": "تحديث يدوي من Claude Code وCursor عبر تعديل هذا الملف في مستودع pharmacy بعد كل مرحلة. لا توجد مزامنة مباشرة مع GitHub الخاص.",
+  "sourceNote": "تحديث يدوي من Claude Code وCursor وChatGPT. كل واحد يحدّث لوحة التنسيق (Issue #36) وهذا الملف بعد كل خطوة. لا توجد مزامنة مباشرة مع GitHub الخاص.",
   "roadmap": [
     {
       "title": "1) واجهة البيع والـUX",

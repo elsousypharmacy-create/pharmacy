@@ -5,12 +5,13 @@
 <div class="between"><span id="message" role="status">جارٍ تحميل الخطة…</span><button id="reload" type="button">تحديث ↻</button></div>
 <div id="content" hidden><section class="card"><span class="tag" id="phase"></span><h2 style="margin-top:14px">هدفنا الحالي</h2><div class="big" id="goal"></div><p class="muted" id="readiness"></p></section>
 <section class="card"><h2>دورة التطوير الحالية</h2><div class="big" id="cycle"></div><div class="row"><small>المنفذ</small><div id="agent"></div></div><div class="row"><small>الحالة</small><div id="cycleStatus"></div></div><div class="row"><small>المطلوب منك بعد كده</small><div id="ownerAction" class="warn"></div></div></section>
+<section class="card"><h2>خريطة الطريق</h2><div id="roadmap"></div></section>
 <section class="card"><h2>المهام</h2><div id="tasks"></div></section>
 <section class="card"><h2>العوائق</h2><div id="blockers"></div></section>
 <section class="card"><h2>روابط المشروع وطلبات المراجعة</h2><div class="links" id="links"></div><div id="prs"></div></section>
 <footer><div id="updated"></div><div id="sourceNote"></div><div>المعلومات هنا ملخص خطة مُحدّث يدويًا، وليست قراءة لحظية من المستودع الخاص. لا يتم نشر أو دمج أي تغييرات من هذه الصفحة.</div></footer></div></main>
 <script>
-const $=id=>document.getElementById(id), labels={queued:'في الانتظار',in_progress:'قيد التنفيذ',for_review:'للمراجعة',done:'مكتمل'};
+const $=id=>document.getElementById(id), labels={queued:'في الانتظار',in_progress:'قيد التنفيذ',for_review:'للمراجعة',blocked:'معلّق',done:'مكتمل'};
 function node(tag,txt,cls){const e=document.createElement(tag);e.textContent=String(txt??'');if(cls)e.className=cls;return e}
 function safeUrl(raw){try{const u=new URL(raw);return u.protocol==='https:'?u.href:null}catch{return null}}
 function link(item){const url=safeUrl(item.url);if(!url)return null;const a=node('a',item.label||url);a.href=url;a.target='_blank';a.rel='noopener noreferrer';return a}
@@ -18,6 +19,7 @@ function draw(d){
 $('phase').textContent=d.phase||'المرحلة غير محددة';$('goal').textContent=d.goal||'—';
 $('readiness').textContent=d.readinessPercent==null?(d.readinessNote||'نسبة الجاهزية لم تُحدد بعد'):'الجاهزية المعتمدة: '+d.readinessPercent+'%';
 const c=d.currentCycle||{};$('cycle').textContent=c.title||'—';$('agent').textContent=c.agent||'غير محدد';$('cycleStatus').textContent=c.status||'—';$('ownerAction').textContent=c.nextOwnerAction||'لا يوجد إجراء مطلوب';
+$('roadmap').replaceChildren(...(d.roadmap||[]).map(t=>{const r=node('div','','task'),a=document.createElement('div');a.append(node('strong',t.title),node('small',t.note||''));r.append(a,node('span',labels[t.status]||'غير محدد','status'));return r}));
 $('tasks').replaceChildren(...(d.tasks||[]).map(t=>{const r=node('div','','task'),a=document.createElement('div');a.append(node('strong',t.title),node('small',t.id));r.append(a,node('span',labels[t.status]||'غير محدد','status'));return r}));
 $('blockers').replaceChildren(...(d.blockers||[]).map(s=>node('div',s,'row warn')));if(!(d.blockers||[]).length)$('blockers').append(node('div','لا توجد عوائق مسجلة','good'));
 $('links').replaceChildren(...(d.links||[]).map(link).filter(Boolean));$('prs').replaceChildren(...(d.prs||[]).map(p=>{const r=node('div','','row');const a=link(p);if(a)r.append(a);return r}));

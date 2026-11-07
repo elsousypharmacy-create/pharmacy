@@ -304,3 +304,8 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 - Why: dashboard «ربط واتساب» last message was 10-25; `waSubscribe` used a hardcoded default WABA `1121417500291242`, while the real number's WABA (from Meta Business Settings) is a different ID. Messages for the real number never reached the webhook.
 - Change: `setWaConfig` accepts `wabaId` (digits 8–20) → Script Property `WA_WABA_ID`; `waInfo` returns `wabaId`/`wabaCustom`; dashboard shows the WABA row and a new input. `server/Code.js` rebuilt (`build-server.js --check` OK, `node --check` OK, `test-dashboard-review.js` 20 passed, vm unit check of the setter OK).
 - NOT done: not merged, not deployed, no token/ID values stored in the repo. After merge to main: «🔄 حدّث السيرفر», enter the WABA ID in the dashboard, then press «🔗 اربط حساب الواتساب بالبوت».
+
+### NOVA monitor roadmap — 2026-11-07 (Claude Code, owner-approved)
+- `nova-monitor.html`: new «خريطة الطريق» section (reads `roadmap[]` from `nova-status.json`), new status label `blocked` = «معلّق». Frontend/data only: no Apps Script, Worker or finance change.
+- `nova-status.json`: roadmap (UX, stickers, WhatsApp, Kimi automation, full ERP), current cycle, tasks, blockers, PR links. `readinessPercent` stays null on purpose (no verified weighted checklist).
+- Update rule: after each checkpoint Claude Code/Cursor edit `nova-status.json` here (data only, ~2 min to appear on GitHub Pages) and add a checkpoint to `nova-rx/HANDOFF.md`.

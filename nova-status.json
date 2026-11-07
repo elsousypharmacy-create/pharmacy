@@ -1,40 +1,40 @@
 {
-  "updatedAt": "2026-11-07T01:36:00+03:00",
+  "updatedAt": "2026-11-07T10:30:00+03:00",
   "phase": "المرحلة الأولى — واجهة البيع والاستيكرات",
   "goal": "نظام بيع سريع وراقي لصيدلية السوسي، والاستيكرات داخل شاشة البيع",
   "readinessPercent": null,
-  "readinessNote": "لا تُحسب الجاهزية بعدد الـ commits؛ تُحدد بعد قبول المهام واختبارها.",
+  "readinessNote": "لا تُحسب الجاهزية بعدد الـ commits؛ تُحدد بعد قبول المهام وتجربتك على اللينك الحي.",
   "currentCycle": {
-    "title": "تأمين Kimi ثم تطوير استيكرات البيع",
-    "agent": "Kimi — بعد الموافقة",
-    "status": "بانتظار مراجعة صلاحيات GitHub وفتح PR",
-    "nextOwnerAction": "راجع PR تأمين Kimi، أو امنح Cursor صلاحيات Pull requests وIssues اللازمة"
+    "title": "نشر الدفعة 1 من تحسين واجهة البيع على اللينك الحي",
+    "agent": "Claude Code جهّز الكود، وCursor ينشر",
+    "status": "النسخة الجاهزة والنسخة الاحتياطية في PR #34، وبانتظار نشر Cursor",
+    "nextOwnerAction": "بعد ما Cursor ينشر: افتح اللينك من التليفون وجرّب الفواتير المعلقة وEnglish وزر الاستيكرات، وقولي رأيك"
   },
   "tasks": [
     {
-      "id": "NRX-10",
-      "title": "مراجعة إصلاح أمان Kimi workflow",
+      "id": "UX-1",
+      "title": "UX دفعة 1: اللغة، زر الاستيكرات، الفواتير المعلقة",
       "status": "for_review"
     },
     {
-      "id": "NRX-11",
-      "title": "تجهيز Issue استيكرات شاشة البيع",
+      "id": "DEP-1",
+      "title": "نشر دفعة UX على اللينك الحي (Cursor)",
+      "status": "queued"
+    },
+    {
+      "id": "UX-2",
+      "title": "UX دفعة 2: بحث فاضي، تنبيه الخصم، إعادة محاولة AI، فلتر المنتجات",
+      "status": "queued"
+    },
+    {
+      "id": "WA-1",
+      "title": "واتساب: نقل الرقم لـCloud API",
+      "status": "blocked"
+    },
+    {
+      "id": "KIMI-1",
+      "title": "Workflow Kimi الآمن — مراجعة التكلفة قبل التشغيل",
       "status": "for_review"
-    },
-    {
-      "id": "NRX-6",
-      "title": "تطوير الاستيكرات داخل شاشة البيع /#sale",
-      "status": "queued"
-    },
-    {
-      "id": "NRX-7",
-      "title": "تشغيل Kimi مرة واحدة بعد الموافقة",
-      "status": "queued"
-    },
-    {
-      "id": "NRX-2",
-      "title": "نسخة احتياطية من Worker قبل النشر",
-      "status": "queued"
     }
   ],
   "links": [
@@ -51,10 +51,51 @@
       "url": "https://nova-rx-preview.elsousypharmacy.workers.dev/"
     }
   ],
-  "prs": [],
-  "blockers": [
-    "المستودع خاص؛ لا يمكن قراءة GitHub Actions مباشرة من المتصفح",
-    "صلاحيات Cursor لفتح PR/Issue تحتاج تأكيد"
+  "prs": [
+    {
+      "label": "PR #34 — تحسينات الواجهة + نسخة النشر",
+      "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/34"
+    },
+    {
+      "label": "PR #33 — جسر الواتساب (غير منشور)",
+      "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/33"
+    },
+    {
+      "label": "PR #32 — Workflow Kimi الآمن (غير مشغّل)",
+      "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/32"
+    }
   ],
-  "sourceNote": "تحديث يدوي من Cursor أو ChatGPT عبر تعديل هذا الملف في مستودع pharmacy. لا توجد مزامنة مباشرة مع GitHub الخاص."
+  "blockers": [
+    "الواتساب: رقم الصيدلية على نظام واتساب القديم الموقوف؛ النقل يحتاج Meta أو رقم جديد",
+    "النشر على Cloudflare بيتم عن طريق Cursor فقط؛ Claude Code ما عندوش أداة نشر",
+    "تكلفة وصلاحيات Kimi غير مؤكدة، فلا تشغيل له الآن"
+  ],
+  "sourceNote": "تحديث يدوي من Claude Code وCursor عبر تعديل هذا الملف في مستودع pharmacy بعد كل مرحلة. لا توجد مزامنة مباشرة مع GitHub الخاص.",
+  "roadmap": [
+    {
+      "title": "1) واجهة البيع والـUX",
+      "status": "in_progress",
+      "note": "الدفعة 1 جاهزة ومُختبرة محليًا (اللغة، زر الاستيكرات على الموبايل، الفواتير المعلقة) وتنتظر نشر Cursor. الدفعتان 2 و3 بعدها."
+    },
+    {
+      "title": "2) استيكرات الأدوية داخل البيع",
+      "status": "for_review",
+      "note": "منشورة على اللينك الحي من 7 نوفمبر. تنتظر تجربتك الفعلية."
+    },
+    {
+      "title": "3) واتساب داخل نوفا",
+      "status": "blocked",
+      "note": "رقم الصيدلية على نظام واتساب قديم أوقفته Meta، والنقل يحتاج Meta أو رقم جديد. الكود جاهز ولم يُنشر (PR #33)."
+    },
+    {
+      "title": "4) التطوير الآلي (Kimi)",
+      "status": "for_review",
+      "note": "الـWorkflow الآمن جاهز (PR #32) ولم يُشغَّل. لا تشغيل قبل مراجعتك للتكلفة."
+    },
+    {
+      "title": "5) النظام الكامل (مخزون، مشتريات، حسابات، صلاحيات)",
+      "status": "queued",
+      "note": "لم يبدأ. يحتاج سيرفر وقاعدة بيانات، وتقدير المدة 6–9 شهور من بعد المرحلة الأولى."
+    }
+  ]
 }

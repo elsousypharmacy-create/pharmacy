@@ -23,7 +23,6 @@ const CONNECTEAM_API_KEY = secret_('CONNECTEAM_API_KEY');
 const CONNECTEAM_TIME_CLOCK_ID = '4828050';
 const CONNECTEAM_USER_MAP = {};
 const STAFF_GROUP = '-5150806315';
-
 // ==== MODULE 05_routing (split from server/Code.js; load order = file name order) ====
 
 
@@ -1509,7 +1508,6 @@ function sendOrderSuggestion(chatId) {
     sendTelegramStaff('⚠️ خطأ في تجهيز القائمة: ' + e.message, chatId);
   }
 }
-
 // ==== MODULE 15_tests_misc (split from server/Code.js; load order = file name order) ====
 
 
@@ -1604,7 +1602,6 @@ function connecteamReady_() {
   if (!CONNECTEAM_TIME_CLOCK_ID || CONNECTEAM_TIME_CLOCK_ID.indexOf('ضع_') === 0) return 'لسه محطتش Time Clock ID';
   return null;
 }
-
 // ==== MODULE 20_bot_config (split from server/Code.js; load order = file name order) ====
 
 
@@ -1643,7 +1640,6 @@ const ESCALATE_KEYWORDS = [
   'مضاد حيوي','مضاد حيوى','حقن','امبول','أمبول','روشتة','روشته','وصفة',
   'جرعة','جرعه','كام مرة','اخده ازاي','آخده','يضر','تفاعل','بديل ل'
 ];
-
 // ==== MODULE 21_messaging (split from server/Code.js; load order = file name order) ====
 
 
@@ -1717,14 +1713,16 @@ function waVerifyToken_() {
 function waInfo() {   /* للوحة: الحالة + اللي تحطه في Meta */
   return { ok: true, hasToken: !!waToken_(), phoneId: waPhoneId_(), verifyToken: waVerifyToken_(),
            callbackUrl: WEB_APP_URL, relayUrl: aiKey_('TG_RELAY_URL') || '',
-           lastIn: aiKey_('WA_LAST_IN') || '', lastErr: aiKey_('WA_LAST_ERR') || '' };
+           lastIn: aiKey_('WA_LAST_IN') || '', lastErr: aiKey_('WA_LAST_ERR') || '',
+           wabaId: aiKey_('WA_WABA_ID') || '1121417500291242', wabaCustom: !!aiKey_('WA_WABA_ID') };
 }
 /* حفظ التوكن من اللوحة (بالرقم السري) — التوكن بيتكتب بس، عمره ما بيرجع للوحة */
 function setWaConfig(d) {
   var P = PropertiesService.getScriptProperties();
-  var tok = String(d.token || '').trim(), pid = String(d.phoneId || '').trim();
+  var tok = String(d.token || '').trim(), pid = String(d.phoneId || '').trim(), wid = String(d.wabaId || '').trim();
   if (tok) { if (!/^EAA[\w-]{20,}$/.test(tok)) return { ok: false, error: 'التوكن شكله غلط — لازم يبدأ بـ EAA' }; P.setProperty('WA_TOKEN', tok); }
   if (pid) { if (!/^\d{8,20}$/.test(pid)) return { ok: false, error: 'Phone number ID أرقام بس' }; P.setProperty('WA_PHONE_ID', pid); }
+  if (wid) { if (!/^\d{8,20}$/.test(wid)) return { ok: false, error: 'WABA ID أرقام بس' }; P.setProperty('WA_WABA_ID', wid); }
   P.deleteProperty('WA_LAST_ERR');
   return { ok: true };
 }
@@ -2124,7 +2122,6 @@ function handleStaffCommand_(chatId, text) {
   return false;
 }
 
-
 // ==== MODULE 22_handoff (split from server/Code.js; load order = file name order) ====
 
 
@@ -2198,7 +2195,6 @@ function relayDoctorReply_(msg) {
     return false;
   }
 }
-
 // ==== MODULE 23_ai (split from server/Code.js; load order = file name order) ====
 
 
@@ -2971,7 +2967,6 @@ function pausedAck_(chatId) {
   } catch (e) { Logger.log('pausedAck_: ' + e.message); }
 }
 
-
 // ==== MODULE 25_bot_history_ui (split from server/Code.js; load order = file name order) ====
 
 
@@ -3415,7 +3410,6 @@ function saveOrder_(chatId, itemsText, phone, address, confirmed) {
     return false;
   }
 }
-
 // ==== MODULE 26_bot_local_classify (split from server/Code.js; load order = file name order) ====
 
 
@@ -3540,7 +3534,6 @@ function classifyCustomerMessage(text, history) {
     return { type: 'OTHER', product: '' };
   }
 }
-
 // ==== MODULE 27_bot_brain (split from server/Code.js; load order = file name order) ====
 
 
@@ -4090,7 +4083,6 @@ function humanPause_(t0) {
   } catch (e) {}
 }
 
-
 // ==== MODULE 28_bot_handler (split from server/Code.js; load order = file name order) ====
 
 
@@ -4629,7 +4621,6 @@ function handleOrderIntent_(chatId, text, history, arrivalUnix) {
   }
   saveConversationTurn(chatId, text, sum, 'bot', arrivalUnix);
 }
-
 // ==== MODULE 29_telegram_webhook (split from server/Code.js; load order = file name order) ====
 
 
@@ -4793,7 +4784,6 @@ function deleteTelegramWebhook() {
   PropertiesService.getScriptProperties().deleteProperty('telegramWebhookOn');
   Logger.log('🛑 الويبهوك اتقفل — رجعنا للـ polling كل دقيقة');
 }
-
 // ==== MODULE 30_stock (split from server/Code.js; load order = file name order) ====
 
 
@@ -5198,7 +5188,6 @@ function buildProductAnswer_(results, askedFor) {
   }
   return { available: true, text: text, prices: prices, items: show };
 }
-
 // ==== MODULE 40_customers_dashboard (split from server/Code.js; load order = file name order) ====
 
 
@@ -5624,7 +5613,6 @@ function getDashboard(params) {
     }
   };
 }
-
 // ==== MODULE 41_bot_chat_admin (split from server/Code.js; load order = file name order) ====
 
 
@@ -5981,7 +5969,6 @@ function waitingDigest_() {
     return '• ' + (c.name || maskPhone_(c.phone) || ('عميل ' + String(c.id).slice(-4))) + ' — من ' + c.hrs + ' ساعة: "' + maskPhonesInText_(c.text) + '"';
   }).join('\n') + '\n\nافتح صفحة "البوت" في اللوحة وردّ عليهم.', PERSONAL_CHAT);
 }
-
 
 /* NOVA Rx WhatsApp adapter. Inactive unless NOVA_WA_BRIDGE_TOKEN is configured. */
 function novaWaAuthorized_(token) {
@@ -6398,7 +6385,6 @@ function getCustomerPointsData(phone) {
     return { ok: false, error: e.message };
   }
 }
-
 // ==== MODULE 60_debts_reminders (split from server/Code.js; load order = file name order) ====
 
 
@@ -6506,7 +6492,6 @@ function sendWeeklyDebtReminders() {
     Logger.log('خطأ sendWeeklyDebtReminders: ' + e.message);
   }
 }
-
 // ==== MODULE 61_finance (split from server/Code.js; load order = file name order) ====
 
 
@@ -8203,7 +8188,6 @@ function eventRows_() {
   } catch (e) { return []; }
 }
 
-
 // ==== MODULE 65_raw_days: أرقام كل يوم من ملفات نظام البيع الخام (المصدر الأدق) ====
 // شيت الموظفين بيتحدّث لحظيًا بس بيفوّته فواتير (اتأكدنا: أوائل أكتوبر الربح أقل بـ 10–25%).
 // الأيام اللي خلصت بتتحسب من الملف الكامل، وبتتحفظ 6 ساعات.
@@ -8256,7 +8240,6 @@ function getDailyRaw(p) {
   }
   return { ok: true, from: from, to: to, days: days };
 }
-
 
 // ==== MODULE 66_cameras — ربط الكاميرات (المفاتيح بتتحفظ في Script Properties بس، وعمرها ما بترجع للوحة) ====
 var CAM_TYPES_ = { hik: 'Hik-Connect / Hik-Partner OpenAPI', grok: 'API بتاع Grok', dvr: 'جهاز التسجيل مباشرة (IP)', other: 'تاني' };
@@ -8428,7 +8411,6 @@ function camAutoOn() {
   } catch (e) { return { ok: false, error: 'مقدرتش أشغّله: ' + String(e.message || e).slice(0, 160) }; }
 }
 
-
 // Manual, PIN-protected capability probe for entrance 4 or counter 3 only.
 // API keys and SDK stream tokens never leave Script Properties / server memory.
 // References: Hikvision TPP HC-Integration; SYSCOM-Labs/API-DOCS
@@ -8512,7 +8494,6 @@ function camVideoTest(request) {
     return camVideoFail_(stage, 'تعذر إكمال اختبار الفيديو؛ جرّب تاني أو راجع ربط Hikvision', null, channel);
   }
 }
-
 
 // One manual sample, bounded to 20-30 media seconds / 8 MiB / 45s polling.
 // Archive contains local media names ONLY: never provider URLs, tokens or keys.
@@ -8686,7 +8667,6 @@ function camRecordPilot() {
   [4, 3].forEach(function(channel) { console.log(JSON.stringify(camRecordSample({ channel: channel }))); });
 }
 
-
 // ==== MODULE 67_cam_reports — تقارير الكاميرات (Claude بيكتب ملف JSON صغير، واللوحة بترسم الأسهم على اللقطة الأصلية) ====
 // المكان: «كاميرات الصيدلية» / «تقارير» / report_yyyy-MM-dd_HHmm.json
 function camReportsFolder_() {
@@ -8730,7 +8710,6 @@ function camFrames(ids) {
   String(ids || '').split(',').slice(0, 8).forEach(function(id){ id = id.trim(); if (id) out[id] = camFrame(id); });
   return { ok: true, frames: out };
 }
-
 
 // ==== MODULE 68_balance — الميزانية: اللي ليك واللي عليك (أرقام نظام البيع + أرقام بتدخلها إنت) ====
 /* الأرقام التلقائية بتيجي من تقرير النظام اليومي (Daily_Mini_Statics) — نفس الملف اللي بتقراه باقي اللوحة:
@@ -8829,7 +8808,6 @@ function setBalanceBase(p) {
     return getBalanceSheet();
   } catch (e) { return { ok: false, error: String(e.message || e) }; }
 }
-
 
 // ==== MODULE 69_closing — التقفيل يوم بيومه ووسائل الدفع (من ملفات نظام البيع الخام) ====
 /* كل فاتورة في ملف المبيعات فيها وسيلة الدفع (cashway1/cashway2) والمبلغ (paid1/paid2):
@@ -9662,7 +9640,6 @@ function invCat_(row, COL) {
   return INV_POS_MAP_[pos] || (pos || 'غير مصنّف');
 }
 
-
 // ==== MODULE 71_agents (split from server/Code.js; load order = file name order) ====
 
 
@@ -10161,7 +10138,6 @@ function retryLastAgentReply(phone, message) {
   var r = sendSMSViaAutoRemote(phone, message);
   Logger.log('النتيجة: كود=' + r.code + ' | رد=' + r.response);
 }
-
 // ==== MODULE 72_scan (split from server/Code.js; load order = file name order) ====
 
 
@@ -10293,7 +10269,6 @@ function scanSearch(q) {
     return { ok: false, error: e.message };
   }
 }
-
 // ==== MODULE 73_doctors (split from server/Code.js; load order = file name order) ====
 
 
@@ -10608,7 +10583,6 @@ function doctorAdmin(p) {
     return { ok: false, msg: e.message };
   }
 }
-
 // ==== MODULE 74_orders (split from server/Code.js; load order = file name order) ====
 
 
@@ -11007,7 +10981,6 @@ function ordersPage(code, days, fresh) {
     return { ok: false, msg: e.message + ' @ ' + String(e.stack || '').split('\n').slice(0, 2).join(' | ') };
   }
 }
-
 // ==== MODULE 75_count_shortage (split from server/Code.js; load order = file name order) ====
 
 
@@ -12185,7 +12158,6 @@ function getCountAccuracy(params) {
     return { ok: false, error: e.message };
   }
 }
-
 // ==== MODULE 76_labels (split from server/Code.js; load order = file name order) ====
 
 
@@ -12349,7 +12321,6 @@ function labelsSave(payload) {
     return { ok: false, error: e.message };
   }
 }
-
 // ==== MODULE 77_dose_ai (split from server/Code.js; load order = file name order) ====
 
 
@@ -12422,7 +12393,6 @@ function aiDose(payload) {
     return { ok: false, error: e.message };
   }
 }
-
 
 // ==== MODULE 80_cache_home (split from server/Code.js; load order = file name order) ====
 
@@ -12641,7 +12611,6 @@ function fxDebtsCached_() {
   if (d && d.ok) fxCachePut_('fx_debts', d, 600); // ١٠ دقايق
   return d;
 }
-
 // ==== MODULE 81_connecteam (split from server/Code.js; load order = file name order) ====
 
 
@@ -12996,7 +12965,6 @@ function diagnoseConnecteam() {
   Logger.log('كود الرد: ' + r.code);
   Logger.log('الرد كامل: ' + (r.ok ? JSON.stringify(r.json).substring(0, 3000) : r.error));
 }
-
 // ==== MODULE 82_snapshot_staffhub (split from server/Code.js; load order = file name order) ====
 
 
@@ -13390,7 +13358,6 @@ function getStaffHub(params) {
     return { ok: false, error: e.message };
   }
 }
-
 // ==== MODULE 95_server_update (split from server/Code.js; load order = file name order) ====
 
 
@@ -13540,4 +13507,3 @@ function serverUpdate() {
   try { maybeEnsureTriggers_(); } catch (eT) {}
   return { ok: true, version: ver, at: stamp };
 }
-

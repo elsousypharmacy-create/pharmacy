@@ -1,0 +1,26 @@
+# نشر Worker الواتساب/الطبقة السريعة على Cloudflare أوتوماتيك لما worker/ يتغيّر على main
+name: deploy-worker
+on:
+  push:
+    branches: [main]
+    paths: ['worker/**', '.github/workflows/deploy-worker.yml']
+  workflow_dispatch:
+concurrency: { group: deploy-worker, cancel-in-progress: false }
+permissions: { contents: read }
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Syntax check
+        run: node --check worker/worker.js
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::error::ضيف CLOUDFLARE_API_TOKEN في GitHub Secrets"; exit 1; fi
+          cd worker && npx --yes wrangler@4 deploy

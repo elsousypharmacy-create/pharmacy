@@ -1,0 +1,11 @@
+# إعدادات نشر Worker صيدلية السوسي — مطابقة للي شغال على Cloudflare (من غير أي أسرار)
+name = "wispy-cloud-00a7"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+keep_vars = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "elsousy-fast"
+database_id = "db67aaa5-0bc8-4c05-8161-8fe6bf894c00"

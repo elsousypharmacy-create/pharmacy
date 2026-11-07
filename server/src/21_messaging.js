@@ -71,14 +71,16 @@ function waVerifyToken_() {
 function waInfo() {   /* للوحة: الحالة + اللي تحطه في Meta */
   return { ok: true, hasToken: !!waToken_(), phoneId: waPhoneId_(), verifyToken: waVerifyToken_(),
            callbackUrl: WEB_APP_URL, relayUrl: aiKey_('TG_RELAY_URL') || '',
-           lastIn: aiKey_('WA_LAST_IN') || '', lastErr: aiKey_('WA_LAST_ERR') || '' };
+           lastIn: aiKey_('WA_LAST_IN') || '', lastErr: aiKey_('WA_LAST_ERR') || '',
+           wabaId: aiKey_('WA_WABA_ID') || '1121417500291242', wabaCustom: !!aiKey_('WA_WABA_ID') };
 }
 /* حفظ التوكن من اللوحة (بالرقم السري) — التوكن بيتكتب بس، عمره ما بيرجع للوحة */
 function setWaConfig(d) {
   var P = PropertiesService.getScriptProperties();
-  var tok = String(d.token || '').trim(), pid = String(d.phoneId || '').trim();
+  var tok = String(d.token || '').trim(), pid = String(d.phoneId || '').trim(), wid = String(d.wabaId || '').trim();
   if (tok) { if (!/^EAA[\w-]{20,}$/.test(tok)) return { ok: false, error: 'التوكن شكله غلط — لازم يبدأ بـ EAA' }; P.setProperty('WA_TOKEN', tok); }
   if (pid) { if (!/^\d{8,20}$/.test(pid)) return { ok: false, error: 'Phone number ID أرقام بس' }; P.setProperty('WA_PHONE_ID', pid); }
+  if (wid) { if (!/^\d{8,20}$/.test(wid)) return { ok: false, error: 'WABA ID أرقام بس' }; P.setProperty('WA_WABA_ID', wid); }
   P.deleteProperty('WA_LAST_ERR');
   return { ok: true };
 }

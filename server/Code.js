@@ -8716,7 +8716,7 @@ function camFrames(ids) {
      ليك:  صافي الدين (ديون العملاء بعد طرح أي رصيد دائن) + المخزون بالتكلفة
      عليك: «مطالبة اليوم» لكل شركة + عمولات المندوبين
    والأرقام اللي النظام مايعرفهاش (كاش، بنك، مرتبات، أي حاجة تانية) بتدخلها إنت ومتخزنة في Script Properties. */
-var BS_KEYS_ = ['cash', 'bank', 'salaries', 'other_assets', 'other_liabs'];
+var BS_KEYS_ = ['cash', 'bank', 'salaries', 'other_assets', 'other_liabs', 'past_invested', 'avg_daily_sales'];
 function bsNum_(v) {
   var s = String(v == null ? '' : v).replace(/[٠-٩]/g, function (c) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(c); }).replace(/[,\s]/g, '');
   var n = parseFloat(s);
@@ -8773,7 +8773,7 @@ function getBalanceSheet() {
       ok: true, as_of: String(map['الوقت'] || ''), assets: assets, liabs: liabs,
       assets_total: aT, liabs_total: lT, net: net, missing: missing,
       claims: claims, incoming_cost: incoming, debt_gross: receivable, debt_net: netDebt, debt_gap: gap,
-      inputs: { cash: v('cash'), bank: v('bank'), salaries: v('salaries'), other_assets: v('other_assets'), other_liabs: v('other_liabs'), at: inp.at || '' },
+      inputs: { cash: v('cash'), bank: v('bank'), salaries: v('salaries'), other_assets: v('other_assets'), other_liabs: v('other_liabs'), past_invested: v('past_invested'), avg_daily_sales: v('avg_daily_sales'), at: inp.at || '' },
       base: base || null, delta: base ? net - base.net : null
     };
   } catch (e) { return { ok: false, error: String(e.message || e) }; }

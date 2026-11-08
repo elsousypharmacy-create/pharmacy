@@ -2984,6 +2984,24 @@ function drawBalance(){
       d.claims.map(function(c){ return row(c.name, '', ltr(num(c.amount))); }).join(''));
   if (d.debt_gap > 0) html += '<div class="state" style="text-align:start;font-size:12px">«إجمالي الدين» في النظام ' + ltr(num(d.debt_gross)) + ' و«صافي الدين» ' + ltr(num(d.debt_net)) + ' — الفرق ' + ltr(num(d.debt_gap)) + ' النظام بيطرحه. راجع تفاصيل الديون لتفسير الفرق.</div>';
   if (d.incoming_cost) html += '<div class="state" style="text-align:start;font-size:12px">بضاعة جاية (طلبيات تحت الاستلام) بتكلفة ' + ltr(num(d.incoming_cost)) + ' — مش محسوبة فوق عشان ماتتعدّش مرتين.</div>';
+  /* الماضي المقفول: اللي دخّلته من جيبك مقابل رأس المال الافتتاحي (نقطة البداية) */
+  var inv = d.inputs.past_invested, bs = d.base ? d.base.net : null;
+  if (inv != null){
+    var res = (bs != null) ? bs - inv : null;
+    html += card('الماضي (مقفول)', res == null ? '' : ltr(num(res)),
+      row('دخّلته من جيبك', 'توريد مباشر على الفترة السابقة', ltr(num(inv))) +
+      row('رأس المال الافتتاحي', bs == null ? 'ثبّت نقطة بداية عشان يتحسب' : (d.base.label + ' · ' + d.base.date), bs == null ? badge('نقطة البداية', 'warn') : ltr(num(bs))) +
+      (res == null ? '' : row('نتيجة الماضي', res < 0 ? 'اللي استهلكته الصيدلية ومرجعش' : 'مكسب', '<b style="color:var(--' + (res < 0 ? 'bad' : 'ok') + ')">' + ltr(num(res)) + '</b>')));
+  }
+  /* القيمة السوقية التقديرية للبيع — منفصلة عن الصافي والعداد */
+  var avg = d.inputs.avg_daily_sales;
+  if (avg != null && avg > 0){
+    var lo = avg / 1000 * 100000, hi = avg / 1000 * 150000;
+    html += card('القيمة التقديرية للبيع', ltr(num(d.net + lo)) + ' – ' + ltr(num(d.net + hi)),
+      row('الرخصة والسمعة', 'متوسط مبيعات ' + ltr(num(avg)) + ' يوميًا × ١٠٠–١٥٠ ألف لكل ١٠٠٠', ltr(num(lo)) + ' – ' + ltr(num(hi))) +
+      row('الصافي الحالي', 'أصول − التزامات', ltr(num(d.net))) +
+      '<div class="state" style="text-align:start;font-size:12px;padding:8px 0 0">تقدير سوق لو اتباعت، مش داخل في الصافي ولا العداد. سقف متفائل مش سعر مضمون.</div>');
+  }
   var f = function(id, lab, val){
     return '<label style="display:block;margin:8px 0 4px;font-size:13px;color:var(--ink-2)">' + lab + '</label>' +
       '<input id="bal_' + id + '" inputmode="decimal" autocomplete="off" value="' + (val === null || val === undefined ? '' : esc(val)) + '" ' +
@@ -2994,6 +3012,7 @@ function drawBalance(){
     f('cash', 'الكاش (خزنة + درج)', d.inputs.cash) + f('bank', 'البنك / الكروت', d.inputs.bank) +
     f('salaries', 'مرتبات مستحقة', d.inputs.salaries) + f('other_assets', 'أصول تانية (اختياري)', d.inputs.other_assets) +
     f('other_liabs', 'دين الجمعية / التزامات تانية', d.inputs.other_liabs) +
+    f('past_invested', 'اللي دخّلته من جيبك في الماضي (للمقارنة)', d.inputs.past_invested) + f('avg_daily_sales', 'متوسط المبيعات اليومي (لتقدير القيمة)', d.inputs.avg_daily_sales) +
     '<button class="btn btn-primary" style="margin-top:12px" onclick="balSave()">حفظ</button>' +
     '<div class="group-title" style="margin-top:14px">نقطة بداية</div>' +
     '<input id="bal_label" value="' + esc('بداية ' + new Date().toLocaleDateString('ar-EG', { month: 'long' })) + '" ' +
@@ -3004,7 +3023,7 @@ function drawBalance(){
 }
 function balSave(){
   var p = {};
-  ['cash', 'bank', 'salaries', 'other_assets', 'other_liabs'].forEach(function(k){ p[k] = document.getElementById('bal_' + k).value; });
+  ['cash', 'bank', 'salaries', 'other_assets', 'other_liabs', 'past_invested', 'avg_daily_sales'].forEach(function(k){ p[k] = document.getElementById('bal_' + k).value; });
   api('setBalanceInputs', p).then(function(d){
     if (d && d.ok){ BAL.data = d; drawBalance(); toast('✓ تم الحفظ'); } else if (!(d && d.pinError)) toast((d && d.error) || tr('failed'));
   }).catch(function(){ toast(tr('failed')); });

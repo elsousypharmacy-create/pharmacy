@@ -315,3 +315,9 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 - Also: `body.light` is now applied before first paint when the saved theme is light (it used to flip from dark after load).
 - Tested with Playwright and mocked network (no admin PIN here): splash present at first paint, staged updates keep it up, removed ~1.1 s after the last update, 9.5 s cap with no fresh data, dark + light. NOT tested against the live Apps Script data.
 - Rollback: revert the PR (GitHub Pages updates in ~2 min).
+
+## PIN kept asking again (2026-11-08)
+- Symptom: the owner types the PIN and the dashboard asks again. Reproduced with a mocked server that accepts PIN 1234: the PIN was saved and then DELETED. Cause: the home page starts several requests at once before a PIN exists; each gets `lockError`; the first one prompts and saves the PIN, but the other (older) responses then ran `localStorage.removeItem('adminPin')` and wiped the new PIN, so every visit asked again.
+- Fix in `api()` and `post()`: a `lockError` only deletes the stored PIN if THAT request actually sent it; if a PIN was saved after the request left, it retries with the saved PIN (no second prompt, no delete). Wrong PINs still get cleared and asked again.
+- Also `normPin()`: Arabic-Indic and Persian digits typed on an Arabic keyboard are converted to ASCII (the server compares the PIN as an exact string) and every PIN read/write goes through it.
+- Tested with Playwright + mock (typed ١٢٣٤, 1234, wrong 9999; reload → 0 extra prompts for right PINs). NOT tested with the real server/PIN. If it still loops with a correct PIN, check that Script Property `ADMIN_PIN` exists and is ASCII digits.

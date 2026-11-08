@@ -709,7 +709,32 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(prefers-reduced-motion:reduce){.sync-loader,.refresh-spinning svg{animation:none}}
 </style>
 </head>
-<body><div id="sSplash" aria-hidden="true"><img src="icon-192.png?v=2" alt=""><b>صيدلية السوسي</b><span>جارٍ تحميل الأرقام…</span><div class="sbar"><i></i></div></div><script>(function(){try{if(localStorage.getItem('theme')==='light')document.body.classList.add('light')}catch(e){}var s=document.getElementById('sSplash');if(!s)return;var done=false,fresh=false,quiet=null;function hide(){if(done)return;done=true;clearTimeout(quiet);s.classList.add('out');setTimeout(function(){if(s.parentNode)s.parentNode.removeChild(s)},400)}function armQuiet(){if(!fresh||done)return;clearTimeout(quiet);quiet=setTimeout(hide,700)}function markFresh(){if(fresh)return;fresh=true;setTimeout(hide,2500);armQuiet()}setTimeout(hide,9000);function watch(){var sy=document.getElementById('sync'),ph=document.getElementById('p-home');if(!sy||!ph){hide();return}var mo={childList:true,subtree:true,characterData:true};new MutationObserver(function(){if(!fresh&&/آخر اتصال/.test(sy.textContent||''))markFresh()}).observe(sy,mo);new MutationObserver(armQuiet).observe(ph,mo);if(/آخر اتصال/.test(sy.textContent||''))markFresh()}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch);else watch()})();</script>
+<body><div id="sSplash" aria-hidden="true"><img src="icon-192.png?v=2" alt=""><b>صيدلية السوسي</b><span>جارٍ تحميل الأرقام…</span><div class="sbar"><i></i></div></div><script>(function(){try{if(localStorage.getItem('theme')==='light')document.body.classList.add('light')}catch(e){}
+var s=document.getElementById('sSplash');if(!s)return;
+var done=false,fresh=false,t0=Date.now(),tFresh=0,pend=0,lastNet=t0,lastMut=t0,stale={},ph=null,iv=null,of=window.fetch;
+function hide(){if(done)return;done=true;clearInterval(iv);try{if(of)window.fetch=of}catch(e){}s.classList.add('out');setTimeout(function(){if(s.parentNode)s.parentNode.removeChild(s)},400)}
+function act(u){var m=/[?&]action=([^&]+)/.exec(u||'');return m?m[1]:''}
+function isApi(u){return /script\.google\.com|workers\.dev/.test(String(u||''))}
+/* count the dashboard's own requests (and remember answers marked stale) until the splash is gone; never changes the request or the answer */
+if(of){window.fetch=function(){var u=arguments[0];u=(u&&u.url)||u;var api=!done&&isApi(u),a=act(u);if(api){pend++;lastNet=Date.now()}
+var pr=of.apply(this,arguments);
+if(api){pr.then(function(r){try{r.clone().json().then(function(j){if(a){if(j&&j._stale)stale[a]=1;else delete stale[a]}}).catch(function(){})}catch(e){}}).catch(function(){}).then(function(){pend=Math.max(0,pend-1);lastNet=Date.now()})}
+return pr}}
+function check(){if(done)return;var now=Date.now();
+if(ph&&ph.querySelector('.access-card')){hide();return}          /* sign-in / error screens: nothing to wait for */
+if(!fresh)return;
+var busy=!!(ph&&ph.querySelector('.spin'));
+var calm=pend===0&&!Object.keys(stale).length&&now-lastNet>=600&&now-lastMut>=700&&!busy;
+if(calm||now-tFresh>8000)hide()}
+function markFresh(){if(fresh)return;fresh=true;tFresh=Date.now()}
+setTimeout(hide,12000);
+function watch(){var sy=document.getElementById('sync');ph=document.getElementById('p-home');if(!sy||!ph){hide();return}
+var mo={childList:true,subtree:true,characterData:true};
+new MutationObserver(function(){if(!fresh&&/آخر اتصال/.test(sy.textContent||''))markFresh()}).observe(sy,mo);
+new MutationObserver(function(){lastMut=Date.now()}).observe(ph,mo);
+if(/آخر اتصال/.test(sy.textContent||''))markFresh();
+iv=setInterval(check,150)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch);else watch()})();</script>
 
 <header class="top">
   <div class="brand">

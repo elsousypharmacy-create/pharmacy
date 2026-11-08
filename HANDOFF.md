@@ -309,3 +309,9 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 - `nova-monitor.html`: new «خريطة الطريق» section (reads `roadmap[]` from `nova-status.json`), new status label `blocked` = «معلّق». Frontend/data only: no Apps Script, Worker or finance change.
 - `nova-status.json`: roadmap (UX, stickers, WhatsApp, Kimi automation, full ERP), current cycle, tasks, blockers, PR links. `readinessPercent` stays null on purpose (no verified weighted checklist).
 - Update rule: after each checkpoint Claude Code/Cursor edit `nova-status.json` here (data only, ~2 min to appear on GitHub Pages) and add a checkpoint to `nova-rx/HANDOFF.md`.
+
+## Loading splash on the dashboard (2026-11-08)
+- Owner: the home numbers kept changing while the page loaded (cached snapshot, then fresh data, then the chart/cards). `index.html` now shows a full-screen splash (logo + name + moving bar, uses the theme variables) from the first paint. It disappears 700 ms after the home area stops changing once the first fresh data has arrived (`#sync` shows «آخر اتصال»), at most 2.5 s after that, and never later than 9 s after opening (slow/offline server). Shown once per page open only; the 1-minute auto refresh and tab switches do not show it. `pointer-events:none`, so it can never block taps.
+- Also: `body.light` is now applied before first paint when the saved theme is light (it used to flip from dark after load).
+- Tested with Playwright and mocked network (no admin PIN here): splash present at first paint, staged updates keep it up, removed ~1.1 s after the last update, 9.5 s cap with no fresh data, dark + light. NOT tested against the live Apps Script data.
+- Rollback: revert the PR (GitHub Pages updates in ~2 min).

@@ -1992,7 +1992,7 @@ var SECTIONS = {
   stock: [['aging', function(){ return 'الملخص'; }], ['short', function(){ return tr('shortages'); }], ['expTab', function(){ return 'الصلاحية'; }], ['deadTab', function(){ return 'الراكد'; }],
           ['count', function(){ return tr('counts'); }]],
   money: [['month', function(){ return 'الأداء'; }], ['close', function(){ return 'الإغلاق اليومي'; }], ['exp', function(){ return tr('expenses'); }],
-          ['debt',  function(){ return tr('debts'); }], ['bal', function(){ return 'الميزانية'; }]],
+          ['debt',  function(){ return tr('debts'); }], ['bal', function(){ return 'بروجكت إكس'; }]],
   /* الإدارة: مش في الشريط — بتتفتح من ⚙️ */
   admin: [['agents',function(){ return tr('agents'); }], ['docs', function(){ return tr('doctors'); }]]
 };
@@ -2962,7 +2962,8 @@ function balVal(x){
 }
 function drawBalance(){
   var box = document.getElementById('p-money'), d = BAL.data; if (!d) return;
-  var html = vitals('الميزانية', d.as_of ? 'نظام البيع · ' + d.as_of : '', [
+  d.liabs.forEach(function(x){ if (x.k === 'other_liabs') x.label = 'دين الجمعية / التزامات تانية'; });
+  var html = vitals('بروجكت إكس', d.as_of ? 'نظام البيع · ' + d.as_of : '', [
     { value: num(d.net), label: d.missing.length?'صافي مبدئي':'صافي الأصول', tone: d.missing.length?'warn':(d.net >= 0 ? 'ok' : 'bad'),
       note: d.missing.length ? 'بيانات غير مكتملة' : '', sub: '' },
     { value: num(d.assets_total), label: 'الأصول', tone: 'ok' },
@@ -2992,7 +2993,7 @@ function drawBalance(){
     (d.inputs.at ? 'آخر تعديل ' + ltr(d.inputs.at) : 'لسه ماتدخلتش') + '</p></div></div>' +
     f('cash', 'الكاش (خزنة + درج)', d.inputs.cash) + f('bank', 'البنك / الكروت', d.inputs.bank) +
     f('salaries', 'مرتبات مستحقة', d.inputs.salaries) + f('other_assets', 'أصول تانية (اختياري)', d.inputs.other_assets) +
-    f('other_liabs', 'التزامات تانية (اختياري)', d.inputs.other_liabs) +
+    f('other_liabs', 'دين الجمعية / التزامات تانية', d.inputs.other_liabs) +
     '<button class="btn btn-primary" style="margin-top:12px" onclick="balSave()">حفظ</button>' +
     '<div class="group-title" style="margin-top:14px">نقطة بداية</div>' +
     '<input id="bal_label" value="' + esc('بداية ' + new Date().toLocaleDateString('ar-EG', { month: 'long' })) + '" ' +

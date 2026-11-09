@@ -3,9 +3,9 @@ const html=fs.readFileSync(require('path').join(__dirname,'../index.html'),'utf8
 const source=html.slice(html.indexOf('var HOME_PERIOD_CHART_DATA='),html.indexOf('function monthSlideRegular('));
 const c={Date,Math,Number,Array,esc:String,ltr:String,num:String,openMenu:()=>{},row:()=>''};vm.createContext(c);vm.runInContext(source,c);
 let out=c.homePeriodChartHtml({r:{from:'2025-12-31',to:'2026-01-02'},m:{source:'pos-invoices-v1',daily:[{date:'2025-12-30',net:999},{date:'2025-12-31',net:0},{date:'2026-01-02',net:-20},{date:'2026-01-03',net:999}]}});
-assert.equal((out.match(/<circle/g)||[]).length,2);assert(out.includes('2025-12-31'));assert(!out.includes('NaN'));assert(!out.includes(' L'),'missing day must be a gap, not a joined or zero-valued day');assert.equal(c.HOME_PERIOD_CHART_DATA.rows[0].net,0);
+assert.equal((out.match(/<rect/g)||[]).length,2);assert(out.includes('2025-12-31'));assert(!out.includes('NaN'));assert.equal(c.HOME_PERIOD_CHART_DATA.rows.length,2,'missing day must not become an invented zero');assert(!out.includes('2026-01-01</title>'));assert(out.includes('var(--bad)'),'negative net retains warning color');assert.equal(c.HOME_PERIOD_CHART_DATA.rows[0].net,0);
 const daily=Array.from({length:31},(_,i)=>({date:'2026-01-'+String(i+1).padStart(2,'0'),net:i*10}));
-out=c.homePeriodChartHtml({r:{from:'2026-01-01',to:'2026-01-31'},m:{source:'pos-invoices-v1',daily}});assert.equal((out.match(/<circle/g)||[]).length,31,'whole selected month, not last 14 days');
-out=c.homePeriodChartHtml({r:{from:'2026-01-02',to:'2026-01-02'},m:{source:'pos-invoices-v1',daily}});assert.equal((out.match(/<circle/g)||[]).length,1);assert(!out.includes('NaN'));
+out=c.homePeriodChartHtml({r:{from:'2026-01-01',to:'2026-01-31'},m:{source:'pos-invoices-v1',daily}});assert.equal((out.match(/<rect/g)||[]).length,31,'whole selected month, not last 14 days');
+out=c.homePeriodChartHtml({r:{from:'2026-01-02',to:'2026-01-02'},m:{source:'pos-invoices-v1',daily}});assert.equal((out.match(/<rect/g)||[]).length,1);assert(!out.includes('NaN'));
 assert(c.homePeriodChartHtml({r:{from:'2026-01-01',to:'2026-01-31'},m:{daily}}).includes('غير متاح'));
 console.log('Period trend: exact selected dates, full month, zero/negative values, single day and explicit missing-day gaps passed');

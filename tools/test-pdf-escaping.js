@@ -1,0 +1,10 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8');
+let rendered='';const c={Date,Promise,window:{open:()=>({document:{write:s=>rendered=s,close:()=>{}}})},esc:s=>String(s==null?'':s).replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x])),toast:()=>{},tr:String};
+vm.createContext(c);vm.runInContext(html.slice(html.indexOf('function toPDF('),html.indexOf('/* مصادر التصدير')),c);
+const attack='<img src=x onerror=alert(1)>',name='اسم عربي & شركاه';
+c.toPDF([{[attack]:attack,الاسم:name,الصافي:'-88.50'}],'</title><script>alert(2)</script>');
+assert(!rendered.includes('<img'));assert(!rendered.includes('<script>alert(2)'));
+assert(rendered.includes('&lt;img src=x onerror=alert(1)&gt;'));assert(rendered.includes('&lt;/title&gt;'));assert(rendered.includes('اسم عربي &amp; شركاه'));assert(rendered.includes('class="n">-88.50</td>'));
+assert.equal((rendered.match(/<script>/g)||[]).length,1,'only the trusted print script is executable');
+console.log('PDF export: escapes titles, field names and cell data; Arabic and signed numeric values preserved');

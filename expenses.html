@@ -93,7 +93,7 @@ header small{color:var(--ink-2);font-size:12px}
     <button class="fl" id="fNew" onclick="toggleF('new')">لسه متراجعش</button>
     <button class="fl" onclick="copySummary()">📋 ملخص للمدير</button>
   </div>
-  <div id="list"><div class="state"><div class="spin"></div>بيحمّل المصروفات…</div></div>
+  <div id="list"><div class="state"><div class="spin"></div>جارٍ تحميل المصروفات…</div></div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -140,7 +140,7 @@ function toggleF(f){ FILTER = FILTER === f ? '' : f; draw(); }
 function setKind(k){ KIND = KIND === k ? '' : k; draw(); }
 
 function load(){
-  document.getElementById('list').innerHTML = '<div class="state"><div class="spin"></div>بيحمّل المصروفات…</div>';
+  document.getElementById('list').innerHTML = '<div class="state"><div class="spin"></div>جارٍ تحميل المصروفات…</div>';
   Promise.all([api('getExpensesData', { range: RANGE }), api('getExpReviews')]).then(function(r){
     var d = r[0];
     if (!d || !d.ok) throw new Error((d && d.error) || 'مفيش بيانات');
@@ -148,7 +148,7 @@ function load(){
     document.getElementById('upd').textContent = 'صيدلية السوسي · ' + (d.label || '');
     flagAll(); draw();
   }).catch(function(e){
-    document.getElementById('list').innerHTML = '<div class="state err">تعذر تحميل البيانات — ' + esc(e.message || e) + '<br><br><button class="fl" onclick="load()">جرّب تاني</button></div>';
+    document.getElementById('list').innerHTML = '<div class="state err">تعذر تحميل البيانات — ' + esc(e.message || e) + '<br><br><button class="fl" onclick="load()">إعادة المحاولة</button></div>';
   });
 }
 
@@ -223,8 +223,8 @@ function review(id, status){
   var prev = REV[id];
   REV[id] = { status: status, note: note, by: me(), at: 'دلوقتي' }; draw();
   post({ action: 'expReview', id: id, status: status, note: note, by: me() }).then(function(d){
-    if (!d || !d.ok){ REV[id] = prev; draw(); toast((d && d.error) || 'محفظش — جرّب تاني'); }
-  }).catch(function(){ REV[id] = prev; draw(); toast('النت فصل — جرّب تاني'); });
+    if (!d || !d.ok){ REV[id] = prev; draw(); toast((d && d.error) || 'تعذر الحفظ — أعد المحاولة'); }
+  }).catch(function(){ REV[id] = prev; draw(); toast('انقطع الاتصال — أعد المحاولة'); });
 }
 
 /* ملخص قصير يتبعت للمدير على واتساب */

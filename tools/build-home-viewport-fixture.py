@@ -3,9 +3,9 @@ import re,html
 root=Path(__file__).resolve().parent.parent
 source=(root/'index.html').read_text()
 style_href=re.search(r'href="(dashboard-ui\.css[^"]*)"',source).group(1)
-legacy=''.join(re.findall(r'<style>([\s\S]*?)</style>',source))
+legacy=''.join(re.findall(r'<style\b[^>]*>([\s\S]*?)</style>',source))
 fit=source[source.index('function homeFlashViewportBounds('):source.index("if(typeof window!=='undefined' && window.addEventListener){window.addEventListener('resize',staffFlashFit)")]
-(root/'tools/fixtures/home-legacy.css').write_text(legacy.replace('url(fonts/', 'url(../../fonts/'))
+(root/'tools/fixtures/home-legacy.css').write_text('\n'.join(line.rstrip() for line in legacy.replace('url(fonts/', 'url(../../fonts/').splitlines())+'\n')
 fit+=source[source.index('function teamViewportFit('):source.index('function teamCardDetails(')]
 font=''.join(re.findall(r'<link[^>]+fonts.googleapis.com[^>]*>',source))
 nav=re.search(r'<nav class="secnav" id="secnav">[\s\S]*?</nav>',source).group()

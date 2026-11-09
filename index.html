@@ -17,7 +17,7 @@
 </style>
 
 <title>صيدلية السوسي</title>
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
+<link rel="apple-touch-icon" href="icon-192.png?v=2">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2">
 <link rel="manifest" href="manifest-index.json">
 <meta name="apple-mobile-web-app-title" content="صيدلية السوسي">
@@ -1232,11 +1232,13 @@ function adminPin(){
 }
 /* 🔒 لو اللوحة مقفولة: الرقم السري بيتطلب مرة واحدة على الجهاز ده ويتبعت مع كل طلب */
 function storedPin(){ try { return normPin(localStorage.getItem('adminPin')); } catch (e) { return ''; } }
-var PIN_ASK = null, AUTH_REQUIRED=false;
+var PIN_ASK = null, PIN_CANCELLED=false, AUTH_REQUIRED=false;
 function askPinOnce(){
+  if (PIN_CANCELLED) return Promise.resolve('');
   if (!PIN_ASK) PIN_ASK = new Promise(function(res){
     setTimeout(function(){
-      var p = normPin(prompt('🔒 اللوحة مقفولة — اكتب الرقم السري'));
+      var p = normPin(prompt('🔒 أدخل الرقم السري للوحة'));
+      PIN_CANCELLED = !p;
       try { if (p) localStorage.setItem('adminPin', p); } catch (e) {}
       setTimeout(function(){ PIN_ASK = null; }, 2000);
       res(p);
@@ -1295,6 +1297,7 @@ function dashboardSignIn(box){
   box.innerHTML='<section class="card access-card" role="status"><span class="access-icon" aria-hidden="true">⌑</span><h2>سجّل الدخول لعرض البيانات</h2><p>بيانات الصيدلية محمية. أدخل الرقم السري للمتابعة إلى لوحة الإدارة.</p><button class="btn btn-primary" onclick="dashboardLogin()">تسجيل الدخول</button></section>';
 }
 function dashboardLogin(){
+  if(PIN_CANCELLED){PIN_CANCELLED=false;PIN_ASK=null;}
   askPinOnce().then(function(pin){if(pin){AUTH_REQUIRED=false;render(CUR,TAB);}});
 }
 function oops(box, again){
@@ -1816,7 +1819,7 @@ function ctlBtn(label, on, action){
   return '<button class="' + (on ? 'on' : '') + '" onclick="' + action + '">' + label + '</button>';
 }
 function menuRow(icon, tone, title, sub, action){
-  return '<div class="menu-row" onclick="' + action + '">' +
+  return '<div class="menu-row" role="button" tabindex="0" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click()}" onclick="' + action + '">' +
     '<span class="menu-ic" style="--tone:var(--' + tone + ')">' + icon + '</span>' +
     '<div style="flex:1;min-width:0"><b>' + esc(title) + '</b>' +
     (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div>' +
@@ -1865,16 +1868,16 @@ function toPDF(rows, title){
   var cols = Object.keys(rows[0]);
   var w = window.open('', '_blank');
   if (!w) { toast(tr('failed')); return; }
-  var head = cols.map(function(c){ return '<th>' + c + '</th>'; }).join('');
+  var head = cols.map(function(c){ return '<th>' + esc(c) + '</th>'; }).join('');
   var body = rows.map(function(r){
     return '<tr>' + cols.map(function(c){
       var v = r[c] == null ? '' : String(r[c]);
       var isNum = /^[\d.,\-%\s]+$/.test(v);
-      return '<td' + (isNum ? ' dir="ltr" class="n"' : '') + '>' + v + '</td>';
+      return '<td' + (isNum ? ' dir="ltr" class="n"' : '') + '>' + esc(v) + '</td>';
     }).join('') + '</tr>';
   }).join('');
   w.document.write(
-    '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>' + title + '</title>' +
+    '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>' + esc(title) + '</title>' +
     '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap">' +
     '<style>@page{margin:14mm}' +
     'body{font-family:Cairo,-apple-system,"Segoe UI",Tahoma,sans-serif;color:#111;font-size:12px}' +
@@ -1886,7 +1889,7 @@ function toPDF(rows, title){
     '.n{direction:ltr;unicode-bidi:isolate}' +
     'tr:nth-child(even) td{background:#fafbfc}' +
     '</style></head><body>' +
-    '<h1>' + title + ' — صيدلية السوسي</h1>' +
+    '<h1>' + esc(title) + ' — صيدلية السوسي</h1>' +
     '<div class="sub">' + new Date().toLocaleString('en-GB') + ' · ' + rows.length + ' سطر</div>' +
     '<table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table>' +
     '<script>window.onload=function(){(document.fonts?document.fonts.ready:Promise.resolve()).then(function(){setTimeout(function(){window.print();},250);});};<\/script>' +
@@ -3819,7 +3822,7 @@ function teamAttendanceOpen(button){
     var entries=staffCardEntries(HR.kpi.employees || [],HR.live.live || [],d.rows.filter(function(r){return r.date>=from && r.date<=day;}));
     var item=entries.filter(function(x){return staffKey(x.name)===staffKey(name);})[0],rows=item?item.shifts:[];
     box.className='';box.innerHTML='<p class="camera-meta">'+esc(from)+' ← '+esc(day)+'</p>'+staffAttendanceRows(rows);
-  }).catch(function(){if(active())box.innerHTML='تعذر تحميل سجل الفترة. اقفل النافذة واضغط على البصمة للمحاولة تاني.';});
+  }).catch(function(){if(active())box.innerHTML='تعذر تحميل سجل الفترة. أغلق النافذة واضغط على البصمة لإعادة المحاولة.';});
 }
 
 var TEAM_CARD_POSITION='';

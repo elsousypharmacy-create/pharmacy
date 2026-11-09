@@ -10,8 +10,8 @@ const sample={ok:true,lastEntry:'2026-11-02',staleDays:0,sourceError:'',items:[
 const storage=new Map();
 function setup(){
  const timers=new Map();let seq=0,calls=[],reply,auth='owner';
- const box={innerHTML:'',getAttribute:()=> '2026-11-02',insertAdjacentHTML:(p,s)=>box.innerHTML+=s};
- const c={Date,Promise,Math,Number,Array,JSON,HOME_MONTH:null,document:{getElementById:id=>id==='homeDayExpenses'?box:null},
+ const box={innerHTML:'',querySelector:()=>null,getAttribute:()=> '2026-11-02',insertAdjacentHTML:(p,s)=>box.innerHTML+=s};
+ const c={Date,Promise,Math,Number,Array,JSON,HOME_MONTH:null,HOME_FLASH_MODE:false,document:{getElementById:id=>id==='homeDayExpenses'?box:null},
   localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},sessionStorage:{getItem:()=>null},
   storedPin:()=>auth,cairoNow:()=>({date:'2026-11-02'}),isoAdd:()=>'',esc:String,ltr:String,num:String,
   cacheKey:(a,p)=>a+JSON.stringify(p),setTimeout:f=>{timers.set(++seq,f);return seq},clearTimeout:k=>timers.delete(k),

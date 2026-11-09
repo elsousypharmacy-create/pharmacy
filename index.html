@@ -700,7 +700,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=20261103-invoice-daily-average1">
+<link rel="stylesheet" href="dashboard-ui.css?v=20261109-weekly1">
 
 <style>
 .sync-loader{display:inline-block;width:11px;height:11px;border:1.5px solid var(--line);border-top-color:var(--brand);border-radius:50%;vertical-align:middle;animation:sync-rotate .8s linear infinite}
@@ -3737,6 +3737,13 @@ function homeFlashViewportBounds(viewport,header,nav){
   var bottom=Math.min(viewport.bottom,nav?nav.top:viewport.bottom)-8;
   return {top:top,height:Math.max(0,Math.floor(bottom-top))};
 }
+function homeFlashPlaceShortcut(deck,available){
+  var overview=deck.querySelector('[data-flash-key="overview"]');if(!overview)return;
+  var nova=overview.querySelector('.home-nova-shortcut'),head=overview.querySelector('.home-priorities-strip .card-head');if(!nova || !head)return;
+  var compact=available<680,parent=compact?head:overview;
+  if(nova.parentNode!==parent)parent.appendChild(nova);
+  nova.classList.toggle('in-actions',compact);
+}
 function staffFlashFit(){
   teamViewportFit();
   if(typeof window==='undefined' || typeof document.querySelector!=='function')return;
@@ -3746,7 +3753,7 @@ function staffFlashFit(){
   if(deck.classList && deck.classList.contains('home-flash-deck')){
     var viewportTop=window.visualViewport && window.visualViewport.offsetTop || 0;
     var bounds=homeFlashViewportBounds({top:viewportTop,bottom:viewportTop+height},top && top.getBoundingClientRect(),nav && nav.getBoundingClientRect());
-    document.documentElement.style.setProperty('--home-flash-top',bounds.top+'px');document.documentElement.style.setProperty('--home-flash-host-height',bounds.height+'px');available=bounds.height;
+    document.documentElement.style.setProperty('--home-flash-top',bounds.top+'px');document.documentElement.style.setProperty('--home-flash-host-height',bounds.height+'px');available=bounds.height;homeFlashPlaceShortcut(deck,available);
   }
   deck.style.setProperty('--staff-flash-height',available+'px');deck.style.height=available+'px';deck.setAttribute('data-compact',available<600?'true':'false');deck.setAttribute('data-tight',available<450?'true':'false');
 }

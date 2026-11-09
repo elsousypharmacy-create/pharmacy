@@ -421,7 +421,7 @@ function compareShortage(i,j){
 function closeSupplierModal(){$('supplier-modal').classList.remove('on');}
 function supplierPin(){var p=lsGet('novaApiPin'); if(!p){p=window.prompt('أدخل PIN الموردين الخاص بـ NOVA');if(p)lsSet('novaApiPin',p);} return p||'';}
 function supplierSearchCall(pin,retry){
-  return fetch(SUPPLIER_API+'/api/suppliers/search',{method:'POST',headers:{'Content-Type':'application/json','X-Nova-Pin':pin},body:JSON.stringify({query:SUPPLIER_ITEM.name,requestedQty:SUPPLIER_ITEM.qty}),cache:'no-store'})
+  return fetch(SUPPLIER_API+'/api/suppliers/search',{method:'POST',headers:{'Content-Type':'application/json','X-Nova-Pin':pin},body:JSON.stringify({query:SUPPLIER_ITEM.name,requestedQty:SUPPLIER_ITEM.qty,supplierIds:Object.keys(selectedSuppliers()).filter(function(id){return selectedSuppliers()[id];})}),cache:'no-store'})
   .then(function(r){if(r.status===401&&!retry){lsDel('novaApiPin');var next=supplierPin();if(!next)throw new Error('pin-required');return supplierSearchCall(next,true);}if(!r.ok)throw new Error('http-'+r.status);return r.json();});
 }
 function searchShortageSuppliers(){

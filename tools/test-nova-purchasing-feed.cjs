@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+let reads=0;
+const header=['id','code','gtin','namear','nameen','stock','minstock','defaultstock','units','price','lastselleddate'];
+const rows=[['1','00123','0123456789012','صنف تجريبي','Test 20 tabs','2.5','4','10','2','50','2026-11-01'],['2','456','','رصيد غير معلوم','Other','','1','5','1','10','']];
+const sheet={getLastRow:()=>3,getLastColumn:()=>header.length,getRange:(r)=>({getDisplayValues:()=>{reads++;return r===1?[header]:rows;}})};
+const sandbox={STOCK_SHEET_ID:'test',SpreadsheetApp:{openById:()=>({getSheets:()=>[sheet]})},DriveApp:{getFileById:()=>({getLastUpdated:()=>new Date('2026-11-09T00:00:00Z')})},fxCacheGet_:()=>null,fxCachePut_:()=>{},salesVelocity_:()=>({files:2,days:5}),velLookup_:()=>[10],adminPinOk_:p=>p==='fixture-pin',lockedResp_:()=>({ok:false,lockError:true}),jsonResponseStaff:x=>x,console};
+vm.createContext(sandbox);vm.runInContext(fs.readFileSync('server/src/74_nova_purchasing.js','utf8'),sandbox);vm.runInContext(fs.readFileSync('server/src/05_routing.js','utf8'),sandbox);
+let response=sandbox.doPost({postData:{contents:JSON.stringify({action:'novaPurchasingFeed',pin:'wrong'})}});assert.equal(response.lockError,true);assert.equal(reads,0);
+response=sandbox.doPost({postData:{contents:JSON.stringify({action:'novaPurchasingFeed',pin:'fixture-pin'})}});assert.equal(response.ok,true);assert.equal(response.items.length,2);assert.equal(response.items[0].code,'00123');assert.equal(response.items[0].stock,2.5);assert.equal(response.items[0].minStock,4);assert.equal(response.items[0].idealStock,10);assert.equal(response.items[0].dailySales,2);assert.equal(response.items[1].stock,null);assert.equal(response.sourceUpdatedAt,'2026-11-09T00:00:00.000Z');assert(!JSON.stringify(response).includes('fixture-pin'));
+sandbox.salesVelocity_=()=>({files:0,days:5});assert.equal(sandbox.novaPurchasingFeed_().items[0].dailySales,null);
+console.log('PASS protected read-only stock feed, unknown values, leading-zero codes and observed sales');

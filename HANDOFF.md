@@ -349,3 +349,9 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 - Published main commits: plan 19033a5; canonical 6855910; public data 09c62b3; UI 384f66f; progress 40fbd0b; agent protocol 34843f0.
 - Validation: tools/test-erp-roadmap.cjs PASS: schema, 85 unique IDs, dependency order, inline JS syntax, unknown/0/100/weighted/rejected missing-evidence cases. Live public page observed ERP-1.0 and 0/85 with 9 pending review; search BUY-04 and status filter yielded expected task/9 items. Exact mobile viewport/screenshot QA not completed: local Chromium launch blocked by sandbox socket permissions; do not claim mobile pass.
 - Next exact implementation: Claude reconciles current evidence for FND-01 and the nine pending-review IDs, creates a focused linked execution issue, then FND-02 ADR for transactional storage. Update canonical JSON + sanitized mirror + progress + HANDOFF after each accepted batch; no automatic new coding agent dispatch.
+
+
+## Home splash speed adjustment — 2026-11-09
+- Ahmed reported the iPhone Home launch remained on «جارٍ تحميل الأرقام…» too long. Previous splash counted every Apps Script/Worker fetch and waited for stale retries and all Home spinners, allowing secondary cards (for example camera/month detail) to hold the entire screen.
+- Frontend only: splash now hides after the first fresh Home connection settles briefly, or at 5 seconds maximum if the server is slow/offline. Sign-in still hides immediately. Secondary Home data continues loading into its own card placeholders; calculations, endpoints, cache, backend and service worker are unchanged.
+- Commit: 17ca6b7f7129ff0aafe08a25d788cafe0149b872. Live deployment and native iPhone timing not yet verified. No backend deployment required.

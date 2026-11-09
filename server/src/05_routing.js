@@ -198,6 +198,10 @@ function doGet(e) {
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
+    if (data.action === 'novaPurchasingFeed') {
+      if (!adminPinOk_(data.pin)) return lockedResp_();
+      return jsonResponseStaff(novaPurchasingFeed_());
+    }
 
     if (data.action === 'novaWhatsAppBridge') return jsonResponseStaff(novaWaBridge_(data));
     /* 🟢 واتساب */

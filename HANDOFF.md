@@ -360,3 +360,9 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 - Claude سلّم جرد الموجود (FND-01) وتقسيم الأقسام ومسودة ADR التخزين (FND-02) في `nova-rx` PR #90 (docs فقط) + issues #88 و#89. **FND-01 = `for_review`** (مراجعة كود فقط؛ لم يُدخل أي نظام حي)، **FND-02 = `in_progress`** (بلا قياس ولا قرار). لا قبول نهائي قبل مراجعة ChatGPT وتجربة أحمد.
 - `nova-status.json` اتحدّث بالحالتين، واختبار `tools/test-erp-roadmap.cjs` اتعدّل ليتوقع 10 بنود للمراجعة بدل 9 (FND-01 دخل المراجعة).
 - من الجرد: `scanSearch/scanLookup` في Apps Script **من غير مصادقة** (أي حد معاه الرابط يقرا الأسعار والرصيد) — قرار المالك مطلوب.
+
+
+## NOVA purchasing source bridge — 2026-11-10
+- Owner explicitly requested implementation of approved purchasing mockup with custom days, minimum/ideal, Aumet warehouse selection. NOVA PR93 / issue92 tracks frontend+Worker; this PR53 adds read-only `novaPurchasingFeed` POST, adminPinOk_ before any read, schema1, source freshness and real sales observation metadata. No stock, invoices, delivery, finance or bot writes.
+- Local VM checks tools/test-nova-purchasing-feed.cjs PASS (auth rejects before reads, zero vs missing values, leading zero codes), build-server --check PASS. Live Apps Script installation and owner-authenticated stock read still need verification. Auto-updater can install server/Code.js from main after settle window, or dashboard Update server button.
+- Public roadmap BUY-01/03 remain in_progress. Synthetic UI CI and cart unit mocks do not establish operational acceptance. No customer/account credentials or source contents added here.

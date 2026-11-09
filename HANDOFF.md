@@ -355,3 +355,8 @@ Historical Claude routines were «تقرير الكاميرات — الضهر»
 - Ahmed reported the iPhone Home launch remained on «جارٍ تحميل الأرقام…» too long. Previous splash counted every Apps Script/Worker fetch and waited for stale retries and all Home spinners, allowing secondary cards (for example camera/month detail) to hold the entire screen.
 - Frontend only: splash now hides after the first fresh Home connection settles briefly, or at 5 seconds maximum if the server is slow/offline. Sign-in still hides immediately. Secondary Home data continues loading into its own card placeholders; calculations, endpoints, cache, backend and service worker are unchanged.
 - Commit: 17ca6b7f7129ff0aafe08a25d788cafe0149b872. Live deployment and native iPhone timing not yet verified. No backend deployment required.
+
+## ERP-1.0 — FND-01 للمراجعة، FND-02 مسودة (2026-11-09)
+- Claude سلّم جرد الموجود (FND-01) وتقسيم الأقسام ومسودة ADR التخزين (FND-02) في `nova-rx` PR #90 (docs فقط) + issues #88 و#89. **FND-01 = `for_review`** (مراجعة كود فقط؛ لم يُدخل أي نظام حي)، **FND-02 = `in_progress`** (بلا قياس ولا قرار). لا قبول نهائي قبل مراجعة ChatGPT وتجربة أحمد.
+- `nova-status.json` اتحدّث بالحالتين، واختبار `tools/test-erp-roadmap.cjs` اتعدّل ليتوقع 10 بنود للمراجعة بدل 9 (FND-01 دخل المراجعة).
+- من الجرد: `scanSearch/scanLookup` في Apps Script **من غير مصادقة** (أي حد معاه الرابط يقرا الأسعار والرصيد) — قرار المالك مطلوب.

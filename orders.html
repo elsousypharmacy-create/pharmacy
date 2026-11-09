@@ -15,7 +15,17 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
 <link rel="preload" href="fonts/cairo.woff" as="font" type="font/woff" crossorigin>
-<style>@font-face{font-family:'Cairo';src:url(fonts/cairo.woff) format('woff');font-weight:400 800;font-style:normal;font-display:block}</style>
+<style>@font-face{font-family:'Cairo';src:url(fonts/cairo.woff) format('woff');font-weight:400 800;font-style:normal;font-display:block}.supplier-btn{background:#e8f4f1;color:var(--brand);border:1px solid #c7e2dc;padding:6px 9px;font-size:12px;white-space:nowrap}
+#supplier-modal{position:fixed;inset:0;background:#10201d88;z-index:30;display:none;align-items:flex-end;justify-content:center;padding:12px}
+#supplier-modal.on{display:flex}
+.sm-card{width:min(640px,100%);max-height:88vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 10px 50px #0003}
+.sm-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.sm-head h3{margin:0;font-size:17px}
+.sm-select{display:flex;gap:8px;margin:12px 0}.sm-select label{flex:1;border:1px solid var(--line);border-radius:10px;padding:9px;font-size:14px}
+#supplier-modal input[type=checkbox]{width:20px;height:20px;vertical-align:middle;accent-color:var(--brand)}
+.it{flex-wrap:wrap}.it .n{min-width:42%}.supplier-btn{margin-inline-start:auto}
+.sm-row{border:1px solid var(--line);border-radius:12px;padding:11px;margin:8px 0}.sm-row b{display:block}.sm-muted{color:var(--mut);font-size:12px}.sm-actions{display:flex;gap:8px;margin-top:10px}.sm-actions button{flex:1;font-size:13px;padding:8px}
+.sm-note{font-size:12px;color:var(--low);background:var(--lowbg);border-radius:10px;padding:9px;margin-top:10px}
+</style>
 <style>
 :root{--bg:#fff;--card:#fff;--ink:#12302b;--mut:#6b7f7a;--line:#e1e9e7;--soft:#f4f7f6;--brand:#0f7a6b;--bad:#c0392b;--badbg:#fbe9e6;--low:#b7791f;--lowbg:#fdf3df;--ok:#13894f}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -85,6 +95,13 @@ button.q{background:var(--soft);color:var(--brand);border:1px solid var(--line)}
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<div id="supplier-modal" onclick="if(event.target===this)closeSupplierModal()"><div class="sm-card" role="dialog" aria-modal="true">
+<div class="sm-head"><h3 id="sm-title">مقارنة الموردين</h3><button class="q" onclick="closeSupplierModal()">إغلاق</button></div>
+<div class="sm-select"><label><input type="checkbox" id="sm-aumet" checked> أوميت</label><label><input type="checkbox" id="sm-po"> PharmaOverseas</label></div>
+<div class="sm-actions"><button onclick="searchShortageSuppliers()">قارن السعر والتوفر</button><button class="q" onclick="showSupplierDraft()">قائمة التجهيز</button></div>
+<div class="sm-note">المقارنة للعرض فقط. الإضافة هنا تحفظ اختيارك في قائمة تجهيز محلية؛ لا تضيف تلقائيًا لسلة المورد ولا تسجل «اتطلب».</div>
+<div id="sm-results"></div>
+</div></div>
 
 <script>
 var API = 'https://script.google.com/macros/s/AKfycbyETI5UTPwpMFOu-aWoKKHqyppa7ctTVJjckmbTxegDq7E3R3p6aEBzqt275HNL8SBfWg/exec';
@@ -355,7 +372,7 @@ function draw(){
           '<span class="c">' + esc(it.c) + (stk ? ' · ' : '') + stk + esc(who) + '</span></div>' +
           (it.h != null && SEC === 'zero' ? '<span class="c" style="flex:none">' + (it.h < 24 ? Math.round(it.h) + ' س' : (it.h / 24).toFixed(1) + ' يوم') + '</span>' : '') +
           (it.v ? '<span class="rk">' + money(it.v) + ' ج/يوم</span>' : '') +
-          '<span class="qty">' + it.q + '</span></div>';
+          '<span class="qty">' + it.q + '</span><button class="supplier-btn" onclick="compareShortage(' + i + ',' + j + ')">قارن الموردين</button></div>';
       }).join('') + '</div></div>';
   }).join('');
   $('meta').textContent = 'اتحدّثت ' + (DATA.at || '') + ' · ' +
@@ -390,6 +407,52 @@ function syncMark(it, on){
     } else toast('اتحفظ على الجهاز بس — السيرفر مش راد');
   }).catch(function(){ toast('اتحفظ على الجهاز بس — النت مش راضي'); });
 }
+
+// Supplier comparison from this independent Orders page.
+var SUPPLIER_API='https://nova-rx-preview.elsousypharmacy.workers.dev';
+var SUPPLIER_ITEM=null, SUPPLIER_RESULTS=null;
+function selectedSuppliers(){return {aumet:$('sm-aumet').checked,pharmaoverseas:$('sm-po').checked};}
+function compareShortage(i,j){
+  var c=DATA[SEC]&&DATA[SEC][i],it=c&&c.items[j]; if(!it)return;
+  SUPPLIER_ITEM={name:it.n,qty:Math.max(1,Number(it.q)||1),code:it.code||''};
+  $('sm-title').textContent='مقارنة: '+it.n; $('sm-results').innerHTML='<div class="state">اختار الموردين واضغط قارن السعر والتوفر.</div>';
+  $('supplier-modal').classList.add('on');
+}
+function closeSupplierModal(){$('supplier-modal').classList.remove('on');}
+function supplierPin(){var p=lsGet('novaApiPin'); if(!p){p=window.prompt('أدخل PIN الموردين الخاص بـ NOVA');if(p)lsSet('novaApiPin',p);} return p||'';}
+function supplierSearchCall(pin,retry){
+  return fetch(SUPPLIER_API+'/api/suppliers/search',{method:'POST',headers:{'Content-Type':'application/json','X-Nova-Pin':pin},body:JSON.stringify({query:SUPPLIER_ITEM.name,requestedQty:SUPPLIER_ITEM.qty}),cache:'no-store'})
+  .then(function(r){if(r.status===401&&!retry){lsDel('novaApiPin');var next=supplierPin();if(!next)throw new Error('pin-required');return supplierSearchCall(next,true);}if(!r.ok)throw new Error('http-'+r.status);return r.json();});
+}
+function searchShortageSuppliers(){
+  if(!SUPPLIER_ITEM)return;var sel=selectedSuppliers();if(!sel.aumet&&!sel.pharmaoverseas){toast('اختار مورد واحد على الأقل');return;}
+  var box=$('sm-results');box.innerHTML='<div class="state">بدور عند الموردين…</div>';var pin=supplierPin();if(!pin){box.innerHTML='<div class="state">لازم PIN الموردين علشان نبحث.</div>';return;}
+  supplierSearchCall(pin,false).then(function(data){SUPPLIER_RESULTS=data;renderSupplierResults(data,sel);}).catch(function(e){box.innerHTML='<div class="state">'+esc(e.message==='pin-required'?'أدخل PIN الموردين.':e.message==='http-401'?'PIN غير صحيح.':e.message==='http-503'?'ربط الموردين مش جاهز على السيرفر.':'تعذر الاتصال بالموردين. افتح NOVA وجرب حالة المورد.')+'</div>';});
+}
+function renderSupplierResults(data,sel){
+  var rows=[];(data.results||[]).forEach(function(r){(r.offers||[]).forEach(function(x){var o=x.offer||{},id=o.supplierId||'',seller=o.sellerName||o.sellerId||'',price=x.packPrice!=null?x.packPrice:o.netEffectivePrice!=null?o.netEffectivePrice:o.unitPrice; if(!sel[id])return;rows.push({id:id,seller:seller,o:o,price:price,eligible:x.eligible===true,reasons:x.reasons||[]});});});
+  rows.sort(function(a,b){return Number(b.eligible)-Number(a.eligible)||(Number(a.price)||Infinity)-(Number(b.price)||Infinity);});
+  var names={aumet:'أوميت',pharmaoverseas:'PharmaOverseas'};
+  if(!rows.length){$('sm-results').innerHTML='<div class="state">مفيش عروض مطابقة من المورد المحدد. راجع حالة الربط أو جرّب الاسم الإنجليزي.</div>';return;}
+  $('sm-results').innerHTML=rows.map(function(r,ix){var o=r.o,price=r.price,stock=o.stockStatus||'غير محدد',pack=o.packSize&&o.packSize.raw||'',product=o.productName||SUPPLIER_ITEM.name;
+    return '<div class="sm-row"><b>'+esc(names[r.id]||r.id)+(r.seller?' · '+esc(r.seller):'')+'</b><div>'+esc(product)+'</div><div class="sm-muted">'+esc(pack)+' · '+esc(stock)+(price!=null?' · '+esc(money(price))+' ج.م':' · السعر غير متاح')+'</div>'+
+    '<div class="sm-actions"><button class="q" onclick="stageSupplierOffer('+ix+')">أضف لقائمة التجهيز</button></div></div>';}).join('')+
+    '<div class="sm-muted">آخر تحديث: '+esc(data.fetchedAt||'غير متاح')+' · راجع تطابق العبوة والسعر قبل الاختيار.</div>';
+  window._supplierVisibleRows=rows;
+}
+function stageSupplierOffer(ix){
+  var row=(window._supplierVisibleRows||[])[ix];if(!row||!SUPPLIER_ITEM)return;
+  var key='orderSupplierDraft',list=[];try{list=JSON.parse(lsGet(key)||'[]');}catch(e){}
+  var offer=row.o;list.push({supplierId:row.id,supplierName:row.id==='aumet'?'أوميت':'PharmaOverseas',sellerName:row.seller,productId:offer.supplierProductId||'',productName:offer.productName||SUPPLIER_ITEM.name,requestedName:SUPPLIER_ITEM.name,qty:SUPPLIER_ITEM.qty,price:row.price,addedAt:new Date().toISOString()});
+  lsSet(key,JSON.stringify(list));toast('اتضافت لقائمة التجهيز على الجهاز');}
+function showSupplierDraft(){
+  var list=[];try{list=JSON.parse(lsGet('orderSupplierDraft')||'[]');}catch(e){}
+  if(!list.length){$('sm-results').innerHTML='<div class="state">قائمة التجهيز فاضية.</div>';return;}
+  var groups={};list.forEach(function(x){(groups[x.supplierName]=groups[x.supplierName]||[]).push(x);});
+  $('sm-results').innerHTML=Object.keys(groups).map(function(name){return '<div class="sm-row"><b>'+esc(name)+'</b>'+groups[name].map(function(x){return '<div>'+esc(x.productName)+' × '+x.qty+(x.sellerName?' · '+esc(x.sellerName):'')+(x.price!=null?' · '+money(x.price)+' ج.م':'')+'</div>';}).join('')+'</div>';}).join('')+'<button class="q" onclick="clearSupplierDraft()">مسح قائمة التجهيز</button>';
+}
+function clearSupplierDraft(){if(window.confirm('تمسح قائمة التجهيز المحلية؟')){lsDel('orderSupplierDraft');showSupplierDraft();}}
+
 function coText(c, onlyLeft){
   var items = c.items.filter(function(it){ return !onlyLeft || !findMark(it); });
   return { n: items.length, t: '🛒 طلب — قسم ' + c.co + '\n' + today() + '\n\n' + items.map(function(it){ return '• ' + it.n + ' × ' + it.q + ' (' + it.c + ')'; }).join('\n') + '\n\nسعر الصيدلي: ' + money(val(items).k) + ' ج | سعر الجمهور: ' + money(val(items).p) + ' ج' };

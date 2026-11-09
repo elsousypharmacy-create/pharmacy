@@ -437,6 +437,7 @@ function planSave(){PLAN.savedAt=new Date().toISOString();lsSet(PLAN_KEY,JSON.st
 function planAddWarehouse(){
  var v=($('plan-new')?.value||'').trim().slice(0,60);
  if(!v)return toast('اكتب اسم المخزن');
+ if(v==='manual')return toast('اسم محجوز');
  if(PLAN.warehouses.indexOf(v)>=0)return toast('المخزن موجود');
  PLAN.warehouses.push(v);PLAN.enabled.push(v);planSave();
 }
@@ -457,7 +458,7 @@ function planChange(k,field,v){
  var next={warehouse:field==='warehouse'?v:old.warehouse,qty:field==='qty'?Math.floor(Number(v)):old.qty};
  if(!Number.isFinite(next.qty)||next.qty<0)next.qty=0;
  if(next.qty>item.q){toast('الكمية أكبر من النواقص');next.qty=item.q;}
- if(next.warehouse!=='manual'&&PLAN.warehouses.indexOf(next.warehouse)<0)next.warehouse='manual';
+ if(next.warehouse!=='manual'&&PLAN.enabled.indexOf(next.warehouse)<0)next.warehouse='manual';
  PLAN.lines[k]=next;planSave();
 }
 function planFill(){
@@ -481,7 +482,7 @@ function planDraw(){
  var buckets={manual:[]};PLAN.enabled.forEach(function(w){buckets[w]=[];});
  items.forEach(function(it){
  var x=PLAN.lines[it.key];if(!x||!x.qty)return;
- var w=buckets[x.warehouse]?x.warehouse:'manual';buckets[w].push(it);
+ var w=Object.prototype.hasOwnProperty.call(buckets,x.warehouse)?x.warehouse:'manual';buckets[w].push(it);
  });
  html+='<h2>السلال</h2>';
  Object.keys(buckets).forEach(function(w){
@@ -491,7 +492,7 @@ function planDraw(){
  html+='<details><summary>تعديل الأصناف والكميات ('+items.length+')</summary>';
  items.forEach(function(it){
  var x=PLAN.lines[it.key]||{warehouse:'manual',qty:0};
- var options=['manual'].concat(PLAN.enabled.filter(function(w){return w!== 'manual';}));
+ var options=['manual'].concat(PLAN.enabled);
  if(x.warehouse!=='manual'&&options.indexOf(x.warehouse)<0)options.push(x.warehouse);
  html+='<div class="entry"><strong>'+esc(it.name)+'</strong><small>الناقص: '+it.q+'</small><div class="line">'+
  '<select aria-label="المخزن" onchange="planChange('+JSON.stringify(it.key).replace(/"/g,'&quot;')+',\'warehouse\',this.value)">'+

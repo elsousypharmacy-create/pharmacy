@@ -709,7 +709,10 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(prefers-reduced-motion:reduce){.sync-loader,.refresh-spinning svg{animation:none}}
 </style>
 </head>
-<body><div id="sSplash" aria-hidden="true"><img src="icon-192.png?v=2" alt=""><b>صيدلية السوسي</b><span>جارٍ تحميل الأرقام…</span><div class="sbar"><i></i></div></div><script>var done=false,fresh=false,t0=Date.now(),tFresh=0,lastMut=t0,ph=null,iv=null;
+<body><div id="sSplash" aria-hidden="true"><img src="icon-192.png?v=2" alt=""><b>صيدلية السوسي</b><span>جارٍ تحميل الأرقام…</span><div class="sbar"><i></i></div></div><script>(function(){
+try{if(localStorage.getItem('theme')==='light')document.body.classList.add('light')}catch(e){}
+var s=document.getElementById('sSplash');if(!s)return;
+var done=false,fresh=false,t0=Date.now(),tFresh=0,lastMut=t0,ph=null,iv=null;
 function hide(){if(done)return;done=true;clearInterval(iv);s.classList.add('out');setTimeout(function(){if(s.parentNode)s.parentNode.removeChild(s)},400)}
 function markFresh(){if(fresh)return;fresh=true;tFresh=Date.now()}
 function check(){if(done)return;var now=Date.now();
@@ -717,15 +720,6 @@ if(ph&&ph.querySelector('.access-card')){hide();return}
 if(fresh&&(now-tFresh>=450||now-lastMut>=700)){hide();return}
 if(now-t0>=5000)hide()}
 setTimeout(hide,5000);
-function watch(){var sy=document.getElementById('sync');ph=document.getElementById('p-home');if(!sy||!ph){hide();return}
-var mo={childList:true,subtree:true,characterData:true};
-new MutationObserver(function(){if(!fresh&&/آخر اتصال/.test(sy.textContent||''))markFresh()}).observe(sy,mo);
-new MutationObserver(function(){lastMut=Date.now()}).observe(ph,mo);
-if(/آخر اتصال/.test(sy.textContent||''))markFresh();
-iv=setInterval(check,150)}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch);else watch()})();
-
-setTimeout(hide,12000);
 function watch(){var sy=document.getElementById('sync');ph=document.getElementById('p-home');if(!sy||!ph){hide();return}
 var mo={childList:true,subtree:true,characterData:true};
 new MutationObserver(function(){if(!fresh&&/آخر اتصال/.test(sy.textContent||''))markFresh()}).observe(sy,mo);

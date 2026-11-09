@@ -222,3 +222,8 @@ body.team-fit-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}
 #p-hr .staff-hero-minis small{white-space:normal;line-height:1.5}#p-hr .staff-hero-minis b{direction:ltr;unicode-bidi:isolate}#p-home #heroMonth .h-mini>small{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
 /* Daily invoice average stays alongside the period's total invoice count. */
 #p-home #heroMonth .h-mini.invoice-summary>u{display:block!important;font-size:11px!important;line-height:1.5!important;white-space:normal!important;color:var(--ink-2);text-decoration:none}#p-home #heroMonth .invoice-summary>u strong{font-size:13px;font-weight:700;color:var(--ink);display:inline-block;direction:ltr;unicode-bidi:isolate}
+
+/* Reuse the action heading on shorter screens, preserving all three priorities. */
+#p-home .home-priorities-strip .card-head .home-nova-shortcut.in-actions{flex:none;min-height:28px;margin:0;padding:2px 6px;border:0;border-radius:6px;background:none;color:var(--brand);font-size:12px;line-height:1.5}
+#p-home .home-nova-shortcut.in-actions small,#p-home .home-nova-shortcut.in-actions>span:last-child{display:none}
+#p-home .home-nova-shortcut.in-actions b{font-size:12px;line-height:1.5;white-space:nowrap}

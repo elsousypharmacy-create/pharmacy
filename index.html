@@ -4,6 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0A0B0D">
+<script id="novaBootGuard">(function(){
+  function show(){
+    if(document.getElementById('novaBootError'))return;
+    var d=document.createElement('div');d.id='novaBootError';d.setAttribute('role','alert');
+    d.style.cssText='position:fixed;left:12px;right:12px;bottom:96px;z-index:2147483600;background:#3a1618;color:#ffd9d9;border:1px solid #8a3a3d;border-radius:14px;padding:12px 14px;font:600 14px/1.6 Cairo,system-ui,sans-serif;text-align:center';
+    d.textContent='تعذر تشغيل اللوحة بسبب خطأ في الصفحة. لم تتغير أي بيانات.';
+    var b=document.createElement('button');b.type='button';b.textContent='تحديث الصفحة';
+    b.style.cssText='margin-top:8px;display:block;width:100%;min-height:44px;border:0;border-radius:10px;background:#56b0e6;color:#06121b;font:700 14px Cairo,system-ui,sans-serif';
+    b.onclick=function(){location.reload();};d.appendChild(b);
+    (document.body||document.documentElement).appendChild(d);
+    var sp=document.getElementById('sSplash');if(sp)sp.style.display='none';
+  }
+  window.addEventListener('error',function(){if(!window.__novaBooted)show();});
+  window.addEventListener('load',function(){setTimeout(function(){if(!window.__novaBooted)show();},4000);});
+})();</script>
 <style id="novaHomeAccessCss">#novaHomeAccess{display:none;position:fixed;left:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:120;padding:8px 12px;border:1px solid #3978a5;border-radius:24px;background:#132a3b;color:#d9f0ff;text-decoration:none;font:700 12px Cairo,system-ui,sans-serif;box-shadow:0 5px 20px #0008}body.home-flash-mode #novaHomeAccess{display:flex;align-items:center;gap:6px}@media(max-width:380px){#novaHomeAccess{padding:7px 9px;font-size:11px}}</style>
 <style id="sSplashCss">
 #sSplash{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:var(--bg,#0A0B0D);color:var(--ink,#F2F4F7);opacity:1;transition:opacity .3s ease;pointer-events:none;font-family:'Cairo',system-ui,sans-serif}
@@ -775,7 +790,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </nav>
 
 <script src="camera-assessment.js?v=appearance-1"></script>
-<script>
+<script>window.__novaBooted=true;(function(){var e=document.getElementById('novaBootError');if(e)e.remove();})();
 /* ══════════════════════════════════════════════════════════
    صيدلية السوسي — طبقة التطبيق
    ١) القاموس   ٢) المساعدات   ٣) الاتصال بالسيرفر
@@ -1888,8 +1903,7 @@ function toPDF(rows, title){
     '<div class="sub">' + new Date().toLocaleString('en-GB') + ' · ' + rows.length + ' سطر</div>' +
     '<table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table>' +
     '<script>window.onload=function(){(document.fonts?document.fonts.ready:Promise.resolve()).then(function(){setTimeout(function(){window.print();},250);});};<\/script>' +
-    '<a id="novaHomeAccess" href="nova-monitor.html" aria-label="متابعة NOVA Rx" title="متابعة تطوير NOVA Rx">◈ NOVA Rx</a>
-</body></html>');
+    '</body></html>');
   w.document.close();
 }
 
@@ -7194,6 +7208,7 @@ try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 })();
 </script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
+<a id="novaHomeAccess" href="nova-monitor.html" aria-label="متابعة NOVA Rx" title="متابعة تطوير NOVA Rx">◈ NOVA Rx</a>
 </body>
 </html>
 

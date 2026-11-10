@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0A0B0D">
+<style id="novaHomeAccessCss">#novaHomeAccess{display:none;position:fixed;left:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:120;padding:8px 12px;border:1px solid #3978a5;border-radius:24px;background:#132a3b;color:#d9f0ff;text-decoration:none;font:700 12px Cairo,system-ui,sans-serif;box-shadow:0 5px 20px #0008}body.home-flash-mode #novaHomeAccess{display:flex;align-items:center;gap:6px}@media(max-width:380px){#novaHomeAccess{padding:7px 9px;font-size:11px}}</style>
 <style id="sSplashCss">
 #sSplash{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:var(--bg,#0A0B0D);color:var(--ink,#F2F4F7);opacity:1;transition:opacity .3s ease;pointer-events:none;font-family:'Cairo',system-ui,sans-serif}
 #sSplash.out{opacity:0}
@@ -1887,7 +1888,8 @@ function toPDF(rows, title){
     '<div class="sub">' + new Date().toLocaleString('en-GB') + ' · ' + rows.length + ' سطر</div>' +
     '<table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table>' +
     '<script>window.onload=function(){(document.fonts?document.fonts.ready:Promise.resolve()).then(function(){setTimeout(function(){window.print();},250);});};<\/script>' +
-    '</body></html>');
+    '<a id="novaHomeAccess" href="nova-monitor.html" aria-label="متابعة NOVA Rx" title="متابعة تطوير NOVA Rx">◈ NOVA Rx</a>
+</body></html>');
   w.document.close();
 }
 

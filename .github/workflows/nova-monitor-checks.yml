@@ -15,12 +15,14 @@ jobs:
         with: {node-version: '22'}
       - run: node tools/test-erp-roadmap.cjs
       - run: node tools/test-nova-home-progress.cjs
+      - run: node tools/test-nova-index-syntax.cjs
       - run: node tools/test-home-viewport.js
       - run: python3 tools/build-home-viewport-fixture.py
       - run: npm install --no-save --no-package-lock playwright@1.58.2
       - run: node node_modules/playwright/cli.js install --with-deps chromium
       - run: python3 -m http.server 8768 --bind 127.0.0.1 &
       - run: node tools/test-nova-monitor-browser.mjs
+      - run: node tools/test-nova-boot-guard.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

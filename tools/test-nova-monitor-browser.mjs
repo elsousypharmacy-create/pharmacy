@@ -1,7 +1,11 @@
 import {chromium} from 'playwright';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
 const data=JSON.parse(fs.readFileSync('nova-status.json','utf8'));
+// The Home tile shows the owner of the running task. Derive the expected owner from the same data and
+// logic instead of hard-coding a name that changes whenever tasks are reassigned.
+const expectedOwner=createRequire(import.meta.url)('../nova-home-progress.js').summarize(data,Date.parse(data.updatedAt)).owner;
 const browser=await chromium.launch();
 fs.mkdirSync('reports/nova-monitor',{recursive:true});
 try{
@@ -30,7 +34,7 @@ try{
  for(let i=0;i<frames.length;i++){
   const frame=frames[i];await frame.addScriptTag({path:'nova-home-progress.js'});await frame.locator('[data-nova-percent]').waitFor();await frame.waitForFunction(()=>document.querySelector('[data-nova-percent]').textContent.includes('0%'));
   const result=await frame.evaluate(()=>{const tile=document.querySelector('.home-nova-shortcut'),r=tile.getBoundingClientRect();return {width:innerWidth,height:innerHeight,left:r.left,right:r.right,top:r.top,bottom:r.bottom,scroll:document.documentElement.scrollWidth,text:tile.innerText};});
-  assert(result.left>=-1&&result.right<=result.width+1,JSON.stringify(result));assert(result.top>=0&&result.bottom<=result.height,JSON.stringify(result));assert(result.scroll<=result.width+1,JSON.stringify(result));assert(result.text.includes('Kimi'),JSON.stringify(result));
+  assert(result.left>=-1&&result.right<=result.width+1,JSON.stringify(result));assert(result.top>=0&&result.bottom<=result.height,JSON.stringify(result));assert(result.scroll<=result.width+1,JSON.stringify(result));assert(result.text.includes(expectedOwner||'معتمد'),JSON.stringify({expectedOwner,...result}));
   await page.locator('iframe').nth(i).screenshot({path:'reports/nova-monitor/home-'+i+'.png'});
  }
  assert.deepEqual(errors,[]);

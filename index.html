@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preload" href="fonts/cairo.woff" as="font" type="font/woff" crossorigin>
-<style>@font-face{font-family:'Cairo';src:url(fonts/cairo.woff) format('woff');font-weight:400 800;font-style:normal;font-display:block}
+<style>@font-face{font-family:'Cairo';src:url(fonts/cairo.woff) format('woff');font-weight:400 800;font-style:normal;font-display:swap}
 /* Camera coverage is distinct from pages of findings. */
 .cam-chips{flex-wrap:wrap}.cam-chip.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,var(--surface))}.cam-chip.reviewed{color:var(--brand);background:color-mix(in srgb,var(--brand) 12%,var(--surface))}
 .camr-coverage{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0}.camr-camera{padding:12px;border:1px solid var(--line);border-radius:var(--r2);border-inline-start:3px solid var(--ink-3);background:var(--surface-2)}.camr-camera b,.camr-camera small{display:block}.camr-camera small{font-size:12px;color:var(--ink-2);margin-top:4px;line-height:1.7}.camr-camera.reviewed{border-inline-start-color:var(--brand)}.camr-camera.has-notes{border-inline-start-color:var(--warn)}.camr-camera .btn{margin-top:8px;min-height:44px;width:100%}
@@ -2308,6 +2308,7 @@ function docDone(row){
 }
 
 /* ─────── عامة ─────── */
+var HOME_IN_FLIGHT=null;
 function pgHome(){
   if(storedPin())homeCamLatest(true,true); // Fetch saved reports on entry/resume without notifications.
   var box = document.getElementById('p-home');
@@ -2323,7 +2324,8 @@ function pgHome(){
   }
 
   var loadHome = function(again){
-    return Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }), api('getMonthTotalsRaw',{range:'today'}) ])
+    if(HOME_IN_FLIGHT)return HOME_IN_FLIGHT;
+    var request=Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }), api('getMonthTotalsRaw',{range:'today'}) ])
     .then(function(res){
       if(res[1])res[1]._salesSummary=res[2];
       // Only today's complete invoice summary may replace visible financial KPIs.
@@ -2340,8 +2342,10 @@ function pgHome(){
       markSync();
       drawHome(res[0], res[1], false);
       /* الرقم كان قديم شوية والسيرفر السريع بيجيب الجديد دلوقتي: نسأل تاني بعد ثواني */
-      if (again && ((res[0] && res[0]._stale) || (res[1] && res[1]._stale))) setTimeout(function(){ loadHome(false).catch(logErr); }, 5000);
+      if (again && ((res[0] && res[0]._stale) || (res[1] && res[1]._stale))) setTimeout(function(){ if(CUR==='sales' && TAB===0 && !document.hidden) loadHome(false).catch(logErr); }, 5000);
     });
+    HOME_IN_FLIGHT=request.finally(function(){HOME_IN_FLIGHT=null;});
+    return HOME_IN_FLIGHT;
   };
   loadHome(true).catch(function(e){
     logErr(e);
@@ -2367,13 +2371,7 @@ function startAutoRefresh(){
     if (document.hidden) return;          // الشاشة مقفولة أو تبويب تاني
     if (CUR !== 'sales' || TAB !== 0) { stopAutoRefresh(); return; }
     if(storedPin())homeCamLatest(true,true); // Independent of sales success; metadata only, once per visible minute.
-    Promise.all([ api('getHomeBundle'), api('getStaffKPI', { range: 'today' }), api('getMonthTotalsRaw',{range:'today'}) ])
-    .then(function(res){
-      if(res[1])res[1]._salesSummary=res[2];
-      cacheSet('home', {}, { b: res[0], kpi: res[1] });
-      markSync();
-      drawHome(res[0], res[1], false);
-    }).catch(function(e){ logErr(e); });
+    pgHome();
   }, 60000);
 }
 

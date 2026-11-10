@@ -9,7 +9,7 @@
     var active=tasks.filter(function(t){return t.status==='in_progress';}),review=tasks.filter(function(t){return t.status==='for_review';});
     var running=active.find(function(t){return t.assignment&&t.assignment.state==='running';})||active[0];
     var stamp=Date.parse(data&&data.updatedAt);
-    return {percent:weight?Math.round(earned/weight*1000)/10:null,total:tasks.length,verified:tasks.filter(accepted).length,active:active.length,review:review.length,current:running?running.title+' • '+running.owner:review.length?'المهام الجاهزة للمراجعة: '+review.length:'لا توجد مهمة قيد التنفيذ',stale:!Number.isFinite(stamp)||(now||Date.now())-stamp>48*3600e3};
+    return {percent:weight?Math.round(earned/weight*1000)/10:null,total:tasks.length,verified:tasks.filter(accepted).length,active:active.length,review:review.length,owner:running?running.owner:'',current:running?running.title+' • '+running.owner:review.length?'المهام الجاهزة للمراجعة: '+review.length:'لا توجد مهمة قيد التنفيذ',stale:!Number.isFinite(stamp)||(now||Date.now())-stamp>48*3600e3};
   }
   if (typeof module === 'object' && module.exports) {module.exports={accepted:accepted,summarize:summarize};return;}
   var data=null,offline=false,pending=false,scheduled=false;
@@ -20,7 +20,7 @@
       var text=data?s.current+(offline?' • آخر بيانات محفوظة':s.stale?' • يحتاج تحديث':''):'عناوين المهام والمسؤولون والحالات';
       if(small&&small.textContent!==text)small.textContent=text;
       if(!badge){badge=document.createElement('span');badge.dataset.novaPercent='';badge.className='home-nova-percent';tile.insertBefore(badge,tile.lastElementChild);}
-      var value=s.percent===null?'النسبة غير متاحة':s.percent+'% معتمد';if(badge.textContent!==value)badge.textContent=value;
+      var value=s.percent===null?'النسبة غير متاحة':s.percent+'% معتمد'+(s.owner?' • '+s.owner:'');if(badge.textContent!==value)badge.textContent=value;
       var label='NOVA Rx — '+value+' — '+s.current+' — '+s.verified+' من '+s.total+' تم التحقق • '+s.active+' قيد التنفيذ • '+s.review+' للمراجعة'+(offline?' • تعذر التحديث':s.stale?' • البيانات قديمة':'');
       if(tile.getAttribute('aria-label')!==label)tile.setAttribute('aria-label',label);tile.title=label;
     });

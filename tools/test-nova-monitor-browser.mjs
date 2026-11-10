@@ -15,8 +15,8 @@ try{
  assert((await page.locator('[data-task-id="FND-03"]').innerText()).includes('قبول: 0%'));
  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'phone has no horizontal overflow');
  await page.locator('#agentFilter').selectOption('Kimi');assert.equal(await page.locator('#roadmap .item').count(),5);
- await page.locator('#filter').selectOption('queued');assert.equal(await page.locator('#roadmap .item').count(),4);
- await page.locator('#agentFilter').selectOption('all');await page.locator('#filter').selectOption('for_review');assert.equal(await page.locator('#roadmap .item').count(),10);
+ await page.locator('#filter').selectOption('queued');assert.equal(await page.locator('#roadmap .item').count(),data.roadmap.flatMap(p=>p.tasks).filter(t=>t.owner==='Kimi'&&t.status==='queued').length);
+ await page.locator('#agentFilter').selectOption('all');await page.locator('#filter').selectOption('for_review');assert.equal(await page.locator('#roadmap .item').count(),data.roadmap.flatMap(p=>p.tasks).filter(t=>t.status==='for_review').length);
  await page.locator('#search').fill('POS-03');assert.equal(await page.locator('#roadmap .item').count(),1);
  await page.locator('#search').fill('');await page.locator('#filter').selectOption('all');
  await page.screenshot({path:'reports/nova-monitor/phone.png'});

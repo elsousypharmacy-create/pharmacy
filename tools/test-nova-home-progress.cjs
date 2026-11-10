@@ -1,0 +1,13 @@
+const {summarize,accepted}=require('../nova-home-progress.js');
+const assert=require('node:assert/strict');
+const now=Date.now(),task={status:'verified',weight:1,evidence:[{url:'https://github.com/example/commit/1'}],verifiedAt:new Date(now).toISOString(),verification:{reviewer:'ChatGPT',result:'pass'}};
+assert.equal(summarize(null,now).percent,null);
+const data={updatedAt:new Date(now).toISOString(),roadmap:[{weight:1,tasks:[{status:'queued',title:'مهمة',owner:'Kimi'}]}]};
+assert.equal(summarize(data,now).percent,0);assert.equal(summarize(data,now).stale,false);
+assert.equal(summarize({...data,updatedAt:'2020-01-01'},now).stale,true);
+assert.equal(summarize({...data,roadmap:[{weight:1,tasks:[task]}]},now).percent,100);
+assert.equal(summarize({...data,roadmap:[{weight:1,tasks:[task]},{weight:3,tasks:[{status:'queued'}]}]},now).percent,25);
+assert.equal(accepted({...task,evidence:[]}),false);assert.equal(accepted({...task,status:'done'}),false);
+const running={status:'in_progress',owner:'Kimi',title:'نموذج المجال',assignment:{state:'running'}};
+assert.equal(summarize({...data,roadmap:[{weight:1,tasks:[{status:'in_progress',owner:'Claude',title:'تخزين'},running]}]},now).current,'نموذج المجال • Kimi');
+console.log('PASS NOVA home: unknown/0/100/weighted/stale/incomplete evidence/current Kimi');

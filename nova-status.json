@@ -1,18 +1,75 @@
 {
   "schemaVersion": 2,
   "planVersion": "ERP-1.0",
-  "updatedAt": "2026-11-10T05:47:06.463Z",
-  "phase": "ERP الكامل — تثبيت خط الأساس ثم النواة المعاملاتية",
+  "updatedAt": "2026-11-10T09:31:00+03:00",
+  "phase": "التركيز الحالي: موديول المشتريات فقط — بوابة قبول Premium",
   "goal": "ERP صيدلي عربي سريع وسهل: السوسي أولًا، ثم صيدليات وفروع متعددة",
   "readinessPercent": null,
   "readinessNote": "نسبة القبول تُحسب من 85 بندًا موزونًا. لم يُسجّل قبول نهائي في هذا الخط الأساس؛ توجد أعمال مبنية تنتظر مطابقة شروط القبول.",
   "currentCycle": {
-    "title": "عرض المهام في الداشبورد ودفعة Kimi التأسيسية",
-    "agent": "ChatGPT — اللوحة والمراجعة • Kimi — 5 مهام مُسندة",
-    "status": "Kimi سلّم مسودتين: FND-03 يحتاج تعديلًا، وFND-05 للمراجعة. ثلاث مهام تنتظر التبعيات؛ لا تشغيل Kimi جارٍ الآن.",
-    "nextOwnerAction": "لا إجراء مطلوب الآن؛ المهام غير معتمدة حتى اكتمال أدلة المراجعة"
+    "title": "إنهاء المشتريات — أوميت وأوفرسيز والسلال والواجهة والاختبارات",
+    "agent": "ChatGPT: أوميت • Claude Sonnet: السلال ثم UX • Gemini: QA • Kimi: النواقص (انتظار) • Grok: QA نهائي (انتظار)",
+    "status": "مهام موزعة على GitHub؛ لا يُعتبر الإسناد بدء تنفيذ أو نجاح اختبار. أوميت PR #112 واختبارات Gemini PR #113 غير معتمدين.",
+    "nextOwnerAction": "Claude يبدأ Issue #115 ويعلن CLAIM بالملفات والفرع، ثم #116 بعد التسليم. لا دمج أو نشر قبل المراجعة."
   },
-  "tasks": [],
+  "tasks": [
+    {
+      "id": "SPRINT-BUY-111",
+      "title": "أوميت: البحث بالمخازن المحددة فقط",
+      "owner": "ChatGPT",
+      "status": "in_progress",
+      "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/111",
+      "prUrl": "https://github.com/elsousypharmacy-create/nova-rx/pull/112",
+      "note": "PR موجود؛ اختبارات فاشلة والتحقق الحي غير مكتمل. لا قبول نهائي.",
+      "progressPercent": null
+    },
+    {
+      "id": "SPRINT-BUY-115",
+      "title": "السلال الحقيقية وإثبات الإضافة والقراءة",
+      "owner": "Claude Sonnet",
+      "status": "queued",
+      "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/115",
+      "note": "مُسند فقط؛ يبدأ بعد CLAIM ويمنع تداخل الملفات.",
+      "progressPercent": null
+    },
+    {
+      "id": "SPRINT-BUY-116",
+      "title": "تصميم المشتريات وتجربة التابلت والموبايل",
+      "owner": "Claude Sonnet",
+      "status": "queued",
+      "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/116",
+      "note": "بعد #115؛ تصميم Premium ولقطات واختبارات.",
+      "progressPercent": null
+    },
+    {
+      "id": "SPRINT-BUY-101",
+      "title": "اختبارات منع التكرار واسترجاع الطلب",
+      "owner": "Gemini",
+      "status": "for_review",
+      "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/101",
+      "prUrl": "https://github.com/elsousypharmacy-create/nova-rx/pull/113",
+      "note": "CHANGES REQUESTED؛ الاختبارات السابقة لا تختبر منطق الإنتاج.",
+      "progressPercent": null
+    },
+    {
+      "id": "SPRINT-BUY-117",
+      "title": "ربط النواقص بالمشتريات",
+      "owner": "Kimi",
+      "status": "queued",
+      "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/117",
+      "note": "في الانتظار؛ لا تشغيل تلقائي مع الليميت والطابور الحالي.",
+      "progressPercent": null
+    },
+    {
+      "id": "SPRINT-BUY-118",
+      "title": "قبول الجودة على النسخة الحية",
+      "owner": "Grok",
+      "status": "queued",
+      "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/118",
+      "note": "بعد الدمج والنشر المعتمد فقط؛ PASS/FAIL/NOT TESTED.",
+      "progressPercent": null
+    }
+  ],
   "roadmap": [
     {
       "id": "FND",
@@ -579,7 +636,7 @@
         "INV"
       ],
       "status": "in_progress",
-      "note": "واجهة المشتريات والسلال وتنفيذ الطلب منشورة؛ القبول التشغيلي والاستلام/المطابقة ما زالا قيد العمل.",
+      "note": "أولوية اليوم؛ راجع قائمة Sprint بالأعلى. النسب لا تُحتسب إنجازًا دون اختبار ودليل قبول.",
       "tasks": [
         {
           "id": "BUY-01",
@@ -592,7 +649,7 @@
           "evidence": [],
           "verifiedAt": null,
           "verification": null,
-          "note": "PR93/94 منشوران؛ مصدر المخزون مركب ويتطلب المصادقة. CI وتحقق فتح خانة الرقم ناجحان، قراءة بيانات المالك الصحيحة لم تُختبر بعد."
+          "note": "PR93/94 منشوران؛ مصدر المخزون مركب ويتطلب المصادقة. CI وتحقق فتح خانة الرقم ناجحان، قراءة بيانات المالك الصحيحة لم تُختبر بعد. | #117 Kimi queued: ربط النواقص؛ ليس بدء تنفيذ."
         },
         {
           "id": "BUY-02",
@@ -625,7 +682,7 @@
           ],
           "verifiedAt": null,
           "verification": null,
-          "note": "PR96/97 منشوران: تنسيق مضغوط وبار NOVA ودائرة تقدم وأرقام إنجليزية، واختيار المخازن مشترك مع بحث البيع. الاختبارات نجحت؛ قبول المالك باقي. PR102 نُشر: توضيح استبعاد أوميت عند غياب اختيار المخازن، واختيارها من بحث البيع مع حفظ وإعادة البحث. browser fixtures PASS؛ ظهور الزر والسبب حيًا تم التحقق منه، البحث الموثق بحساب المالك لم يُختبر في هذه الدفعة. الاختيارات لكل متصفح."
+          "note": "PR96/97 منشوران: تنسيق مضغوط وبار NOVA ودائرة تقدم وأرقام إنجليزية، واختيار المخازن مشترك مع بحث البيع. الاختبارات نجحت؛ قبول المالك باقي. PR102 نُشر: توضيح استبعاد أوميت عند غياب اختيار المخازن، واختيارها من بحث البيع مع حفظ وإعادة البحث. browser fixtures PASS؛ ظهور الزر والسبب حيًا تم التحقق منه، البحث الموثق بحساب المالك لم يُختبر في هذه الدفعة. الاختيارات لكل متصفح. | #111 / PR #112: مخازن أوميت؛ لم يكتمل القبول."
         },
         {
           "id": "BUY-04",
@@ -633,7 +690,7 @@
           "acceptance": "قائمة تجهيز محلية موسومة بوضوح؛ adapter لسلة المورد بعد اكتشاف موثق؛ تأكيد read-back لمعرف وكمية كل صنف؛ فشل جزئي وإعادة آمنة؛ لا ادعاء تم الإضافة قبل التأكيد.",
           "weight": 1,
           "status": "for_review",
-          "owner": "ChatGPT",
+          "owner": "Claude Sonnet + Gemini QA",
           "reviewer": "ChatGPT",
           "evidence": [
             {
@@ -651,7 +708,7 @@
           ],
           "verifiedAt": null,
           "verification": null,
-          "note": "PR98/99/100: سلة أوميت وأوفرسيز فعليتان مع تأكيد وread-back وسجل D1 يمنع التكرار. قراءتا الحسابين نجحتا في42754557565؛ الكتابة الحية لقائمة مطلوبة فعلًا لم تُختبر. حالة المراجعة لا تعني قبولًا نهائيًا."
+          "note": "PR98/99/100: سلة أوميت وأوفرسيز فعليتان مع تأكيد وread-back وسجل D1 يمنع التكرار. قراءتا الحسابين نجحتا في42754557565؛ الكتابة الحية لقائمة مطلوبة فعلًا لم تُختبر. حالة المراجعة لا تعني قبولًا نهائيًا. | #115 السلة الحقيقية و#101 / PR #113 اختبارات Gemini تحتاج تعديل."
         },
         {
           "id": "BUY-05",

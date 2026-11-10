@@ -2370,8 +2370,7 @@ function startAutoRefresh(){
   AUTO_TIMER = setInterval(function(){
     if (document.hidden) return;          // الشاشة مقفولة أو تبويب تاني
     if (CUR !== 'sales' || TAB !== 0) { stopAutoRefresh(); return; }
-    if(storedPin())homeCamLatest(true,true); // Independent of sales success; metadata only, once per visible minute.
-    pgHome();
+    pgHome(); // pgHome already handles camera metadata; avoid a duplicate request.
   }, 60000);
 }
 

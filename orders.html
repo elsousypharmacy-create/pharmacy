@@ -70,6 +70,17 @@ button.q{background:var(--soft);color:var(--brand);border:1px solid var(--line)}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#12302b;color:#fff;padding:10px 18px;border-radius:99px;font-size:14px;display:none;z-index:9}
 .lnk{background:none;color:var(--mut);font-size:12px;font-weight:400;padding:6px;margin-top:14px}
 </style>
+<style>
+/* Warehouse draft planner — local-only until Omeet API is verified */
+.planner{margin:12px 0}.planner h2{font-size:17px;margin:0 0 8px}.planner .hint{font-size:12px;color:var(--mut);margin:5px 0 10px}
+.planner .line{display:flex;gap:7px;align-items:center;margin:8px 0}.planner .line input{min-width:0;flex:1}.planner .line button{flex:none}
+.planner .ware{display:flex;flex-wrap:wrap;gap:7px}.planner .ware label{border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:13px}
+.planner .ware input{width:auto;margin-left:6px}.planner .entry{border-top:1px solid var(--line);padding:10px 0}
+.planner .entry strong{display:block;font-size:13px}.planner .entry .line select{flex:2;min-width:0;font-size:13px;padding:8px}
+.planner .entry .line input{width:70px;flex:0 0 70px;font-size:14px;padding:8px}
+.planner .basket{padding:10px;border:1px solid var(--line);border-radius:12px;margin:8px 0}
+.planner .basket button{font-size:12px;padding:8px}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -87,6 +98,7 @@ button.q{background:var(--soft);color:var(--brand);border:1px solid var(--line)}
       <button class="q" onclick="copyAll()">نسخ الكل</button>
       <button class="q" onclick="load(true)">تحديث</button>
     </div>
+    <div id="planner" class="box planner"></div>
     <div id="vals"></div>
     <div id="score"></div>
     <div id="lost"></div>
@@ -314,6 +326,7 @@ function key(it){ return itemKey(it); }
 
 function draw(){
   if (!DATA) return;
+  planDraw();
   $('t-zero').textContent = '🔴 خلص خالص (' + cnt('zero') + ')';
   $('t-low').textContent = '🟡 قرب يخلص (' + cnt('low') + ')';
   $('t-zero').className = 'z' + (SEC === 'zero' ? ' on' : '');
@@ -478,7 +491,83 @@ function copyAll(){
   if (!parts.length) return toast('مفيش حاجة تتنسخ');
   copyTxt(parts.map(function(r){ return r.t; }).join('\n\n──────────\n\n'));
 }
+
+/* Local draft only. No Omeet integration or remote order execution. */
+var PLAN_KEY='ordersWarehouseDraftV1';
+var PLAN={warehouses:[],enabled:[],lines:{},savedAt:''};
+function planLoad(){try{var p=JSON.parse(lsGet(PLAN_KEY)||'null');if(p&&Array.isArray(p.warehouses)&&p.lines&&typeof p.lines==='object')PLAN=p;}catch(e){}}
+function planSave(){PLAN.savedAt=new Date().toISOString();lsSet(PLAN_KEY,JSON.stringify(PLAN));planDraw();}
+function planAddWarehouse(){
+ var v=($('plan-new')?.value||'').trim().slice(0,60);
+ if(!v)return toast('اكتب اسم المخزن');
+ if(v==='manual')return toast('اسم محجوز');
+ if(PLAN.warehouses.indexOf(v)>=0)return toast('المخزن موجود');
+ PLAN.warehouses.push(v);PLAN.enabled.push(v);planSave();
+}
+function planToggleWarehouse(i,on){
+ var n=PLAN.warehouses[i];PLAN.enabled=PLAN.enabled.filter(function(x){return x!==n;});
+ if(on)PLAN.enabled.push(n);planSave();
+}
+function planSourceItems(){
+ var m={};if(!DATA)return [];
+ ['zero','low'].forEach(function(sec){(DATA[sec]||[]).forEach(function(c){(c.items||[]).forEach(function(it){
+ var k=itemKey(it);if(!k)return;var q=Math.max(0,Math.floor(Number(it.q)||0));
+ if(!m[k]||q>m[k].q)m[k]={key:k,name:it.n,q:q,code:it.code||''};
+ });});});return Object.keys(m).map(function(k){return m[k];});
+}
+function planChange(k,field,v){
+ var item=planSourceItems().filter(function(x){return x.key===k;})[0];if(!item)return;
+ var old=PLAN.lines[k]||{warehouse:'manual',qty:0};
+ var next={warehouse:field==='warehouse'?v:old.warehouse,qty:field==='qty'?Math.floor(Number(v)):old.qty};
+ if(!Number.isFinite(next.qty)||next.qty<0)next.qty=0;
+ if(next.qty>item.q){toast('الكمية أكبر من النواقص');next.qty=item.q;}
+ if(next.warehouse!=='manual'&&PLAN.enabled.indexOf(next.warehouse)<0)next.warehouse='manual';
+ PLAN.lines[k]=next;planSave();
+}
+function planFill(){
+ planSourceItems().forEach(function(it){if(!PLAN.lines[it.key])PLAN.lines[it.key]={warehouse:'manual',qty:it.q};});
+ planSave();
+}
+function planCopy(w){
+ var items=planSourceItems().filter(function(it){var x=PLAN.lines[it.key];return x&&x.warehouse===w&&x.qty>0;});
+ if(!items.length)return toast('السلة فاضية');
+ copyTxt('مسودة طلب — '+w+' (لم يتم الإرسال)\\n'+items.map(function(it){return it.name+' × '+PLAN.lines[it.key].qty;}).join('\\n'));
+}
+function planDraw(){
+ var el=$('planner');if(!el)return;
+ var items=planSourceItems();
+ var wh=PLAN.warehouses;
+ var html='<h2>تجهيز سلال النواقص</h2><p class="hint">مسودات على الجهاز ده فقط. أسماء المخازن تُدخل يدويًا حاليًا، ومفيش اتصال بأوميت أو تنفيذ طلبات.</p>'+
+ '<div class="line"><input id="plan-new" placeholder="اسم مخزن جديد" maxlength="60"><button type="button" onclick="planAddWarehouse()">إضافة مخزن</button></div>'+
+ '<div class="ware">'+wh.map(function(w,i){return '<label><input type="checkbox" '+(PLAN.enabled.indexOf(w)>=0?'checked':'')+' onchange="planToggleWarehouse('+i+',this.checked)">'+esc(w)+'</label>';}).join('')+'</div>'+
+ '<p class="hint">اختيار المخزن بيحدد ظهوره في القائمة، ومش بيبعت أي طلب.</p>'+
+ '<div class="line"><button type="button" class="q" onclick="planFill()">تجهيز كل النواقص كمسودة يدوية</button></div>';
+ var buckets={manual:[]};PLAN.enabled.forEach(function(w){buckets[w]=[];});
+ items.forEach(function(it){
+ var x=PLAN.lines[it.key];if(!x||!x.qty)return;
+ var w=Object.prototype.hasOwnProperty.call(buckets,x.warehouse)?x.warehouse:'manual';buckets[w].push(it);
+ });
+ html+='<h2>السلال</h2>';
+ Object.keys(buckets).forEach(function(w){
+ html+='<div class="basket"><b>'+esc(w==='manual'?'يدوي':w)+'</b> · '+buckets[w].length+' صنف'+
+ '<div class="line"><button type="button" class="q" onclick="planCopy('+JSON.stringify(w).replace(/"/g,'&quot;')+')">نسخ المسودة</button></div></div>';
+ });
+ html+='<details><summary>تعديل الأصناف والكميات ('+items.length+')</summary>';
+ items.forEach(function(it){
+ var x=PLAN.lines[it.key]||{warehouse:'manual',qty:0};
+ var options=['manual'].concat(PLAN.enabled);
+ if(x.warehouse!=='manual'&&options.indexOf(x.warehouse)<0)options.push(x.warehouse);
+ html+='<div class="entry"><strong>'+esc(it.name)+'</strong><small>الناقص: '+it.q+'</small><div class="line">'+
+ '<select aria-label="المخزن" onchange="planChange('+JSON.stringify(it.key).replace(/"/g,'&quot;')+',\'warehouse\',this.value)">'+
+ options.map(function(w){return '<option value="'+esc(w)+'" '+(x.warehouse===w?'selected':'')+'>'+esc(w==='manual'?'يدوي':w)+'</option>';}).join('')+'</select>'+
+ '<input type="number" min="0" max="'+it.q+'" aria-label="الكمية" value="'+x.qty+'" onchange="planChange('+JSON.stringify(it.key).replace(/"/g,'&quot;')+',\'qty\',this.value)"></div></div>';
+ });
+ html+='</details><p class="hint">آخر حفظ: '+esc(PLAN.savedAt?new Date(PLAN.savedAt).toLocaleString('ar-EG'):'لسه مفيش')+' · لا يوجد زر إرسال حتى يتم التحقق من تكامل أوميت.</p>';
+ el.innerHTML=html;
+}
+
 (function(){
+  planLoad();
   loadDone();
   load();
 })();

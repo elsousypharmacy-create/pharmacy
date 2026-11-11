@@ -1,15 +1,15 @@
 {
   "schemaVersion": 2,
   "planVersion": "ERP-1.0",
-  "updatedAt": "2026-11-11T09:30:51.000Z",
+  "updatedAt": "2026-11-11T09:47:36.000Z",
   "phase": "ERP الكامل — النواة الأربعة: الأصناف والبيع والمخزون والمشتريات",
   "goal": "ERP صيدلي عربي سريع وسهل: السوسي أولًا، ثم صيدليات وفروع متعددة",
   "readinessPercent": null,
-  "readinessNote": "المقبول فعليًا 0 من 85. المدموج كود: دليل الأصناف فقط، وكله مش موصّل بأي شاشة. ما فيش نشر ولا طلبات حقيقية للموردين.",
+  "readinessNote": "المقبول فعليًا 0 من 85. المدموج كود (وحدات مش موصّلة بشاشة): الأصناف وتحويل الوحدات وسجل التدقيق. ما فيش نشر ولا طلبات حقيقية للموردين.",
   "currentCycle": {
     "title": "إنهاء النواة الأربعة (أصناف • بيع • مخزون • مشتريات)",
-    "agent": "Claude (إدارة وتنفيذ) • ChatGPT (مراجعة مستقلة)",
-    "status": "الأصناف مدموجة. تحويل الوحدات وسجل التدقيق جاهزين للدمج. عزل الصيدليات ونواة المخزون على فروع. لا شيء موصّل بالشاشة بعد.",
+    "agent": "Claude 2 (إدارة ومراجعة) • Claude 1 (تنفيذ)",
+    "status": "الأصناف وتحويل الوحدات وسجل التدقيق مدموجين. عزل الصيدليات ونواة المخزون على فروع. لا شيء موصّل بالشاشة بعد.",
     "nextOwnerAction": "لا إجراء الآن. قراراتك المطلوبة لاحقًا: قاعدة البيانات، سياسة الأسعار والضريبة، مصدر بيانات العبوات، وأي طلب حقيقي من الموردين."
   },
   "tasks": [],
@@ -30,7 +30,7 @@
           "weight": 1,
           "status": "for_review",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/90",
@@ -49,7 +49,7 @@
           "weight": 1,
           "status": "in_progress",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/90",
@@ -67,8 +67,8 @@
           "acceptance": "توثيق tenant/branch/user/product/variant/unit/batch/stockMovement/invoice/payment/return/purchaseOrder/receipt/journal؛ مفاتيح ثابتة وقيود العلاقات وحالات المستندات.",
           "weight": 1,
           "status": "for_review",
-          "owner": "Kimi",
-          "reviewer": "ChatGPT",
+          "owner": "Claude",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/103",
@@ -103,8 +103,8 @@
           "acceptance": "OpenAPI للقراءة والكتابة؛ أخطاء عربية برمز ثابت وrequestId؛ pagination ومهلات وإعادة محاولة آمنة وidempotency للكتابة.",
           "weight": 1,
           "status": "for_review",
-          "owner": "Kimi",
-          "reviewer": "ChatGPT",
+          "owner": "Claude",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/104",
@@ -137,8 +137,8 @@
           "acceptance": "development/staging/production منفصلة؛ migrations مرقمة؛ سجل نسخة ونشر واسترجاع؛ منع نشر artifact قديم فوق تحديث أحدث.",
           "weight": 1,
           "status": "for_review",
-          "owner": "Kimi",
-          "reviewer": "ChatGPT",
+          "owner": "Claude",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/105",
@@ -177,7 +177,7 @@
         "FND"
       ],
       "status": "in_progress",
-      "note": "تصميم الجلسات والصلاحيات اتدمج. وحدتا سجل التدقيق وعزل الصيدليات جاهزتين ومراجَعتين، بس مش موصّلتين.",
+      "note": "تصميم الجلسات والصلاحيات اتدمج. وحدة سجل التدقيق اتدمجت، ووحدة عزل الصيدليات جاهزة على فرع. مفيش حاجة موصّلة.",
       "tasks": [
         {
           "id": "SEC-01",
@@ -185,8 +185,8 @@
           "acceptance": "حسابات فردية بدل PIN مشترك للعمليات؛ انتهاء وإبطال الجلسات وأجهزة موثوقة؛ إعادة تحقق للتصدير والتغييرات الحساسة.",
           "weight": 1,
           "status": "for_review",
-          "owner": "Kimi",
-          "reviewer": "ChatGPT",
+          "owner": "Claude",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/106",
@@ -220,8 +220,8 @@
           "acceptance": "مالك/مدير/صيدلي/كاشير/مخزن/محاسب/توصيل؛ التحقق على السيرفر لكل action؛ منع تصعيد الصلاحية وتسجيل الرفض.",
           "weight": 1,
           "status": "for_review",
-          "owner": "Kimi",
-          "reviewer": "ChatGPT",
+          "owner": "Claude",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/107",
@@ -256,7 +256,7 @@
           "weight": 1,
           "status": "for_review",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/tree/claude/sec-03-scoped-repo",
@@ -276,18 +276,18 @@
           "weight": 1,
           "status": "for_review",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/138",
               "kind": "code",
-              "note": "وحدة سجل التدقيق: 31 اختبار ومراجعة مستقلة PASS (PR مفتوح)",
-              "sha": "3e36416"
+              "note": "وحدة سجل التدقيق: 31 اختبار ومراجعة مستقلة PASS ومدموجة في main (مش موصّلة)",
+              "sha": "caf4aa6"
             }
           ],
           "verifiedAt": null,
           "verification": null,
-          "note": "وحدة جاهزة، مش موصّلة ولا فيها مفتاح توقيع"
+          "note": "مدموجة كوحدة، مش موصّلة ولا فيها مفتاح توقيع"
         },
         {
           "id": "SEC-05",
@@ -296,7 +296,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -313,7 +313,7 @@
         "SEC"
       ],
       "status": "in_progress",
-      "note": "وحدة الأصناف اتدمجت وبتحمّل 4378 صنف. تحويل الوحدات والتسعير بالمليم جاهزين للدمج. مش موصّلة بشاشة البيع.",
+      "note": "وحدة الأصناف وتحويل الوحدات والتسعير بالمليم اتدمجوا وبيحمّلوا 4378 صنف. مش موصّلين بشاشة البيع.",
       "tasks": [
         {
           "id": "CAT-01",
@@ -322,7 +322,7 @@
           "weight": 1,
           "status": "for_review",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/136",
@@ -342,18 +342,18 @@
           "weight": 1,
           "status": "for_review",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/137",
               "kind": "code",
-              "note": "تحويل علبة/شريط/قرص وتسعير بالمليم: مراجعة مستقلة PASS (PR مفتوح)",
-              "sha": "3521bf6"
+              "note": "تحويل علبة/شريط/قرص وتسعير بالمليم: مراجعة مستقلة PASS ومدموج في main (وحدة، مش موصّلة)",
+              "sha": "595b2a8"
             }
           ],
           "verifiedAt": null,
           "verification": null,
-          "note": "جاهز للدمج بعد حل التعارض؛ مش موصّل"
+          "note": "مدموج كوحدة، مش موصّل بشاشة البيع"
         },
         {
           "id": "CAT-03",
@@ -362,7 +362,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -374,7 +374,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -386,7 +386,7 @@
           "weight": 1,
           "status": "in_progress",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/tree/claude/cat-05-search",
@@ -419,7 +419,7 @@
           "weight": 1,
           "status": "in_progress",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/tree/claude/inv-01-core-cycle",
@@ -439,7 +439,7 @@
           "weight": 1,
           "status": "in_progress",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/tree/claude/inv-01-core-cycle",
@@ -459,7 +459,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -471,7 +471,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -483,7 +483,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -510,7 +510,7 @@
           "weight": 1,
           "status": "for_review",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null,
@@ -523,7 +523,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null,
@@ -536,7 +536,7 @@
           "weight": 1,
           "status": "for_review",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null,
@@ -549,7 +549,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null,
@@ -562,7 +562,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -588,7 +588,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -600,7 +600,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -612,7 +612,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -624,7 +624,7 @@
           "weight": 1,
           "status": "for_review",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null,
@@ -637,7 +637,7 @@
           "weight": 1,
           "status": "for_review",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null,
@@ -663,8 +663,8 @@
           "acceptance": "مصدر الطلب Orders مستقل في الواجهة؛ دمج مكرر بالمعرف والوحدة؛ حد أدنى/أقصى ومعدل بيع وlead time؛ لا اعتماد من توقع بلا مراجعة.",
           "weight": 1,
           "status": "in_progress",
-          "owner": "ChatGPT",
-          "reviewer": "ChatGPT",
+          "owner": "Claude",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null,
@@ -677,7 +677,7 @@
           "weight": 1,
           "status": "for_review",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null,
@@ -689,8 +689,8 @@
           "acceptance": "اختيار متعدد لمخازن Aumet واستبعاد محفوظ؛ وضع اقتراح آلي ووضع يدوي؛ مقارنة السعر والتوافر والحد الأدنى والمكافآت والشحن؛ تفسير التوزيع وإمكانية تعديله.",
           "weight": 1,
           "status": "in_progress",
-          "owner": "ChatGPT",
-          "reviewer": "ChatGPT",
+          "owner": "Claude",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/102",
@@ -709,8 +709,8 @@
           "acceptance": "قائمة تجهيز محلية موسومة بوضوح؛ adapter لسلة المورد بعد اكتشاف موثق؛ تأكيد read-back لمعرف وكمية كل صنف؛ فشل جزئي وإعادة آمنة؛ لا ادعاء تم الإضافة قبل التأكيد.",
           "weight": 1,
           "status": "for_review",
-          "owner": "ChatGPT",
-          "reviewer": "ChatGPT",
+          "owner": "Claude",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/98",
@@ -735,8 +735,8 @@
           "acceptance": "مراجعة مجموعات الموردين ثم تأكيد بشري للطلب؛ PO وحالات إرسال/قبول/جزئي/إلغاء؛ مطابقة PO/GRN/فاتورة وتسجيل lot/expiry/cost ومرتجع المورد.",
           "weight": 1,
           "status": "in_progress",
-          "owner": "ChatGPT",
-          "reviewer": "ChatGPT",
+          "owner": "Claude",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/98",
@@ -772,7 +772,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -784,7 +784,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -796,7 +796,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -808,7 +808,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -820,7 +820,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -848,7 +848,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -860,7 +860,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -872,7 +872,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -884,7 +884,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -896,7 +896,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -922,7 +922,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -934,7 +934,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -946,7 +946,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -958,7 +958,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -970,7 +970,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -997,7 +997,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1009,7 +1009,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1021,7 +1021,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1033,7 +1033,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1045,7 +1045,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1071,7 +1071,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1083,7 +1083,7 @@
           "weight": 1,
           "status": "for_review",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null,
@@ -1096,7 +1096,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1108,7 +1108,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1120,7 +1120,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1147,7 +1147,7 @@
           "weight": 1,
           "status": "for_review",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null,
@@ -1160,7 +1160,7 @@
           "weight": 1,
           "status": "for_review",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null,
@@ -1173,7 +1173,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1185,7 +1185,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1197,7 +1197,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1223,7 +1223,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1235,7 +1235,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1247,7 +1247,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1259,7 +1259,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1271,7 +1271,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1298,7 +1298,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1310,7 +1310,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1322,7 +1322,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1334,7 +1334,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1346,7 +1346,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1375,7 +1375,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [
             {
               "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/101",
@@ -1394,7 +1394,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1406,7 +1406,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1418,7 +1418,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1430,7 +1430,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1456,7 +1456,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1468,7 +1468,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1480,7 +1480,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1492,7 +1492,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1504,7 +1504,7 @@
           "weight": 1,
           "status": "queued",
           "owner": "Claude",
-          "reviewer": "ChatGPT",
+          "reviewer": "Claude (مراجعة متبادلة)",
           "evidence": [],
           "verifiedAt": null,
           "verification": null
@@ -1538,7 +1538,7 @@
     {
       "version": "ERP-1.0",
       "date": "2026-11-11",
-      "change": "تحديث الحالة الصادقة: القبول 0/85؛ دليل الأصناف مدموج؛ تحويل الوحدات وسجل التدقيق جاهزين للدمج؛ عزل الصيدليات ونواة المخزون على فروع. لا قبول تلقائي من دمج كود."
+      "change": "حوكمة Claude فقط (ChatGPT وGemini وKimi وGrok خارج العملية)؛ الحالة الصادقة: القبول 0/85؛ الأصناف وتحويل الوحدات وسجل التدقيق مدموجة (وحدات مش موصّلة)؛ باقي الوحدات على فروع. لا قبول تلقائي من دمج كود."
     },
     {
       "version": "ERP-1.0",

@@ -1,16 +1,16 @@
 {
   "schemaVersion": 2,
   "planVersion": "ERP-1.0",
-  "updatedAt": "2026-11-10T05:47:06.463Z",
-  "phase": "ERP الكامل — تثبيت خط الأساس ثم النواة المعاملاتية",
+  "updatedAt": "2026-11-11T09:30:51.000Z",
+  "phase": "ERP الكامل — النواة الأربعة: الأصناف والبيع والمخزون والمشتريات",
   "goal": "ERP صيدلي عربي سريع وسهل: السوسي أولًا، ثم صيدليات وفروع متعددة",
   "readinessPercent": null,
-  "readinessNote": "نسبة القبول تُحسب من 85 بندًا موزونًا. لم يُسجّل قبول نهائي في هذا الخط الأساس؛ توجد أعمال مبنية تنتظر مطابقة شروط القبول.",
+  "readinessNote": "المقبول فعليًا 0 من 85. المدموج كود: دليل الأصناف فقط، وكله مش موصّل بأي شاشة. ما فيش نشر ولا طلبات حقيقية للموردين.",
   "currentCycle": {
-    "title": "عرض المهام في الداشبورد ودفعة Kimi التأسيسية",
-    "agent": "ChatGPT — اللوحة والمراجعة • Kimi — 5 مهام مُسندة",
-    "status": "Kimi سلّم مسودتين: FND-03 يحتاج تعديلًا، وFND-05 للمراجعة. ثلاث مهام تنتظر التبعيات؛ لا تشغيل Kimi جارٍ الآن.",
-    "nextOwnerAction": "لا إجراء مطلوب الآن؛ المهام غير معتمدة حتى اكتمال أدلة المراجعة"
+    "title": "إنهاء النواة الأربعة (أصناف • بيع • مخزون • مشتريات)",
+    "agent": "Claude (إدارة وتنفيذ) • ChatGPT (مراجعة مستقلة)",
+    "status": "الأصناف مدموجة. تحويل الوحدات وسجل التدقيق جاهزين للدمج. عزل الصيدليات ونواة المخزون على فروع. لا شيء موصّل بالشاشة بعد.",
+    "nextOwnerAction": "لا إجراء الآن. قراراتك المطلوبة لاحقًا: قاعدة البيانات، سياسة الأسعار والضريبة، مصدر بيانات العبوات، وأي طلب حقيقي من الموردين."
   },
   "tasks": [],
   "roadmap": [
@@ -20,8 +20,8 @@
       "order": 1,
       "weight": 8,
       "dependencies": [],
-      "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "status": "in_progress",
+      "note": "اتوثق الواقع ومسودات التصميم والعقود. قاعدة البيانات لسه ما اتحددتش (قرارك).",
       "tasks": [
         {
           "id": "FND-01",
@@ -102,7 +102,7 @@
           "title": "عقود API وإصداراتها",
           "acceptance": "OpenAPI للقراءة والكتابة؛ أخطاء عربية برمز ثابت وrequestId؛ pagination ومهلات وإعادة محاولة آمنة وidempotency للكتابة.",
           "weight": 1,
-          "status": "queued",
+          "status": "for_review",
           "owner": "Kimi",
           "reviewer": "ChatGPT",
           "evidence": [
@@ -110,6 +110,11 @@
               "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/104",
               "kind": "issue",
               "note": "تفويض أحمد لـKimi؛ ليس دليل إنجاز."
+            },
+            {
+              "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/126",
+              "kind": "doc",
+              "note": "مسودة عقود API اتدمجت (وثيقة فقط، بدون كود)"
             }
           ],
           "verifiedAt": null,
@@ -123,7 +128,8 @@
               "FND-03"
             ],
             "scope": "مسودة تصميم مستقلة؛ التسليم للمراجعة قبل التنفيذ والتكامل"
-          }
+          },
+          "note": "مسودة وثائق فقط"
         },
         {
           "id": "FND-05",
@@ -170,15 +176,15 @@
       "dependencies": [
         "FND"
       ],
-      "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "status": "in_progress",
+      "note": "تصميم الجلسات والصلاحيات اتدمج. وحدتا سجل التدقيق وعزل الصيدليات جاهزتين ومراجَعتين، بس مش موصّلتين.",
       "tasks": [
         {
           "id": "SEC-01",
           "title": "تسجيل الدخول والجلسات",
           "acceptance": "حسابات فردية بدل PIN مشترك للعمليات؛ انتهاء وإبطال الجلسات وأجهزة موثوقة؛ إعادة تحقق للتصدير والتغييرات الحساسة.",
           "weight": 1,
-          "status": "queued",
+          "status": "for_review",
           "owner": "Kimi",
           "reviewer": "ChatGPT",
           "evidence": [
@@ -186,6 +192,11 @@
               "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/106",
               "kind": "issue",
               "note": "تفويض أحمد لـKimi؛ ليس دليل إنجاز."
+            },
+            {
+              "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/131",
+              "kind": "doc",
+              "note": "تصميم الجلسات اتدمج (وثيقة وبيانات اختبار، بدون كود)"
             }
           ],
           "verifiedAt": null,
@@ -200,14 +211,15 @@
               "FND-04"
             ],
             "scope": "مسودة تصميم مستقلة؛ التسليم للمراجعة قبل التنفيذ والتكامل"
-          }
+          },
+          "note": "تصميم فقط؛ مفيش تسجيل دخول فردي شغال"
         },
         {
           "id": "SEC-02",
           "title": "مصفوفة الصلاحيات",
           "acceptance": "مالك/مدير/صيدلي/كاشير/مخزن/محاسب/توصيل؛ التحقق على السيرفر لكل action؛ منع تصعيد الصلاحية وتسجيل الرفض.",
           "weight": 1,
-          "status": "queued",
+          "status": "for_review",
           "owner": "Kimi",
           "reviewer": "ChatGPT",
           "evidence": [
@@ -215,6 +227,11 @@
               "url": "https://github.com/elsousypharmacy-create/nova-rx/issues/107",
               "kind": "issue",
               "note": "تفويض أحمد لـKimi؛ ليس دليل إنجاز."
+            },
+            {
+              "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/131",
+              "kind": "doc",
+              "note": "مصفوفة الصلاحيات اتدمجت (وثيقة وبيانات اختبار، بدون كود)"
             }
           ],
           "verifiedAt": null,
@@ -229,31 +246,48 @@
               "SEC-01"
             ],
             "scope": "مسودة تصميم مستقلة؛ التسليم للمراجعة قبل التنفيذ والتكامل"
-          }
+          },
+          "note": "تصميم فقط؛ الصلاحيات مش بتتفحص في السيرفر بعد"
         },
         {
           "id": "SEC-03",
           "title": "عزل الصيدليات والفروع",
           "acceptance": "tenantId وbranchId من جلسة موثقة؛ فحص كل استعلام وملف وتصدير؛ محاولات وصول متبادل تفشل دون تسريب.",
           "weight": 1,
-          "status": "queued",
+          "status": "for_review",
           "owner": "Claude",
           "reviewer": "ChatGPT",
-          "evidence": [],
+          "evidence": [
+            {
+              "url": "https://github.com/elsousypharmacy-create/nova-rx/tree/claude/sec-03-scoped-repo",
+              "kind": "code",
+              "note": "وحدة عزل الصيدليات والفروع: 23 اختبار ومراجعة مستقلة PASS (على فرع، مش مدموجة)",
+              "sha": "d759d5f"
+            }
+          ],
           "verifiedAt": null,
-          "verification": null
+          "verification": null,
+          "note": "وحدة جاهزة على فرع، مش موصّلة بالسيرفر"
         },
         {
           "id": "SEC-04",
           "title": "سجل التدقيق",
           "acceptance": "سجل append-only للفاعل والوقت والقيم قبل/بعد وسبب التعديل وrequestId؛ لا حذف لسجل مالي؛ حجب الأسرار والبيانات الحساسة من اللوج.",
           "weight": 1,
-          "status": "queued",
+          "status": "for_review",
           "owner": "Claude",
           "reviewer": "ChatGPT",
-          "evidence": [],
+          "evidence": [
+            {
+              "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/138",
+              "kind": "code",
+              "note": "وحدة سجل التدقيق: 31 اختبار ومراجعة مستقلة PASS (PR مفتوح)",
+              "sha": "3e36416"
+            }
+          ],
           "verifiedAt": null,
-          "verification": null
+          "verification": null,
+          "note": "وحدة جاهزة، مش موصّلة ولا فيها مفتاح توقيع"
         },
         {
           "id": "SEC-05",
@@ -278,32 +312,48 @@
         "FND",
         "SEC"
       ],
-      "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "status": "in_progress",
+      "note": "وحدة الأصناف اتدمجت وبتحمّل 4378 صنف. تحويل الوحدات والتسعير بالمليم جاهزين للدمج. مش موصّلة بشاشة البيع.",
       "tasks": [
         {
           "id": "CAT-01",
           "title": "الدليل الموحد",
           "acceptance": "اسم عربي وإنجليزي وباركود متعدد ومادة فعالة وتركيز وشكل وحجم عبوة وتصنيف؛ كشف التكرار مع مراجعة صيدلي قبل الدمج.",
           "weight": 1,
-          "status": "queued",
+          "status": "for_review",
           "owner": "Claude",
           "reviewer": "ChatGPT",
-          "evidence": [],
+          "evidence": [
+            {
+              "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/136",
+              "kind": "code",
+              "note": "دليل الأصناف اتدمج في main؛ بيحمّل 4378 صنف من ملف المخزون من غير رفض",
+              "sha": "28a3724"
+            }
+          ],
           "verifiedAt": null,
-          "verification": null
+          "verification": null,
+          "note": "مدموج كوحدة، مش موصّل بشاشة البيع"
         },
         {
           "id": "CAT-02",
           "title": "الوحدات والتحويل",
           "acceptance": "علبة/شريط/قرص وتحويلات كسرية مضبوطة لكل صنف؛ شراء وبيع بوحدات مختلفة مع تطابق المخزون والقيمة؛ منع تحويل غير معروف.",
           "weight": 1,
-          "status": "queued",
+          "status": "for_review",
           "owner": "Claude",
           "reviewer": "ChatGPT",
-          "evidence": [],
+          "evidence": [
+            {
+              "url": "https://github.com/elsousypharmacy-create/nova-rx/pull/137",
+              "kind": "code",
+              "note": "تحويل علبة/شريط/قرص وتسعير بالمليم: مراجعة مستقلة PASS (PR مفتوح)",
+              "sha": "3521bf6"
+            }
+          ],
           "verifiedAt": null,
-          "verification": null
+          "verification": null,
+          "note": "جاهز للدمج بعد حل التعارض؛ مش موصّل"
         },
         {
           "id": "CAT-03",
@@ -334,12 +384,20 @@
           "title": "بحث فوري وباركود",
           "acceptance": "دعم عربي/لاتيني وأخطاء كتابة وباركود؛ نتائج محلية p95≤150ms وAPI p95≤500ms بحمولة مرجعية؛ تمييز الاسم والتركيز والعبوة.",
           "weight": 1,
-          "status": "queued",
+          "status": "in_progress",
           "owner": "Claude",
           "reviewer": "ChatGPT",
-          "evidence": [],
+          "evidence": [
+            {
+              "url": "https://github.com/elsousypharmacy-create/nova-rx/tree/claude/cat-05-search",
+              "kind": "code",
+              "note": "بحث عربي بتصحيح أخطاء الكتابة: كود على فرع، لسه ما اتراجعش",
+              "sha": "38beafc"
+            }
+          ],
           "verifiedAt": null,
-          "verification": null
+          "verification": null,
+          "note": "كود على فرع، مراجعة مستقلة لسه"
         }
       ]
     },
@@ -351,32 +409,48 @@
       "dependencies": [
         "CAT"
       ],
-      "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "status": "in_progress",
+      "note": "نواة المخزون متجربة على بيانات اختبار (حركات ثابتة، تشغيلات، بيع/مرتجع/استلام). مش موصّلة ومفيش قاعدة بيانات.",
       "tasks": [
         {
           "id": "INV-01",
           "title": "دفتر حركة المخزون",
           "acceptance": "كل تغير بحركة مرجعية غير قابلة للحذف؛ onHand/reserved/available محسوبة؛ لا تعديل مباشر للرصد؛ تسوية يومية للدفتر والرصيد.",
           "weight": 1,
-          "status": "queued",
+          "status": "in_progress",
           "owner": "Claude",
           "reviewer": "ChatGPT",
-          "evidence": [],
+          "evidence": [
+            {
+              "url": "https://github.com/elsousypharmacy-create/nova-rx/tree/claude/inv-01-core-cycle",
+              "kind": "code",
+              "note": "سجل حركات المخزون + بيع/مرتجع/استلام: 11 اختبار؛ مراجعة مستقلة طلبت تعديلين (قيد التصليح)",
+              "sha": "abb77e1"
+            }
+          ],
           "verifiedAt": null,
-          "verification": null
+          "verification": null,
+          "note": "نواة تجريبية على فرع، مفيش قاعدة بيانات حقيقية"
         },
         {
           "id": "INV-02",
           "title": "التشغيلات والصلاحيات",
           "acceptance": "lot/expiry/cost/location وتتبع الاستلام حتى البيع والمرتجع؛ FEFO؛ حظر المنتهي افتراضيًا وتنبيهات صلاحية قابلة للضبط.",
           "weight": 1,
-          "status": "queued",
+          "status": "in_progress",
           "owner": "Claude",
           "reviewer": "ChatGPT",
-          "evidence": [],
+          "evidence": [
+            {
+              "url": "https://github.com/elsousypharmacy-create/nova-rx/tree/claude/inv-01-core-cycle",
+              "kind": "code",
+              "note": "أقدم صلاحية تتباع الأول ومنتهي الصلاحية مبيتباعش (جوه نفس النواة)",
+              "sha": "abb77e1"
+            }
+          ],
           "verifiedAt": null,
-          "verification": null
+          "verification": null,
+          "note": "جزئي: الصلاحية والتشغيلات جوه نواة INV-01 فقط"
         },
         {
           "id": "INV-03",
@@ -426,8 +500,8 @@
         "INV",
         "SEC"
       ],
-      "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "status": "in_progress",
+      "note": "شاشة البيع الحالية تجريبية بدون حفظ فواتير. لب البيع والمرتجع جاهز للتجربة على فرع، مش موصّل.",
       "tasks": [
         {
           "id": "POS-01",
@@ -452,7 +526,8 @@
           "reviewer": "ChatGPT",
           "evidence": [],
           "verifiedAt": null,
-          "verification": null
+          "verification": null,
+          "note": "لسه ما بدأش كمستند؛ نواة البيع والمرتجع موجودة جوه فرع INV-01 للتجربة"
         },
         {
           "id": "POS-03",
@@ -477,7 +552,8 @@
           "reviewer": "ChatGPT",
           "evidence": [],
           "verifiedAt": null,
-          "verification": null
+          "verification": null,
+          "note": "لسه ما بدأش كمستند؛ نواة البيع والمرتجع موجودة جوه فرع INV-01 للتجربة"
         },
         {
           "id": "POS-05",
@@ -502,8 +578,8 @@
         "CAT",
         "POS"
       ],
-      "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "status": "in_progress",
+      "note": "الاستيكرات والمساعد الذكي شغالين من شغل سابق ومحتاجين مطابقة للقبول. الباقي ما بدأش.",
       "tasks": [
         {
           "id": "CLN-01",
@@ -579,7 +655,7 @@
         "INV"
       ],
       "status": "in_progress",
-      "note": "واجهة المشتريات والسلال وتنفيذ الطلب منشورة؛ القبول التشغيلي والاستلام/المطابقة ما زالا قيد العمل.",
+      "note": "مقارنة الموردين واختيار المخازن شغالين على النظام الحي (قراءة فقط). الطلب الحقيقي ما اتجرّبش وينتظر موافقتك.",
       "tasks": [
         {
           "id": "BUY-01",
@@ -687,7 +763,7 @@
         "SEC"
       ],
       "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "note": "ما بدأش.",
       "tasks": [
         {
           "id": "CRM-01",
@@ -763,7 +839,7 @@
         "CRM"
       ],
       "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "note": "ما بدأش.",
       "tasks": [
         {
           "id": "FIN-01",
@@ -837,7 +913,7 @@
         "POS"
       ],
       "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "note": "ما بدأش.",
       "tasks": [
         {
           "id": "OPS-01",
@@ -912,7 +988,7 @@
         "POS"
       ],
       "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "note": "ما بدأش (واتساب متوقف).",
       "tasks": [
         {
           "id": "MSG-01",
@@ -985,8 +1061,8 @@
         "FIN",
         "OPS"
       ],
-      "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "status": "in_progress",
+      "note": "الداشبورد شغالة من شغل سابق ومحتاجة مطابقة للقبول.",
       "tasks": [
         {
           "id": "BI-01",
@@ -1061,8 +1137,8 @@
         "INV",
         "SEC"
       ],
-      "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "status": "in_progress",
+      "note": "أسعار الطوارئ والفواتير المؤقتة شغالة (مدموجة) ومحتاجة مطابقة للقبول.",
       "tasks": [
         {
           "id": "OFF-01",
@@ -1138,7 +1214,7 @@
         "BI"
       ],
       "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "note": "اتقاس التباين والأزرار: 3 ألوان ضعيفة و12 زر صغير. مفيش نظام فاتح. ما اتصلحش حاجة.",
       "tasks": [
         {
           "id": "UX-01",
@@ -1213,7 +1289,7 @@
         "FIN"
       ],
       "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "note": "ما بدأش.",
       "tasks": [
         {
           "id": "INT-01",
@@ -1290,7 +1366,7 @@
         "UX"
       ],
       "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "note": "ما بدأش.",
       "tasks": [
         {
           "id": "QA-01",
@@ -1371,7 +1447,7 @@
         "INT"
       ],
       "status": "queued",
-      "note": "لم يُسجل قبول نهائي ضمن خط الأساس الجديد",
+      "note": "ما بدأش.",
       "tasks": [
         {
           "id": "SAAS-01",
@@ -1452,12 +1528,18 @@
   ],
   "prs": [],
   "blockers": [
-    "إثبات قبول الأعمال السابقة وربطها ببنود الخطة الجديدة لم يكتمل.",
-    "الإضافة لسلال الموردين الفعلية لم تُثبت؛ قائمة التجهيز الحالية محلية.",
-    "يلزم اعتماد تخزين معاملاتي قبل اعتبار NOVA نظام بيع ومخزون وحسابات مكتملًا."
+    "قاعدة البيانات لسه ما اتحددتش (قرارك): بدونها مفيش حفظ حقيقي للفواتير والمخزون.",
+    "سياسة الأسعار والضريبة ومصدر بيانات العبوات (علبة/شريط/قرص) غير محددين.",
+    "طلب حقيقي من مورد أو دفع أو نشر على الإنتاج: ممنوع بدون موافقتك الصريحة.",
+    "الدخول لسه برقم سري واحد مشترك؛ مفيش حسابات فردية للموظفين بعد."
   ],
   "sourceNote": "نسخة عامة منقحة من reports/erp-roadmap.json في مستودع NOVA الخاص. تُحدّث عند كل دفعة تنفيذ/مراجعة؛ ليست اتصالًا لحظيًا بالمستودع الخاص.",
   "changelog": [
+    {
+      "version": "ERP-1.0",
+      "date": "2026-11-11",
+      "change": "تحديث الحالة الصادقة: القبول 0/85؛ دليل الأصناف مدموج؛ تحويل الوحدات وسجل التدقيق جاهزين للدمج؛ عزل الصيدليات ونواة المخزون على فروع. لا قبول تلقائي من دمج كود."
+    },
     {
       "version": "ERP-1.0",
       "date": "2026-11-09",

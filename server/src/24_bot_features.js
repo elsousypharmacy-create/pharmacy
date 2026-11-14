@@ -142,6 +142,7 @@ function botToggleCmd_(chatId, text) {
    الفحص لحظة الإرسال مش بس أول الرسالة: رد الصيدلي من الواتساب ممكن يوصل والبوت لسه مستني الموديل. */
 function holdOn_(cid) {
   if (botPaused_() && isWa_(cid) && !isTestChat_(cid)) return true;
+  if (isWa_(cid) && botAutoReplyOff_() && !isTestChat_(cid)) return true;   /* BOT_AUTO_REPLY='0': مفيش رد آلي، الرسالة بتتسجل وتوصل للصيدلي */
   return !!CacheService.getScriptCache().get('hold_' + cid);
 }
 function holdBlocksBotSend_(chatId, text) {

@@ -10,6 +10,12 @@ function novaWaAuthorized_(token) {
 function novaWaBridge_(d) {
   if (!novaWaAuthorized_(d.bridgeToken)) return { ok: false, error: 'unauthorized' };
   var op = String(d.operation || '');
+  if (op === 'autoReplyGet') return { ok: true, autoReply: !botAutoReplyOff_() };
+  if (op === 'autoReplySet') {
+    if (typeof d.enabled !== 'boolean') return { ok: false, error: 'invalid enabled' };
+    botAutoReplySet_(d.enabled);
+    return { ok: true, autoReply: !botAutoReplyOff_() };
+  }
   var id = String(d.chatId || '');
   if (op === 'list') {
     var r = getBotChats();

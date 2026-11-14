@@ -110,6 +110,7 @@ function waCall_(path, body) {
     var mid = (d.messages && d.messages[0] && d.messages[0].id) || '';
     /* رسالة البوت من الـ API — لو ميتا رجّعتها إيكو منسجّلهاش تاني كأنها رد الصيدلي */
     if (mid && body && body.type) { try { CacheService.getScriptCache().put('wamout_' + mid, '1', 21600); } catch (eO) {} }
+    if (mid && body && body.type) novaWaForwardOut_(body, mid, path);
     return { ok: true, result: { message_id: mid } };
   } catch (e) { return { ok: false, description: e.message }; }
 }
@@ -189,7 +190,11 @@ function handleWhatsAppWebhook_(data) {
       if (c.wa_id) names[c.wa_id] = nm;
       if (c.user_id) names[c.user_id] = nm;
     });
-    (v.messages || []).forEach(function (m) { try { waOne_(m, names[waSenderId_(m)] || names[m.from_user_id] || ''); } catch (e) { Logger.log('خطأ واتساب: ' + e.message); } });
+    (v.messages || []).forEach(function (m) {
+      var nm = names[waSenderId_(m)] || names[m.from_user_id] || '';
+      try { waOne_(m, nm); } catch (e) { Logger.log('خطأ واتساب: ' + e.message); }
+      finally { novaWaForwardIn_(m, nm, v.metadata && v.metadata.phone_number_id); }
+    });
   }); });
 }
 /* معرّف العميل في الإيكو لازم يطابق شات الرسالة الواردة (رقم من غير +، أو نفس الـ BSUID) */

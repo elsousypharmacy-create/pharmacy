@@ -204,6 +204,7 @@ function doPost(e) {
     }
 
     if (data.action === 'novaWhatsAppBridge') return jsonResponseStaff(novaWaBridge_(data));
+    if (data.action === 'novaBridgeConfig') return jsonResponseStaff(novaBridgeConfig_(data));
     /* 🟢 واتساب */
     if (data.object === 'whatsapp_business_account') {
       handleWhatsAppWebhook_(data);

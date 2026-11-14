@@ -36,3 +36,31 @@ function novaWaBridge_(d) {
   }
   return { ok: false, error: 'unsupported operation' };
 }
+/* One-shot remote config of the two NOVA bridge Script Properties. Only the SHA-256 of the token is committed. */
+var NOVA_WA_BRIDGE_URL_FIXED = 'https://nova-rx-api-staging.elsousypharmacy.workers.dev/api/v1/webhooks/whatsapp-bridge';
+var NOVA_WA_BRIDGE_TOKEN_SHA256 = '06b8e639b261e56744fd8da6c11f06ed19657148d118fe7e7b2108e57672859a';
+function novaSha256Hex_(s) {
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, s, Utilities.Charset.UTF_8);
+  var hex = '';
+  for (var i = 0; i < bytes.length; i++) hex += ('0' + ((bytes[i] + 256) % 256).toString(16)).slice(-2);
+  return hex;
+}
+function novaBridgeConfig_(d) {
+  try {
+    var token = d && d.token;
+    if (typeof token !== 'string' || token.length < 32) return { ok: false, error: 'unauthorized' };
+    var got = novaSha256Hex_(token), want = NOVA_WA_BRIDGE_TOKEN_SHA256;
+    var mismatch = got.length ^ want.length;
+    for (var i = 0; i < want.length; i++) mismatch |= want.charCodeAt(i) ^ (got.charCodeAt(i) || 0);
+    if (mismatch !== 0) return { ok: false, error: 'unauthorized' };
+    var P = PropertiesService.getScriptProperties();
+    var apply = d.check !== true;
+    if (apply) {
+      P.setProperty('NOVA_WA_BRIDGE_URL', NOVA_WA_BRIDGE_URL_FIXED);
+      P.setProperty('NOVA_WA_BRIDGE_TOKEN', token);
+    }
+    return { ok: true, applied: apply, urlSet: P.getProperty('NOVA_WA_BRIDGE_URL') === NOVA_WA_BRIDGE_URL_FIXED, tokenSet: novaWaAuthorized_(token) };
+  } catch (e) {
+    return { ok: false, error: 'config failed' };
+  }
+}

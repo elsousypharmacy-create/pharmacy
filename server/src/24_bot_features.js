@@ -137,6 +137,43 @@ function botToggleCmd_(chatId, text) {
     : '▶️ بوت الواتساب رجع يرد على العملاء.', PERSONAL_CHAT);
   return true;
 }
+/* 📱 نفس الأوامر من رقم الدكتور على الواتساب. الرقم في WA_ADMIN (آخر ١٠ أرقام، مفصولة بفاصلة)، والافتراضي رقم الدكتور أحمد.
+   بتقبل الأمر بـ / أو من غيرها، بأي حروف كبيرة/صغيرة، ومن غير علامات في الآخر: "Bottest off" و"/bottest off/" نفس الأمر.
+   أي حد تاني بيكتب نفس الكلام = رسالة عميل عادية. الرد بيتبعت مباشرة لرقم الدكتور (مش بيتوقف بالإمساك أو وقف البوت). */
+function waAdmins_() {
+  var v = PropertiesService.getScriptProperties().getProperty('WA_ADMIN');
+  if (v === null || v === undefined || !String(v).trim()) return ['1120372238'];
+  return String(v).split(',').map(function (x) { return String(x).replace(/\D/g, '').slice(-10); }).filter(function (x) { return x.length >= 9; });
+}
+function isWaAdmin_(cid) {
+  if (!isWa_(cid)) return false;
+  var d = String(cid).replace(/\D/g, '').slice(-10);
+  return !!d && waAdmins_().indexOf(d) !== -1;
+}
+function waOwnerCmd_(chatId, text) {
+  if (!isWaAdmin_(chatId)) return false;
+  var t = String(text || '').trim().toLowerCase().replace(/^\/+/, '').replace(/[\s\/\\.,،!؟?]+$/, '');
+  var m = /^(bottest|botoff|boton)(?:\s+([\s\S]*))?$/.exec(t);
+  if (!m) return false;
+  var cmd = m[1], arg = String(m[2] || '').trim(), reply;
+  if (cmd === 'bottest') {
+    if (arg === 'off') testNumbersSet_([]);
+    else if (arg) testNumbersSet_(arg.split(/[\s,،]+/));
+    reply = '🧪 أرقام التجربة (البوت بيرد عليها حتى وهو واقف): ' + (testNumbers_().join('، ') || 'مفيش') +
+      '\nلتغييرها: bottest 01120372238 01012345678\nللمسح: bottest off';
+  } else {
+    botPauseSet_(cmd === 'botoff');
+    reply = cmd === 'botoff' ? '⛔ بوت الواتساب واقف. رسايل العملاء هتوصل للصيدلي ومش هيرد عليهم.' : '▶️ بوت الواتساب رجع يرد على العملاء.';
+  }
+  try {
+    var body = { messaging_product: 'whatsapp', type: 'text', text: { body: reply } };
+    var tgt = waTarget_(chatId); Object.keys(tgt).forEach(function (k) { body[k] = tgt[k]; });
+    waCall_(waPhoneId_() + '/messages', body);
+  } catch (eS) { Logger.log('waOwnerCmd_ send: ' + eS.message); }
+  try { sendTelegramStaff('📱 أمر من واتساب الدكتور: ' + cmd + (arg ? ' ' + arg : '') + '\n' + reply, PERSONAL_CHAT); } catch (eT) {}
+  try { logChatRows_(chatId, [['sys', 'أمر: ' + cmd + (arg ? ' ' + arg : '')], ['bot', reply]]); } catch (eL) {}
+  return true;
+}
 /* 🤫 الصيدلي ماسك المحادثة — البوت يسكت وكل رسايل العميل توصلك (ساعتين أو لحد ما ترجّعه).
    وقف الواتساب = نفس الإمساك على شاتات wa_* بس، فالرسالة تتسجل وتوصل للصيدلي من غير رد آلي.
    الفحص لحظة الإرسال مش بس أول الرسالة: رد الصيدلي من الواتساب ممكن يوصل والبوت لسه مستني الموديل. */

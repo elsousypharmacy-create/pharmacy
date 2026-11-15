@@ -323,6 +323,8 @@ function waOne_(m, pname) {
     saveConversationTurn(chatId, fileLabel, fileNote, 'bot', msg.date);
     return;
   }
+  /* أوامر الدكتور من رقمه على الواتساب (bottest / botoff / boton) — متتعاملش كسؤال عميل */
+  if (msg.text && waOwnerCmd_(chatId, msg.text)) return;
   handleCustomerMessage(chatId, msg);
 }
 

@@ -36,7 +36,7 @@ function getBotChat(id) {
 function botReply(id, text) {
   id = String(id || ''); text = String(text || '').trim();
   if (!id || !text) return { ok: false, error: 'الرسالة فاضية' };
-  var r = tgApi_('sendMessage', { chat_id: id, text: '👨‍⚕️ رد الصيدلي:\n\n' + text, _staff: true });
+  var r = tgApi_('sendMessage', { chat_id: id, text: text, _staff: true /* النص زي ما الموظف كتبه — من غير «رد الصيدلي:» */ });
   if (!r || !r.ok) return { ok: false, error: 'تيليجرام رفض الرسالة' + (r && r.description ? ': ' + r.description : '') };
   saveConversationTurn(id, '[سؤال محوّل للدكتور]', text, 'pharm');
   clearHandoff_(id);

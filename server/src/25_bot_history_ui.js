@@ -164,7 +164,7 @@ function tgApi_(method, payload) {
       Logger.log('hold: منع رد البوت ' + payload.chat_id);
       return { ok: false, description: 'hold' };
     }
-    if (method === 'sendMessage' && payload && payload.text) payload.text = varyEmoji_(payload.chat_id, payload.text);
+    if (method === 'sendMessage' && payload && payload.text && !staff) payload.text = varyEmoji_(payload.chat_id, payload.text);
     /* 🟢 واتساب */
     if (payload && method === 'forwardMessage' && isWa_(payload.from_chat_id)) return waForwardToStaff_(String(payload.from_chat_id), payload.message_id);
     if (payload && method === 'answerCallbackQuery' && payload.callback_query_id === 'wa') return { ok: true };

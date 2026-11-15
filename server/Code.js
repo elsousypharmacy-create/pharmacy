@@ -2197,7 +2197,7 @@ function relayDoctorReply_(msg) {
     const doctorText = (msg.text || '').trim();
     if (!doctorText) return false;
 
-    sendTelegramStaff('👨‍⚕️ رد الدكتور:\n\n' + doctorText, customerChatId);
+    sendTelegramStaff(doctorText, customerChatId, true); /* رد موظف: النص زي ما هو، من غير بادئة */
     saveConversationTurn(customerChatId, '[سؤال محوّل للدكتور]', doctorText, 'pharm');
     clearHandoff_(customerChatId);
     sendTelegramStaff('✅ اتبعت للعميل.', PERSONAL_CHAT);
@@ -3176,7 +3176,7 @@ function tgApi_(method, payload) {
       Logger.log('hold: منع رد البوت ' + payload.chat_id);
       return { ok: false, description: 'hold' };
     }
-    if (method === 'sendMessage' && payload && payload.text) payload.text = varyEmoji_(payload.chat_id, payload.text);
+    if (method === 'sendMessage' && payload && payload.text && !staff) payload.text = varyEmoji_(payload.chat_id, payload.text);
     /* 🟢 واتساب */
     if (payload && method === 'forwardMessage' && isWa_(payload.from_chat_id)) return waForwardToStaff_(String(payload.from_chat_id), payload.message_id);
     if (payload && method === 'answerCallbackQuery' && payload.callback_query_id === 'wa') return { ok: true };
@@ -4675,9 +4675,9 @@ function handleOrderIntent_(chatId, text, history, arrivalUnix) {
 
 /* تليجرام سقفه 4096 حرف للرسالة — الأطول بتتقسّم هنا تلقائي على حدود الأسطر،
    فأي رسالة طويلة (نواقص، تقارير) توصل كاملة بدل ما تترفض. */
-function sendTelegramStaff(message, chatId) {
-  if (holdBlocksBotSend_(chatId, message)) { Logger.log('hold: منع رد البوت ' + chatId); return; }
-  if (isWa_(chatId)) { waSend_(String(chatId), message); return; }
+function sendTelegramStaff(message, chatId, staff) {
+  if (holdBlocksBotSend_(chatId, message, !!staff)) { Logger.log('hold: منع رد البوت ' + chatId); return; }
+  if (isWa_(chatId)) { waSend_(String(chatId), message, null, !!staff); return; }
   const url = 'https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage';
   var text = String(message == null ? '' : message), MAX = 3800, parts = [];
   if (text.length <= MAX) {
@@ -5696,7 +5696,7 @@ function getBotChat(id) {
 function botReply(id, text) {
   id = String(id || ''); text = String(text || '').trim();
   if (!id || !text) return { ok: false, error: 'الرسالة فاضية' };
-  var r = tgApi_('sendMessage', { chat_id: id, text: '👨‍⚕️ رد الصيدلي:\n\n' + text, _staff: true });
+  var r = tgApi_('sendMessage', { chat_id: id, text: text, _staff: true /* النص زي ما الموظف كتبه — من غير «رد الصيدلي:» */ });
   if (!r || !r.ok) return { ok: false, error: 'تيليجرام رفض الرسالة' + (r && r.description ? ': ' + r.description : '') };
   saveConversationTurn(id, '[سؤال محوّل للدكتور]', text, 'pharm');
   clearHandoff_(id);

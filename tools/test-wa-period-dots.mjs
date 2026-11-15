@@ -23,29 +23,30 @@ const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => err
 await page.addInitScript(() => { try { localStorage.setItem('adminPin', '0000'); } catch {} });
 await page.goto(base, { waitUntil: 'load' }); await page.waitForTimeout(800);
 await page.addStyleTag({ content: '#sSplash{display:none!important}' });
-await page.evaluate(() => go('bot', 0)); await page.waitForSelector('.wa-period-cur', { timeout: 8000 });
+await page.evaluate(() => go('bot', 0)); await page.waitForSelector('.wa-period-more', { timeout: 8000 });
 let n = 0; const t = async (name, fn) => { await fn(); n++; console.log('  ok', name); };
 
-await t('default: the pill says اليوم, the three dots are next to it, the menu is closed, the old four-tab row is gone', async () => {
-  assert.equal((await page.locator('.wa-period-cur').innerText()).trim(), 'اليوم');
+await t('default: home-style hero (ring, big number, title with the period and date), the three dots in the corner, menu closed', async () => {
+  const strip = x => x.replace(/[\u2066-\u2069]/g, '').trim();
+  assert.equal(await page.locator('#p-bot .wa-period-cur, #p-bot .period-tabs').count(), 0, 'no pill and no four-tab row');
+  assert.equal(await page.locator('#p-bot .wa-hero svg.h-ring').count(), 1);
+  assert.match(strip(await page.locator('#p-bot .wa-hero svg.h-ring').innerHTML()), /86%/);
+  const title = strip(await page.locator('#p-bot .wa-hero .h-num small').innerText());
+  assert.ok(title.startsWith('محادثات اليوم'), title); assert.ok(/نوفمبر|ديسمبر|يناير|فبراير|مارس|أبريل|مايو|يونيو|يوليو|أغسطس|سبتمبر|أكتوبر/.test(title), 'date shown');
+  assert.equal(strip(await page.locator('#p-bot .wa-hero .h-num b').innerText()), '7');
   assert.equal(await page.locator('.wa-period-more').innerText(), '⋯');
   assert.equal(await page.locator('#waKpiMenu').isHidden(), true);
-  assert.equal(await page.locator('#p-bot .period-tabs').count(), 0);
-  const [a, c] = await Promise.all([page.locator('.wa-period-cur').boundingBox(), page.locator('.wa-period-more').boundingBox()]);
-  assert.ok(Math.abs(a.y - c.y) < 4 && Math.abs(a.x - (c.x + c.width)) < 16, 'same row, adjacent');
-  assert.ok(c.width >= 44 && c.height >= 44, 'touch size');
+  const [hero, dots] = await Promise.all([page.locator('#p-bot .wa-hero').boundingBox(), page.locator('.wa-period-more').boundingBox()]);
+  assert.ok(dots.x < hero.x + hero.width / 2 && dots.y < hero.y + 40, 'dots sit in the top corner of the hero (left in RTL)');
+  assert.ok(dots.width >= 44 && dots.height >= 44, 'touch size');
 });
-await t('layout without repetition: no big hero number, four tiles, one messages block (total + its three parts, shown once)', async () => {
-  assert.equal(await page.locator('#p-bot .h-main').count(), 0);
-  assert.equal(await page.locator('#p-bot .h-minis .h-mini').count(), 4);
-  assert.deepEqual((await page.locator('#p-bot .h-minis .h-mini > small').allInnerTexts()).map(x => x.trim()), ['محادثات', 'مستنية رد', 'أول رد', 'جدد / رجوع']);
-  assert.equal(await page.locator('#p-bot .wa-msgs').count(), 1);
-  assert.equal((await page.locator('#p-bot .wa-msgs-head b').innerText()).replace(/[\u2066-\u2069]/g, '').trim(), '43');
-  assert.deepEqual((await page.locator('#p-bot .wa-msgs .period-stats small').allInnerTexts()).map(x => x.trim()), ['من العملاء', 'ردود البوت', 'ردود الصيدلي']);
-  const txt = await page.locator('#p-bot .h-hero').innerText();
-  assert.equal((txt.match(/رسايل/g) || []).length, 1, 'the word رسايل appears once (as the block title)');
-  const tiles = await page.locator('#p-bot .h-minis').boundingBox(), msgs = await page.locator('#p-bot .wa-msgs').boundingBox();
-  assert.ok(msgs.y > tiles.y + tiles.height - 2 && msgs.y - (tiles.y + tiles.height) < 30, 'messages block sits right under the tiles');
+await t('eight tiles, each metric once, in this order; no repeated total block', async () => {
+  const labels = (await page.locator('#p-bot .wa-hero .h-minis .h-mini > small').allInnerTexts()).map(x => x.trim());
+  assert.deepEqual(labels, ['رسايل', 'مستنية رد', 'من العملاء', 'ردود الصيدلي', 'ردود البوت', 'أول رد', 'عملاء جدد', 'عملاء راجعين']);
+  assert.equal(await page.locator('#p-bot .wa-msgs').count(), 0);
+  const vals = (await page.locator('#p-bot .wa-hero .h-minis .h-mini > b').allInnerTexts()).map(x => x.replace(/[\u2066-\u2069]/g, '').trim());
+  assert.deepEqual(vals, ['43', '1', '16', '20', '7', '8m 3s', '4', '2']);
+  assert.equal(Number(vals[2]) + Number(vals[3]) + Number(vals[4]), Number(vals[0]), 'parts add up to the total');
 });
 await t('the dots open the other periods and say so for assistive tech', async () => {
   await page.locator('.wa-period-more').click();
@@ -57,17 +58,17 @@ await t('the dots open the other periods and say so for assistive tech', async (
   await page.locator('.wa-period-more').click(); assert.equal(await page.locator('#waKpiMenu').isHidden(), true);
   assert.equal(await page.locator('.wa-period-more').getAttribute('aria-expanded'), 'false');
 });
-await t('choosing 7 أيام loads that range, the pill follows it and the menu closes', async () => {
+await t('choosing 7 أيام loads that range, the title follows it and the menu closes', async () => {
   await page.locator('.wa-period-more').click(); await page.locator('#waKpiMenu button', { hasText: '7 أيام' }).click();
-  await page.waitForFunction(() => document.querySelector('.wa-period-cur')?.textContent.trim() === '7 أيام');
+  await page.waitForFunction(() => document.querySelector('#p-bot .wa-hero .h-num small')?.textContent.includes('7 أيام'));
   assert.equal(ranges.at(-1), '7d'); assert.equal(await page.locator('#waKpiMenu').isHidden(), true);
-  assert.ok((await page.locator('.h-top').innerText()).includes('نوفمبر'), 'date range shown for non-today');
+  assert.ok((await page.locator('#p-bot .wa-hero .h-num small').innerText()).includes('نوفمبر'), 'date range shown in the title for non-today');
 });
 await t('custom shows the two date fields; going back to اليوم removes them', async () => {
   await page.locator('.wa-period-more').click(); await page.locator('#waKpiMenu button', { hasText: 'فترة' }).click();
   await page.waitForSelector('.m-custom input[type=date]'); assert.equal(await page.locator('.m-custom input[type=date]').count(), 2);
   await page.locator('.wa-period-more').click(); await page.locator('#waKpiMenu button', { hasText: 'اليوم' }).click();
-  await page.waitForFunction(() => document.querySelector('.wa-period-cur')?.textContent.trim() === 'اليوم');
+  await page.waitForFunction(() => document.querySelector('#p-bot .wa-hero .h-num small')?.textContent.includes('اليوم'));
   assert.equal(await page.locator('.m-custom').count(), 0); assert.equal(ranges.at(-1), 'today');
 });
 assert.deepEqual(errs, []);

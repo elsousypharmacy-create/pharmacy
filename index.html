@@ -2167,6 +2167,7 @@ function waKpiWaitDur(ms){
   if (m) return m + 'm';
   return '<1m';
 }
+function num0(v){ var n = Number(v); return isFinite(n) ? n : 0; }
 function waKpiVs(cur, prev){
   if (cur == null || prev == null) return '';
   if (prev === 0) return cur ? 'جديد' : '';
@@ -2247,14 +2248,16 @@ function drawWaKpis(d){
   var chatsTab = botTab('chats');
   var PERIODS = [['today','اليوم'],['7d','7 أيام'],['30d','30 يوم'],['custom','فترة']];
   var curP = PERIODS.filter(function(p){ return p[0] === WA_KPI_PRESET; })[0] || PERIODS[0];
-  /* one pill with the current period + «⋯» that opens the other periods */
-  var tabs = '<div class="home-period-controls"><div class="wa-period" aria-label="فترة المؤشرات">' +
-    '<span class="wa-period-cur">' + curP[1] + '</span>' +
-    '<button type="button" class="wa-period-more" aria-haspopup="true" aria-expanded="' + (WA_KPI_MENU ? 'true' : 'false') + '" aria-controls="waKpiMenu" aria-label="اختيار فترة أخرى" title="فترة أخرى" onclick="toggleWaKpiMenu()">⋯</button></div>' +
-    '<div class="wa-period-menu" id="waKpiMenu"' + (WA_KPI_MENU ? '' : ' hidden') + '>' +
+  /* «⋯» in the hero corner (like the home card) opens the other periods */
+  var dots = '<button type="button" class="wa-period-more" aria-haspopup="true" aria-expanded="' + (WA_KPI_MENU ? 'true' : 'false') + '" aria-controls="waKpiMenu" aria-label="الفترة: ' + curP[1] + ' — اختيار فترة أخرى" title="فترة أخرى" onclick="toggleWaKpiMenu()">⋯</button>';
+  var menu = '<div class="wa-period-menu" id="waKpiMenu"' + (WA_KPI_MENU ? '' : ' hidden') + '>' +
     PERIODS.map(function(o){
       return '<button type="button" class="' + (WA_KPI_PRESET === o[0] ? 'on' : '') + '" aria-pressed="' + (WA_KPI_PRESET === o[0] ? 'true' : 'false') + '" onclick="setWaKpiPreset(\'' + o[0] + '\')">' + o[1] + '</button>';
-    }).join('') + '</div></div>';
+    }).join('') + '</div>';
+  var heroDate = d.preset === 'today'
+    ? new Date(cairoNow().date + 'T12:00:00Z').toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', timeZone: 'UTC' })
+    : (d.label || '');
+  var heroTitle = 'محادثات ' + curP[1] + (heroDate ? ' · ' + heroDate : '');
   var dates = WA_KPI_PRESET === 'custom'
     ? '<div class="m-custom"><label>من <input type="date" value="' + esc(WA_KPI_FROM) + '" onchange="setWaKpiDate(\'from\',this.value)"></label><label>إلى <input type="date" value="' + esc(WA_KPI_TO) + '" onchange="setWaKpiDate(\'to\',this.value)"></label></div>'
     : '';
@@ -2285,22 +2288,21 @@ function drawWaKpis(d){
   var firstSub = first.medianText ? ('الوسيط ' + ltr(esc(enDur(first.medianText)))) : firstNote;
   box.innerHTML =
     '<div class="home-grid"><div class="home-col">' +
-      '<div class="card h-hero">' +
-        (d.preset === 'today' ? '' : '<div class="h-top"><span>' + esc(d.label || '') + '</span></div>') +
-        tabs + dates +
+      '<div class="card h-hero wa-hero">' +
+        dots +
+        '<div class="h-main">' + homeGoalRing(Math.max(0, num0(d.chats) - num0(d.waitingOpen)), num0(d.chats)) +
+          '<div class="h-num"><small>' + esc(heroTitle) + '</small><b>' + ltr(num(d.chats)) + '</b>' +
+          '<u>' + (num0(d.chats) ? 'تم الرد على ' + ltr(num(Math.max(0, num0(d.chats) - num0(d.waitingOpen)))) + ' من ' + ltr(num(d.chats)) : 'لا محادثات في الفترة') + '</u></div></div>' +
+        menu + dates +
         '<div class="h-minis" style="grid-template-columns:repeat(2,minmax(0,1fr))">' +
-          mini('محادثات', ltr(num(d.chats)), vsChats) +
+          mini('رسايل', ltr(num(d.msgs)), vsMsgs) +
           mini('مستنية رد', ltr(num(d.waitingOpen)), 'نافذة 24 ساعة', d.waitingOpen ? 'bad' : 'ok') +
+          mini('من العملاء', ltr(num(d.inMsgs)), '') +
+          mini('ردود الصيدلي', ltr(num(d.staffMsgs)), '') +
+          mini('ردود البوت', ltr(num(d.botMsgs)), '') +
           mini('أول رد', ltr(esc(enDur(first.avgText) || '—')), firstSub) +
-          mini('جدد / رجوع', ltr(num((d.customers && d.customers.newC) || 0) + ' / ' + num((d.customers && d.customers.returning) || 0)), 'في الفترة', 'brand') +
-        '</div>' +
-        '<div class="wa-msgs">' +
-          '<div class="wa-msgs-head"><small>رسايل</small><b>' + ltr(num(d.msgs)) + '</b>' + (vsMsgs ? '<u>' + esc(vsMsgs) + '</u>' : '') + '</div>' +
-          '<div class="period-stats">' +
-            '<div><small>من العملاء</small><b>' + ltr(num(d.inMsgs)) + '</b></div>' +
-            '<div><small>ردود البوت</small><b>' + ltr(num(d.botMsgs)) + '</b></div>' +
-            '<div><small>ردود الصيدلي</small><b>' + ltr(num(d.staffMsgs)) + '</b></div>' +
-          '</div>' +
+          mini('عملاء جدد', ltr(num((d.customers && d.customers.newC) || 0)), 'في الفترة', 'brand') +
+          mini('عملاء راجعين', ltr(num((d.customers && d.customers.returning) || 0)), 'في الفترة') +
         '</div>' +
       '</div>' +
       waitHtml +

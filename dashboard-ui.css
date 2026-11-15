@@ -238,20 +238,15 @@ body.team-fit-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}
 #p-bot.wa-kpis-page .h-hero .period-tabs{margin-bottom:0}
 #p-bot.wa-kpis-page .m-custom{margin:10px 0 0}
 /* WhatsApp KPIs period: one pill + a «⋯» button that opens the other periods. */
-#p-bot.wa-kpis-page .home-period-controls{margin-bottom:12px}
-.wa-period{display:flex;align-items:center;gap:8px}
-.wa-period-cur{min-height:44px;display:inline-flex;align-items:center;padding:0 20px;border-radius:12px;font-size:16px;font-weight:700;color:var(--brand);background:color-mix(in srgb,var(--brand) 13%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brand) 45%,transparent)}
 .wa-period-more{width:44px;height:44px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--ink);font:inherit;font-size:22px;line-height:1;cursor:pointer;padding:0}
 .wa-period-menu{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.wa-period-menu[hidden]{display:none}
 .wa-period-menu button{min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--ink-2);font:inherit;font-size:14px;font-weight:650;cursor:pointer}
 .wa-period-menu button.on{color:var(--brand);border-color:var(--brand)}
-/* WhatsApp KPIs: four compact tiles, then one «رسايل» block (total + its three parts) instead of a big hero number and repeated totals. */
-#p-bot.wa-kpis-page .h-minis{margin-top:0}
-#p-bot.wa-kpis-page .wa-msgs{margin-top:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2);padding:12px 14px}
-#p-bot.wa-kpis-page .wa-msgs-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-#p-bot.wa-kpis-page .wa-msgs-head small{font-size:13px;color:var(--ink-2)}
-#p-bot.wa-kpis-page .wa-msgs-head b{font-size:26px;font-weight:800;line-height:1.2}
-#p-bot.wa-kpis-page .wa-msgs-head u{text-decoration:none;font-size:13px;color:var(--ink-2);margin-inline-start:auto}
-#p-bot.wa-kpis-page .wa-msgs .period-stats{margin-top:10px;padding:10px 0 0;border-bottom:0;border-top:1px solid var(--line)}
-#p-bot.wa-kpis-page .wa-msgs .period-stats b{font-size:20px}
-
+/* WhatsApp KPIs in the home «Today» style: hero with ring + big number, «⋯» in the corner, eight equal tiles. */
+#p-bot.wa-kpis-page .wa-hero{position:relative}
+#p-bot.wa-kpis-page .wa-hero .wa-period-more{position:absolute;top:16px;inset-inline-end:16px;z-index:1}
+#p-bot.wa-kpis-page .wa-hero .h-main{margin:0 0 14px;padding-inline-end:56px}
+#p-bot.wa-kpis-page .wa-hero .h-num small{font-size:14px;line-height:1.5}
+#p-bot.wa-kpis-page .wa-hero .h-num u{font-size:13px}
+#p-bot.wa-kpis-page .wa-hero .wa-period-menu{margin:0 0 12px}
+#p-bot.wa-kpis-page .wa-hero .h-minis{margin-top:0;padding-top:0;border-top:0;gap:10px}

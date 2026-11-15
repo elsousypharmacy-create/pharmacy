@@ -1173,6 +1173,12 @@ function num(v, d){
 }
 var LRI = '\u2066', PDI = '\u2069';
 function ltr(t){ return '<span dir="ltr" class="n">' + LRI + t + PDI + '</span>'; }
+/* Durations are shown with English units everywhere on the dashboard: 8m 3s, 2h 5m, 1d 3h (server text may still say د / س / ث / يوم). */
+function enDur(t){
+  if (t == null || t === '') return t;
+  return String(t).replace(/أقل من ثانية/g, '<1s').replace(/أقل من دقيقة/g, '<1m')
+    .replace(/(\d+)\s*(يوم|س|د|ث)(?![\u0600-\u06FF])/g, function(_, n, u){ return n + ({ 'يوم': 'd', 'س': 'h', 'د': 'm', 'ث': 's' })[u]; });
+}
 function esc(t){
   return String(t == null ? '' : t)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -2156,10 +2162,10 @@ var WA_KPI = null, WA_KPI_PRESET = 'today', WA_KPI_FROM = '', WA_KPI_TO = '', HO
 function waKpiWaitDur(ms){
   if (ms == null || isNaN(ms)) return '—';
   var s = Math.round(ms / 1000), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
-  if (d) return d + ' يوم' + (h ? ' ' + h + ' س' : '');
-  if (h) return h + ' س' + (m ? ' ' + m + ' د' : '');
-  if (m) return m + ' د';
-  return 'أقل من دقيقة';
+  if (d) return d + 'd' + (h ? ' ' + h + 'h' : '');
+  if (h) return h + 'h' + (m ? ' ' + m + 'm' : '');
+  if (m) return m + 'm';
+  return '<1m';
 }
 function waKpiVs(cur, prev){
   if (cur == null || prev == null) return '';
@@ -2179,7 +2185,7 @@ function homeWaKpiInner(d){
       waKpiTile('محادثات', num(t.chats), waKpiVs(t.chats, y.chats), 'brand') +
       waKpiTile('رسايل', num(t.msgs), waKpiVs(t.msgs, y.msgs), 'brand') +
       waKpiTile('مستنية رد', num(t.waitingOpen), 'نافذة 24 ساعة', t.waitingOpen ? 'bad' : 'ok') +
-      waKpiTile('أول رد', t.firstAvgText || '—', y.firstAvgText ? ('أمس ' + y.firstAvgText) : '', 'brand') +
+      waKpiTile('أول رد', enDur(t.firstAvgText) || '—', y.firstAvgText ? ('أمس ' + enDur(y.firstAvgText)) : '', 'brand') +
     '</div>';
 }
 function loadHomeWaKpis(force){
@@ -2263,8 +2269,8 @@ function drawWaKpis(d){
   var first = d.firstResponse || {};
   var vsChats = d.preset === 'today' ? waKpiVs(d.chats, y.chats) : '';
   var vsMsgs = d.preset === 'today' ? waKpiVs(d.msgs, y.msgs) : '';
-  var firstNote = d.preset === 'today' && y.firstAvgText ? ('أمس ' + y.firstAvgText) : (first.n ? (num(first.n) + ' رد') : '');
-  var firstSub = first.medianText ? ('الوسيط ' + first.medianText) : firstNote;
+  var firstNote = d.preset === 'today' && y.firstAvgText ? ('أمس ' + ltr(esc(enDur(y.firstAvgText)))) : (first.n ? (num(first.n) + ' رد') : '');
+  var firstSub = first.medianText ? ('الوسيط ' + ltr(esc(enDur(first.medianText)))) : firstNote;
   box.innerHTML =
     '<div class="home-grid"><div class="home-col">' +
       '<div class="card h-hero">' +
@@ -2275,7 +2281,7 @@ function drawWaKpis(d){
         '<div class="h-minis" style="grid-template-columns:repeat(2,minmax(0,1fr))">' +
           mini('رسايل', ltr(num(d.msgs)), vsMsgs) +
           mini('مستنية رد', ltr(num(d.waitingOpen)), 'نافذة 24 ساعة', d.waitingOpen ? 'bad' : 'ok') +
-          mini('أول رد', esc(first.avgText || '—'), firstSub) +
+          mini('أول رد', ltr(esc(enDur(first.avgText) || '—')), firstSub) +
           mini('جدد / رجوع', ltr(num((d.customers && d.customers.newC) || 0) + ' / ' + num((d.customers && d.customers.returning) || 0)), 'في الفترة', 'brand') +
         '</div>' +
         '<div class="period-stats">' +
@@ -7199,7 +7205,7 @@ function runAiTest(){
   api('aiTest', { q: 'عندكم بنادول؟' }).then(function(d){
     box.innerHTML = row('الموديل اللي رد', null, esc(d.provider || '—')) +
       (d.hasKey === false ? '<div class="state err">مفتاح الموديل مش متحط — البوت شغال على Gemini الاحتياطي</div>' : '') +
-      row('السرعة', null, ltr((d.ms / 1000).toFixed(1) + ' ث')) +
+      row('السرعة', null, ltr((d.ms / 1000).toFixed(1) + ' s')) +
       '<div class="state" style="text-align:start">' + esc(d.reply || '') + '</div>';
   }).catch(function(e){ box.innerHTML = '<div class="state err">' + esc(String(e)) + '</div>'; });
 }

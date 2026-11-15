@@ -10,7 +10,7 @@ const types = { '.html': 'text/html;charset=utf-8', '.js': 'text/javascript', '.
 const srv = http.createServer((q, r) => { const f = path.join(root, decodeURIComponent(q.url.split('?')[0]).replace(/^\//, '') || 'index.html'); if (!f.startsWith(root) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': types[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
 await new Promise(r => srv.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${srv.address().port}/`;
-const kpi = (preset, label) => ({ ok: true, preset, label, chats: 7, msgs: 43, inMsgs: 16, botMsgs: 7, staffMsgs: 20, waitingOpen: 1, waiting: [], customers: { newC: 4, returning: 2 }, firstResponse: { n: 5, avgText: '8 د 3 ث', medianText: '3 د 34 ث' }, yesterday: {}, media: {}, hours: [], trend: [] });
+const kpi = (preset, label) => ({ ok: true, preset, label, chats: 7, msgs: 43, inMsgs: 16, botMsgs: 7, staffMsgs: 20, waitingOpen: 3, waiting: [{ c: '201000000001', name: 'سارة', open: true, d: 300000 }, { c: '201000000002', name: 'هدى', open: true, d: 12660000 }, { c: '201000000003', name: 'منى', open: true, d: 1800000 }, { c: '201000000004', name: 'قديمة', open: false, d: 100000000 }], customers: { newC: 4, returning: 2 }, firstResponse: { n: 5, avgText: '8 د 3 ث', medianText: '3 د 34 ث' }, yesterday: {}, media: {}, hours: [], trend: [] });
 const ranges = [];
 const b = await chromium.launch({ args: ['--no-sandbox'] });
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, locale: 'ar-EG' });
@@ -30,7 +30,7 @@ await t('default: home-style hero (ring, big number, title with the period and d
   const strip = x => x.replace(/[\u2066-\u2069]/g, '').trim();
   assert.equal(await page.locator('#p-bot .wa-period-cur, #p-bot .period-tabs').count(), 0, 'no pill and no four-tab row');
   assert.equal(await page.locator('#p-bot .wa-hero svg.h-ring').count(), 1);
-  assert.match(strip(await page.locator('#p-bot .wa-hero svg.h-ring').innerHTML()), /86%/);
+  assert.match(strip(await page.locator('#p-bot .wa-hero svg.h-ring').innerHTML()), /57%/);
   const title = strip(await page.locator('#p-bot .wa-hero .h-num small').innerText());
   assert.ok(title.startsWith('محادثات اليوم'), title); assert.ok(/نوفمبر|ديسمبر|يناير|فبراير|مارس|أبريل|مايو|يونيو|يوليو|أغسطس|سبتمبر|أكتوبر/.test(title), 'date shown');
   assert.equal(strip(await page.locator('#p-bot .wa-hero .h-num b').innerText()), '7');
@@ -45,9 +45,30 @@ await t('eight tiles, each metric once, in this order; no repeated total block',
   assert.deepEqual(labels, ['رسايل', 'مستنية رد', 'من العملاء', 'ردود الصيدلي', 'ردود البوت', 'أول رد (الوسيط)', 'عملاء جدد', 'عملاء راجعين']);
   assert.equal(await page.locator('#p-bot .wa-msgs').count(), 0);
   const vals = (await page.locator('#p-bot .wa-hero .h-minis .h-mini > b').allInnerTexts()).map(x => x.replace(/[\u2066-\u2069]/g, '').trim());
-  assert.deepEqual(vals, ['43', '1', '16', '20', '7', '3m 34s', '4', '2']);
+  assert.deepEqual(vals, ['43', '3', '16', '20', '7', '3m 34s', '4', '2']);
   assert.equal(Number(vals[2]) + Number(vals[3]) + Number(vals[4]), Number(vals[0]), 'parts add up to the total');
   assert.ok((await page.locator('#p-bot .wa-hero .h-minis .h-mini').nth(5).innerText()).includes('المتوسط') && (await page.locator('#p-bot .wa-hero .h-minis .h-mini').nth(5).innerText()).includes('8m 3s'), 'the average is shown under the median');
+});
+await t('waiting list: longest wait first, red after an hour, amber after 15 minutes, green below, window-closed one amber', async () => {
+  const rows = await page.locator('#waKpiWait .task').evaluateAll(els => els.map(e => ({ name: e.querySelector('.task-m b').textContent.trim(), tone: e.getAttribute('style'), wait: e.querySelector('.task-n').textContent.replace(/[\u2066-\u2069]/g, '').trim() })));
+  assert.deepEqual(rows.map(r => r.name), ['قديمة', 'هدى', 'منى', 'سارة'], 'sorted by wait, longest first');
+  assert.deepEqual(rows.map(r => r.wait), ['1d 3h', '3h 31m', '30m', '5m']);
+  assert.deepEqual(rows.map(r => /--tone:var\(--(\w+)\)/.exec(r.tone)[1]), ['warn', 'bad', 'warn', 'ok']);
+});
+await t('tiles that have details are tappable and jump to them (and are keyboard operable)', async () => {
+  const jumps = { 'رسايل': 'waKpiTrend', 'مستنية رد': 'waKpiWait', 'من العملاء': 'waKpiHours', 'ردود الصيدلي': 'waKpiStaff' };
+  for (const [label, id] of Object.entries(jumps)) {
+    const tile = page.locator('#p-bot .wa-hero .h-mini.tap', { has: page.locator('small', { hasText: new RegExp('^' + label + '$') }) });
+    assert.equal(await tile.count(), 1, label + ' is tappable'); assert.equal(await tile.getAttribute('role'), 'button'); assert.equal(await tile.getAttribute('tabindex'), '0');
+    assert.equal(await page.locator('#' + id).count(), 1, id + ' exists');
+    assert.ok((await tile.getAttribute('onclick')).includes("'" + id + "'"), label + ' jumps to ' + id);
+  }
+  assert.equal(await page.locator('#p-bot .wa-hero .h-mini:not(.tap)').count(), 4, 'the other four tiles are plain');
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.locator('#p-bot .wa-hero .h-mini.tap', { has: page.locator('small', { hasText: /^مستنية رد$/ }) }).click(); await page.waitForTimeout(900);
+  assert.ok(await page.evaluate(() => window.scrollY) > 100, 'scrolled down to the waiting card');
+  assert.equal(await page.locator('#waKpiWait').evaluate(e => e.classList.contains('wa-flash')), true, 'and highlighted it');
+  await page.evaluate(() => window.scrollTo(0, 0));
 });
 await t('the dots open the other periods and say so for assistive tech', async () => {
   await page.locator('.wa-period-more').click();

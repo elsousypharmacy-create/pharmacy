@@ -18,6 +18,7 @@
   "src/41_bot_chat_admin.js",
   "src/42_nova_whatsapp_bridge.js",
   "src/43_nova_wa_forward.js",
+  "src/44_wa_kpis.js",
   "src/50_sms_points.js",
   "src/60_debts_reminders.js",
   "src/61_finance.js",

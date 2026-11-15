@@ -229,5 +229,11 @@ body.team-fit-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}
 #p-home .home-nova-shortcut.in-actions b{font-size:12px;line-height:1.5;white-space:nowrap}
 
 #p-bot.wa-kpis-page .period-stats{margin-top:16px;padding-top:16px}
+/* WhatsApp KPIs (mobile): the 44px label height left a big empty gap before each number and pushed it under the bottom nav. */
+#p-bot.wa-kpis-page .period-stats{padding-bottom:14px}
+#p-bot.wa-kpis-page .period-stats small{min-height:0;margin-bottom:2px;line-height:1.5}
+#p-bot.wa-kpis-page .period-stats b{margin-top:0}
+#p-bot.wa-kpis-page .h-main{margin:14px 0}
+#p-bot.wa-kpis-page .h-mini b{letter-spacing:0;line-height:1.3;word-spacing:.06em}
 #p-bot.wa-kpis-page .h-hero .period-tabs{margin-bottom:0}
 #p-bot.wa-kpis-page .m-custom{margin:10px 0 0}

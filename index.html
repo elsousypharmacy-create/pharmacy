@@ -37,7 +37,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2">
 <link rel="manifest" href="manifest-index.json">
 <meta name="apple-mobile-web-app-title" content="صيدلية السوسي">
-<script>/* «واتساب فقط»: index.html?app=whatsapp (الرابط المنفصل whatsapp.html) — نفس الكود، من غير باقي الأقسام */(function(){try{if(new URLSearchParams(location.search).get('app')!=='whatsapp')return;window.NOVA_APP='whatsapp';document.documentElement.classList.add('app-whatsapp');document.title='واتساب الصيدلية';var m=document.querySelector('link[rel=manifest]');if(m)m.setAttribute('href','manifest-whatsapp.json');var t=document.querySelector('meta[name=apple-mobile-web-app-title]');if(t)t.setAttribute('content','واتساب الصيدلية');}catch(e){}})();</script>
+<script>/* «واتساب فقط»: index.html?app=whatsapp (الرابط المنفصل whatsapp.html) — نفس الكود، من غير باقي الأقسام */(function(){try{if(new URLSearchParams(location.search).get('app')!=='whatsapp')return;window.NOVA_APP='whatsapp';document.documentElement.classList.add('app-whatsapp');document.title='واتساب الصيدلية';var m=document.querySelector('link[rel=manifest]');if(m)m.setAttribute('href','manifest-whatsapp.json');var t=document.querySelector('meta[name=apple-mobile-web-app-title]');if(t)t.setAttribute('content','واتساب الصيدلية');var ic=document.querySelector('link[rel=apple-touch-icon]');if(ic)ic.setAttribute('href','icon-wa-192.png?v=1');}catch(e){}})();</script>
 <style>html.app-whatsapp #secnav{display:none!important}html.app-whatsapp body{padding-bottom:calc(24px + env(safe-area-inset-bottom))!important}</style>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2170,6 +2170,13 @@ function waKpiWaitDur(ms){
   if (m) return m + 'm';
   return '<1m';
 }
+function idw(id, html){ return '<div id="' + id + '">' + html + '</div>'; }
+function waKpiGo(id){
+  var el = document.getElementById(id); if (!el) return;
+  try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { el.scrollIntoView(); }
+  el.classList.remove('wa-flash'); void el.offsetWidth; el.classList.add('wa-flash');
+  setTimeout(function(){ el.classList.remove('wa-flash'); }, 1400);
+}
 function num0(v){ var n = Number(v); return isFinite(n) ? n : 0; }
 function waKpiVs(cur, prev){
   if (cur == null || prev == null) return '';
@@ -2264,26 +2271,27 @@ function drawWaKpis(d){
   var dates = WA_KPI_PRESET === 'custom'
     ? '<div class="m-custom"><label>من <input type="date" value="' + esc(WA_KPI_FROM) + '" onchange="setWaKpiDate(\'from\',this.value)"></label><label>إلى <input type="date" value="' + esc(WA_KPI_TO) + '" onchange="setWaKpiDate(\'to\',this.value)"></label></div>'
     : '';
-  function mini(label, value, sub, tone){
-    return '<div class="h-mini"><small>' + label + '</small><b' + (tone ? ' style="color:var(--' + tone + ')"' : '') + '>' + value + '</b>' + (sub ? '<u>' + sub + '</u>' : '') + '</div>';
+  function mini(label, value, sub, tone, jump){
+    return '<div class="h-mini' + (jump ? ' tap' : '') + '"' + (jump ? ' role="button" tabindex="0" onclick="waKpiGo(\'' + jump + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click()}"' : '') + '><small>' + label + '</small><b' + (tone ? ' style="color:var(--' + tone + ')"' : '') + '>' + value + '</b>' + (sub ? '<u>' + sub + '</u>' : '') + '</div>';
   }
-  var wait = (d.waiting || []);
-  var waitHtml = '<div class="card home-actions"><div class="card-head"><div><small class="section-eyebrow">واتساب</small><h3>مستنية رد</h3><p>اللي لسه آخر رسالة فيها من العميل — اضغط تفتح المحادثة</p></div></div>' +
+  var wait = (d.waiting || []).slice().sort(function(a, b){ return (num0(b.d)) - (num0(a.d)); });   /* الأطول انتظارًا فوق */
+  function waitTone(w){ if (!w.open) return 'warn'; var m = num0(w.d); return m >= 3600000 ? 'bad' : m >= 900000 ? 'warn' : 'ok'; }   /* +ساعة أحمر، +15 د أصفر، غير كده أخضر */
+  var waitHtml = '<div class="card home-actions" id="waKpiWait"><div class="card-head"><div><small class="section-eyebrow">واتساب</small><h3>مستنية رد</h3><p>الأطول انتظارًا فوق — اضغط تفتح المحادثة</p></div></div>' +
     (wait.length ? wait.map(function(w){
       var id = String(w.c).replace(/[^\w.-]/g, '');
-      return task(w.open ? 'bad' : 'warn', esc(w.name || w.c), w.open ? 'نافذة الرد مفتوحة' : 'بعد 24 ساعة', waKpiWaitDur(w.d), "go('bot'," + chatsTab + ");openChat('" + id + "')");
+      return task(waitTone(w), esc(w.name || w.c), w.open ? 'نافذة الرد مفتوحة' : 'بعد 24 ساعة', waKpiWaitDur(w.d), "go('bot'," + chatsTab + ");openChat('" + id + "')");
     }).join('') : '<div class="state">مفيش محادثات مستنية رد دلوقتي</div>') + '</div>';
   var staff = (d.staff || []);
-  var staffHtml = card('ردود الصيدلي', d.staffMsgs ? (num(d.staffMsgs) + ' رد في الفترة') : 'لا ردود في الفترة',
-    staff.length ? staff.map(function(x){ return row(x.name || 'الصيدلي', null, ltr(num(x.n))); }).join('') : '<div class="state">لا ردود في الفترة</div>');
+  var staffHtml = idw('waKpiStaff', card('ردود الصيدلي', d.staffMsgs ? (num(d.staffMsgs) + ' رد في الفترة') : 'لا ردود في الفترة',
+    staff.length ? staff.map(function(x){ return row(x.name || 'الصيدلي', null, ltr(num(x.n))); }).join('') : '<div class="state">لا ردود في الفترة</div>'));
   var mediaHtml = card('الوسائط', d.mediaTotal ? (num(d.mediaTotal) + ' ملف') : 'لا وسائط في الفترة',
     mediaLabels.map(function(m){ return row(m[1], null, ltr(num(media[m[0]] || 0))); }).join(''));
   var trend = d.trend || [];
-  var trendHtml = card('الاتجاه', trend.length ? ('آخر ' + trend.length + ' يوم') : null,
-    trend.length ? trend.slice().reverse().map(function(x){ return row(x.key, 'محادثات ' + num(x.chats), ltr(num(x.msgs) + ' رسالة')); }).join('') : '<div class="state">لا بيانات</div>');
+  var trendHtml = idw('waKpiTrend', card('الاتجاه', trend.length ? ('آخر ' + trend.length + ' يوم') : null,
+    trend.length ? trend.slice().reverse().map(function(x){ return row(x.key, 'محادثات ' + num(x.chats), ltr(num(x.msgs) + ' رسالة')); }).join('') : '<div class="state">لا بيانات</div>'));
   var topHours = hours.map(function(n,h){ return { h:h, n:n }; }).filter(function(x){ return x.n; }).sort(function(a,b){ return b.n - a.n; }).slice(0, 5);
-  var hoursHtml = card('أوقات الذروة', 'رسايل العملاء حسب الساعة (توقيت مصر)',
-    topHours.length ? topHours.map(function(x){ return row(('0' + x.h).slice(-2) + ':00', null, ltr(num(x.n))); }).join('') : '<div class="state">لا رسايل عملاء في الفترة</div>');
+  var hoursHtml = idw('waKpiHours', card('أوقات الذروة', 'رسايل العملاء حسب الساعة (توقيت مصر)',
+    topHours.length ? topHours.map(function(x){ return row(('0' + x.h).slice(-2) + ':00', null, ltr(num(x.n))); }).join('') : '<div class="state">لا رسايل عملاء في الفترة</div>'));
   var first = d.firstResponse || {};
   var vsChats = d.preset === 'today' ? waKpiVs(d.chats, y.chats) : '';
   var vsMsgs = d.preset === 'today' ? waKpiVs(d.msgs, y.msgs) : '';
@@ -2300,10 +2308,10 @@ function drawWaKpis(d){
           '<u>' + (num0(d.chats) ? 'تم الرد على ' + ltr(num(Math.max(0, num0(d.chats) - num0(d.waitingOpen)))) + ' من ' + ltr(num(d.chats)) : 'لا محادثات في الفترة') + '</u></div></div>' +
         menu + dates +
         '<div class="h-minis" style="grid-template-columns:repeat(2,minmax(0,1fr))">' +
-          mini('رسايل', ltr(num(d.msgs)), vsMsgs) +
-          mini('مستنية رد', ltr(num(d.waitingOpen)), 'نافذة 24 ساعة', d.waitingOpen ? 'bad' : 'ok') +
-          mini('من العملاء', ltr(num(d.inMsgs)), '') +
-          mini('ردود الصيدلي', ltr(num(d.staffMsgs)), '') +
+          mini('رسايل', ltr(num(d.msgs)), vsMsgs, '', 'waKpiTrend') +
+          mini('مستنية رد', ltr(num(d.waitingOpen)), 'نافذة 24 ساعة', d.waitingOpen ? 'bad' : 'ok', 'waKpiWait') +
+          mini('من العملاء', ltr(num(d.inMsgs)), '', '', 'waKpiHours') +
+          mini('ردود الصيدلي', ltr(num(d.staffMsgs)), '', '', 'waKpiStaff') +
           mini('ردود البوت', ltr(num(d.botMsgs)), '') +
           mini('أول رد' + (first.medianText ? ' (الوسيط)' : ''), ltr(esc(firstMain)), firstSub) +
           mini('عملاء جدد', ltr(num((d.customers && d.customers.newC) || 0)), 'في الفترة', 'brand') +

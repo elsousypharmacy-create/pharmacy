@@ -35,6 +35,7 @@ await t('whatsapp.html redirects to the dashboard in WhatsApp-only mode (own tit
   assert.equal(await page.locator('link[rel=manifest]').getAttribute('href'), 'manifest-whatsapp.json');
   assert.equal(await page.locator('meta[name=apple-mobile-web-app-title]').getAttribute('content'), 'واتساب الصيدلية');
   assert.equal((await page.locator('.brand h1').innerText()).trim(), 'واتساب الصيدلية');
+  assert.ok((await page.locator('link[rel=apple-touch-icon]').getAttribute('href')).startsWith('icon-wa-192.png'), 'own Home-Screen icon');
   assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('secnav')).display), 'none', 'bottom nav of the other sections is hidden');
   assert.equal(await page.evaluate(() => CUR), 'bot');
   assert.equal(await page.locator('.screen.on').evaluate(e => e.id), 'sc-bot');
@@ -57,6 +58,7 @@ await t('the normal dashboard is unchanged: bottom nav, own title and manifest, 
   await page.goto(base + 'index.html', { waitUntil: 'load' }); await page.waitForTimeout(1200); await hideSplash(page);
   assert.equal(await page.title(), 'صيدلية السوسي');
   assert.equal(await page.locator('link[rel=manifest]').getAttribute('href'), 'manifest-index.json');
+  assert.ok((await page.locator('link[rel=apple-touch-icon]').getAttribute('href')).startsWith('icon-192.png'), 'normal icon unchanged');
   assert.equal(await page.evaluate(() => window.NOVA_APP), undefined);
   assert.notEqual(await page.evaluate(() => getComputedStyle(document.getElementById('secnav')).display), 'none');
   await page.evaluate(() => go('cust')); assert.equal(await page.evaluate(() => CUR), 'cust');
@@ -69,5 +71,6 @@ await t('manifest-whatsapp.json: its own id, start_url inside its scope, icons e
   const start = new URL(m.start_url, 'https://x.test/pharmacy/manifest-whatsapp.json'), scope = new URL(m.scope, 'https://x.test/pharmacy/manifest-whatsapp.json');
   assert.ok(start.pathname.startsWith(scope.pathname)); assert.equal(start.search, '?app=whatsapp');
   for (const i of m.icons) assert.ok(fs.existsSync(path.join(root, i.src)), i.src + ' exists');
+  assert.ok(m.icons.every(i => /icon-wa-/.test(i.src)), 'its own icons, not the dashboard\'s');
 });
 await b.close(); srv.close(); console.log(`PASS wa app mode: ${n} cases`);

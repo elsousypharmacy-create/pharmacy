@@ -250,3 +250,10 @@ body.team-fit-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}
 #p-bot.wa-kpis-page .wa-hero .h-num u{font-size:13px}
 #p-bot.wa-kpis-page .wa-hero .wa-period-menu{margin:0 0 12px}
 #p-bot.wa-kpis-page .wa-hero .h-minis{margin-top:0;padding-top:0;border-top:0;gap:10px}
+/* WhatsApp KPIs: tiles that jump to their detail card */
+#p-bot.wa-kpis-page .h-mini.tap{cursor:pointer;transition:transform .12s}
+#p-bot.wa-kpis-page .h-mini.tap:active{transform:scale(.98)}
+#p-bot.wa-kpis-page .h-mini.tap:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+@keyframes waFlash{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--brand) 70%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
+#p-bot.wa-kpis-page .wa-flash>.card,#p-bot.wa-kpis-page .wa-flash.card{animation:waFlash 1.2s ease-out}
+

@@ -6166,8 +6166,11 @@ function novaWaForwardIn_(m, pname, phoneNumberId) {
     var t = m.type || 'text', media = (m && m[t]) || {};
     var text = t === 'text' ? (m.text && m.text.body) : t === 'button' ? (m.button && m.button.text)
       : t === 'interactive' ? ((m.interactive && (m.interactive.button_reply || m.interactive.list_reply) || {}).title) : (media.caption || null);
-    var item = { id: m.id, from: waSenderId_(m), timestamp: m.timestamp, type: t, text: text || null,
-      media_id: media.id || null, filename: media.filename || null, name: pname || null, phone_number_id: phoneNumberId || null, direction: 'in' };
+    var from = waSenderId_(m), crmName = '';
+    /* اسم العميل من قاعدة عملاء الصيدلية (شيت Customers) بالرقم؛ لو مفيش أو حصل خطأ يفضل اسم بروفايل واتساب. قراءة فقط. */
+    try { crmName = waCustomerName_('wa_' + from) || ''; } catch (eN) {}
+    var item = { id: m.id, from: from, timestamp: m.timestamp, type: t, text: text || null,
+      media_id: media.id || null, filename: media.filename || null, name: crmName || pname || null, phone_number_id: phoneNumberId || null, direction: 'in' };
     if (media.mime_type) item.mime_type = media.mime_type;
     if (media.id && NOVA_WA_MEDIA_TYPES_[t]) {
       try {

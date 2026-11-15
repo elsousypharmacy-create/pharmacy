@@ -60,6 +60,12 @@ assert.equal(nc[0].o.method,'post');assert.equal(nc[0].o.headers.Authorization,'
 assert.equal(JSON.parse(nc[0].o.payload).messages[0].direction,'out');assert.equal(JSON.parse(nc[1].o.payload).messages[0].direction,'in');
 let b=JSON.parse(nc[1].o.payload);assert.equal(b.source,'pharmacy-bot');assert.equal(b.v,1);assert.equal(b.messages.length,1);
 assert.deepEqual(b.messages[0],{id:'wamid.B1',from:'201001112222',timestamp:'1760000000',type:'text',text:'hello',media_id:null,filename:null,name:'Sara',phone_number_id:'PNID',direction:'in'});
+// (b2) the pharmacy's customer name (from the Customers sheet, by phone) is forwarded instead of the WhatsApp profile name; fallbacks keep the profile name
+{const inName=(setup)=>{const x=make({NOVA_WA_BRIDGE_URL:URL_,NOVA_WA_BRIDGE_TOKEN:TOK});setup&&setup(x.sb);x.sb.doPost({postData:{contents:JSON.stringify(hook('wamid.N'+Math.random().toString(36).slice(2,6)))}});const c=novaCalls(x.fetches).map(y=>JSON.parse(y.o.payload).messages[0]).find(m=>m.direction==='in');return {name:c&&c.name,calls:novaCalls(x.fetches).length};};
+ assert.equal(inName(sb=>{sb.waCustomerName_=id=>id==='wa_201001112222'?'سارة علي':'';}).name,'سارة علي');
+ assert.equal(inName(sb=>{sb.waCustomerName_=()=>'';}).name,'Sara');
+ const th=inName(sb=>{sb.waCustomerName_=()=>{throw new Error('sheet down');};});assert.equal(th.name,'Sara');assert.equal(th.calls,2,'forwarding is not blocked by a lookup failure');
+ assert.equal(inName(sb=>{sb.waCustomerName_=id=>id==='wa_999'?'x':'';}).name,'Sara','a different number does not leak a name');}
 let o=JSON.parse(nc[0].o.payload).messages[0];assert.equal(o.direction,'out');assert.equal(o.text,'auto reply');assert.equal(o.from,'201001112222');assert.equal(o.id,'wamid.OUT1');assert.equal(o.phone_number_id,'PNID');
 // media message
 t=make({NOVA_WA_BRIDGE_URL:URL_,NOVA_WA_BRIDGE_TOKEN:TOK});t.sb.doPost({postData:{contents:JSON.stringify(hook('wamid.B2',{type:'document',text:undefined,document:{id:'MID1',filename:'rx.pdf',mime_type:'application/pdf',caption:'cap'}}))}});

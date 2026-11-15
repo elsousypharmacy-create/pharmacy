@@ -21,6 +21,16 @@ function getBotChats() {
   var list = Object.keys(by).map(function (id) {
     var c = by[id]; c.pending = P['escp_' + id] || ''; c.hold = holdOn_(id); return c;
   });
+  /* ربط الرقم بقاعدة عملاء الصيدلية: اسم العميل من شيت Customers (والرقم لو ناقص) — قراءة فقط */
+  try {
+    var cn = null;
+    list.forEach(function (c) {
+      var p = waChatPhone_(c.id); if (!p) return;
+      if (cn === null) cn = customerNameMap_();
+      if (cn[p]) { c.name = cn[p]; c.crm = true; }
+      if (!c.phone) c.phone = p;
+    });
+  } catch (e) {}
   list.sort(function (a, b) { return (b.pending ? 1 : 0) - (a.pending ? 1 : 0) || (b.ord - a.ord); });
   list.forEach(function (c) { delete c.ord; });
   return { ok: true, chats: list.slice(0, 300) };

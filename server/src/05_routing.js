@@ -105,7 +105,7 @@ function doGet(e) {
   /* 🔒 أوامر بتكلّف فلوس أو بتغيّر/تمسح حاجة — محتاجة الرقم السري */
   var ADMIN_ACTIONS = { aiTest: 1, botSetRelay: 1, backupProbe: 1, cleanBackups: 1, cleanBackupsAuto: 1,
                         purgeTrashedBackups: 1, aiDose: 1, serverUpdate: 1, setAutoUpdate: 1, ensureTriggers: 1,
-                        getBotChats: 1, getBotChat: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camVideoTest: 1, camRecordSample: 1, camReports: 1, camFrame: 1, camFrames: 1,
+                        getBotChats: 1, getBotChat: 1, getWhatsAppKpis: 1, botReply: 1, botHold: 1, botDone: 1, waInfo: 1, waSubscribe: 1, botPhoto: 1, camInfo: 1, camAutoOn: 1, camVideoTest: 1, camRecordSample: 1, camReports: 1, camFrame: 1, camFrames: 1,
                         setBalanceInputs: 1, setBalanceBase: 1 };
   if (ADMIN_ACTIONS[action] && !adminPinOk_(e.parameter.pin))
     return jsonResponseStaff({ ok: false, pinError: true, error: aiKey_('ADMIN_PIN') ? 'الرقم السري غلط' : 'اختار رقم سري الأول من إعدادات الذكاء الاصطناعي' });
@@ -119,6 +119,7 @@ function doGet(e) {
   if (action === 'setAutoUpdate') return jsonResponseStaff(setAutoUpdate(e.parameter.on === '1'));
   if (action === 'ensureTriggers') return jsonResponseStaff(ensureTriggers_({ which: e.parameter.which || '' }));
   if (action === 'getBotChats') return jsonResponseStaff(getBotChats());
+  if (action === 'getWhatsAppKpis') return jsonResponseStaff(getWhatsAppKpis(e.parameter));
   if (action === 'waInfo') return jsonResponseStaff(waInfo());
   if (action === 'camInfo') return jsonResponseStaff(camInfo());
   if (action === 'camAutoOn') return jsonResponseStaff(camAutoOn());

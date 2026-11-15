@@ -3041,7 +3041,7 @@ function chatWho_(chatId) {
   if (v) { try { return JSON.parse(v); } catch (e) {} }
   var w = { n: '', p: '' };
   try { w.n = getKnownCustomerName_(chatId) || ''; } catch (e) {}
-  try { w.p = getVerifiedPhone_(chatId) || getCustomerPhone_(chatId) || ''; } catch (e) {}
+  try { w.p = getVerifiedPhone_(chatId) || getCustomerPhone_(chatId) || waChatPhone_(chatId) || ''; } catch (e) {}
   c.put(k, JSON.stringify(w), 3600);
   return w;
 }
@@ -3352,7 +3352,7 @@ function lastAddress_(phone) {
 // بيدوّر على اسم العميل في الـ CRM لو رقمه معروف
 function getKnownCustomerName_(chatId) {
   try {
-    const phone = canonicalEgyptPhone_(getVerifiedPhone_(chatId));
+    const phone = canonicalEgyptPhone_(getVerifiedPhone_(chatId)) || waChatPhone_(chatId);   /* واتساب: الرقم هو المعرّف */
     if (!phone) return '';
     const cached = CacheService.getScriptCache().get('cname_' + phone);
     if (cached) return cached;
@@ -5682,6 +5682,16 @@ function getBotChats() {
   var list = Object.keys(by).map(function (id) {
     var c = by[id]; c.pending = P['escp_' + id] || ''; c.hold = holdOn_(id); return c;
   });
+  /* ربط الرقم بقاعدة عملاء الصيدلية: اسم العميل من شيت Customers (والرقم لو ناقص) — قراءة فقط */
+  try {
+    var cn = null;
+    list.forEach(function (c) {
+      var p = waChatPhone_(c.id); if (!p) return;
+      if (cn === null) cn = customerNameMap_();
+      if (cn[p]) { c.name = cn[p]; c.crm = true; }
+      if (!c.phone) c.phone = p;
+    });
+  } catch (e) {}
   list.sort(function (a, b) { return (b.pending ? 1 : 0) - (a.pending ? 1 : 0) || (b.ord - a.ord); });
   list.forEach(function (c) { delete c.ord; });
   return { ok: true, chats: list.slice(0, 300) };
@@ -6455,6 +6465,43 @@ function getWhatsAppKpis(params) {
       today: waKpiCompact_(head.today), yesterday: waKpiCompact_(head.yesterday)
     };
   } catch (e) { return { ok: false, error: e.message }; }
+}
+
+// ==== MODULE 45_wa_customer_names (read-only; order = server/files.json) ====
+/* ربط أرقام واتساب بقاعدة عملاء الصيدلية (شيت Customers).
+   شات واتساب معرّفه wa_<رقم الموبايل>. الاسم كان بيتقرا بس من «الرقم المؤكد» (زرار شارك رقمي بتاع تيليجرام)، وده مبيتحطش لواتساب،
+   فكل الأرقام كانت بتظهر أرقام. دلوقتي الرقم نفسه (من المعرّف) بيتدوّر عليه في الشيت. قراءة فقط: مفيش كتابة في الشيتات ولا إرسال. */
+function waChatPhone_(chatId) {
+  var m = /^wa_(.+)$/.exec(String(chatId || ''));
+  if (!m) return '';
+  var raw = m[1];
+  if (!/^\+?\d[\d\s-]{8,}$/.test(raw)) return '';          /* BSUID زي US.1349… مش رقم */
+  var p = canonicalEgyptPhone_(raw);
+  return /^01[0125]\d{8}$/.test(p) ? p : '';                /* بس أرقام الموبايل المصرية */
+}
+/* خريطة رقم مصري موحّد → اسم العميل، من شيت Customers. بتتخزّن 10 دقايق (ومبتتخزنش لو فاضية عشان عطل مؤقت ميثبتش). */
+function customerNameMap_() {
+  var hit = fxCacheGet_('fx_wa_cnames');
+  if (hit) return hit;
+  var map = {}, n = 0;
+  try {
+    var sheet = SpreadsheetApp.openById(CRM_SHEET_ID).getSheetByName('Customers');
+    if (sheet && sheet.getLastRow() > 1) {
+      var hm = getHeaderMap(sheet);
+      if (hm['phone'] !== undefined && hm['name'] !== undefined) {
+        sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues().forEach(function (r) {
+          var p = canonicalEgyptPhone_(r[hm['phone']]), nm = String(r[hm['name']] || '').trim();
+          if (p && nm) { map[p] = nm; n++; }
+        });
+      }
+    }
+  } catch (e) { return {}; }
+  if (n) fxCachePut_('fx_wa_cnames', map, 600);
+  return map;
+}
+function waCustomerName_(chatId) {
+  var p = waChatPhone_(chatId);
+  return p ? (customerNameMap_()[p] || '') : '';
 }
 
 // ==== MODULE 50_sms_points (split from server/Code.js; load order = file name order) ====

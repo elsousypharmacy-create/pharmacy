@@ -28,7 +28,7 @@ function chatWho_(chatId) {
   if (v) { try { return JSON.parse(v); } catch (e) {} }
   var w = { n: '', p: '' };
   try { w.n = getKnownCustomerName_(chatId) || ''; } catch (e) {}
-  try { w.p = getVerifiedPhone_(chatId) || getCustomerPhone_(chatId) || ''; } catch (e) {}
+  try { w.p = getVerifiedPhone_(chatId) || getCustomerPhone_(chatId) || waChatPhone_(chatId) || ''; } catch (e) {}
   c.put(k, JSON.stringify(w), 3600);
   return w;
 }
@@ -339,7 +339,7 @@ function lastAddress_(phone) {
 // بيدوّر على اسم العميل في الـ CRM لو رقمه معروف
 function getKnownCustomerName_(chatId) {
   try {
-    const phone = canonicalEgyptPhone_(getVerifiedPhone_(chatId));
+    const phone = canonicalEgyptPhone_(getVerifiedPhone_(chatId)) || waChatPhone_(chatId);   /* واتساب: الرقم هو المعرّف */
     if (!phone) return '';
     const cached = CacheService.getScriptCache().get('cname_' + phone);
     if (cached) return cached;

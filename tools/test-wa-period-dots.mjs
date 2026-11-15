@@ -35,6 +35,18 @@ await t('default: the pill says اليوم, the three dots are next to it, the m
   assert.ok(Math.abs(a.y - c.y) < 4 && Math.abs(a.x - (c.x + c.width)) < 16, 'same row, adjacent');
   assert.ok(c.width >= 44 && c.height >= 44, 'touch size');
 });
+await t('layout without repetition: no big hero number, four tiles, one messages block (total + its three parts, shown once)', async () => {
+  assert.equal(await page.locator('#p-bot .h-main').count(), 0);
+  assert.equal(await page.locator('#p-bot .h-minis .h-mini').count(), 4);
+  assert.deepEqual((await page.locator('#p-bot .h-minis .h-mini > small').allInnerTexts()).map(x => x.trim()), ['محادثات', 'مستنية رد', 'أول رد', 'جدد / رجوع']);
+  assert.equal(await page.locator('#p-bot .wa-msgs').count(), 1);
+  assert.equal((await page.locator('#p-bot .wa-msgs-head b').innerText()).replace(/[\u2066-\u2069]/g, '').trim(), '43');
+  assert.deepEqual((await page.locator('#p-bot .wa-msgs .period-stats small').allInnerTexts()).map(x => x.trim()), ['من العملاء', 'ردود البوت', 'ردود الصيدلي']);
+  const txt = await page.locator('#p-bot .h-hero').innerText();
+  assert.equal((txt.match(/رسايل/g) || []).length, 1, 'the word رسايل appears once (as the block title)');
+  const tiles = await page.locator('#p-bot .h-minis').boundingBox(), msgs = await page.locator('#p-bot .wa-msgs').boundingBox();
+  assert.ok(msgs.y > tiles.y + tiles.height - 2 && msgs.y - (tiles.y + tiles.height) < 30, 'messages block sits right under the tiles');
+});
 await t('the dots open the other periods and say so for assistive tech', async () => {
   await page.locator('.wa-period-more').click();
   assert.equal(await page.locator('#waKpiMenu').isVisible(), true);

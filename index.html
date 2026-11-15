@@ -2288,18 +2288,19 @@ function drawWaKpis(d){
       '<div class="card h-hero">' +
         (d.preset === 'today' ? '' : '<div class="h-top"><span>' + esc(d.label || '') + '</span></div>') +
         tabs + dates +
-        '<div class="h-main"><div class="h-num"><small>محادثات</small><b>' + ltr(num(d.chats)) + '</b>' +
-          (vsChats ? '<u>' + esc(vsChats) + '</u>' : '') + '</div></div>' +
         '<div class="h-minis" style="grid-template-columns:repeat(2,minmax(0,1fr))">' +
-          mini('رسايل', ltr(num(d.msgs)), vsMsgs) +
+          mini('محادثات', ltr(num(d.chats)), vsChats) +
           mini('مستنية رد', ltr(num(d.waitingOpen)), 'نافذة 24 ساعة', d.waitingOpen ? 'bad' : 'ok') +
           mini('أول رد', ltr(esc(enDur(first.avgText) || '—')), firstSub) +
           mini('جدد / رجوع', ltr(num((d.customers && d.customers.newC) || 0) + ' / ' + num((d.customers && d.customers.returning) || 0)), 'في الفترة', 'brand') +
         '</div>' +
-        '<div class="period-stats">' +
-          '<div><small>رسايل العملاء</small><b>' + ltr(num(d.inMsgs)) + '</b></div>' +
-          '<div><small>ردود البوت</small><b>' + ltr(num(d.botMsgs)) + '</b></div>' +
-          '<div><small>ردود الصيدلي</small><b>' + ltr(num(d.staffMsgs)) + '</b></div>' +
+        '<div class="wa-msgs">' +
+          '<div class="wa-msgs-head"><small>رسايل</small><b>' + ltr(num(d.msgs)) + '</b>' + (vsMsgs ? '<u>' + esc(vsMsgs) + '</u>' : '') + '</div>' +
+          '<div class="period-stats">' +
+            '<div><small>من العملاء</small><b>' + ltr(num(d.inMsgs)) + '</b></div>' +
+            '<div><small>ردود البوت</small><b>' + ltr(num(d.botMsgs)) + '</b></div>' +
+            '<div><small>ردود الصيدلي</small><b>' + ltr(num(d.staffMsgs)) + '</b></div>' +
+          '</div>' +
         '</div>' +
       '</div>' +
       waitHtml +

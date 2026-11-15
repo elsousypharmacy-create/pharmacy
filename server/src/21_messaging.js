@@ -115,8 +115,8 @@ function waCall_(path, body) {
   } catch (e) { return { ok: false, description: e.message }; }
 }
 /* بيبعت نص (ومعاه أزرار تليجرام بعد تحويلها لأزرار واتساب) */
-function waSend_(chatId, text, markup) {
-  if (holdBlocksBotSend_(chatId, text)) { Logger.log('hold: منع رد البوت ' + chatId); return { ok: false, description: 'hold' }; }
+function waSend_(chatId, text, markup, staff) {
+  if (holdBlocksBotSend_(chatId, text, staff)) { Logger.log('hold: منع رد البوت ' + chatId); return { ok: false, description: 'hold' }; }
   var tgt = waTarget_(chatId), body = String(text == null ? '' : text).slice(0, 4000), btns = [], extra = '';
   if (markup && markup.inline_keyboard) markup.inline_keyboard.forEach(function (row) { row.forEach(function (b) {
     if (b.callback_data) btns.push({ id: b.callback_data, title: b.text });

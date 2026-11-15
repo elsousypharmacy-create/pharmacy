@@ -158,7 +158,9 @@ function varyEmoji_(chatId, text) {
 }
 function tgApi_(method, payload) {
   try {
-    if (method === 'sendMessage' && payload && holdBlocksBotSend_(payload.chat_id, payload.text)) {
+    var staff = !!(payload && payload._staff);
+    if (payload && Object.prototype.hasOwnProperty.call(payload, '_staff')) delete payload._staff;
+    if (method === 'sendMessage' && payload && holdBlocksBotSend_(payload.chat_id, payload.text, staff)) {
       Logger.log('hold: منع رد البوت ' + payload.chat_id);
       return { ok: false, description: 'hold' };
     }
@@ -167,7 +169,7 @@ function tgApi_(method, payload) {
     if (payload && method === 'forwardMessage' && isWa_(payload.from_chat_id)) return waForwardToStaff_(String(payload.from_chat_id), payload.message_id);
     if (payload && method === 'answerCallbackQuery' && payload.callback_query_id === 'wa') return { ok: true };
     if (payload && isWa_(payload.chat_id)) {
-      if (method === 'sendMessage') return waSend_(String(payload.chat_id), payload.text, payload.reply_markup);
+      if (method === 'sendMessage') return waSend_(String(payload.chat_id), payload.text, payload.reply_markup, staff);
       if (method === 'sendChatAction') { waTyping_(String(payload.chat_id)); return { ok: true }; }
       return { ok: true };
     }

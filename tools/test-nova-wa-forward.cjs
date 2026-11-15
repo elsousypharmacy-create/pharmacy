@@ -7,12 +7,32 @@ function make(props){
     CacheService:{getScriptCache:()=>({get:k=>k in cache?cache[k]:null,put:(k,v)=>{cache[k]=String(v);},remove:k=>{delete cache[k];}})},
     LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})},
     ContentService:{createTextOutput:t=>({t,setMimeType(){return {getContent:()=>t};},getContent:()=>t}),MimeType:{JSON:'json'}},
-    Utilities:{formatDate:()=>'01-01 00:00',sleep(){}},
+    Utilities:{formatDate:()=>'01-01 00:00',sleep(){},
+      base64Encode:(bytes)=>Buffer.from(Uint8Array.from([].concat(bytes).map(b=>b<0?b+256:b))).toString('base64')},
     UrlFetchApp:{fetch(u,o){
       fetches.push({u,o});
+      const method=String((o&&o.method)||'get').toLowerCase();
       if(u===URL_&&state.throwUrl)throw new Error('boom');
-      if(/graph\.facebook\.com/.test(u)){state.waSent++;return {getResponseCode:()=>200,getContentText:()=>JSON.stringify({messages:[{id:'wamid.OUT'+state.waSent}]})};}
-      return {getResponseCode:()=>200,getContentText:()=>'{}'};}}};
+      if(state.media){
+        const asset=Object.values(state.media).find(a=>a.url===u);
+        if(asset){
+          if(asset.failDownload) return {getResponseCode:()=>500,getContentText:()=>'err',getBlob:()=>({getBytes:()=>[],getContentType:()=>''})};
+          const bytes=Array.from(Buffer.from(asset.body||'', 'utf8'));
+          return {getResponseCode:()=>200,getContentText:()=>'',getBlob:()=>({getBytes:()=>bytes,getContentType:()=>asset.mime||'application/octet-stream'})};
+        }
+      }
+      if(/graph\.facebook\.com/.test(u)){
+        if(method==='get'){
+          if(state.mediaThrow) throw new Error('media boom https://graph.facebook.com/v21.0/SECRET?x=EAAZZZ');
+          const mid=String(u).split('/').pop().split('?')[0];
+          const asset=state.media&&state.media[mid];
+          if(!asset) return {getResponseCode:()=>404,getContentText:()=>'{}',getBlob:()=>({getBytes:()=>[],getContentType:()=>''})};
+          return {getResponseCode:()=>200,getContentText:()=>JSON.stringify({id:mid,url:asset.url,mime_type:asset.mime,file_size:asset.size!=null?asset.size:Buffer.byteLength(asset.body||'')}),getBlob:()=>({getBytes:()=>[],getContentType:()=>''})};
+        }
+        state.waSent++;
+        return {getResponseCode:()=>200,getContentText:()=>JSON.stringify({messages:[{id:'wamid.OUT'+state.waSent}]}),getBlob:()=>({getBytes:()=>[],getContentType:()=>''})};
+      }
+      return {getResponseCode:()=>200,getContentText:()=>'{}',getBlob:()=>({getBytes:()=>[],getContentType:()=>''})};}}};
   vm.createContext(sb);vm.runInContext(fs.readFileSync('server/Code.js','utf8'),sb);
   // isolate from sheets/AI: stub the downstream handler and wa token/ids
   sb.handled=[];
@@ -22,11 +42,12 @@ function make(props){
   };
   sb.waToken_=()=>'wa-token';sb.waPhoneId_=()=>'PNID';sb.waTarget_=id=>({to:String(id).replace(/^wa_/,'')});
   sb.saveCustomerPhone_=()=>{};sb.canonicalEgyptPhone_=p=>p;sb.noteBadChatId_=()=>{};sb.badChatId_=()=>false;
+  sb.saveConversationTurn=()=>{};sb.clearHandoff_=()=>{};sb.logChatRows_=()=>{};
   return {sb,P,cache,fetches,state};
 }
 const hook=(id,over)=>({object:'whatsapp_business_account',entry:[{changes:[{field:'messages',value:{metadata:{phone_number_id:'PNID'},contacts:[{wa_id:'201001112222',profile:{name:'Sara'}}],messages:[Object.assign({id,from:'201001112222',timestamp:'1760000000',type:'text',text:{body:'hello'}},over)]}}]}]});
 const novaCalls=f=>f.filter(x=>x.u===URL_);
-const waCalls=f=>f.filter(x=>/graph\.facebook\.com/.test(x.u));
+const waCalls=f=>f.filter(x=>/graph\.facebook\.com/.test(x.u)&&String((x.o&&x.o.method)||'').toLowerCase()!=='get');
 // (a) unset -> no fetch to NOVA, bot behaves as today
 let t=make({});t.sb.doPost({postData:{contents:JSON.stringify(hook('wamid.A1'))}});
 assert.equal(novaCalls(t.fetches).length,0);assert.equal(t.sb.handled.length,1);assert.equal(waCalls(t.fetches).length,1);
@@ -59,8 +80,13 @@ t.sb.doPost({postData:{contents:JSON.stringify(hook('wamid.D1'))}});assert.equal
 t=make({NOVA_WA_BRIDGE_URL:URL_,NOVA_WA_BRIDGE_TOKEN:TOK,BOT_AUTO_REPLY:'0'});t.sb.doPost({postData:{contents:JSON.stringify(hook('wamid.E1'))}});
 nc=novaCalls(t.fetches);assert.equal(nc.length,1);assert.equal(JSON.parse(nc[0].o.payload).messages[0].direction,'in');
 assert.equal(t.sb.handled.length,1);assert.equal(waCalls(t.fetches).length,0);
-// manual staff reply still works with switch off
-let r=t.sb.waSend_('wa_201001112222','👨‍⚕️ رد الصيدلي:\n\nhi');assert.equal(r.ok,true);assert.equal(waCalls(t.fetches).length,1);
+// phrase «رد الصيدلي» no longer bypasses the hold
+let r=t.sb.waSend_('wa_201001112222','👨‍⚕️ رد الصيدلي:\n\nhi');assert.equal(r.ok,false);assert.equal(r.description,'hold');assert.equal(waCalls(t.fetches).length,0);
+// official staff path (bridge reply → botReply with _staff) still works
+const staffCall=d=>t.sb.doPost({postData:{contents:JSON.stringify(Object.assign({action:'novaWhatsAppBridge',bridgeToken:TOK},d))}});
+r=JSON.parse(staffCall({operation:'reply',chatId:'wa_201001112222',text:'hi from staff'}).getContent());
+assert.equal(r.ok,true);assert.equal(waCalls(t.fetches).length,1);
+const sent=JSON.parse(waCalls(t.fetches)[0].o.payload);assert.ok(!('_staff' in sent));assert.equal(sent.text.body.indexOf('hi from staff')!==-1,true);
 // any other value = on
 t=make({BOT_AUTO_REPLY:'1'});t.sb.doPost({postData:{contents:JSON.stringify(hook('wamid.E2'))}});assert.equal(waCalls(t.fetches).length,1);
 // (f) autoReply get/set
@@ -73,4 +99,38 @@ res=unwrap(call({bridgeToken:TOK,operation:'autoReplySet',enabled:false}));asser
 res=unwrap(call({bridgeToken:TOK,operation:'autoReplyGet'}));assert.deepEqual(res,{ok:true,autoReply:false});
 res=unwrap(call({bridgeToken:TOK,operation:'autoReplySet',enabled:true}));assert.deepEqual(res,{ok:true,autoReply:true});
 res=unwrap(call({bridgeToken:TOK,operation:'autoReplySet',enabled:'no'}));assert.equal(res.ok,false);
-console.log('PASS nova wa forward: unset no-op, payload/auth, fetch failure, dedupe, auto-reply off, autoReply get/set');
+// document without a Graph fetch still forwards metadata (fail-safe)
+t=make({NOVA_WA_BRIDGE_URL:URL_,NOVA_WA_BRIDGE_TOKEN:TOK,BOT_AUTO_REPLY:'0'});t.sb.doPost({postData:{contents:JSON.stringify(hook('wamid.B2b',{type:'document',text:undefined,document:{id:'MID404',filename:'rx.pdf',caption:'cap'}}))}});
+b=JSON.parse(novaCalls(t.fetches).find(x=>JSON.parse(x.o.payload).messages[0].direction==='in').o.payload).messages[0];
+assert.equal(b.media_id,'MID404');assert.equal(b.filename,'rx.pdf');assert.equal(b.text,'cap');assert.equal(b.media_skipped,'fetch_failed');assert.ok(!b.media_base64);
+// inbound image with bytes attached
+const imgBody='fake-image-bytes';
+t=make({NOVA_WA_BRIDGE_URL:URL_,NOVA_WA_BRIDGE_TOKEN:TOK,BOT_AUTO_REPLY:'0'});
+t.state.media={MIDIMG:{url:'https://cdn.example/media/MIDIMG',mime:'image/jpeg',body:imgBody}};
+t.sb.doPost({postData:{contents:JSON.stringify(hook('wamid.IMG1',{type:'image',text:undefined,image:{id:'MIDIMG',mime_type:'image/jpeg',caption:'pic'}}))}});
+b=JSON.parse(novaCalls(t.fetches).find(x=>JSON.parse(x.o.payload).messages[0].direction==='in').o.payload).messages[0];
+assert.equal(b.type,'image');assert.equal(b.media_id,'MIDIMG');assert.equal(b.text,'pic');assert.equal(b.mime_type,'image/jpeg');
+assert.equal(b.media_base64,Buffer.from(imgBody).toString('base64'));assert.equal(b.media_size,Buffer.byteLength(imgBody));assert.ok(!b.media_skipped);
+assert.ok(!JSON.stringify(b).includes('wa-token'));assert.ok(!JSON.stringify(b).includes('cdn.example'));
+// too large: metadata only, no download
+t=make({NOVA_WA_BRIDGE_URL:URL_,NOVA_WA_BRIDGE_TOKEN:TOK,BOT_AUTO_REPLY:'0'});
+t.state.media={BIG:{url:'https://cdn.example/media/BIG',mime:'video/mp4',body:'x',size:5*1024*1024+1}};
+t.sb.doPost({postData:{contents:JSON.stringify(hook('wamid.BIG1',{type:'video',text:undefined,video:{id:'BIG',caption:'vid'}}))}});
+b=JSON.parse(novaCalls(t.fetches).find(x=>JSON.parse(x.o.payload).messages[0].direction==='in').o.payload).messages[0];
+assert.equal(b.type,'video');assert.equal(b.media_id,'BIG');assert.equal(b.text,'vid');assert.equal(b.media_skipped,'too_large');assert.ok(!b.media_base64);assert.equal(b.media_size,5*1024*1024+1);
+// Graph throw: text still forwarded, no throw
+t=make({NOVA_WA_BRIDGE_URL:URL_,NOVA_WA_BRIDGE_TOKEN:TOK,BOT_AUTO_REPLY:'0'});t.state.mediaThrow=true;
+assert.doesNotThrow(()=>t.sb.doPost({postData:{contents:JSON.stringify(hook('wamid.F1',{type:'image',text:undefined,image:{id:'MIDX',caption:'pic'}}))}}));
+b=JSON.parse(novaCalls(t.fetches).find(x=>JSON.parse(x.o.payload).messages[0].direction==='in').o.payload).messages[0];
+assert.equal(b.text,'pic');assert.equal(b.media_id,'MIDX');assert.equal(b.media_skipped,'fetch_failed');assert.ok(!b.media_base64);
+assert.ok(!JSON.stringify(b).includes('EAAZZZ'));assert.ok(!JSON.stringify(b).includes('https://graph.facebook.com'));
+// pausedAck_ is a no-op; unset BOT_TEST means no test numbers (incl. former default)
+t=make({BOT_PAUSED:'1'});
+assert.equal(t.sb.testNumbers_().join(','),'');
+assert.equal(t.sb.isTestChat_('wa_201120372238'),false);
+t.sb.pausedAck_('wa_201001112222');t.sb.pausedAck_('wa_201120372238');
+assert.equal(waCalls(t.fetches).length,0);
+t.P.BOT_TEST='1120372238';assert.equal(t.sb.testNumbers_().join(','),'1120372238');assert.equal(t.sb.isTestChat_('wa_201120372238'),true);
+assert.equal(t.sb.holdBlocksBotSend_('wa_201001112222','وصلتنا رسالتك، رد الصيدلي هيوصلك هنا قريب.'),true);
+assert.equal(t.sb.holdBlocksBotSend_('wa_201001112222','hi',true),false);
+console.log('PASS nova wa forward: unset no-op, payload/auth, fetch failure, dedupe, auto-reply off, staff reply flag, media attach/cap, pausedAck silence, empty BOT_TEST default');

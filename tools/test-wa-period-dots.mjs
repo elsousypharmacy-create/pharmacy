@@ -42,11 +42,12 @@ await t('default: home-style hero (ring, big number, title with the period and d
 });
 await t('eight tiles, each metric once, in this order; no repeated total block', async () => {
   const labels = (await page.locator('#p-bot .wa-hero .h-minis .h-mini > small').allInnerTexts()).map(x => x.trim());
-  assert.deepEqual(labels, ['رسايل', 'مستنية رد', 'من العملاء', 'ردود الصيدلي', 'ردود البوت', 'أول رد', 'عملاء جدد', 'عملاء راجعين']);
+  assert.deepEqual(labels, ['رسايل', 'مستنية رد', 'من العملاء', 'ردود الصيدلي', 'ردود البوت', 'أول رد (الوسيط)', 'عملاء جدد', 'عملاء راجعين']);
   assert.equal(await page.locator('#p-bot .wa-msgs').count(), 0);
   const vals = (await page.locator('#p-bot .wa-hero .h-minis .h-mini > b').allInnerTexts()).map(x => x.replace(/[\u2066-\u2069]/g, '').trim());
-  assert.deepEqual(vals, ['43', '1', '16', '20', '7', '8m 3s', '4', '2']);
+  assert.deepEqual(vals, ['43', '1', '16', '20', '7', '3m 34s', '4', '2']);
   assert.equal(Number(vals[2]) + Number(vals[3]) + Number(vals[4]), Number(vals[0]), 'parts add up to the total');
+  assert.ok((await page.locator('#p-bot .wa-hero .h-minis .h-mini').nth(5).innerText()).includes('المتوسط') && (await page.locator('#p-bot .wa-hero .h-minis .h-mini').nth(5).innerText()).includes('8m 3s'), 'the average is shown under the median');
 });
 await t('the dots open the other periods and say so for assistive tech', async () => {
   await page.locator('.wa-period-more').click();
@@ -70,6 +71,14 @@ await t('custom shows the two date fields; going back to اليوم removes them
   await page.locator('.wa-period-more').click(); await page.locator('#waKpiMenu button', { hasText: 'اليوم' }).click();
   await page.waitForFunction(() => document.querySelector('#p-bot .wa-hero .h-num small')?.textContent.includes('اليوم'));
   assert.equal(await page.locator('.m-custom').count(), 0); assert.equal(ranges.at(-1), 'today');
+});
+await t('home: the floating «NOVA Rx» button hides when the in-card NOVA Rx link exists (it duplicated it and covered the last row)', async () => {
+  const shown = () => page.evaluate(() => getComputedStyle(document.getElementById('novaHomeAccess')).display);
+  await page.evaluate(() => document.body.classList.add('home-flash-mode'));
+  assert.equal(await shown(), 'flex', 'without the in-card link the floating button stays (fallback)');
+  await page.evaluate(() => { const a = document.createElement('a'); a.className = 'home-nova-shortcut'; a.id = '__probe'; document.body.appendChild(a); });
+  assert.equal(await shown(), 'none', 'with the in-card link it is hidden');
+  await page.evaluate(() => { document.getElementById('__probe').remove(); document.body.classList.remove('home-flash-mode'); });
 });
 assert.deepEqual(errs, []);
 await b.close(); srv.close(); console.log(`PASS wa period dots: ${n} cases`);

@@ -2158,7 +2158,7 @@ function drawChatList(){
 }
 
 /* ── مؤشرات الواتساب (نفس تعاريف NOVA UX430، من شيت «محادثات البوت» فقط) ── */
-var WA_KPI = null, WA_KPI_PRESET = 'today', WA_KPI_FROM = '', WA_KPI_TO = '', HOME_WA_KPI_HTML = '';
+var WA_KPI = null, WA_KPI_PRESET = 'today', WA_KPI_FROM = '', WA_KPI_TO = '', HOME_WA_KPI_HTML = '', WA_KPI_MENU = false;
 function waKpiWaitDur(ms){
   if (ms == null || isNaN(ms)) return '—';
   var s = Math.round(ms / 1000), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
@@ -2217,8 +2217,14 @@ function pgWaKpis(){
     if (CUR === 'bot' && SECTIONS.bot[TAB] && SECTIONS.bot[TAB][0] === 'kpis') drawWaKpis(d);
   }).catch(function(){ if (!WA_KPI) oops(box, 'pgWaKpis()'); });
 }
+function toggleWaKpiMenu(){
+  WA_KPI_MENU = !WA_KPI_MENU;
+  var m = document.getElementById('waKpiMenu'), b = document.querySelector('.wa-period-more');
+  if (m) m.hidden = !WA_KPI_MENU;
+  if (b) b.setAttribute('aria-expanded', WA_KPI_MENU ? 'true' : 'false');
+}
 function setWaKpiPreset(p){
-  WA_KPI_PRESET = p;
+  WA_KPI_PRESET = p; WA_KPI_MENU = false;
   if (p === 'custom' && !WA_KPI_FROM){
     var today = cairoNow().date, t = new Date(today + 'T12:00:00Z');
     t.setUTCDate(t.getUTCDate() - 6);
@@ -2239,9 +2245,15 @@ function drawWaKpis(d){
   var y = d.yesterday || {}, media = d.media || {}, hours = d.hours || [];
   var mediaLabels = [['image','صور'],['audio','صوت'],['video','فيديو'],['document','مستندات'],['sticker','ملصقات'],['other','وسائط أخرى']];
   var chatsTab = botTab('chats');
-  var tabs = '<div class="home-period-controls"><div class="period-tabs" aria-label="فترة المؤشرات">' +
-    [['today','النهارده'],['7d','7 أيام'],['30d','30 يوم'],['custom','فترة']].map(function(o){
-      return '<button class="' + (WA_KPI_PRESET === o[0] ? 'on' : '') + '" aria-pressed="' + (WA_KPI_PRESET === o[0] ? 'true' : 'false') + '" onclick="setWaKpiPreset(\'' + o[0] + '\')">' + o[1] + '</button>';
+  var PERIODS = [['today','اليوم'],['7d','7 أيام'],['30d','30 يوم'],['custom','فترة']];
+  var curP = PERIODS.filter(function(p){ return p[0] === WA_KPI_PRESET; })[0] || PERIODS[0];
+  /* one pill with the current period + «⋯» that opens the other periods */
+  var tabs = '<div class="home-period-controls"><div class="wa-period" aria-label="فترة المؤشرات">' +
+    '<span class="wa-period-cur">' + curP[1] + '</span>' +
+    '<button type="button" class="wa-period-more" aria-haspopup="true" aria-expanded="' + (WA_KPI_MENU ? 'true' : 'false') + '" aria-controls="waKpiMenu" aria-label="اختيار فترة أخرى" title="فترة أخرى" onclick="toggleWaKpiMenu()">⋯</button></div>' +
+    '<div class="wa-period-menu" id="waKpiMenu"' + (WA_KPI_MENU ? '' : ' hidden') + '>' +
+    PERIODS.map(function(o){
+      return '<button type="button" class="' + (WA_KPI_PRESET === o[0] ? 'on' : '') + '" aria-pressed="' + (WA_KPI_PRESET === o[0] ? 'true' : 'false') + '" onclick="setWaKpiPreset(\'' + o[0] + '\')">' + o[1] + '</button>';
     }).join('') + '</div></div>';
   var dates = WA_KPI_PRESET === 'custom'
     ? '<div class="m-custom"><label>من <input type="date" value="' + esc(WA_KPI_FROM) + '" onchange="setWaKpiDate(\'from\',this.value)"></label><label>إلى <input type="date" value="' + esc(WA_KPI_TO) + '" onchange="setWaKpiDate(\'to\',this.value)"></label></div>'

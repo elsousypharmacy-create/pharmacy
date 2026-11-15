@@ -237,3 +237,11 @@ body.team-fit-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}
 #p-bot.wa-kpis-page .h-mini b{letter-spacing:0;line-height:1.3;word-spacing:.06em}
 #p-bot.wa-kpis-page .h-hero .period-tabs{margin-bottom:0}
 #p-bot.wa-kpis-page .m-custom{margin:10px 0 0}
+/* WhatsApp KPIs period: one pill + a «⋯» button that opens the other periods. */
+#p-bot.wa-kpis-page .home-period-controls{margin-bottom:12px}
+.wa-period{display:flex;align-items:center;gap:8px}
+.wa-period-cur{min-height:44px;display:inline-flex;align-items:center;padding:0 20px;border-radius:12px;font-size:16px;font-weight:700;color:var(--brand);background:color-mix(in srgb,var(--brand) 13%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brand) 45%,transparent)}
+.wa-period-more{width:44px;height:44px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--ink);font:inherit;font-size:22px;line-height:1;cursor:pointer;padding:0}
+.wa-period-menu{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.wa-period-menu[hidden]{display:none}
+.wa-period-menu button{min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--ink-2);font:inherit;font-size:14px;font-weight:650;cursor:pointer}
+.wa-period-menu button.on{color:var(--brand);border-color:var(--brand)}

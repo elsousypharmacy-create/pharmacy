@@ -254,18 +254,13 @@ function waEcho_(m) {
 }
 /* ═══ واتساب: الفريق هو اللي بيرد (قرار المالك) ═══
 البوت (جيميني) مش بيرد على العملاء على واتساب خالص. رسالة العميل بتتسجّل في المحادثة وبتوصل لـ NOVA (novaWaForwardIn_ بتشتغل في كل الأحوال)،
-والصيدلي بيتنبّه على تيليجرام ويرد من NOVA أو من تطبيق الواتساب. لإرجاع رد البوت غيّر WA_BOT_REPLIES_ لـ true. */
+والفريق بيرد من NOVA أو من تطبيق الواتساب، ومفيش أي تحويل لتيليجرام. لإرجاع رد البوت غيّر WA_BOT_REPLIES_ لـ true. */
 var WA_BOT_REPLIES_ = false;
 function waTeamOnly_(chatId, msg, pname, n) {
   try {
-    if (msg.photo) { waForwardToStaff_(chatId, n); }
     var label = msg.text || msg.caption || (msg.photo ? '[صورة]' : msg.voice ? '[صوت]' : msg.location ? '[موقع]' : '[رسالة]');
     if (msg.photo && msg.caption) label = '[صورة] ' + msg.caption;
     logChatRows_(chatId, [['user', String(label), msg.date ? cairoStamp_(msg.date) : '']]);
-    if (!msg.photo) {
-      var nm = getKnownCustomerName_(chatId) || pname || waChatLabel_(chatId);
-      sendTelegramStaff('🟢 واتساب — ' + nm + '\n' + String(label).slice(0, 300) + '\n[#c' + chatId + ']', PERSONAL_CHAT);
-    }
   } catch (e) { Logger.log('waTeamOnly_: ' + e.message); }
 }
 function waOne_(m, pname) {

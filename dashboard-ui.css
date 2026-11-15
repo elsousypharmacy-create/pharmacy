@@ -245,3 +245,13 @@ body.team-fit-mode{height:100dvh;overflow:hidden;padding-bottom:0!important}
 .wa-period-menu{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.wa-period-menu[hidden]{display:none}
 .wa-period-menu button{min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--ink-2);font:inherit;font-size:14px;font-weight:650;cursor:pointer}
 .wa-period-menu button.on{color:var(--brand);border-color:var(--brand)}
+/* WhatsApp KPIs: four compact tiles, then one «رسايل» block (total + its three parts) instead of a big hero number and repeated totals. */
+#p-bot.wa-kpis-page .h-minis{margin-top:0}
+#p-bot.wa-kpis-page .wa-msgs{margin-top:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2);padding:12px 14px}
+#p-bot.wa-kpis-page .wa-msgs-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+#p-bot.wa-kpis-page .wa-msgs-head small{font-size:13px;color:var(--ink-2)}
+#p-bot.wa-kpis-page .wa-msgs-head b{font-size:26px;font-weight:800;line-height:1.2}
+#p-bot.wa-kpis-page .wa-msgs-head u{text-decoration:none;font-size:13px;color:var(--ink-2);margin-inline-start:auto}
+#p-bot.wa-kpis-page .wa-msgs .period-stats{margin-top:10px;padding:10px 0 0;border-bottom:0;border-top:1px solid var(--line)}
+#p-bot.wa-kpis-page .wa-msgs .period-stats b{font-size:20px}
+

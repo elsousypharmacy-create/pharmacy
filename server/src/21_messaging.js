@@ -252,6 +252,22 @@ function waEcho_(m) {
   /* رد الصيدلي من تطبيق الواتساب = الخلاصة اتقفلت، منسيبش تنبيه "مستني رد" */
   clearHandoff_(chatId);
 }
+/* ═══ واتساب: الفريق هو اللي بيرد (قرار المالك) ═══
+البوت (جيميني) مش بيرد على العملاء على واتساب خالص. رسالة العميل بتتسجّل في المحادثة وبتوصل لـ NOVA (novaWaForwardIn_ بتشتغل في كل الأحوال)،
+والصيدلي بيتنبّه على تيليجرام ويرد من NOVA أو من تطبيق الواتساب. لإرجاع رد البوت غيّر WA_BOT_REPLIES_ لـ true. */
+var WA_BOT_REPLIES_ = false;
+function waTeamOnly_(chatId, msg, pname, n) {
+  try {
+    if (msg.photo) { waForwardToStaff_(chatId, n); }
+    var label = msg.text || msg.caption || (msg.photo ? '[صورة]' : msg.voice ? '[صوت]' : msg.location ? '[موقع]' : '[رسالة]');
+    if (msg.photo && msg.caption) label = '[صورة] ' + msg.caption;
+    logChatRows_(chatId, [['user', String(label), msg.date ? cairoStamp_(msg.date) : '']]);
+    if (!msg.photo) {
+      var nm = getKnownCustomerName_(chatId) || pname || waChatLabel_(chatId);
+      sendTelegramStaff('🟢 واتساب — ' + nm + '\n' + String(label).slice(0, 300) + '\n[#c' + chatId + ']', PERSONAL_CHAT);
+    }
+  } catch (e) { Logger.log('waTeamOnly_: ' + e.message); }
+}
 function waOne_(m, pname) {
   var cache = CacheService.getScriptCache();
   if (cache.get('wam_' + m.id)) return;                    /* ميتا بتعيد نفس الرسالة أحيانًا */
@@ -304,6 +320,7 @@ function waOne_(m, pname) {
   else if (m.type === 'reaction' || m.type === 'unsupported') return;
   else {
     var fileLabel = '[' + (m.type || 'ملف') + ']';
+if (!WA_BOT_REPLIES_) { waTeamOnly_(chatId, { text: fileLabel, date: msg.date }, pname, n); return; }
     if (holdOn_(chatId)) {
       try {
         var mediaObj = m[m.type];
@@ -323,7 +340,8 @@ function waOne_(m, pname) {
     saveConversationTurn(chatId, fileLabel, fileNote, 'bot', msg.date);
     return;
   }
-  handleCustomerMessage(chatId, msg);
+  if (!WA_BOT_REPLIES_) { waTeamOnly_(chatId, msg, pname, n); return; }
+handleCustomerMessage(chatId, msg);
 }
 
 function handleTelegramWebhook_(update) {

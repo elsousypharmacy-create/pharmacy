@@ -2274,7 +2274,7 @@ function drawWaKpis(d){
   box.innerHTML =
     '<div class="home-grid"><div class="home-col">' +
       '<div class="card h-hero">' +
-        '<div class="h-top"><h2>مؤشرات الواتساب</h2><span>' + esc(d.label || '') + '</span></div>' +
+        (d.preset === 'today' ? '' : '<div class="h-top"><span>' + esc(d.label || '') + '</span></div>') +
         tabs + dates +
         '<div class="h-main"><div class="h-num"><small>محادثات</small><b>' + ltr(num(d.chats)) + '</b>' +
           (vsChats ? '<u>' + esc(vsChats) + '</u>' : '') + '</div></div>' +

@@ -716,7 +716,7 @@ body{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 @media(max-width:400px){#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:34px}#p-home .h-hero .h-main{gap:14px}#p-home .h-hero .h-mini b{font-size:20px}}@media(max-width:360px){.camera-inline>summary{gap:9px}.camera-label>b{font-size:14px}#p-home .h-hero .h-num b,#p-home #heroMonth .h-num b{font-size:30px}.h-expense>b{font-size:19px}}
 </style>
 <style>.h-dots button{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:8px 16px;border-radius:20px;min-height:44px}.h-dots button.on{border-color:var(--brand);color:var(--brand)}.v-head span{white-space:normal;overflow-wrap:anywhere}.staff-sales u,.staff-shift,.mini small{font-size:12px}.h-mini small{font-size:13px}</style>
-<link rel="stylesheet" href="dashboard-ui.css?v=20261109-weekly1">
+<link rel="stylesheet" href="dashboard-ui.css?v=20261115-wa-kpis">
 
 <style>
 .sync-loader{display:inline-block;width:11px;height:11px;border:1.5px solid var(--line);border-top-color:var(--brand);border-radius:50%;vertical-align:middle;animation:sync-rotate .8s linear infinite}
@@ -2044,7 +2044,7 @@ var SECTIONS = {
   sales: [['home',  function(){ return tr('today'); }]],
   team:  [['perf',  function(){ return tr('staffToday'); }]],
   cust:  [['list',  function(){ return tr('customers'); }], ['msgs', function(){ return tr('messages'); }]],
-  bot:   [['chats', function(){ return '💬 المحادثات'; }], ['kpis', function(){ return 'مؤشرات الواتساب'; }]],
+  bot:   [['kpis', function(){ return 'مؤشرات الواتساب'; }], ['chats', function(){ return '💬 المحادثات'; }]],
   /* المخزون: الملخص الأول (قرارات)، وبعدين كل قرار في تبويبه */
   stock: [['aging', function(){ return 'الملخص'; }], ['short', function(){ return tr('shortages'); }], ['expTab', function(){ return 'الصلاحية'; }], ['deadTab', function(){ return 'الراكد'; }],
           ['count', function(){ return tr('counts'); }]],
@@ -2054,6 +2054,16 @@ var SECTIONS = {
   admin: [['agents',function(){ return tr('agents'); }], ['docs', function(){ return tr('doctors'); }]]
 };
 var CUR = 'sales', TAB = 0;
+
+function botTab(name){
+  var pages = SECTIONS.bot || [];
+  for (var i = 0; i < pages.length; i++) if (pages[i][0] === name) return i;
+  return 0;
+}
+function setBotPageMode(mode){
+  var box = document.getElementById('p-bot');
+  if (box) box.classList.toggle('wa-kpis-page', mode === 'kpis');
+}
 
 function goCurrentPageRefresh_(){ go(CUR, TAB); }
 function go(sec, tab){
@@ -2104,6 +2114,7 @@ function chatWhen(t){
 function chatName(c){ return c.name || c.phone || ('عميل ' + String(c.id).slice(-4)); }
 function pgChats(){
   CHAT_OPEN = null;
+  setBotPageMode('chats');
   var box = document.getElementById('p-bot');
   if (!CHATS) busy(box); else drawChats();
   api('getBotChats').then(function(d){
@@ -2189,6 +2200,7 @@ function loadHomeWaKpis(force){
 }
 function pgWaKpis(){
   CHAT_OPEN = null;
+  setBotPageMode('kpis');
   var box = document.getElementById('p-bot');
   if (WA_KPI) drawWaKpis(WA_KPI); else busy(box);
   var params = { range: WA_KPI_PRESET };
@@ -2217,22 +2229,26 @@ function setWaKpiDate(which, val){
 function drawWaKpis(d){
   var box = document.getElementById('p-bot');
   if (!box) return;
+  setBotPageMode('kpis');
   var y = d.yesterday || {}, media = d.media || {}, hours = d.hours || [];
   var mediaLabels = [['image','صور'],['audio','صوت'],['video','فيديو'],['document','مستندات'],['sticker','ملصقات'],['other','وسائط أخرى']];
-  var seg = [['today','النهارده'],['7d','7 أيام'],['30d','30 يوم'],['custom','فترة']].map(function(o){
-    var on = WA_KPI_PRESET === o[0];
-    return '<button class="btn ' + (on ? 'btn-primary' : 'btn-quiet') + '" onclick="setWaKpiPreset(\'' + o[0] + '\')">' + o[1] + '</button>';
-  }).join('');
+  var chatsTab = botTab('chats');
+  var tabs = '<div class="home-period-controls"><div class="period-tabs" aria-label="فترة المؤشرات">' +
+    [['today','النهارده'],['7d','7 أيام'],['30d','30 يوم'],['custom','فترة']].map(function(o){
+      return '<button class="' + (WA_KPI_PRESET === o[0] ? 'on' : '') + '" aria-pressed="' + (WA_KPI_PRESET === o[0] ? 'true' : 'false') + '" onclick="setWaKpiPreset(\'' + o[0] + '\')">' + o[1] + '</button>';
+    }).join('') + '</div></div>';
   var dates = WA_KPI_PRESET === 'custom'
-    ? '<div class="btn-row" style="margin:8px 0"><label>من <input type="date" value="' + esc(WA_KPI_FROM) + '" onchange="setWaKpiDate(\'from\',this.value)"></label> <label>إلى <input type="date" value="' + esc(WA_KPI_TO) + '" onchange="setWaKpiDate(\'to\',this.value)"></label></div>'
+    ? '<div class="m-custom"><label>من <input type="date" value="' + esc(WA_KPI_FROM) + '" onchange="setWaKpiDate(\'from\',this.value)"></label><label>إلى <input type="date" value="' + esc(WA_KPI_TO) + '" onchange="setWaKpiDate(\'to\',this.value)"></label></div>'
     : '';
+  function mini(label, value, sub, tone){
+    return '<div class="h-mini"><small>' + label + '</small><b' + (tone ? ' style="color:var(--' + tone + ')"' : '') + '>' + value + '</b>' + (sub ? '<u>' + sub + '</u>' : '') + '</div>';
+  }
   var wait = (d.waiting || []);
-  var waitHtml = wait.length
-    ? card('مستنية رد', 'اللي لسه آخر رسالة فيها من العميل — اضغط تفتح المحادثة', wait.map(function(w){
-        var id = String(w.c).replace(/[^\w.-]/g, '');
-        return '<div class="row chat-row" onclick="go(\'bot\',0);openChat(\'' + id + '\')"><div class="row-main"><b>' + (w.open ? '🔴 ' : '') + esc(w.name || w.c) + '</b><small>' + (w.open ? 'نافذة الرد مفتوحة' : 'بعد 24 ساعة') + '</small></div><span class="row-val">' + esc(waKpiWaitDur(w.d)) + '</span></div>';
-      }).join(''))
-    : card('مستنية رد', null, '<div class="state">مفيش محادثات مستنية رد دلوقتي</div>');
+  var waitHtml = '<div class="card home-actions"><div class="card-head"><div><small class="section-eyebrow">واتساب</small><h3>مستنية رد</h3><p>اللي لسه آخر رسالة فيها من العميل — اضغط تفتح المحادثة</p></div></div>' +
+    (wait.length ? wait.map(function(w){
+      var id = String(w.c).replace(/[^\w.-]/g, '');
+      return task(w.open ? 'bad' : 'warn', esc(w.name || w.c), w.open ? 'نافذة الرد مفتوحة' : 'بعد 24 ساعة', waKpiWaitDur(w.d), "go('bot'," + chatsTab + ");openChat('" + id + "')");
+    }).join('') : '<div class="state">مفيش محادثات مستنية رد دلوقتي</div>') + '</div>';
   var staff = (d.staff || []);
   var staffHtml = card('ردود الصيدلي', d.staffMsgs ? (num(d.staffMsgs) + ' رد في الفترة') : 'لا ردود في الفترة',
     staff.length ? staff.map(function(x){ return row(x.name || 'الصيدلي', null, ltr(num(x.n))); }).join('') : '<div class="state">لا ردود في الفترة</div>');
@@ -2244,27 +2260,36 @@ function drawWaKpis(d){
   var topHours = hours.map(function(n,h){ return { h:h, n:n }; }).filter(function(x){ return x.n; }).sort(function(a,b){ return b.n - a.n; }).slice(0, 5);
   var hoursHtml = card('أوقات الذروة', 'رسايل العملاء حسب الساعة (توقيت مصر)',
     topHours.length ? topHours.map(function(x){ return row(('0' + x.h).slice(-2) + ':00', null, ltr(num(x.n))); }).join('') : '<div class="state">لا رسايل عملاء في الفترة</div>');
+  var first = d.firstResponse || {};
+  var vsChats = d.preset === 'today' ? waKpiVs(d.chats, y.chats) : '';
+  var vsMsgs = d.preset === 'today' ? waKpiVs(d.msgs, y.msgs) : '';
+  var firstNote = d.preset === 'today' && y.firstAvgText ? ('أمس ' + y.firstAvgText) : (first.n ? (num(first.n) + ' رد') : '');
+  var firstSub = first.medianText ? ('الوسيط ' + first.medianText) : firstNote;
   box.innerHTML =
-    vitals('مؤشرات الواتساب', d.label || '', [
-      { value: num(d.chats), label: 'محادثات', tone: 'brand', note: d.preset === 'today' ? waKpiVs(d.chats, y.chats) : '' },
-      { value: num(d.msgs), label: 'رسايل', tone: 'brand', note: d.preset === 'today' ? waKpiVs(d.msgs, y.msgs) : '' },
-      { value: num(d.waitingOpen), label: 'مستنية رد', tone: d.waitingOpen ? 'bad' : 'ok', sub: 'نافذة 24 ساعة' }
-    ]) +
-    '<div class="btn-row" style="margin:8px 0 12px;flex-wrap:wrap">' + seg + '</div>' + dates +
-    vitals('زمن أول رد', 'من رسالة العميل لأول رد من الصيدلي — رد البوت مش محسوب', [
-      { value: (d.firstResponse && d.firstResponse.avgText) || '—', label: 'المتوسط', tone: 'brand', note: d.preset === 'today' && y.firstAvgText ? ('أمس ' + y.firstAvgText) : ((d.firstResponse && d.firstResponse.n) ? (num(d.firstResponse.n) + ' رد') : '') },
-      { value: (d.firstResponse && d.firstResponse.medianText) || '—', label: 'الوسيط', tone: 'brand' },
-      { value: num((d.customers && d.customers.newC) || 0) + ' / ' + num((d.customers && d.customers.returning) || 0), label: 'جدد / رجوع', tone: 'brand' }
-    ]) +
-    '<div class="v-grid" style="grid-template-columns:repeat(3,1fr);margin:0 0 12px">' +
-      waKpiTile('رسايل العملاء', num(d.inMsgs), '', 'brand') +
-      waKpiTile('ردود البوت', num(d.botMsgs), '', 'brand') +
-      waKpiTile('ردود الصيدلي', num(d.staffMsgs), '', 'brand') +
-    '</div>' +
-    waitHtml + staffHtml + mediaHtml + hoursHtml + trendHtml +
-    '<div class="state" style="text-align:start;font-size:12px">المحادثات والرسايل من شيت «محادثات البوت» لشاتات واتساب فقط. أول رد = الوقت من رسالة العميل لحد رد الصيدلي (رد البوت مش بيقفل الانتظار). مستنية رد = آخر رسالة من العميل، ومفتوحة لو مرّ أقل من 24 ساعة.</div>';
+    '<div class="home-grid"><div class="home-col">' +
+      '<div class="card h-hero">' +
+        '<div class="h-top"><h2>مؤشرات الواتساب</h2><span>' + esc(d.label || '') + '</span></div>' +
+        tabs + dates +
+        '<div class="h-main"><div class="h-num"><small>محادثات</small><b>' + ltr(num(d.chats)) + '</b>' +
+          (vsChats ? '<u>' + esc(vsChats) + '</u>' : '') + '</div></div>' +
+        '<div class="h-minis" style="grid-template-columns:repeat(2,minmax(0,1fr))">' +
+          mini('رسايل', ltr(num(d.msgs)), vsMsgs) +
+          mini('مستنية رد', ltr(num(d.waitingOpen)), 'نافذة 24 ساعة', d.waitingOpen ? 'bad' : 'ok') +
+          mini('أول رد', esc(first.avgText || '—'), firstSub) +
+          mini('جدد / رجوع', ltr(num((d.customers && d.customers.newC) || 0) + ' / ' + num((d.customers && d.customers.returning) || 0)), 'في الفترة', 'brand') +
+        '</div>' +
+        '<div class="period-stats">' +
+          '<div><small>رسايل العملاء</small><b>' + ltr(num(d.inMsgs)) + '</b></div>' +
+          '<div><small>ردود البوت</small><b>' + ltr(num(d.botMsgs)) + '</b></div>' +
+          '<div><small>ردود الصيدلي</small><b>' + ltr(num(d.staffMsgs)) + '</b></div>' +
+        '</div>' +
+      '</div>' +
+      waitHtml +
+    '</div><div class="home-col">' +
+      staffHtml + mediaHtml + hoursHtml + trendHtml +
+      '<div class="state" style="text-align:start;font-size:12px">المحادثات والرسايل من شيت «محادثات البوت» لشاتات واتساب فقط. أول رد = الوقت من رسالة العميل لحد رد الصيدلي (رد البوت مش بيقفل الانتظار). مستنية رد = آخر رسالة من العميل، ومفتوحة لو مرّ أقل من 24 ساعة.</div>' +
+    '</div></div>';
 }
-
 function openChat(id){
   CHAT_OPEN = id;
   busy(document.getElementById('p-bot'));
@@ -2278,6 +2303,7 @@ function loadChat(id){
   }).catch(function(){ if (CHAT_OPEN === id) oops(document.getElementById('p-bot'), 'openChat(\'' + id + '\')'); });
 }
 function drawChat(d){
+  setBotPageMode('chats');
   var box = document.getElementById('p-bot'), id = d.id;
   var inp = document.getElementById('chatInput'), draft = inp ? inp.value : '';
   var th = document.getElementById('chatThread'), atEnd = !th || (th.scrollHeight - th.scrollTop - th.clientHeight < 60);
@@ -2683,7 +2709,7 @@ function drawHome(b, kpi, isOld){
       '<div id="homeMore">' + (HOME_MORE || '') + '</div>' +
       (acts.length || HOME_MORE ? '' : '<div class="state" id="homeAllGood">' + tr('allGood') + '</div>') + '</div>';
     setTimeout(homeCamLatest,600);
-    html += '<div class="card" id="homeWaKpis" role="button" tabindex="0" onclick="go(\'bot\',1)" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();go(\'bot\',1)}">' +
+    html += '<div class="card" id="homeWaKpis" role="button" tabindex="0" onclick="go(\'bot\',botTab(\'kpis\'))" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();go(\'bot\',botTab(\'kpis\'))}">' +
       (HOME_WA_KPI_HTML || '<div class="card-head"><div><small class="section-eyebrow">واتساب</small><h3>مؤشرات الواتساب</h3><p>النهارده</p></div></div><div class="state">جارٍ التحميل…</div>') +
       '</div>';
     html += '</div><div class="home-col">';
@@ -2747,7 +2773,7 @@ function setHomeSlot(k, html){
 }
 function loadHomeMore(){
   var pend = (CHATS || []).filter(function(c){ return c.pending; }).length;
-  setHomeSlot('bot', pend ? task('bad', 'رسايل مستنية رد', 'واتساب وتليجرام', pend, "go('bot')") : '');
+  setHomeSlot('bot', pend ? task('bad', 'رسايل مستنية رد', 'واتساب وتليجرام', pend, "go('bot',botTab('chats'))") : '');
   if (Date.now() - HOME_MORE_AT < 120000) return;
   HOME_MORE_AT = Date.now();
   api('callsReport').then(function(cr){
@@ -5699,7 +5725,7 @@ function callsHtml(d){
 }
 
 /* ─────── الفريق: صفحات الموظفين والإدارة ─────── */
-function goBot(){ go('bot'); }
+function goBot(){ go('bot', botTab('chats')); }
 function settingsPagesHtml(){
   var link = function(icon, name, sub, url){ return '<a class="tile" href="' + url + '" target="_blank" rel="noopener"><i>' + icon + '</i>' + name + '</a>'; };
   var tile = function(icon, name, act){ return '<button class="tile" onclick="' + act + '"><i>' + icon + '</i>' + name + '</button>'; };

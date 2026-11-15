@@ -182,11 +182,10 @@ function holdOn_(cid) {
   if (isWa_(cid) && botAutoReplyOff_() && !isTestChat_(cid)) return true;   /* BOT_AUTO_REPLY='0': مفيش رد آلي، الرسالة بتتسجل وتوصل للصيدلي */
   return !!CacheService.getScriptCache().get('hold_' + cid);
 }
-function holdBlocksBotSend_(chatId, text) {
+function holdBlocksBotSend_(chatId, text, staff) {
+  if (staff) return false; /* رد الموظف من botReply / جسر NOVA `reply` فقط — النص اللي فيه «رد الصيدلي» مش استثناء */
   if (!chatId || String(chatId) === String(PERSONAL_CHAT)) return false;
   if (!holdOn_(chatId)) return false;
-  var t = String(text || '');
-  if (t.indexOf('رد الصيدلي') !== -1 || t.indexOf('رد الدكتور') !== -1) return false;
   return true;
 }
 function holdSet_(cid, on) {
@@ -336,10 +335,11 @@ function confirmPendingOrder_(chatId) {
   tgApi_('sendMessage', { chat_id: chatId, text: rr });
   saveConversationTurn(chatId, '[أكد الطلب]', rr);
 }
-/* 🧪 وضع التجربة: والبوت واقف على الواتساب، أرقام التجربة بس بيرد عليها (آخر ١٠ أرقام). الافتراضي رقم الدكتور أحمد. */
+/* 🧪 وضع التجربة: أرقام BOT_TEST (آخر ١٠ أرقام) البوت بيرد عليها حتى وهو واقف.
+   لو الخاصية مش موجودة أو فاضية، مفيش أرقام تجربة — منغير رقم افتراضي. */
 function testNumbers_() {
   var v = PropertiesService.getScriptProperties().getProperty('BOT_TEST');
-  if (v === null || v === undefined) return ['1120372238'];
+  if (v === null || v === undefined || String(v).trim() === '') return [];
   return String(v).split(',').filter(Boolean);
 }
 function testNumbersSet_(list) {
@@ -351,16 +351,9 @@ function isTestChat_(cid) {
   var d = String(cid).replace(/\D/g, '').slice(-10);
   return !!d && testNumbers_().indexOf(d) !== -1;
 }
-/* والبوت واقف: العميل ياخد رسالة واحدة "استلمنا" (مرة كل ساعة) بدل ما يفضل من غير أي رد.
-   مفيش رسالة لو الصيدلي ماسك المحادثة (بيرد بنفسه). الجملة فيها "رد الصيدلي" عشان تعدّي من حاجز الإمساك. */
+/* كان بيبعت «وصلتنا رسالتك، رد الصيدلي هيوصلك هنا قريب» مرة كل ساعة والبوت واقف.
+   متعطّل بالكامل: البوت مش بيبعت أي رسالة للعملاء. التسجيل والتحويل لـ NOVA زي ما هما.
+   رد الموظفين من botReply / جسر NOVA `reply` بس. استدعاءات pausedAck_ تفضل no-op. */
 function pausedAck_(chatId) {
-  try {
-    if (!isWa_(chatId) || !botPaused_() || isTestChat_(chatId)) return;
-    var c = CacheService.getScriptCache();
-    if (c.get('hold_' + chatId) || c.get('ack_' + chatId)) return;
-    c.put('ack_' + chatId, '1', 3600);
-    var msg = 'وصلتنا رسالتك، رد الصيدلي هيوصلك هنا قريب.';
-    var r = waSend_(String(chatId), msg);
-    if (r && r.ok !== false) logChatRows_(chatId, [['bot', msg]]);
-  } catch (e) { Logger.log('pausedAck_: ' + e.message); }
+  return;
 }

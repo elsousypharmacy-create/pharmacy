@@ -1762,8 +1762,8 @@ function waCall_(path, body) {
   } catch (e) { return { ok: false, description: e.message }; }
 }
 /* بيبعت نص (ومعاه أزرار تليجرام بعد تحويلها لأزرار واتساب) */
-function waSend_(chatId, text, markup) {
-  if (holdBlocksBotSend_(chatId, text)) { Logger.log('hold: منع رد البوت ' + chatId); return { ok: false, description: 'hold' }; }
+function waSend_(chatId, text, markup, staff) {
+  if (holdBlocksBotSend_(chatId, text, staff)) { Logger.log('hold: منع رد البوت ' + chatId); return { ok: false, description: 'hold' }; }
   var tgt = waTarget_(chatId), body = String(text == null ? '' : text).slice(0, 4000), btns = [], extra = '';
   if (markup && markup.inline_keyboard) markup.inline_keyboard.forEach(function (row) { row.forEach(function (b) {
     if (b.callback_data) btns.push({ id: b.callback_data, title: b.text });
@@ -2834,11 +2834,10 @@ function holdOn_(cid) {
   if (isWa_(cid) && botAutoReplyOff_() && !isTestChat_(cid)) return true;   /* BOT_AUTO_REPLY='0': مفيش رد آلي، الرسالة بتتسجل وتوصل للصيدلي */
   return !!CacheService.getScriptCache().get('hold_' + cid);
 }
-function holdBlocksBotSend_(chatId, text) {
+function holdBlocksBotSend_(chatId, text, staff) {
+  if (staff) return false; /* رد الموظف من botReply / جسر NOVA `reply` فقط — النص اللي فيه «رد الصيدلي» مش استثناء */
   if (!chatId || String(chatId) === String(PERSONAL_CHAT)) return false;
   if (!holdOn_(chatId)) return false;
-  var t = String(text || '');
-  if (t.indexOf('رد الصيدلي') !== -1 || t.indexOf('رد الدكتور') !== -1) return false;
   return true;
 }
 function holdSet_(cid, on) {
@@ -2988,10 +2987,11 @@ function confirmPendingOrder_(chatId) {
   tgApi_('sendMessage', { chat_id: chatId, text: rr });
   saveConversationTurn(chatId, '[أكد الطلب]', rr);
 }
-/* 🧪 وضع التجربة: والبوت واقف على الواتساب، أرقام التجربة بس بيرد عليها (آخر ١٠ أرقام). الافتراضي رقم الدكتور أحمد. */
+/* 🧪 وضع التجربة: أرقام BOT_TEST (آخر ١٠ أرقام) البوت بيرد عليها حتى وهو واقف.
+   لو الخاصية مش موجودة أو فاضية، مفيش أرقام تجربة — منغير رقم افتراضي. */
 function testNumbers_() {
   var v = PropertiesService.getScriptProperties().getProperty('BOT_TEST');
-  if (v === null || v === undefined) return ['1120372238'];
+  if (v === null || v === undefined || String(v).trim() === '') return [];
   return String(v).split(',').filter(Boolean);
 }
 function testNumbersSet_(list) {
@@ -3003,18 +3003,11 @@ function isTestChat_(cid) {
   var d = String(cid).replace(/\D/g, '').slice(-10);
   return !!d && testNumbers_().indexOf(d) !== -1;
 }
-/* والبوت واقف: العميل ياخد رسالة واحدة "استلمنا" (مرة كل ساعة) بدل ما يفضل من غير أي رد.
-   مفيش رسالة لو الصيدلي ماسك المحادثة (بيرد بنفسه). الجملة فيها "رد الصيدلي" عشان تعدّي من حاجز الإمساك. */
+/* كان بيبعت «وصلتنا رسالتك، رد الصيدلي هيوصلك هنا قريب» مرة كل ساعة والبوت واقف.
+   متعطّل بالكامل: البوت مش بيبعت أي رسالة للعملاء. التسجيل والتحويل لـ NOVA زي ما هما.
+   رد الموظفين من botReply / جسر NOVA `reply` بس. استدعاءات pausedAck_ تفضل no-op. */
 function pausedAck_(chatId) {
-  try {
-    if (!isWa_(chatId) || !botPaused_() || isTestChat_(chatId)) return;
-    var c = CacheService.getScriptCache();
-    if (c.get('hold_' + chatId) || c.get('ack_' + chatId)) return;
-    c.put('ack_' + chatId, '1', 3600);
-    var msg = 'وصلتنا رسالتك، رد الصيدلي هيوصلك هنا قريب.';
-    var r = waSend_(String(chatId), msg);
-    if (r && r.ok !== false) logChatRows_(chatId, [['bot', msg]]);
-  } catch (e) { Logger.log('pausedAck_: ' + e.message); }
+  return;
 }
 
 // ==== MODULE 25_bot_history_ui (split from server/Code.js; load order = file name order) ====
@@ -3177,7 +3170,9 @@ function varyEmoji_(chatId, text) {
 }
 function tgApi_(method, payload) {
   try {
-    if (method === 'sendMessage' && payload && holdBlocksBotSend_(payload.chat_id, payload.text)) {
+    var staff = !!(payload && payload._staff);
+    if (payload && Object.prototype.hasOwnProperty.call(payload, '_staff')) delete payload._staff;
+    if (method === 'sendMessage' && payload && holdBlocksBotSend_(payload.chat_id, payload.text, staff)) {
       Logger.log('hold: منع رد البوت ' + payload.chat_id);
       return { ok: false, description: 'hold' };
     }
@@ -3186,7 +3181,7 @@ function tgApi_(method, payload) {
     if (payload && method === 'forwardMessage' && isWa_(payload.from_chat_id)) return waForwardToStaff_(String(payload.from_chat_id), payload.message_id);
     if (payload && method === 'answerCallbackQuery' && payload.callback_query_id === 'wa') return { ok: true };
     if (payload && isWa_(payload.chat_id)) {
-      if (method === 'sendMessage') return waSend_(String(payload.chat_id), payload.text, payload.reply_markup);
+      if (method === 'sendMessage') return waSend_(String(payload.chat_id), payload.text, payload.reply_markup, staff);
       if (method === 'sendChatAction') { waTyping_(String(payload.chat_id)); return { ok: true }; }
       return { ok: true };
     }
@@ -5701,7 +5696,7 @@ function getBotChat(id) {
 function botReply(id, text) {
   id = String(id || ''); text = String(text || '').trim();
   if (!id || !text) return { ok: false, error: 'الرسالة فاضية' };
-  var r = tgApi_('sendMessage', { chat_id: id, text: '👨‍⚕️ رد الصيدلي:\n\n' + text });
+  var r = tgApi_('sendMessage', { chat_id: id, text: '👨‍⚕️ رد الصيدلي:\n\n' + text, _staff: true });
   if (!r || !r.ok) return { ok: false, error: 'تيليجرام رفض الرسالة' + (r && r.description ? ': ' + r.description : '') };
   saveConversationTurn(id, '[سؤال محوّل للدكتور]', text, 'pharm');
   clearHandoff_(id);
@@ -6100,19 +6095,83 @@ function novaWaForward_(item) {
     var msg = { id: String(item.id), from: String(item.from || ''), timestamp: String(item.timestamp || Math.floor(Date.now() / 1000)),
       type: item.type || 'text', text: item.text == null ? null : String(item.text), media_id: item.media_id || null,
       filename: item.filename || null, name: item.name || null, phone_number_id: item.phone_number_id || null, direction: item.direction === 'out' ? 'out' : 'in' };
+    if (item.mime_type) msg.mime_type = String(item.mime_type);
+    if (item.media_size != null && isFinite(Number(item.media_size))) msg.media_size = Number(item.media_size);
+    if (item.media_base64) msg.media_base64 = String(item.media_base64);
+    if (item.media_skipped) msg.media_skipped = String(item.media_skipped);
     UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
       headers: { Authorization: 'Bearer ' + tok }, payload: JSON.stringify({ source: 'pharmacy-bot', v: 1, messages: [msg] }) });
   } catch (e) { try { Logger.log('novaWaForward_: ' + e.message); } catch (e2) {} }
 }
 /* رسالة واردة من ميتا (شكل webhook) */
+var NOVA_WA_MEDIA_MAX_ = 5 * 1024 * 1024; /* 5 MB — الأكبر: ميتاداتا بس */
+var NOVA_WA_MEDIA_TYPES_ = { image: 1, sticker: 1, audio: 1, video: 1, document: 1 };
+function novaWaSafeErr_(e) {
+  var s = String((e && e.message) || e || '');
+  s = s.replace(/https?:\/\/[^\s]+/g, '[url]').replace(/EAA[\w-]+/g, '[redacted]').replace(/Bearer\s+\S+/ig, 'Bearer [redacted]');
+  return s.slice(0, 200);
+}
+/* يجيب البايتات من Graph (المفتاح WA_TOKEN موجود هنا بس). عمره ما بيسجّل التوكن ولا رابط التحميل (الرابط فيه توقيع). */
+function novaWaAttachMedia_(mediaId) {
+  var out = { mime_type: null, media_size: null, media_base64: null, media_skipped: null };
+  try {
+    var tok = waToken_();
+    if (!tok) { out.media_skipped = 'no_token'; return out; }
+    var id = String(mediaId || '');
+    if (!id || !/^[A-Za-z0-9_-]+$/.test(id)) { out.media_skipped = 'bad_id'; return out; }
+    var metaR = UrlFetchApp.fetch(WA_API + encodeURIComponent(id), {
+      method: 'get', headers: { Authorization: 'Bearer ' + tok }, muteHttpExceptions: true
+    });
+    if (metaR.getResponseCode() !== 200) { out.media_skipped = 'fetch_failed'; return out; }
+    var meta = {};
+    try { meta = JSON.parse(metaR.getContentText()); } catch (eP) { out.media_skipped = 'fetch_failed'; return out; }
+    if (meta.mime_type) out.mime_type = String(meta.mime_type);
+    if (meta.file_size != null && isFinite(Number(meta.file_size))) out.media_size = Number(meta.file_size);
+    if (out.media_size && out.media_size > NOVA_WA_MEDIA_MAX_) { out.media_skipped = 'too_large'; return out; }
+    var url = meta.url;
+    if (!url || typeof url !== 'string' || url.indexOf('https://') !== 0) { out.media_skipped = 'no_url'; return out; }
+    var binR = UrlFetchApp.fetch(url, {
+      method: 'get', headers: { Authorization: 'Bearer ' + tok }, muteHttpExceptions: true
+    });
+    if (binR.getResponseCode() !== 200) { out.media_skipped = 'fetch_failed'; return out; }
+    var bytes = binR.getBlob().getBytes();
+    var n = bytes.length;
+    out.media_size = n;
+    if (n > NOVA_WA_MEDIA_MAX_) { out.media_skipped = 'too_large'; return out; }
+    if (!out.mime_type) {
+      try { out.mime_type = binR.getBlob().getContentType() || null; } catch (eT) {}
+    }
+    out.media_base64 = Utilities.base64Encode(bytes);
+    return out;
+  } catch (e) {
+    try { Logger.log('novaWaAttachMedia_: ' + novaWaSafeErr_(e)); } catch (e2) {}
+    out.media_base64 = null;
+    out.media_skipped = out.media_skipped || 'fetch_failed';
+    return out;
+  }
+}
 function novaWaForwardIn_(m, pname, phoneNumberId) {
   try {
     var t = m.type || 'text', media = (m && m[t]) || {};
     var text = t === 'text' ? (m.text && m.text.body) : t === 'button' ? (m.button && m.button.text)
       : t === 'interactive' ? ((m.interactive && (m.interactive.button_reply || m.interactive.list_reply) || {}).title) : (media.caption || null);
-    novaWaForward_({ id: m.id, from: waSenderId_(m), timestamp: m.timestamp, type: t, text: text || null,
-      media_id: media.id || null, filename: media.filename || null, name: pname || null, phone_number_id: phoneNumberId || null, direction: 'in' });
-  } catch (e) { try { Logger.log('novaWaForwardIn_: ' + e.message); } catch (e2) {} }
+    var item = { id: m.id, from: waSenderId_(m), timestamp: m.timestamp, type: t, text: text || null,
+      media_id: media.id || null, filename: media.filename || null, name: pname || null, phone_number_id: phoneNumberId || null, direction: 'in' };
+    if (media.mime_type) item.mime_type = media.mime_type;
+    if (media.id && NOVA_WA_MEDIA_TYPES_[t]) {
+      try {
+        var att = novaWaAttachMedia_(media.id);
+        if (att.mime_type) item.mime_type = att.mime_type;
+        if (att.media_size != null) item.media_size = att.media_size;
+        if (att.media_base64) item.media_base64 = att.media_base64;
+        else if (att.media_skipped) item.media_skipped = att.media_skipped;
+      } catch (eM) {
+        item.media_skipped = 'fetch_failed';
+        try { Logger.log('novaWaForwardIn_ media: ' + novaWaSafeErr_(eM)); } catch (e2) {}
+      }
+    }
+    novaWaForward_(item);
+  } catch (e) { try { Logger.log('novaWaForwardIn_: ' + novaWaSafeErr_(e)); } catch (e2) {} }
 }
 /* رد البوت الصادر بعد نجاحه (من waCall_) */
 function novaWaForwardOut_(body, mid, path) {

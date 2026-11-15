@@ -61,7 +61,7 @@ function relayDoctorReply_(msg) {
     const doctorText = (msg.text || '').trim();
     if (!doctorText) return false;
 
-    sendTelegramStaff('👨‍⚕️ رد الدكتور:\n\n' + doctorText, customerChatId);
+    sendTelegramStaff(doctorText, customerChatId, true); /* رد موظف: النص زي ما هو، من غير بادئة */
     saveConversationTurn(customerChatId, '[سؤال محوّل للدكتور]', doctorText, 'pharm');
     clearHandoff_(customerChatId);
     sendTelegramStaff('✅ اتبعت للعميل.', PERSONAL_CHAT);

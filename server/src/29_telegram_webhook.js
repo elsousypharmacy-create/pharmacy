@@ -7,9 +7,9 @@
 
 /* تليجرام سقفه 4096 حرف للرسالة — الأطول بتتقسّم هنا تلقائي على حدود الأسطر،
    فأي رسالة طويلة (نواقص، تقارير) توصل كاملة بدل ما تترفض. */
-function sendTelegramStaff(message, chatId) {
-  if (holdBlocksBotSend_(chatId, message)) { Logger.log('hold: منع رد البوت ' + chatId); return; }
-  if (isWa_(chatId)) { waSend_(String(chatId), message); return; }
+function sendTelegramStaff(message, chatId, staff) {
+  if (holdBlocksBotSend_(chatId, message, !!staff)) { Logger.log('hold: منع رد البوت ' + chatId); return; }
+  if (isWa_(chatId)) { waSend_(String(chatId), message, null, !!staff); return; }
   const url = 'https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage';
   var text = String(message == null ? '' : message), MAX = 3800, parts = [];
   if (text.length <= MAX) {

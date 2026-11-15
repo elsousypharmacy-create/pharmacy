@@ -86,7 +86,14 @@ let r=t.sb.waSend_('wa_201001112222','👨‍⚕️ رد الصيدلي:\n\nhi')
 const staffCall=d=>t.sb.doPost({postData:{contents:JSON.stringify(Object.assign({action:'novaWhatsAppBridge',bridgeToken:TOK},d))}});
 r=JSON.parse(staffCall({operation:'reply',chatId:'wa_201001112222',text:'hi from staff'}).getContent());
 assert.equal(r.ok,true);assert.equal(waCalls(t.fetches).length,1);
-const sent=JSON.parse(waCalls(t.fetches)[0].o.payload);assert.ok(!('_staff' in sent));assert.equal(sent.text.body.indexOf('hi from staff')!==-1,true);
+const sent=JSON.parse(waCalls(t.fetches)[0].o.payload);assert.ok(!('_staff' in sent));assert.equal(sent.text.body,'hi from staff');
+// staff text goes out exactly as typed: no «رد الصيدلي:» prefix, emojis untouched
+r=JSON.parse(staffCall({operation:'reply',chatId:'wa_201001112222',text:'تمام 👍🙏 حاضر'}).getContent());assert.equal(r.ok,true);
+let sent2=JSON.parse(waCalls(t.fetches)[1].o.payload);assert.equal(sent2.text.body,'تمام 👍🙏 حاضر');assert.ok(sent2.text.body.indexOf('رد الصيدلي')===-1);
+// Telegram doctor-reply relay is a staff send: plain text, passes the hold
+t.sb.sendTelegramStaff=((orig)=>function(m,c,st){ if(String(c)===String(t.sb.PERSONAL_CHAT)) return; return orig(m,c,st); })(t.sb.sendTelegramStaff);
+assert.equal(t.sb.relayDoctorReply_({text:'خده بعد الأكل',reply_to_message:{text:'سؤال [#cwa_201001112222]'}}),true);
+let sent3=JSON.parse(waCalls(t.fetches)[2].o.payload);assert.equal(sent3.text.body,'خده بعد الأكل');
 // any other value = on
 t=make({BOT_AUTO_REPLY:'1'});t.sb.doPost({postData:{contents:JSON.stringify(hook('wamid.E2'))}});assert.equal(waCalls(t.fetches).length,1);
 // (f) autoReply get/set

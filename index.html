@@ -37,6 +37,8 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2">
 <link rel="manifest" href="manifest-index.json">
 <meta name="apple-mobile-web-app-title" content="صيدلية السوسي">
+<script>/* «واتساب فقط»: index.html?app=whatsapp (الرابط المنفصل whatsapp.html) — نفس الكود، من غير باقي الأقسام */(function(){try{if(new URLSearchParams(location.search).get('app')!=='whatsapp')return;window.NOVA_APP='whatsapp';document.documentElement.classList.add('app-whatsapp');document.title='واتساب الصيدلية';var m=document.querySelector('link[rel=manifest]');if(m)m.setAttribute('href','manifest-whatsapp.json');var t=document.querySelector('meta[name=apple-mobile-web-app-title]');if(t)t.setAttribute('content','واتساب الصيدلية');}catch(e){}})();</script>
+<style>html.app-whatsapp #secnav{display:none!important}html.app-whatsapp body{padding-bottom:calc(24px + env(safe-area-inset-bottom))!important}</style>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preload" href="fonts/cairo.woff" as="font" type="font/woff" crossorigin>
@@ -2074,9 +2076,10 @@ function setBotPageMode(mode){
 function goCurrentPageRefresh_(){ go(CUR, TAB); }
 function go(sec, tab){
   if(sec==='team' && tab===1){openSheet('settings');settingsSelect('pages');return;}
+  if(window.NOVA_APP==='whatsapp' && sec!=='bot'){sec='bot';tab=0;}   /* واتساب فقط: ماينفعش نخرج لقسم تاني */
   if (sec !== CUR || (tab || 0) !== TAB){ try { sessionStorage.removeItem('subCust'); sessionStorage.removeItem('subInv'); } catch (e) {} }
   CUR = sec; TAB = tab || 0;
-  try { sessionStorage.setItem('lastPage', JSON.stringify([CUR, TAB])); localStorage.setItem('lastPage', JSON.stringify([CUR, TAB])); } catch (e) {}   /* السحب لتحت يرجّعك لنفس الصفحة */
+  try { if(window.NOVA_APP==='whatsapp'){ localStorage.setItem('waAppTab', String(TAB)); } else { sessionStorage.setItem('lastPage', JSON.stringify([CUR, TAB])); localStorage.setItem('lastPage', JSON.stringify([CUR, TAB])); } } catch (e) {}   /* السحب لتحت يرجّعك لنفس الصفحة */
   document.querySelectorAll('.secnav button').forEach(function(b){
     b.classList.toggle('on', b.dataset.sec === sec);
   });
@@ -7343,6 +7346,11 @@ try{
 }catch(e){}
 try{ setLang(localStorage.getItem('lang') || 'ar'); }catch(e){ setLang('ar'); }
 (function(){
+  if(window.NOVA_APP==='whatsapp'){
+    var h1=document.querySelector('.brand h1');if(h1)h1.textContent='واتساب الصيدلية';
+    var wt=0;try{wt=parseInt(localStorage.getItem('waAppTab')||'0',10);}catch(e){}
+    go('bot',wt===1?1:0);return;
+  }
   /* لو الصفحة اتعمل لها refresh (سحب لتحت) نرجع لنفس القسم والتبويب بدل الرئيسية */
   var last = null; try { last = JSON.parse(sessionStorage.getItem('lastPage') || localStorage.getItem('lastPage') || 'null'); HOME_STAFF_FLASH_POSITION=sessionStorage.getItem('homeFlashPosition') || HOME_STAFF_FLASH_POSITION; } catch (e) {}
   if(last && last[0]==='team' && last[1]===1)last=['team',0];

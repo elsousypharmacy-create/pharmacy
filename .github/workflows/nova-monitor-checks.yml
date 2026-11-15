@@ -24,6 +24,7 @@ jobs:
       - run: python3 -m http.server 8768 --bind 127.0.0.1 &
       - run: node tools/test-nova-monitor-browser.mjs
       - run: node tools/test-wa-period-dots.mjs
+      - run: node tools/test-wa-app-mode.mjs
       - run: node tools/test-nova-boot-guard.cjs
       - uses: actions/upload-artifact@v4
         if: always()

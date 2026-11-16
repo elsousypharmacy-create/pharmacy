@@ -151,6 +151,131 @@ function getCustomerProfile(phone) {
   }
 }
 
+/* ═══ فهرس فواتير العملاء (سجل فواتير سريع لـ NOVA) ═══
+   getCustomerProfile بتفتح ملف مبيعات كل يوم (لحد ٩٠) — بطيئة (لحد ٢٤ ثانية). هنا كل يوم فات بيتقرا مرة واحدة ويتحفظ في شيت
+   "فواتير العملاء اليومية" (التاريخ | الرقم | JSON فواتير العميل في اليوم ده؛ صف علامة الرقم "_" لليوم اللي اتعالج).
+   النهاردة بيتقرا لحظي ومش بيتحفظ. الأيام الناقصة بتتكمّل في الخلفية (autoServerUpdate كل ١٥ دقيقة) ومن أي طلب بميزانية وقت. */
+var CUST_FEED_SHEET = 'فواتير العملاء اليومية';
+var CUST_FEED_DAYS = 90;
+
+function custFeedDay_(folder, dateStr) {
+  var files = folder.getFilesByName('sales' + dateStr + '.txt');
+  if (!files.hasNext()) return {};
+  var content = files.next().getBlob().getDataAsString('UTF-8');
+  if (!content) return {};
+  var inv = {}, rx = /VALUES\s*\(((?:&#\d+;|[^;])+)\)/g, m;
+  while ((m = rx.exec(content)) !== null) {
+    var tuples = extractTuples('(' + m[1] + ')');
+    for (var t = 0; t < tuples.length; t++) {
+      try {
+        var v = parseValues(tuples[t]);
+        if (!v || v.length < 50) continue;
+        if ((v[2] ? v[2].trim() : '') !== 'sale') continue;
+        var ph = canonicalEgyptPhone_(v[45]);
+        if (!ph || ph.length < 10) continue;
+        var id = v[1];
+        if (!inv[id]) inv[id] = { p: ph, i: id, t: 0, d: 0, it: [] };
+        inv[id].it.push([String(v[6] ? v[6].trim() : (v[5] ? v[5].trim() : '؟')).slice(0, 60), parseFloat(v[7]) || 0, parseFloat(v[8]) || 0]);
+        inv[id].t = (parseFloat(v[35]) || 0) + (parseFloat(v[39]) || 0);
+        inv[id].d = parseFloat(v[27]) || 0;
+      } catch (e) { continue; }
+    }
+  }
+  var out = {};
+  Object.keys(inv).forEach(function (id) {
+    var x = inv[id];
+    (out[x.p] || (out[x.p] = [])).push({ i: x.i, t: x.t, d: x.d, it: x.it });
+  });
+  return out;
+}
+
+function custFeedLoad_() {
+  var sh = getOrCreateSheet_(CUST_FEED_SHEET, ['التاريخ', 'الرقم', 'فواتير']);
+  sh.getRange('A:B').setNumberFormat('@');
+  var done = {}, rows = [], n = sh.getLastRow();
+  if (n > 1) sh.getRange(2, 1, n - 1, 3).getDisplayValues().forEach(function (r) {
+    var d = String(r[0]).substring(0, 10);
+    done[d] = 1;
+    if (r[1] !== '_') rows.push([d, String(r[1]), r[2]]);
+  });
+  return { sh: sh, done: done, rows: rows };
+}
+
+/* بيكمّل الأيام الناقصة (الأحدث الأول) في حدود budgetMs. بيرجّع { missing, add } — add = الصفوف اللي اتضافت (للاستعمال فورًا). */
+function custFeedSync_(L, budgetMs) {
+  var tz = 'Africa/Cairo', t0 = Date.now(), now = new Date(), add = [], missing = 0;
+  var folder = DriveApp.getFolderById(SALES_FOLDER);
+  var early = parseInt(Utilities.formatDate(now, tz, 'H'), 10) < 3;     /* قبل ٣ الفجر ملف إمبارح ممكن لسه بيتكتب */
+  for (var i = 1; i <= CUST_FEED_DAYS; i++) {
+    var d = Utilities.formatDate(new Date(now.getTime() - i * 86400000), tz, 'yyyy-MM-dd');
+    if (L.done[d]) continue;
+    if (i === 1 && early) continue;
+    if (Date.now() - t0 > budgetMs) { missing++; continue; }
+    var map;
+    try { map = custFeedDay_(folder, d); } catch (e) { missing++; continue; }
+    add.push([d, '_', '']);
+    Object.keys(map).forEach(function (ph) { add.push([d, ph, JSON.stringify(map[ph])]); });
+    L.done[d] = 1;
+  }
+  if (add.length) {
+    L.sh.getRange(L.sh.getLastRow() + 1, 1, add.length, 3).setValues(add);
+    add.forEach(function (r) { if (r[1] !== '_') L.rows.push(r); });
+  }
+  return { missing: missing, added: add.length };
+}
+
+function custFeedPrune_(L) {
+  var n = L.sh.getLastRow();
+  if (n < 20000) return;
+  var cut = Utilities.formatDate(new Date(Date.now() - (CUST_FEED_DAYS + 30) * 86400000), 'Africa/Cairo', 'yyyy-MM-dd');
+  var all = L.sh.getRange(2, 1, n - 1, 3).getDisplayValues().filter(function (r) { return String(r[0]).substring(0, 10) >= cut; });
+  L.sh.getRange(2, 1, n - 1, 3).clearContent();
+  if (all.length) L.sh.getRange(2, 1, all.length, 3).setValues(all);
+}
+
+/* تشغيل الخلفية (من autoServerUpdate): يكمّل الأيام الناقصة ويقصّ القديم */
+function custFeedBackfill_() {
+  var L = custFeedLoad_();
+  custFeedSync_(L, 20000);
+  custFeedPrune_(L);
+}
+
+function getCustomerHistoryFast_(phone) {
+  try {
+    var canon = canonicalEgyptPhone_(phone);
+    if (!canon) return { ok: false, error: 'رقم غير صالح' };
+    var ck = 'fx_chist_' + canon, hit = fxCacheGet_(ck);
+    if (hit) return hit;
+    var tz = 'Africa/Cairo', today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+    var L = custFeedLoad_(), st = custFeedSync_(L, 12000), list = [];
+    L.rows.forEach(function (r) {
+      if (r[1] !== canon) return;
+      try { JSON.parse(r[2] || '[]').forEach(function (x) { list.push({ date: r[0], x: x }); }); } catch (e) {}
+    });
+    try {   /* النهاردة لحظي */
+      var tm = custFeedDay_(DriveApp.getFolderById(SALES_FOLDER), today);
+      (tm[canon] || []).forEach(function (x) { list.push({ date: today, x: x }); });
+    } catch (eT) {}
+    list.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : (parseInt(b.x.i, 10) || 0) - (parseInt(a.x.i, 10) || 0); });
+    var purchases = list.slice(0, 10).map(function (e) {
+      return { date: e.date, invoice: e.x.i, total: e.x.t, discount: e.x.d,
+               items: (e.x.it || []).map(function (a) { return { name: a[0], qty: a[1], price: a[2] }; }) };
+    });
+    var debt = null;
+    try {
+      var dd = getDebtsSnap();
+      (dd && dd.debtors || []).forEach(function (c) {
+        if (canonicalEgyptPhone_(c.phone) === canon) debt = { net: c.net, daysSincePaid: c.daysSincePaid };
+      });
+    } catch (e2) {}
+    var out = { ok: true, phone: canon, purchases: purchases, debt: debt, scannedDays: CUST_FEED_DAYS - st.missing, partial: st.missing > 0, fast: true };
+    if (!st.missing) fxCachePut_(ck, out, 600);
+    return out;
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 /* ═══ زيارات العملاء لفترة ═══
    كل يوم فات بيتحسب مرة واحدة ويتحفظ في شيت "زيارات يومية" (التاريخ | JSON {رقم:[فواتير, إنفاق]}).
    الزيارة = يوم فيه فاتورة بيع على رقم العميل. النهاردة بيتحسب لحظي ومش بيتحفظ. */

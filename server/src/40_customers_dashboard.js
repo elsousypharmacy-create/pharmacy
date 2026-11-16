@@ -95,7 +95,7 @@ function getCustomerProfile(phone) {
   try {
     var canon = canonicalEgyptPhone_(phone);
     if (!canon) return { ok: false, error: 'رقم غير صالح' };
-    var ck = 'fx_cprof2_' + canon;
+    var ck = 'fx_cprof_' + canon;
     var hit = fxCacheGet_(ck);
     if (hit) return hit;
 
@@ -124,8 +124,7 @@ function getCustomerProfile(phone) {
             var id = v[1];
             if (!inv[id]) inv[id] = { date: dateStr, invoice: id, items: [], total: 0 };
             inv[id].items.push({ name: (v[6] ? v[6].trim() : (v[5] ? v[5].trim() : '؟')),
-                                 qty: parseFloat(v[7]) || 0, price: parseFloat(v[8]) || 0 });
-            inv[id].discount = parseFloat(v[27]) || 0;   /* خصم الفاتورة (نفس العمود اللي بيعدّه تقرير اليوم) */
+                                 qty: parseFloat(v[7]) || 0 });
             inv[id].total = (parseFloat(v[35]) || 0) + (parseFloat(v[39]) || 0);
           } catch (e) { continue; }
         }

@@ -75,6 +75,7 @@ function autoServerUpdate() {
   try { maybeEnsureTriggers_(); } catch (eT) {}
   try { warnVersionsIfNeeded_(); } catch (eW) {}
   try { rebuildDebtsSnapshotIfFormatChanged_(); } catch (eB) {}
+  try { custFeedBackfill_(); } catch (eF) {}   /* فهرس فواتير العملاء: تكميل الأيام الناقصة (سجل فواتير NOVA السريع) */
   var s = serverSrc_(), P = PropertiesService.getScriptProperties();
   if (!s || P.getProperty('SERVER_SRC_SIG') === s.sig) { if (s) P.deleteProperty('SERVER_PEND_SIG'); return; }
   if (P.getProperty('SERVER_FAILED_SIG') === s.sig) return;          /* النسخة دي فشلت قبل كده — منحاولش كل ربع ساعة */

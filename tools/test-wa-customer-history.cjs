@@ -10,7 +10,7 @@ const sb={console,Logger:{log(){}},
   Utilities:{formatDate:()=>'x',sleep(){},base64Encode:()=>''},UrlFetchApp:{fetch(){throw new Error('no network in test')}}};
 vm.createContext(sb);vm.runInContext(fs.readFileSync('server/Code.js','utf8'),sb);
 let mode='ok',ptsMode='ok';const pcalls=[];
-sb.getCustomerPointsData=(ph)=>{pcalls.push(ph);if(ptsMode==='err')throw new Error('sheet down');return {ok:true,total_points:42,history:[{invoiceid:'1234',points:7},{invoiceid:'999',points:3}]}};
+sb.custPoints_=(ph)=>{pcalls.push(ph);if(ptsMode==='err')throw new Error('sheet down');return {ok:true,total_points:42,history:[{invoiceid:'1234',points:7},{invoiceid:'999',points:3}]}};
 sb.getCustomerHistoryFast_=(ph)=>{calls.push(ph);if(mode==='err')return {ok:false,error:'boom'};return {ok:true,phone:'01001112222',purchases:[{date:'2026-11-10',invoice:'1234',total:150.5,items:[{name:'بنادول',qty:2,price:30,junk:1},{name:'فيتامين',qty:1,price:90.5}],discount:5,secret:'x'}],debt:{net:40,daysSincePaid:3},scannedDays:12,partial:false,extra:'x'}};
 const call=d=>JSON.parse(sb.doPost({postData:{contents:JSON.stringify(Object.assign({action:'novaWhatsAppBridge',operation:'customerHistory'},d))}}).getContent());
 let r=call({chatId:'wa_201001112222'});assert.deepEqual([r.ok,r.error],[false,'unauthorized']);assert.equal(calls.length,0);

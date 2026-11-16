@@ -39,7 +39,7 @@ function novaWaBridge_(d) {
     /* رصيد النقاط وكام نقطة جت من كل فاتورة (شيت النقاط) — لو فشل منكمّلش من غيره */
     var pts = null, byInv = {};
     try {
-      var pd = getCustomerPointsData(prof.phone || ('0' + ph.slice(-10)));
+      var pd = custPoints_(prof.phone || ('0' + ph.slice(-10)));
       if (pd && pd.ok) { pts = { total: Number(pd.total_points) || 0 }; (pd.history || []).forEach(function(h) { byInv[String(h.invoiceid)] = (byInv[String(h.invoiceid)] || 0) + (parseInt(h.points, 10) || 0); }); }
     } catch (eP) {}
     return { ok: true, purchases: (prof.purchases || []).slice(0, 10).map(function(x) {

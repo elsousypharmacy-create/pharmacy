@@ -5333,7 +5333,7 @@ function getCustomerProfile(phone) {
   try {
     var canon = canonicalEgyptPhone_(phone);
     if (!canon) return { ok: false, error: 'رقم غير صالح' };
-    var ck = 'fx_cprof_' + canon;
+    var ck = 'fx_cprof2_' + canon;
     var hit = fxCacheGet_(ck);
     if (hit) return hit;
 
@@ -5362,7 +5362,8 @@ function getCustomerProfile(phone) {
             var id = v[1];
             if (!inv[id]) inv[id] = { date: dateStr, invoice: id, items: [], total: 0 };
             inv[id].items.push({ name: (v[6] ? v[6].trim() : (v[5] ? v[5].trim() : '؟')),
-                                 qty: parseFloat(v[7]) || 0 });
+                                 qty: parseFloat(v[7]) || 0, price: parseFloat(v[8]) || 0 });
+            inv[id].discount = parseFloat(v[27]) || 0;   /* خصم الفاتورة (نفس العمود اللي بيعدّه تقرير اليوم) */
             inv[id].total = (parseFloat(v[35]) || 0) + (parseFloat(v[39]) || 0);
           } catch (e) { continue; }
         }
@@ -6066,10 +6067,18 @@ function novaWaBridge_(d) {
     if (!/^\d{8,15}$/.test(ph)) return { ok: false, error: 'no phone' };
     var prof = getCustomerProfile('+' + ph);
     if (!prof || prof.ok !== true) return { ok: false, error: String((prof && prof.error) || 'history failed').slice(0, 120) };
+    /* رصيد النقاط وكام نقطة جت من كل فاتورة (شيت النقاط) — لو فشل منكمّلش من غيره */
+    var pts = null, byInv = {};
+    try {
+      var pd = getCustomerPointsData(prof.phone || ('0' + ph.slice(-10)));
+      if (pd && pd.ok) { pts = { total: Number(pd.total_points) || 0 }; (pd.history || []).forEach(function(h) { byInv[String(h.invoiceid)] = (byInv[String(h.invoiceid)] || 0) + (parseInt(h.points, 10) || 0); }); }
+    } catch (eP) {}
     return { ok: true, purchases: (prof.purchases || []).slice(0, 10).map(function(x) {
-      return { date: String(x.date || ''), invoice: String(x.invoice || ''), total: Number(x.total) || 0,
-               items: (x.items || []).slice(0, 40).map(function(i) { return { name: String(i.name || '').slice(0, 80), qty: Number(i.qty) || 0 }; }) };
-    }), debt: prof.debt ? { net: Number(prof.debt.net) || 0 } : null, partial: !!prof.partial, scannedDays: Number(prof.scannedDays) || 0 };
+      var o = { date: String(x.date || ''), invoice: String(x.invoice || ''), total: Number(x.total) || 0, discount: Number(x.discount) || 0,
+                items: (x.items || []).slice(0, 40).map(function(i) { return { name: String(i.name || '').slice(0, 80), qty: Number(i.qty) || 0, price: Number(i.price) || 0 }; }) };
+      if (pts && byInv[o.invoice] !== undefined) o.points = byInv[o.invoice];
+      return o;
+    }), debt: prof.debt ? { net: Number(prof.debt.net) || 0 } : null, points: pts, partial: !!prof.partial, scannedDays: Number(prof.scannedDays) || 0 };
   }
   if (op === 'hold') {
     if (typeof d.hold !== 'boolean') return { ok: false, error: 'invalid hold' };

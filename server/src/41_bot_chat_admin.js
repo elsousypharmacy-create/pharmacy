@@ -115,7 +115,6 @@ function maskPhonesInText_(text) {
 }
 function remindPendingHandoffs() {
   try { waitingDigest_(); } catch (eW) { Logger.log('waitingDigest_: ' + eW.message); }
-  try { custFeedBackfill_(); } catch (eF) { Logger.log('custFeedBackfill_: ' + eF.message); }   /* فهرس فواتير العملاء: كل ١٠ دقايق لحد ما يكتمل */
   var P = PropertiesService.getScriptProperties(), all = {};
   try { all = P.getProperties() || {}; } catch (e) { return; }
   var now = Date.now(), inHours = withinBotHours_();

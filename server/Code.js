@@ -6060,6 +6060,17 @@ function novaWaBridge_(d) {
     // The existing botReply() saves the conversation only after confirmed delivery.
     return botReply(id, message);
   }
+  if (op === 'customerHistory') {
+    /* read-only: the customer's last purchases (from the daily sales files) by the chat's phone number. Nothing is written or sent. */
+    var ph = id.replace(/^wa_/, '');
+    if (!/^\d{8,15}$/.test(ph)) return { ok: false, error: 'no phone' };
+    var prof = getCustomerProfile('+' + ph);
+    if (!prof || prof.ok !== true) return { ok: false, error: String((prof && prof.error) || 'history failed').slice(0, 120) };
+    return { ok: true, purchases: (prof.purchases || []).slice(0, 10).map(function(x) {
+      return { date: String(x.date || ''), invoice: String(x.invoice || ''), total: Number(x.total) || 0,
+               items: (x.items || []).slice(0, 40).map(function(i) { return { name: String(i.name || '').slice(0, 80), qty: Number(i.qty) || 0 }; }) };
+    }), debt: prof.debt ? { net: Number(prof.debt.net) || 0 } : null, partial: !!prof.partial, scannedDays: Number(prof.scannedDays) || 0 };
+  }
   if (op === 'hold') {
     if (typeof d.hold !== 'boolean') return { ok: false, error: 'invalid hold' };
     return botHold(id, d.hold);

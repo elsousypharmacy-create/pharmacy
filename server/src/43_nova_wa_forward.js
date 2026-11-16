@@ -97,8 +97,13 @@ function novaWaForwardOut_(body, mid, path) {
   try {
     var t = body.type || 'text', media = body[t] || {};
     var text = t === 'text' ? (body.text && body.text.body) : t === 'interactive' ? (body.interactive && body.interactive.body && body.interactive.body.text) : (media.caption || null);
-    novaWaForward_({ id: mid, from: String(body.to || body.recipient || '').replace(/\D/g, ''), type: t, text: text || null,
-      media_id: media.id || null, filename: media.filename || null, phone_number_id: String(path || '').split('/')[0] || null, direction: 'out' });
+    var item = { id: mid, from: String(body.to || body.recipient || '').replace(/\D/g, ''), type: t, text: text || null,
+      media_id: media.id || null, filename: media.filename || null, phone_number_id: String(path || '').split('/')[0] || null, direction: 'out' };
+    /* صورة اتبعتت من NOVA: نبعت بايتاتها لـ NOVA عشان تظهر عندهم (waSendMedia_ بتحط NOVA_WA_OUT_BYTES_ حوالين الإرسال بس) */
+    if (typeof NOVA_WA_OUT_BYTES_ !== 'undefined' && NOVA_WA_OUT_BYTES_ && media.id && NOVA_WA_OUT_BYTES_.id === media.id) {
+      item.mime_type = NOVA_WA_OUT_BYTES_.mime; item.media_size = NOVA_WA_OUT_BYTES_.size; item.media_base64 = NOVA_WA_OUT_BYTES_.b64;
+    }
+    novaWaForward_(item);
   } catch (e) { try { Logger.log('novaWaForwardOut_: ' + e.message); } catch (e2) {} }
 }
 /* مفتاح الرد التلقائي: BOT_AUTO_REPLY='0' = مقفول. أي حاجة تانية/مش موجود = شغال. كاش 30 ثانية. */

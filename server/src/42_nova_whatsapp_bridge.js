@@ -30,6 +30,7 @@ function novaWaBridge_(d) {
     // The existing botReply() saves the conversation only after confirmed delivery.
     return botReply(id, message);
   }
+  if (op === 'sendMedia') return waSendMedia_(id, d);
   if (op === 'hold') {
     if (typeof d.hold !== 'boolean') return { ok: false, error: 'invalid hold' };
     return botHold(id, d.hold);

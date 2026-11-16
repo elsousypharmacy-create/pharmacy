@@ -6,6 +6,8 @@ const data=JSON.parse(fs.readFileSync('nova-status.json','utf8'));
 // The Home tile shows the owner of the running task. Derive the expected owner from the same data and
 // logic instead of hard-coding a name that changes whenever tasks are reassigned.
 const expectedOwner=createRequire(import.meta.url)('../nova-home-progress.js').summarize(data,Date.parse(data.updatedAt)).owner;
+/* task owners change whenever work is reassigned: derive the owner under test from the data instead of hard-coding one */
+const allTasks=data.roadmap.flatMap(p=>p.tasks),own=allTasks.find(t=>t.id==='FND-03').owner,ownCount=allTasks.filter(t=>t.owner===own).length;
 const browser=await chromium.launch();
 fs.mkdirSync('reports/nova-monitor',{recursive:true});
 try{
@@ -13,22 +15,22 @@ try{
  let offline=false,fixture=structuredClone(data);
  await context.route('**/nova-status.json',route=>offline?route.abort():route.fulfill({json:fixture}));
  const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(String(e)));
- await page.goto('http://127.0.0.1:8768/nova-monitor.html');await page.locator('#roadmap .item').last().waitFor();
+ await page.goto('http://127.0.0.1:8768/nova-monitor.html');await page.locator('#roadmap details').first().waitFor({state:'attached'});/* the roadmap redesign renders each phase inside a collapsed <details>: open them all so the items are visible */const openAll=()=>page.evaluate(()=>document.querySelectorAll('#roadmap details').forEach(d=>{d.open=true}));await openAll();await page.locator('#roadmap .item').last().waitFor();
  assert.equal(await page.locator('#roadmap .item').count(),85);assert(await page.locator('[data-task-id="FND-03"]').isVisible());
- assert((await page.locator('[data-task-id="FND-03"]').innerText()).includes('Kimi'));
+ assert((await page.locator('[data-task-id="FND-03"]').innerText()).includes(own));
  assert((await page.locator('[data-task-id="FND-03"]').innerText()).includes('قبول: 0%'));
  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'phone has no horizontal overflow');
- await page.locator('#agentFilter').selectOption('Kimi');assert.equal(await page.locator('#roadmap .item').count(),5);
- await page.locator('#filter').selectOption('queued');assert.equal(await page.locator('#roadmap .item').count(),data.roadmap.flatMap(p=>p.tasks).filter(t=>t.owner==='Kimi'&&t.status==='queued').length);
+ await page.locator('#agentFilter').selectOption(own);assert.equal(await page.locator('#roadmap .item').count(),ownCount);
+ await page.locator('#filter').selectOption('queued');assert.equal(await page.locator('#roadmap .item').count(),data.roadmap.flatMap(p=>p.tasks).filter(t=>t.owner===own&&t.status==='queued').length);
  await page.locator('#agentFilter').selectOption('all');await page.locator('#filter').selectOption('for_review');assert.equal(await page.locator('#roadmap .item').count(),data.roadmap.flatMap(p=>p.tasks).filter(t=>t.status==='for_review').length);
- await page.locator('#search').fill('POS-03');assert.equal(await page.locator('#roadmap .item').count(),1);
+ await page.locator('#search').fill('POS-03');{/* search also matches tasks that mention POS-03 (dependencies, notes): the task itself must be there and the list must be narrowed */const n=await page.locator('#roadmap .item').count();assert(n>=1&&n<allTasks.length,'search narrows the list');assert(await page.locator('[data-task-id="POS-03"]').isVisible());}
  await page.locator('#search').fill('');await page.locator('#filter').selectOption('all');
  await page.screenshot({path:'reports/nova-monitor/phone.png'});
  await page.setViewportSize({width:1280,height:800});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:'reports/nova-monitor/tablet.png'});
  const task=fixture.roadmap[0].tasks[0];task.status='verified';task.evidence=[{url:'https://github.com/example/repo/commit/test'}];task.verifiedAt=new Date().toISOString();task.verification={reviewer:'fixture-reviewer',result:'pass'};
  fixture.updatedAt='2020-01-01T00:00:00Z';await page.locator('#reload').click();await page.locator('[data-task-id="FND-01"] .status-verified').waitFor();assert((await page.locator('[data-task-id="FND-01"]').innerText()).includes('قبول: 100%'));assert.equal(await page.locator('#updated').getAttribute('class'),'stale');
  fixture.updatedAt=new Date().toISOString();await page.locator('#reload').click();await page.waitForFunction(()=>!document.getElementById('reload').disabled);assert.equal(await page.locator('#updated').getAttribute('class'),'');
- offline=true;await page.locator('#reload').click();await page.getByText(/تعذر تحميل الخطة/).waitFor();assert.equal(await page.locator('#roadmap .item').count(),85,'offline retains last data');offline=false;fixture=data;
+ offline=true;await page.locator('#reload').click();await page.getByText(/تعذر تحميل الخطة/).waitFor();await openAll();assert.equal(await page.locator('#roadmap .item').count(),85,'offline retains last data');offline=false;fixture=data;
  await page.goto('http://127.0.0.1:8768/tools/fixtures/home-viewport.html');await page.locator('iframe').last().waitFor();
  const frames=page.frames().slice(1);assert.equal(frames.length,6);
  for(let i=0;i<frames.length;i++){

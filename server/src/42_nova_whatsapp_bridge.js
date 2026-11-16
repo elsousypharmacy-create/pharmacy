@@ -34,7 +34,7 @@ function novaWaBridge_(d) {
     /* read-only: the customer's last purchases (from the daily sales files) by the chat's phone number. Nothing is written or sent. */
     var ph = id.replace(/^wa_/, '');
     if (!/^\d{8,15}$/.test(ph)) return { ok: false, error: 'no phone' };
-    var prof = getCustomerHistoryFast_('+' + ph);
+    var prof = getCustomerProfile('+' + ph);
     if (!prof || prof.ok !== true) return { ok: false, error: String((prof && prof.error) || 'history failed').slice(0, 120) };
     /* رصيد النقاط وكام نقطة جت من كل فاتورة (شيت النقاط) — لو فشل منكمّلش من غيره */
     var pts = null, byInv = {};

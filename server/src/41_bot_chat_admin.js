@@ -52,6 +52,46 @@ function botReply(id, text) {
   clearHandoff_(id);
   return { ok: true };
 }
+/* إرسال صورة / مستند من NOVA لعميل واتساب: رفع الملف لميتا (/media) ثم إرساله برقم الملف. المدخل: chatId, kind (image|document), mime, filename, base64, caption.
+   الحدود هنا نفس حدود واتساب تقريبًا؛ NOVA بتفلتر قبل كده. مش بتبعت من غير توكن واتساب، ومش بتتخطى حظر الـ 24 ساعة (ميتا هي اللي بترفض). */
+var WA_MEDIA_MIMES_ = {
+  image: /^image\/(jpeg|png)$/,
+  document: /^(application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.(wordprocessingml\.document|spreadsheetml\.sheet|presentationml\.presentation)|application\/vnd\.ms-excel|application\/vnd\.ms-powerpoint|text\/plain)$/,
+  audio: /^audio\/(ogg|mpeg|mp4|aac|amr)$/
+};
+function botReplyMedia(id, kind, mime, filename, b64, caption) {
+  id = String(id || ''); kind = String(kind || ''); mime = String(mime || '').toLowerCase().split(';')[0].trim();
+  if (!/^wa_\d{8,15}$/.test(id)) return { ok: false, error: 'invalid chat' };
+  if (!WA_MEDIA_MIMES_[kind] || !WA_MEDIA_MIMES_[kind].test(mime)) return { ok: false, error: 'unsupported type' };
+  b64 = String(b64 || '');
+  if (!b64 || b64.length > 7500000 || !/^[A-Za-z0-9+\/]+={0,2}$/.test(b64)) return { ok: false, error: 'invalid file' };
+  var tok = waToken_();
+  if (!tok) return { ok: false, error: 'WA_TOKEN مش متحط في إعدادات السيرفر' };
+  var name = String(filename || (kind === 'image' ? 'photo' : kind)).replace(/[^\w.\-؀-ۿ ]/g, '_').slice(0, 80) || 'file';
+  var cap = String(caption || '').trim().slice(0, 1000);
+  var up;
+  try {
+    var blob = Utilities.newBlob(Utilities.base64Decode(b64), mime, name);
+    var r = UrlFetchApp.fetch(WA_API + waPhoneId_() + '/media', { method: 'post', headers: { Authorization: 'Bearer ' + tok }, muteHttpExceptions: true,
+      payload: { messaging_product: 'whatsapp', type: mime, file: blob } });
+    up = JSON.parse(r.getContentText() || '{}');
+    if (r.getResponseCode() !== 200 || !up.id) {
+      var why = (up.error && (up.error.error_user_msg || up.error.message)) || ('HTTP ' + r.getResponseCode());
+      return { ok: false, error: 'رفع الملف فشل: ' + String(why).slice(0, 160) };
+    }
+  } catch (e) { return { ok: false, error: 'رفع الملف فشل: ' + String(e.message || e).slice(0, 120) }; }
+  var tgt = waTarget_(id), body = { messaging_product: 'whatsapp', type: kind };
+  Object.keys(tgt).forEach(function (k) { body[k] = tgt[k]; });
+  body[kind] = { id: up.id };
+  if (cap && (kind === 'image' || kind === 'document')) body[kind].caption = cap;
+  if (kind === 'document') body[kind].filename = name;
+  var sent = waCall_(waPhoneId_() + '/messages', body);
+  if (!sent || !sent.ok) return { ok: false, error: String((sent && sent.description) || 'واتساب رفض الإرسال').slice(0, 200) };
+  var label = kind === 'image' ? '[صورة]' : kind === 'document' ? '[ملف]' : '[صوت]';
+  try { saveConversationTurn(id, '[سؤال محوّل للدكتور]', label + (cap ? ' ' + cap : ''), 'pharm'); } catch (eS) {}
+  try { clearHandoff_(id); } catch (eH) {}
+  return { ok: true, media_id: up.id, message_id: sent.result && sent.result.message_id || '' };
+}
 function botHold(id, on) {
   holdSet_(String(id), !!on);
   logChatRows_(id, [['sys', on ? '🤫 الصيدلي مسك المحادثة — البوت ساكت' : '▶️ البوت رجع يرد']]);

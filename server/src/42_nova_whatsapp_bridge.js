@@ -30,6 +30,9 @@ function novaWaBridge_(d) {
     // The existing botReply() saves the conversation only after confirmed delivery.
     return botReply(id, message);
   }
+  if (op === 'replyMedia') {
+    return botReplyMedia(id, d.kind, d.mime, d.filename, d.data, d.caption);
+  }
   if (op === 'hold') {
     if (typeof d.hold !== 'boolean') return { ok: false, error: 'invalid hold' };
     return botHold(id, d.hold);

@@ -196,6 +196,7 @@ function handleWhatsAppWebhook_(data) {
       try { waOne_(m, nm); } catch (e) { Logger.log('خطأ واتساب: ' + e.message); }
       finally { novaWaForwardIn_(m, nm, v.metadata && v.metadata.phone_number_id); }
     });
+    try { waHandleStatuses_(v.statuses); } catch (eS) { Logger.log('statuses: ' + eS.message); } /* «failed» بس → ملاحظة في NOVA */
   }); });
 }
 /* معرّف العميل في الإيكو لازم يطابق شات الرسالة الواردة (رقم من غير +، أو نفس الـ BSUID) */

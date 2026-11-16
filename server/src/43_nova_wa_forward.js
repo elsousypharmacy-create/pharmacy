@@ -10,7 +10,7 @@ function novaWaForward_(item) {
     cache.put(key, '1', 21600);
     var msg = { id: String(item.id), from: String(item.from || ''), timestamp: String(item.timestamp || Math.floor(Date.now() / 1000)),
       type: item.type || 'text', text: item.text == null ? null : String(item.text), media_id: item.media_id || null,
-      filename: item.filename || null, name: item.name || null, phone_number_id: item.phone_number_id || null, direction: item.direction === 'out' ? 'out' : 'in' };
+      filename: item.filename || null, name: item.name || null, phone_number_id: item.phone_number_id || null, direction: item.direction === 'out' ? 'out' : item.direction === 'sys' ? 'sys' : 'in' };
     if (item.mime_type) msg.mime_type = String(item.mime_type);
     if (item.media_size != null && isFinite(Number(item.media_size))) msg.media_size = Number(item.media_size);
     if (item.media_base64) msg.media_base64 = String(item.media_base64);

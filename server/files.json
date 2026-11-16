@@ -20,6 +20,7 @@
   "src/43_nova_wa_forward.js",
   "src/44_wa_kpis.js",
   "src/45_wa_customer_names.js",
+  "src/46_wa_send_media.js",
   "src/50_sms_points.js",
   "src/60_debts_reminders.js",
   "src/61_finance.js",

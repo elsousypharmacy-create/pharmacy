@@ -6195,7 +6195,7 @@ function novaWaBridge_(d) {
     /* رصيد النقاط وكام نقطة جت من كل فاتورة (شيت النقاط) — لو فشل منكمّلش من غيره */
     var pts = null, byInv = {};
     try {
-      var pd = custPoints_(prof.phone || ('0' + ph.slice(-10)));
+      var pd = getCustomerPointsData(prof.phone || ('0' + ph.slice(-10)));
       if (pd && pd.ok) { pts = { total: Number(pd.total_points) || 0 }; (pd.history || []).forEach(function(h) { byInv[String(h.invoiceid)] = (byInv[String(h.invoiceid)] || 0) + (parseInt(h.points, 10) || 0); }); }
     } catch (eP) {}
     return { ok: true, purchases: (prof.purchases || []).slice(0, 10).map(function(x) {
@@ -7014,26 +7014,6 @@ function dismissFailedSMS(invoiceid) {
     sheet.getRange(i + 2, 7).setValue('متجاهلة');
     fxClearCache_('fx_sms_30');
     return;
-  }
-}
-
-// ✅ نفس الرصيد لكن بمطابقة الرقم بعد توحيده (الشيت ممكن يخزّن الرقم كعدد من غير الصفر أو بـ +20) — للسجل في NOVA
-function custPoints_(phone) {
-  try {
-    var canon = canonicalEgyptPhone_(phone);
-    if (!canon) return { ok: false, error: 'رقم غير صالح' };
-    var sheet = SpreadsheetApp.openById(STAFF_SHEET_ID).getSheetByName(POINTS_SHEET);
-    if (!sheet || sheet.getLastRow() <= 1) return { ok: true, phone: canon, total_points: 0, history: [] };
-    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues(), total = 0, history = [];
-    data.forEach(function(r) {
-      if (canonicalEgyptPhone_(r[2]) !== canon) return;
-      var pt = parseInt(r[6], 10) || 0;
-      total += pt;
-      history.push({ invoiceid: String(r[1]), points: pt });
-    });
-    return { ok: true, phone: canon, total_points: total, history: history };
-  } catch (e) {
-    return { ok: false, error: e.message };
   }
 }
 

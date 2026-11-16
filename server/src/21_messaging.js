@@ -71,7 +71,7 @@ function waVerifyToken_() {
 function waInfo() {   /* للوحة: الحالة + اللي تحطه في Meta */
   return { ok: true, hasToken: !!waToken_(), phoneId: waPhoneId_(), verifyToken: waVerifyToken_(),
            callbackUrl: WEB_APP_URL, relayUrl: aiKey_('TG_RELAY_URL') || '',
-           lastIn: aiKey_('WA_LAST_IN') || '', lastErr: aiKey_('WA_LAST_ERR') || '',
+           lastIn: aiKey_('WA_LAST_IN') || '', lastEcho: aiKey_('WA_LAST_ECHO') || '', lastField: aiKey_('WA_LAST_FIELD') || '', lastErr: aiKey_('WA_LAST_ERR') || '',
            wabaId: aiKey_('WA_WABA_ID') || '1121417500291242', wabaCustom: !!aiKey_('WA_WABA_ID') };
 }
 /* حفظ التوكن من اللوحة (بالرقم السري) — التوكن بيتكتب بس، عمره ما بيرجع للوحة */
@@ -179,6 +179,7 @@ function waSeq_(chatId) {   /* رقم مسلسل لكل رسالة (الألبو
 function handleWhatsAppWebhook_(data) {
   (data.entry || []).forEach(function (en) { (en.changes || []).forEach(function (ch) {
     var v = ch.value || {};
+    try { PropertiesService.getScriptProperties().setProperty('WA_LAST_FIELD', Utilities.formatDate(new Date(), 'Africa/Cairo', 'MM-dd HH:mm') + ' ' + String(ch.field || '?')); } catch (eF) {}   /* تشخيص: أنهي حقول ميتا بتوصل فعلًا */
     /* رد الصيدلي من تطبيق واتساب (تعايش). statuses و message_echoes (رسايل البوت من الـ API) مش هنا — منقراهمش ومش بنرد عليهم. */
     if (ch.field === 'smb_message_echoes') {
       (v.message_echoes || []).forEach(function (m) { try { waEcho_(m); } catch (e) { Logger.log('خطأ إيكو واتساب: ' + e.message); } });
@@ -234,6 +235,7 @@ function waEchoBody_(m) {
 /* إيكو تطبيق الواتساب: نسجّله على شات العميل بدور الصيدلي، والبوت ميردّش. */
 function waEcho_(m) {
   if (!m) return;
+  try { PropertiesService.getScriptProperties().setProperty('WA_LAST_ECHO', Utilities.formatDate(new Date(), 'Africa/Cairo', 'MM-dd HH:mm') + ' ' + String(m.type || '?')); } catch (eE) {}   /* تشخيص: آخر رد وصل من تطبيق الواتساب */
   var cache = CacheService.getScriptCache(), id = String(m.id || '');
   if (id && (cache.get('wamout_' + id) || cache.get('wam_' + id))) return;
   var orig = (m.edit && m.edit.original_message_id) || (m.revoke && m.revoke.original_message_id) || '';

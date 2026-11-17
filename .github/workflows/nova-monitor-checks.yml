@@ -24,9 +24,9 @@ jobs:
       - run: npm install --no-save --no-package-lock playwright@1.58.2
       - run: node node_modules/playwright/cli.js install --with-deps chromium
       - run: python3 -m http.server 8768 --bind 127.0.0.1 &
-      - run: node tools/test-nova-monitor-browser.mjs
-      - run: node tools/test-wa-period-dots.mjs
+      - run: node tools/test-wa-period-dots.mjs   # own server; before the monitor test so it still runs while that one is red
       - run: node tools/test-wa-app-mode.mjs
+      - run: node tools/test-nova-monitor-browser.mjs
       - run: node tools/test-nova-boot-guard.cjs
       - uses: actions/upload-artifact@v4
         if: always()

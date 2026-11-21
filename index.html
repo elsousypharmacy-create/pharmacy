@@ -2511,17 +2511,31 @@ function docDone(row){
 
 /* ─────── عامة ─────── */
 var HOME_IN_FLIGHT=null;
+function homeSummaryForDay(summary, day){
+  return !!(summary && summary.ok && summary.source === 'pos-invoices-v1' &&
+    Array.isArray(summary.daily) && summary.daily.length === 1 &&
+    summary.daily[0] && summary.daily[0].date === day &&
+    [summary.net_sales, summary.profit_total, summary.avg_invoice].every(function(value){
+      return typeof value === 'number' && isFinite(value);
+    }));
+}
 function pgHome(){
   if(storedPin())homeCamLatest(false,true); // Fetch saved reports on entry/resume without notifications.
   var box = document.getElementById('p-home');
   var seed = cacheGet('home', {});
+  var day = cairoNow().date;
+  if (!seed || !seed.b || !seed.kpi || !homeSummaryForDay(seed.kpi._salesSummary, day)) seed = null;
+  if (HOME_FLASH_DAY_STATS && HOME_FLASH_DAY_STATS.date !== day) {
+    HOME_FLASH_DAY_STATS = null;
+    busy(box);
+  }
   // Keep the currently displayed net sales visible until fresh data arrives.
   // Repainting the cached snapshot on every reload causes a visible flash.
   if (!box.querySelector('.home-flash-deck')) {
     // A hard page reload must not paint a provisional home snapshot before the
     // authoritative invoice summary arrives: that causes net to dip and average to dash.
     // Show only the last verified invoice-backed snapshot immediately; refresh silently.
-    if (seed && seed.b && seed.kpi && seed.kpi._salesSummary && seed.kpi._salesSummary.ok && seed.kpi._salesSummary.source==='pos-invoices-v1' && [seed.kpi._salesSummary.net_sales,seed.kpi._salesSummary.profit_total,seed.kpi._salesSummary.avg_invoice].every(function(v){return typeof v==='number' && isFinite(v);})) drawHome(seed.b,seed.kpi,true);
+    if (seed) drawHome(seed.b,seed.kpi,true);
     else busy(box);
   }
 
@@ -2532,9 +2546,12 @@ function pgHome(){
       if(res[1])res[1]._salesSummary=res[2];
       // Only today's complete invoice summary may replace visible financial KPIs.
       var summary=res[2], today=cairoNow().date;
-      var complete=summary && summary.ok && summary.source==='pos-invoices-v1' &&
-        Array.isArray(summary.daily) && summary.daily.some(function(x){return x.date===today;});
+      var complete=homeSummaryForDay(summary, today);
       if(!complete){
+        if (!box.querySelector('.home-flash-deck') || (HOME_FLASH_DAY_STATS && HOME_FLASH_DAY_STATS.date !== today)) {
+          HOME_FLASH_DAY_STATS = null;
+          box.innerHTML = '<div class="state" role="status">بانتظار ملخص فواتير اليوم</div>';
+        }
         var sync=document.getElementById('sync');
         if(sync){sync.textContent=tr('cached')+' · '+tr('refreshing');sync.classList.add('old');}
         return;

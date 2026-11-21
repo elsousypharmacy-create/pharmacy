@@ -2512,7 +2512,7 @@ function docDone(row){
 /* ─────── عامة ─────── */
 var HOME_IN_FLIGHT=null;
 function pgHome(){
-  if(storedPin())homeCamLatest(true,true); // Fetch saved reports on entry/resume without notifications.
+  if(storedPin())homeCamLatest(false,true); // Fetch saved reports on entry/resume without notifications.
   var box = document.getElementById('p-home');
   var seed = cacheGet('home', {});
   // Keep the currently displayed net sales visible until fresh data arrives.
@@ -3131,13 +3131,15 @@ function toggleBucket(k){ DEBT.open[k] = !DEBT.open[k]; drawDebts(); }
 
 /* 🆕 بيفضّي كاش السيرفر للأرقام الحية وبعدين يعيد تحميل الصفحة الحالية.
    لازم عشان كاش الكاش بتاع Apps Script بيمسك الرقم لدقايق. */
+var refreshPending = null;
 function refreshNow(){
+  if (refreshPending) return refreshPending;
   TEAM_NEW_LOG=null;TEAM_NEW_LOG_PENDING=null;
   var el = document.getElementById('sync');
   if (el) { el.innerHTML = '<span class="sync-loader" aria-label="جاري التحديث"></span>'; el.classList.remove('old'); }
   var refreshButton=document.getElementById('refreshBtn');
   if(refreshButton)refreshButton.classList.add('refresh-spinning');
-  apiFresh('refreshNow', {}).then(function(d){
+  refreshPending = apiFresh('refreshNow', {}).then(function(d){
     if (!d || d.ok === false || d.error) throw new Error((d && d.error) || 'refreshNow');
     ['debts','sales','getShortages','getProfitLoss','getExpensesData'].forEach(function(k){
       try{ localStorage.removeItem(cacheKey(k, {})); }catch(e){}
@@ -3153,7 +3155,8 @@ function refreshNow(){
     if (el){ el.textContent = tr('cached'); el.classList.add('old'); }
     refreshMark(false);
     render(CUR, TAB);
-  });
+  }).finally(function(){ refreshPending = null; });
+  return refreshPending;
 }
 /* ✓ أو ⚠ على زرار ⟳ ثانيتين وبعدين يرجع */
 function refreshMark(ok){
@@ -4142,12 +4145,32 @@ function pgAging(key){
   var seed = cacheGet('inv', {});
   if (seed) { INV.data = seed; drawAging(true); } else busy(box);
 
-  api('getInventoryAging').then(function(d){
+  updateInventorySnapshot();
+}
+
+var inventoryRequest = null;
+function updateInventorySnapshot(){
+  if (inventoryRequest) return inventoryRequest;
+  inventoryRequest = api('getInventoryAging').then(function(d){
     if (!d || !d.ok) throw new Error(d && d.error);
     cacheSet('inv', {}, d);
-    INV.data = d; markSync(); drawAging(false);
-  }).catch(function(e){ logErr(e); if (!seed) oops(box, "pgAging()"); });
+    INV.data = d;
+    if (invOnTab()) { markSync(); drawAging(false); }
+  }).catch(function(e){
+    logErr(e);
+    if (!invOnTab()) return;
+    if (!INV.data) oops(document.getElementById('p-stock'), "pgAging()");
+    var status = document.getElementById('sync');
+    if (status) { status.textContent = tr('failed'); status.classList.add('old'); }
+  }).finally(function(){ inventoryRequest = null; });
+  return inventoryRequest;
 }
+
+function refreshVisibleInventory(){
+  if (!document.hidden && invOnTab()) updateInventorySnapshot();
+}
+setInterval(refreshVisibleInventory, 60000);
+document.addEventListener('visibilitychange', refreshVisibleInventory);
 
 /* ═══════════════════════════════════════════════════════════════
    تحليل المخزون — بأقسام

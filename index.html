@@ -4145,12 +4145,32 @@ function pgAging(key){
   var seed = cacheGet('inv', {});
   if (seed) { INV.data = seed; drawAging(true); } else busy(box);
 
-  api('getInventoryAging').then(function(d){
+  updateInventorySnapshot();
+}
+
+var inventoryRequest = null;
+function updateInventorySnapshot(){
+  if (inventoryRequest) return inventoryRequest;
+  inventoryRequest = api('getInventoryAging').then(function(d){
     if (!d || !d.ok) throw new Error(d && d.error);
     cacheSet('inv', {}, d);
-    INV.data = d; markSync(); drawAging(false);
-  }).catch(function(e){ logErr(e); if (!seed) oops(box, "pgAging()"); });
+    INV.data = d;
+    if (invOnTab()) { markSync(); drawAging(false); }
+  }).catch(function(e){
+    logErr(e);
+    if (!invOnTab()) return;
+    if (!INV.data) oops(document.getElementById('p-stock'), "pgAging()");
+    var status = document.getElementById('sync');
+    if (status) { status.textContent = tr('failed'); status.classList.add('old'); }
+  }).finally(function(){ inventoryRequest = null; });
+  return inventoryRequest;
 }
+
+function refreshVisibleInventory(){
+  if (!document.hidden && invOnTab()) updateInventorySnapshot();
+}
+setInterval(refreshVisibleInventory, 60000);
+document.addEventListener('visibilitychange', refreshVisibleInventory);
 
 /* ═══════════════════════════════════════════════════════════════
    تحليل المخزون — بأقسام
